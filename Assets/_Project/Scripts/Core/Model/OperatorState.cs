@@ -79,6 +79,13 @@ namespace NonaRoyale.Core.Model
         /// </summary>
         public void RestoreHealth() => Health = MaxHealth;
 
+        /// <summary>Restores health, never above maximum. Bouncer's All-In Mauling on an ally.</summary>
+        public void Heal(int amount)
+        {
+            if (amount < 0) throw new ArgumentOutOfRangeException(nameof(amount));
+            Health = Math.Min(MaxHealth, Health + amount);
+        }
+
         public override string ToString() =>
             $"{Name}({Owner}) hp {Health}/{MaxHealth} @ {Progress}";
     }

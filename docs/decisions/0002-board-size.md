@@ -104,7 +104,11 @@ Board length scales close to linearly, which confirms the Amendment 1 claim that
 | **Standard** | 48      | 6           | 54      | 16.7 turns | The shipping board.                                                                        |
 | **Long**     | 60      | 7           | 67      | 29.8 turns | Retained for measurement only. Not a shipping candidate.                                   |
 
-Constraints: `CircuitLength % 4 == 0`; `PlayerStartOffset = CircuitLength / 4`; `HomeColumnLength = PlayerStartOffset / 2`. One integer defines a board.
+Constraints: `CircuitLength % 4 == 0` and `PlayerStartOffset = CircuitLength / 4`. Both are genuine invariants — an indivisible circuit spaces the four starts unevenly and silently hands one seat a shorter journey.
+
+**Correction (2026-09-11).** This section previously added `HomeColumnLength = PlayerStartOffset / 2` as a third invariant and claimed one integer defines a board. That is false, and it is false against this ADR's own table: 36 gives an arm of 9, which does not halve, yet 36/5 is listed above as the primary fallback. Classic Ludo fails it too — a 52-cell circuit with a 6-cell column.
+
+The halving rule is a good guide for _choosing_ a home column: it makes the column the same length as the arm, which is what keeps the cross looking square. It is not a law. **Both numbers are explicit config**, and the core exposes `BoardProfile.FromCircuitLength` as a convenience for the circuits where the rule does apply (24, 32, 40, 48, 56). It refuses 36, 52 and 60 — meaning "this shortcut cannot derive that board", never "that board is invalid". Those are built with the constructor, stating both numbers.
 
 **Sprint exists to iterate on combat, not to be played.** A _longer_ board is the wrong test bed for combat rules — it spreads operators apart and produces fewer interactions per match, which is the exact failure mode this ADR was written to avoid. Sprint needs no new art: same topology, fewer cells.
 
@@ -127,6 +131,7 @@ Constraints: `CircuitLength % 4 == 0`; `PlayerStartOffset = CircuitLength / 4`; 
 
 ## Status history
 
+- 2026-09-11 — Corrected during core implementation. The `HomeColumnLength = PlayerStartOffset / 2` invariant and the "one integer defines a board" claim were wrong for 36 and 52; home column length is explicit config with the halving rule demoted to a guideline.
 - 2026-07-10 — Accepted (provisional). 48 chosen; 60 held open as tested fallback.
 - 2026-07-10 — Amended. HomeColumnLength = 6 (was HomeStretchLength = 4); canonical constants corrected to total 72 path positions.
 - 2026-09-11 — Amended and promoted to Accepted. Original pacing model shown to be incomplete on four terms; 48 confirmed by simulation at 16.7 turns mean; speed band set to 1.5–2.0; 60 withdrawn as fallback in favour of 40/36; board profiles introduced; revisit trigger replaced with a ranked lever list.

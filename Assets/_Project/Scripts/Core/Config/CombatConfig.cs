@@ -13,8 +13,10 @@ namespace NonaRoyale.Core.Config
         public CombatConfig(
             int collisionDamage = 3,
             double evasionChance = 0.5,
-            int bleedDamagePerStack = 1)
+            int bleedDamagePerStack = 1,
+            double slowSpeedPenalty = 0.5)
         {
+            if (slowSpeedPenalty < 0) throw new ArgumentOutOfRangeException(nameof(slowSpeedPenalty));
             if (collisionDamage < 0) throw new ArgumentOutOfRangeException(nameof(collisionDamage));
             if (evasionChance < 0.0 || evasionChance > 1.0)
                 throw new ArgumentOutOfRangeException(nameof(evasionChance), "A probability, so within [0,1].");
@@ -23,6 +25,7 @@ namespace NonaRoyale.Core.Config
             CollisionDamage = collisionDamage;
             EvasionChance = evasionChance;
             BleedDamagePerStack = bleedDamagePerStack;
+            SlowSpeedPenalty = slowSpeedPenalty;
         }
 
         /// <summary>
@@ -38,6 +41,14 @@ namespace NonaRoyale.Core.Config
         public double EvasionChance { get; }
 
         public int BleedDamagePerStack { get; }
+
+        /// <summary>
+        /// How much Slow takes off the speed multiplier. At 0.5 against a
+        /// 1.5–2.0 band it costs a fast operator a quarter of its movement and a
+        /// slow one a third — felt, not crippling. A full −1 would erase most of
+        /// the band and turn an aura into hard control (COMBAT_SYSTEMS §5.2).
+        /// </summary>
+        public double SlowSpeedPenalty { get; }
 
         public static CombatConfig Default => new CombatConfig();
     }
