@@ -38,6 +38,14 @@ namespace NonaRoyale.Core.Abilities
         /// <summary>Intimidating Presence: enemies within this many steps of Bouncer are slowed.</summary>
         public const int IntimidatingPresenceRadius = 2;
 
+        /// <summary>
+        /// Bouncer's passive aura. Not an ability — it is never used, has no
+        /// cost and no duration; it is simply true while an enemy stands close
+        /// enough (§10.1).
+        /// </summary>
+        public static AuraDefinition IntimidatingPresence { get; } =
+            new AuraDefinition("Intimidating Presence", IntimidatingPresenceRadius, -0.5);
+
         // ── Bouncer, Tank ────────────────────────────────────────────────
 
         /// <summary>
