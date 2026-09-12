@@ -30,6 +30,7 @@ namespace NonaRoyale.Unity.View
         private Color _seatColour;
         private Vector3 _target;
         private float _stepDistance = 1f;
+        private float _flash;
 
         public OperatorState Operator { get; private set; }
 
@@ -88,6 +89,12 @@ namespace NonaRoyale.Unity.View
             _target = position;
         }
 
+        /// <summary>
+        /// A brief white-out on the silhouette. The floater says how much; this
+        /// says <i>who</i>, which a number rising off a crowded cell does not.
+        /// </summary>
+        public void Flash() => _flash = 1f;
+
         public void Refresh(IReadOnlyList<StatusKind> statuses)
         {
             if (Operator == null || _body == null) return;
@@ -98,7 +105,7 @@ namespace NonaRoyale.Unity.View
                 ? Color.Lerp(_seatColour, new Color(0.4f, 0.4f, 0.42f), 0.55f)
                 : _seatColour;
 
-            _body.color = tint;
+            _body.color = Color.Lerp(tint, Color.white, _flash);
 
             if (_healthFill != null)
             {
@@ -159,6 +166,12 @@ namespace NonaRoyale.Unity.View
 
         private void Update()
         {
+            if (_flash > 0f)
+            {
+                _flash = Mathf.Max(0f, _flash - Time.deltaTime * 4f);
+                if (_body != null) _body.color = Color.Lerp(_body.color, Color.white, _flash * 0.5f);
+            }
+
             if (_path.Count > 0)
             {
                 var next = _path.Peek();

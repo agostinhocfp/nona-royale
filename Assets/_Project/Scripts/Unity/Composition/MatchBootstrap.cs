@@ -7,6 +7,7 @@ using NonaRoyale.Core.Board;
 using NonaRoyale.Core.Commands;
 using NonaRoyale.Core.Events;
 using NonaRoyale.Core.Model;
+using NonaRoyale.Core.Services;
 using NonaRoyale.Unity.View;
 using UnityEngine;
 
@@ -54,6 +55,7 @@ namespace NonaRoyale.Unity.Composition
         private OperatorState _selectedTarget;
         private AbilityDefinition _selectedAbility;
         private HighlightLayer _highlights;
+        private FeedbackLayer _feedback;
         private Vector2 _logScroll;
 
         private void Start() => NewMatch();
@@ -87,6 +89,9 @@ namespace NonaRoyale.Unity.Composition
             _highlights = GetComponent<HighlightLayer>() ?? gameObject.AddComponent<HighlightLayer>();
             _highlights.Bind(_layout);
             _highlights.Clear();
+
+            _feedback = GetComponent<FeedbackLayer>() ?? gameObject.AddComponent<FeedbackLayer>();
+            _feedback.Bind(_layout.CellSize);
 
             foreach (var op in _match.Operators)
             {
@@ -167,11 +172,79 @@ namespace NonaRoyale.Unity.Composition
 
             if (_log.Count > 200) _log.RemoveRange(0, _log.Count - 200);
 
-            if (!immediate) WalkMoves(events);
+            if (!immediate)
+            {
+                PlayFeedback(events);
+                WalkMoves(events);
+            }
 
             Reposition(immediate);
             RefreshHighlights();
         }
+
+        /// <summary>
+        /// Turns damage, healing and neutralize events into one-off effects.
+        /// </summary>
+        /// <remarks>
+        /// Played <b>before</b> pieces are repositioned, so an effect lands on
+        /// the cell where the thing happened rather than where the victim ends
+        /// up. That matters most for a neutralize: the operator's progress is
+        /// already the yard by the time the event arrives, and the burst belongs
+        /// on the cell it fell on.
+        /// </remarks>
+        private void PlayFeedback(IReadOnlyList<IGameEvent> events)
+        {
+            if (_feedback == null) return;
+
+            foreach (var e in events)
+            {
+                var damaged = e as DamageDealt;
+                if (damaged != null && damaged.Amount > 0)
+                {
+                    var piece = PieceFor(damaged.Target);
+                    if (piece == null) continue;
+
+                    _feedback.Damage(piece.transform.position, damaged.Amount);
+                    piece.Flash();
+                    continue;
+                }
+
+                var evaded = e as DamageEvaded;
+                if (evaded != null)
+                {
+                    var piece = PieceFor(evaded.Target);
+                    if (piece != null) _feedback.Evaded(piece.transform.position);
+                    continue;
+                }
+
+                var absorbed = e as DamageAbsorbed;
+                if (absorbed != null)
+                {
+                    var piece = PieceFor(absorbed.Target);
+                    if (piece != null) _feedback.Absorbed(piece.transform.position);
+                    continue;
+                }
+
+                var healed = e as HealApplied;
+                if (healed != null)
+                {
+                    var piece = PieceFor(healed.Target);
+                    if (piece != null) _feedback.Heal(piece.transform.position, healed.Amount);
+                    continue;
+                }
+
+                var down = e as OperatorNeutralized;
+                if (down != null)
+                {
+                    var piece = PieceFor(down.Operator);
+                    if (piece != null)
+                        _feedback.Neutralized(piece.transform.position, BoardLayout.ColourOf(down.Operator.Owner));
+                }
+            }
+        }
+
+        private OperatorPiece PieceFor(OperatorState op) =>
+            op == null ? null : _pieces.Find(p => ReferenceEquals(p.Operator, op));
 
         /// <summary>
         /// Turns each move into a sequence of cells to walk through.
@@ -386,13 +459,28 @@ namespace NonaRoyale.Unity.Composition
             foreach (var ability in abilities)
             {
                 bool chosen = _selectedAbility != null && _selectedAbility.Id == ability.Id;
-                string label = $"{ability.Name}  ({ability.EnergyCost}e, r{ability.Range})";
 
-                if (GUILayout.Toggle(chosen, label, GUI.skin.button) != chosen)
+                // Readiness comes from the engine, not from the view checking
+                // energy and cooldowns itself (ADR-0004 amendment). Before this,
+                // a player found out an ability was on cooldown by pressing it
+                // and reading the rejection.
+                var availability = _match.Engine.CheckAbility(_selectedCaster, ability);
+                bool usable = availability == AbilityAvailability.Ready;
+
+                string label = usable
+                    ? $"{ability.Name}  ({ability.EnergyCost}e, r{ability.Range})"
+                    : $"{ability.Name}  — {Explain(availability)}";
+
+                var previous = GUI.color;
+                if (!usable) GUI.color = new Color(0.6f, 0.6f, 0.62f);
+
+                if (GUILayout.Toggle(chosen, label, GUI.skin.button) != chosen && usable)
                 {
                     _selectedAbility = chosen ? null : ability;
                     RefreshHighlights();
                 }
+
+                GUI.color = previous;
             }
 
             if (_selectedAbility == null) return;
@@ -408,6 +496,18 @@ namespace NonaRoyale.Unity.Composition
                         : (int?)null));
 
                 _selectedAbility = null;
+            }
+        }
+
+        private static string Explain(AbilityAvailability availability)
+        {
+            switch (availability)
+            {
+                case AbilityAvailability.OnCooldown: return "cooling down";
+                case AbilityAvailability.InsufficientEnergy: return "not enough energy";
+                case AbilityAvailability.CasterStunned: return "stunned";
+                case AbilityAvailability.CasterOutOfPlay: return "out of play";
+                default: return "";
             }
         }
 

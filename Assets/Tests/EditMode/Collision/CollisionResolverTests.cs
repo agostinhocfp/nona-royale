@@ -258,6 +258,8 @@ namespace NonaRoyale.Core.Tests.Collision
             Assert.That(struck.Health, Is.EqualTo(3), "only the contested cell resolved");
         }
 
+
+
         // ── Invariants ───────────────────────────────────────────────────
 
         [Test]

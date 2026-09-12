@@ -401,6 +401,45 @@ namespace NonaRoyale.Core
 
         // ── Helpers ──────────────────────────────────────────────────────
 
+        /// <summary>
+        /// Whether an ability could be used right now, and why not if it could
+        /// not. For drawing a tray that tells the truth before it is clicked.
+        /// </summary>
+        /// <remarks>
+        /// The view must not work this out for itself (ADR-0004 amendment), and
+        /// until now it could not find out at all — a player learned an ability
+        /// was on cooldown by pressing it and reading the rejection.
+        ///
+        /// <b>Deliberately excludes target legality.</b> Whether a particular
+        /// enemy is in range or stealthed depends on which target is selected,
+        /// which is a per-target question the range preview already answers on
+        /// the board. This reports only what is true of the caster and the
+        /// ability.
+        ///
+        /// <b>Known wart:</b> the energy comparison is made here rather than
+        /// through <c>EnergyLedger.CanAfford</c>, because <c>GameEngine</c> does
+        /// not hold the ledger. It reads a public value rather than restating a
+        /// rule, so it is defensible — but the right home for this whole method
+        /// is a <c>CheckAbility</c> on <c>AbilityResolver</c>, which already owns
+        /// every one of these validations for <c>Use</c>. Move it when that file
+        /// is next opened.
+        /// </remarks>
+        public AbilityAvailability CheckAbility(OperatorState caster, AbilityDefinition ability)
+        {
+            if (caster == null) throw new ArgumentNullException(nameof(caster));
+            if (ability == null) throw new ArgumentNullException(nameof(ability));
+
+            if (_statuses.IsStunned(caster)) return AbilityAvailability.CasterStunned;
+            if (caster.IsInYard || _win.HasFinished(caster)) return AbilityAvailability.CasterOutOfPlay;
+            if (!_abilities.IsReady(caster, ability)) return AbilityAvailability.OnCooldown;
+
+            if (_turns.CurrentPlayer == null || _turns.CurrentPlayer.Energy < ability.EnergyCost)
+                return AbilityAvailability.InsufficientEnergy;
+
+            return AbilityAvailability.Ready;
+        }
+
+
         private bool RequireAction(List<IGameEvent> events)
         {
             if (_turns.Phase == TurnPhase.Action) return true;
