@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using NonaRoyale.Core.Abilities;
 using NonaRoyale.Core.Board;
 using NonaRoyale.Core.Commands;
+using NonaRoyale.Core.Config;
 using NonaRoyale.Core.Events;
 using NonaRoyale.Core.Model;
 using NonaRoyale.Core.Services;
@@ -43,6 +44,7 @@ namespace NonaRoyale.Core
         private readonly AuraRules _auras;
         private readonly NeutralizeRules _neutralize;
         private readonly WinConditions _win;
+        private readonly CombatConfig _config;
 
         // Per-roll action state. Exactly one operator moves per roll (§6).
         private DiceRoll _currentRoll;
@@ -63,7 +65,8 @@ namespace NonaRoyale.Core
             StatusRegistry statuses,
             AuraRules auras,
             NeutralizeRules neutralize,
-            WinConditions win)
+            WinConditions win,
+            CombatConfig config)
         {
             _operators = operators ?? throw new ArgumentNullException(nameof(operators));
             _abilityBook = abilityBook ?? throw new ArgumentNullException(nameof(abilityBook));
@@ -76,6 +79,7 @@ namespace NonaRoyale.Core
             _auras = auras ?? throw new ArgumentNullException(nameof(auras));
             _neutralize = neutralize ?? throw new ArgumentNullException(nameof(neutralize));
             _win = win ?? throw new ArgumentNullException(nameof(win));
+            _config = config ?? throw new ArgumentNullException(nameof(config));
         }
 
         public TurnPhase Phase => _turns.Phase;
@@ -127,6 +131,10 @@ namespace NonaRoyale.Core
                 events.Add(new DamageDealt(bleeding, tick.AmountApplied, tick.RemainingHealth));
             }
 
+            // Neutralizes from upkeep are already applied by TurnStateMachine,
+            // so this reports rather than resolves. A mark payout triggered at
+            // upkeep is therefore applied to state but not announced — see
+            // decision log D-010.
             foreach (var op in upkeep.Neutralized)
                 events.Add(new OperatorNeutralized(op));
 
@@ -248,6 +256,10 @@ namespace NonaRoyale.Core
 
             // Speed is base, plus statuses, plus any enemy aura reaching it —
             // all evaluated now, because an aura's truth changes with position.
+            //
+            // The two channels are summed, which means a slow and an enemy aura
+            // stack even though COMBAT_SYSTEMS §5.2 says slow sources do not.
+            // Pre-existing and unresolved — decision log D-007.
             double speed = _movement.EffectiveSpeed(
                 op.BaseSpeedMultiplier,
                 _statuses.SpeedModifier(op) + _auras.SpeedModifierFor(op, _operators));
@@ -273,10 +285,7 @@ namespace NonaRoyale.Core
                     events.Add(new CollisionResolved(op, occupant, collision.MoverBouncedBack));
 
                     if (result.Outcome == DamageOutcome.Neutralized)
-                    {
-                        _neutralize.Apply(occupant);
-                        events.Add(new OperatorNeutralized(occupant));
-                    }
+                        Neutralize(occupant, events);
                 }
             }
 
@@ -333,16 +342,12 @@ namespace NonaRoyale.Core
                 case EffectOutcomeKind.Damaged:
                     EmitDamage(outcome.Recipient, outcome.Damage, events);
                     if (outcome.Damage.Outcome == DamageOutcome.Neutralized)
-                    {
-                        _neutralize.Apply(outcome.Recipient);
-                        events.Add(new OperatorNeutralized(outcome.Recipient));
-                    }
+                        Neutralize(outcome.Recipient, events);
                     break;
 
                 case EffectOutcomeKind.Executed:
                     events.Add(new DamageDealt(outcome.Recipient, 0, 0));
-                    _neutralize.Apply(outcome.Recipient);
-                    events.Add(new OperatorNeutralized(outcome.Recipient));
+                    Neutralize(outcome.Recipient, events);
                     break;
 
                 case EffectOutcomeKind.Healed:
@@ -358,6 +363,26 @@ namespace NonaRoyale.Core
                         _map.CellAt(outcome.Recipient.Owner, outcome.Progress)));
                     break;
             }
+        }
+
+        /// <summary>
+        /// Yards a neutralized operator and reports everything that followed,
+        /// including a mark payout (COMBAT_SYSTEMS §10.2).
+        /// </summary>
+        /// <remarks>
+        /// Centralised so no call site can neutralize without announcing what it
+        /// triggered. Three paths reach here — a collision, an ability's damage,
+        /// and Miracle Pull's execute — and before the payout existed each
+        /// carried its own copy of the two lines this replaces.
+        /// </remarks>
+        private void Neutralize(OperatorState op, List<IGameEvent> events)
+        {
+            var hastened = _neutralize.Apply(op);
+
+            events.Add(new OperatorNeutralized(op));
+
+            foreach (var ally in hastened)
+                events.Add(new StatusApplied(ally, StatusKind.Hastened, _config.HasteDurationTurns));
         }
 
         private static void EmitDamage(OperatorState target, DamageResult result, List<IGameEvent> events)
@@ -428,5 +453,65 @@ namespace NonaRoyale.Core
 
             return op;
         }
+
+        /// <summary>
+        /// Where each of the current player's operators would land if moved with
+        /// the movement left on this roll. Empty before the first roll, or once
+        /// an operator has already moved.
+        /// </summary>
+        /// <remarks>
+        /// <b>Read-only, and deliberately shares <see cref="Move"/>'s arithmetic
+        /// rather than restating it.</b> A preview that computes distance its own
+        /// way is a second copy of a rule, and the two will disagree the first
+        /// time a slow or an aura is in play — which is precisely when a player
+        /// is relying on the preview.
+        ///
+        /// It stops short of collision: it reports the landing, not whether the
+        /// landing is contested. Showing the bounce-back would be showing the
+        /// player the outcome of a fight before they commit to it.
+        /// </remarks>
+        public IReadOnlyDictionary<int, int> PreviewLandings()
+        {
+            var landings = new Dictionary<int, int>();
+
+            if (_turns.Phase != TurnPhase.Action || _hasMovedThisRoll || _movementValue <= 0)
+                return landings;
+
+            foreach (var op in _turns.CurrentPlayer.Operators)
+            {
+                if (op.IsInYard || _win.HasFinished(op)) continue;
+                if (_statuses.IsStunned(op)) continue;
+
+                double speed = _movement.EffectiveSpeed(
+                    op.BaseSpeedMultiplier,
+                    _statuses.SpeedModifier(op) + _auras.SpeedModifierFor(op, _operators));
+
+                var move = _movement.ResolveMove(op, _movement.CellsFor(_movementValue, speed));
+                landings[op.Id] = move.To;
+            }
+
+            return landings;
+        }
+
+        /// <summary>
+        /// Which statuses are currently active on an operator, for the view to
+        /// draw.
+        /// </summary>
+        /// <remarks>
+        /// The view could infer this from the event stream, and that was the
+        /// first design — but events do not cover everything. Passives are
+        /// granted at match start without an event, and bleed stacks are
+        /// consumed at upkeep without a <c>StatusExpired</c>. An inferred badge
+        /// layer drifts from the truth, and a board that lies about status is
+        /// worse than one that shows none.
+        /// </remarks>
+        public IReadOnlyList<StatusKind> ActiveStatusesOn(OperatorState op)
+        {
+            if (op == null) throw new ArgumentNullException(nameof(op));
+            return _statuses.ActiveKinds(op);
+        }
+
     }
+
+
 }

@@ -52,6 +52,8 @@ namespace NonaRoyale.Unity.Composition
 
         private OperatorState _selectedCaster;
         private OperatorState _selectedTarget;
+        private AbilityDefinition _selectedAbility;
+        private HighlightLayer _highlights;
         private Vector2 _logScroll;
 
         private void Start() => NewMatch();
@@ -65,6 +67,7 @@ namespace NonaRoyale.Unity.Composition
             _log.Clear();
             _selectedCaster = null;
             _selectedTarget = null;
+            _selectedAbility = null;
 
             var board = useCompactBoard
                 ? new BoardProfile("Compact", 24, 3, laps: 2)
@@ -81,13 +84,17 @@ namespace NonaRoyale.Unity.Composition
             var boardView = GetComponent<BoardView>() ?? gameObject.AddComponent<BoardView>();
             boardView.Build(_match.Map, _layout);
 
+            _highlights = GetComponent<HighlightLayer>() ?? gameObject.AddComponent<HighlightLayer>();
+            _highlights.Bind(_layout);
+            _highlights.Clear();
+
             foreach (var op in _match.Operators)
             {
                 var go = new GameObject();
                 go.transform.SetParent(transform, false);
 
                 var piece = go.AddComponent<OperatorPiece>();
-                piece.Bind(op, _layout.CellSize);
+                piece.Bind(op, _layout.CellSize, cellSpacing);
                 _pieces.Add(piece);
             }
 
@@ -160,7 +167,75 @@ namespace NonaRoyale.Unity.Composition
 
             if (_log.Count > 200) _log.RemoveRange(0, _log.Count - 200);
 
+            if (!immediate) WalkMoves(events);
+
             Reposition(immediate);
+            RefreshHighlights();
+        }
+
+        /// <summary>
+        /// Turns each move into a sequence of cells to walk through.
+        /// </summary>
+        /// <remarks>
+        /// Only forward travel is walked. A pull reports the same progress twice
+        /// and a bounce-back reports a lower one; both are placement rather than
+        /// movement (§7.4, §7.2), and animating them as a walk would show the
+        /// player a journey the rules say never happened.
+        /// </remarks>
+        private void WalkMoves(IReadOnlyList<IGameEvent> events)
+        {
+            foreach (var e in events)
+            {
+                var moved = e as OperatorMoved;
+                if (moved == null || moved.To <= moved.From) continue;
+
+                var piece = _pieces.Find(p => ReferenceEquals(p.Operator, moved.Operator));
+                if (piece == null) continue;
+
+                var path = new List<Vector3>();
+
+                for (int progress = moved.From + 1; progress <= moved.To; progress++)
+                    path.Add(_layout.PositionOf(_match.Map.CellAt(moved.Operator.Owner, progress)));
+
+                piece.Walk(path);
+            }
+        }
+
+        /// <summary>
+        /// Rebuilds the landing ghosts and, if an ability is selected, the cells
+        /// it reaches.
+        /// </summary>
+        /// <remarks>
+        /// Landings come from the engine rather than being recomputed here.
+        /// Distance depends on slows and auras, and a preview that did its own
+        /// arithmetic would disagree with the rules exactly when a player is
+        /// leaning on it.
+        /// </remarks>
+        private void RefreshHighlights()
+        {
+            if (_highlights == null || _match == null) return;
+
+            _highlights.Clear();
+            if (_match.Engine.MatchOver) return;
+
+            var landings = _match.Engine.PreviewLandings();
+            var cells = new List<CellRef>();
+
+            foreach (var pair in landings)
+            {
+                var op = _match.Operators.FirstOrDefault(o => o.Id == pair.Key);
+                if (op != null) cells.Add(_match.Map.CellAt(op.Owner, pair.Value));
+            }
+
+            _highlights.ShowLandings(cells);
+
+            if (_selectedCaster != null && _selectedAbility != null && !_selectedCaster.IsInYard)
+            {
+                _highlights.ShowRange(
+                    _match.Map,
+                    _match.Map.CellAt(_selectedCaster.Owner, _selectedCaster.Progress),
+                    _selectedAbility.Range);
+            }
         }
 
         /// <summary>
@@ -194,8 +269,13 @@ namespace NonaRoyale.Unity.Composition
 
                 for (int i = 0; i < pair.Value.Count; i++)
                 {
-                    pair.Value[i].MoveTo(basePosition + _layout.Offset(i, pair.Value.Count), immediate);
-                    pair.Value[i].Refresh();
+                    var piece = pair.Value[i];
+                    var position = basePosition + _layout.Offset(i, pair.Value.Count);
+
+                    if (immediate) piece.Place(position);
+                    else piece.Settle(position);
+
+                    piece.Refresh(_match.Engine.ActiveStatusesOn(piece.Operator));
                 }
             }
         }
@@ -264,7 +344,11 @@ namespace NonaRoyale.Unity.Composition
 
                 bool selected = ReferenceEquals(op, _selectedCaster);
                 if (GUILayout.Toggle(selected, "cast", GUI.skin.button, GUILayout.Width(46)) != selected)
+                {
                     _selectedCaster = selected ? null : op;
+                    _selectedAbility = null;      // an ability belongs to its caster
+                    RefreshHighlights();
+                }
 
                 GUILayout.EndHorizontal();
             }
@@ -296,16 +380,34 @@ namespace NonaRoyale.Unity.Composition
 
             if (!_match.AbilitiesByOperator.TryGetValue(_selectedCaster.Id, out var abilities)) return;
 
+            // Select, then cast. The extra click buys a look at the range before
+            // spending energy, which matters on a board where reach turned out
+            // to be the binding constraint on the whole combat layer.
             foreach (var ability in abilities)
             {
+                bool chosen = _selectedAbility != null && _selectedAbility.Id == ability.Id;
                 string label = $"{ability.Name}  ({ability.EnergyCost}e, r{ability.Range})";
 
-                if (GUILayout.Button(label))
+                if (GUILayout.Toggle(chosen, label, GUI.skin.button) != chosen)
                 {
-                    Send(new UseAbilityCommand(
-                        _selectedCaster.Id, ability.Id,
-                        ability.RequiresTarget && _selectedTarget != null ? _selectedTarget.Id : (int?)null));
+                    _selectedAbility = chosen ? null : ability;
+                    RefreshHighlights();
                 }
+            }
+
+            if (_selectedAbility == null) return;
+
+            GUILayout.Space(2);
+
+            if (GUILayout.Button($"CAST {_selectedAbility.Name}"))
+            {
+                Send(new UseAbilityCommand(
+                    _selectedCaster.Id, _selectedAbility.Id,
+                    _selectedAbility.RequiresTarget && _selectedTarget != null
+                        ? _selectedTarget.Id
+                        : (int?)null));
+
+                _selectedAbility = null;
             }
         }
 

@@ -2,7 +2,7 @@
 
 > Location in repo: `docs/decisions/0002-board-size.md`
 > Status: **Accepted** — 48 confirmed by simulation; no longer provisional.
-> Date: 2026-07-10 · Amended 2026-07-10 (home-column length + constants) · Amended 2026-09-11 (pacing model corrected, speed band, board profiles)
+> Date: 2026-07-10 · Amended 2026-07-10 (home-column length + constants) · Amended 2026-09-11 (pacing model corrected, speed band, board profiles) · Amended 2026-09-12 (laps and shipping profiles; Compact withdrawn and band lowered; mark damage, haste payout, and a measurement fault)
 > Related: `docs/GDD.md`, ADR-0003 (board topology), ADR-0005 (unified neutralize), `docs/design/COMBAT_SYSTEMS.md`, `PathManager.cs`
 
 ## Context
@@ -232,29 +232,16 @@ Raw multiplier was the wrong thing to track. What a player can follow is **how m
 
 > **Target: a mean move covers roughly a fifth of the loop. Past a third it stops being readable.**
 
-### Correction (same day) — every figure above was measured against a broken Kurbyn
-
-Review found that `KurbynPassiveSpeedBonus = 0.5` was declared in `AlphaRoster` and **consumed by nothing in the engine**. `StatusRegistry.SpeedModifier` tested for Slow and read no magnitudes, so the passive was written into the registry and never read back. Kurbyn moved at his base speed in every match and every simulation run in this ADR.
-
-The test that should have caught it added two constants together and asserted their sum — arithmetic that passes whether or not the engine applies anything. It has been replaced by an end-to-end test that rolls, moves Kurbyn through `GameEngine`, and checks the distance travelled.
-
-A second defect rode with it: `StatusRegistry.ClearAll` removed permanent passives along with applied statuses, and nothing re-grants them after match start, so Kurbyn lost Evasive Protocol for good the first time he was neutralized.
-
-**Figures below are re-measured with both fixed.** The earlier numbers in Amendment 3 and in the first draft of this amendment were taken against a squad roughly 12% slower than the roster describes, and should not be cited.
-
 ### Measured — Standard board, slower bands, 4 players, opening 2, 600 matches
 
-| Band                          | Turns    | p90    | Neutralizes | Abilities | 3-up    | Move %  |
-| ----------------------------- | -------- | ------ | ----------- | --------- | ------- | ------- |
-| 1.0 / 1.0 / 1.0               | 27.3     | 35     | 10.6        | 61.1      | 27%     | 15%     |
-| 1.0 / 1.25 / 1.25             | 23.0     | 28     | 8.3         | 50.9      | 30%     | 17%     |
-| **1.0 / 1.5 / 1.5 (adopted)** | **19.6** | **24** | **6.7**     | **43.3**  | **33%** | **19%** |
-| 1.25 / 1.5 / 1.5              | 17.2     | 21     | 5.0         | 37.5      | 29%     | 21%     |
-| _Compact 24×2, same band_     | _30.5_   | _44_   | _20.6_      | _72.3_    | _28%_   | _39%_   |
-
-The old 1.5/2.0/2.0 band is not re-listed: the roster constants now hold the adopted values, so it is no longer reachable without editing them.
-
-Compact is shown at the adopted band rather than the withdrawn one, which is why its figures differ from Amendment 3's. Even at 39% of the loop per move it remains well past readable, and it now runs 30.5 turns.
+| Band                    | Turns    | p90    | Neutralizes | Abilities | 3-up    | Move %  |
+| ----------------------- | -------- | ------ | ----------- | --------- | ------- | ------- |
+| 1.0 / 1.0 / 1.0         | 37.7     | 49     | 13.8        | 79.0      | 21%     | 15%     |
+| 1.0 / 1.25 / 1.25       | 28.3     | 36     | 10.0        | 60.5      | 26%     | 17%     |
+| **1.0 / 1.5 / 1.5**     | **22.7** | **28** | **7.7**     | **49.0**  | **30%** | **19%** |
+| 1.25 / 1.5 / 1.5        | 20.0     | 24     | 5.9         | 42.4      | 26%     | 21%     |
+| adopted 1.5 / 2.0 / 2.0 | 13.9     | 17     | 3.0         | 29.0      | 27%     | 27%     |
+| _Compact 24×2, adopted_ | _16.8_   | _22_   | _8.3_       | _38.2_    | _25%_   | _53%_   |
 
 **The Standard board at 1.0/1.5/1.5 delivers Compact's combat at a third of its move size** — 7.7 neutralizes against 8.3, at 19% of the loop against 53%. It also produces the highest squad occupancy measured anywhere, 30%.
 
@@ -266,7 +253,7 @@ The density was never about board size. It was about how much of the board a mov
 - **Standard 48×1 is the shipping board**, sole.
 - **The speed band becomes 1.0 – 1.5.** Bouncer 1.0, Syla 1.5, Kurbyn 1.0 base + 0.5 passive = 1.5. Schema bounds stay 1.0–2.5 so measurement is unconstrained.
 - **`openingDeployments = 2` is unchanged.**
-- Expected match: **19.6 turns, p90 24, 6.7 neutralizes, 33% occupancy** — the highest squad occupancy measured anywhere in this ADR.
+- Expected match: **22.7 turns, p90 28, 7.7 neutralizes, 30% occupancy.**
 
 ### This reverses Amendment 2, and the reason it does is worth keeping
 
@@ -276,7 +263,76 @@ It stopped being correct once two other levers landed. Opening deployments absor
 
 ### The cost, stated plainly
 
-Matches go from 13.9 turns to 19.6, with a p90 of 24. At four players that is roughly 78 player-turns against 56. **Whether that is too long is the one thing simulation cannot answer**, and it is now the open question ahead of the next playtest. If it runs long, the levers in order are reach (already unspent), then `openingDeployments = 3`, then the band back toward 1.25.
+Matches go from 13.9 turns to 22.7, with a p90 of 28. At four players that is roughly 91 player-turns against 56. **Whether that is too long is the one thing simulation cannot answer**, and it is now the open question ahead of the next playtest. If it runs long, the levers in order are reach (already unspent), then `openingDeployments = 3`, then the band back toward 1.25.
+
+---
+
+---
+
+## Amendment 5 (2026-09-12) — mark damage, the haste payout, and a measurement fault
+
+### What this amendment is not
+
+Amendments 2 through 4 adopted values because a harness measured them. **This one does not.** Every value below was reasoned at a desk and none has been simulated, because the harness cannot currently be trusted — see the fault below. They are adopted provisionally so the work can land; they are not confirmed, and the revisit trigger is a harness run rather than a playtest.
+
+Recorded as its own amendment rather than folded into `COMBAT_SYSTEMS` §12 precisely so the distinction survives. A reasoned number and a measured number look identical in a config file six months later.
+
+### The fault: Kurbyn's passive never reached the engine
+
+`AlphaRoster.KurbynPassiveSpeedBonus = 0.5` was read by nothing that affects a match. Three things had to line up, and all three were wrong:
+
+- `MatchFactory` granted the passive as `ApplyPassive(op, StatusKind.Evasion)` with no magnitude, which defaults to `0.0`.
+- `StatusRegistry.SpeedModifier` returned only the slow penalty, hardcoded, and never read `Entry.Magnitude` at all — the field was written by `Apply()` and consumed by no one.
+- The test that covered it asserted `KurbynBaseSpeed + KurbynPassiveSpeedBonus == 1.5`, which is arithmetic on two constants and passes whether or not the engine applies either.
+
+Kurbyn therefore moved at his base speed in every simulated match this ADR has ever quoted.
+
+### What that does to the tables above
+
+The harness labels its rows with the _effective_ band while constructing the _base_:
+
+- `Program.cs` labels a row `"1.0 / 1.5 / 1.5"` and builds `new RosterSpeeds(1.0, 1.5, 1.0)`.
+- `Dynamic.cs` does the same, and computes its `Move %` column as `(Bouncer + Syla + KurbynBase + KurbynPassiveSpeedBonus) / 3`.
+- `RosterSpeeds.ToString()` prints `KurbynBase + KurbynPassiveSpeedBonus`.
+
+So every band label in Amendments 2, 3 and 4 overstates Kurbyn by 0.5, and every `Move %` figure was computed against a mean speed no match ran at.
+
+**Amendment 4's adopted row is the one that matters.** Labelled 1.0 / 1.5 / 1.5, it measured 1.0 / 1.5 / **1.0**. Mean speed 1.167, not 1.333; mean move 17% of the loop, not the 19% reported. The configuration this ADR currently calls the shipping band has never actually been measured, and when it is, it will run **shorter than 22.7 turns** — a third of every squad just became 50% faster.
+
+### What survives and what does not
+
+**Survives.** The fault was constant across every row of every sweep, so relative comparisons hold. Compact 24×2's withdrawal stands — that was driven by loop size, and its 53% move share is wrong in the same direction as everything else but nowhere near enough to save it. The lever ranking stands. `CollisionDamage` remains struck as a dial.
+
+**Does not survive.** Every absolute figure: turn counts, p90s, neutralize counts, occupancy. Specifically, Amendment 4's expected match of _22.7 turns, p90 28, 7.7 neutralizes, 30% occupancy_ is withdrawn pending a re-run, and the baseline tripwire in `tools/sim/README` is invalidated — it was already one amendment stale, still quoting the Amendment 3 row.
+
+### Adopted, provisionally and unmeasured
+
+| Dial                       | Value | Reasoning                                                                                                                                                                                                                                                           |
+| -------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MarkDamagePerTurn`        | 2     | Over a 2-turn mark this totals 4, leaving a 6-HP operator at 2 — inside collision, execute and From the Hip range. At 3 over 3 turns a mark deals 9 and kills both 6-HP operators unassisted, which makes Tagged From Above's own payout condition self-fulfilling. |
+| `HasteSpeedBonus`          | 0.5   | Inherited from Amendment 2's +3 → +0.5 cut, which was measured against the 1.5–2.0 band where it was a ~25% bump. Against 1.0–1.5 it is +33% to +50%. Unchanged for now because changing it and the mark at once would make neither separable.                      |
+| `HasteDurationTurns`       | 2     | Not a balance figure. The payout can fire on the marker's own turn, by which point that turn's movement is spent, so a 1-turn buff would routinely be worth nothing.                                                                                                |
+| All-In Mauling range       | 1 → 2 | A range-1 ability on the roster's slowest operator was unusable by construction.                                                                                                                                                                                    |
+| All-In Mauling self-damage | 3 → 1 | Arguably overshoots: at 12 HP it now takes eleven casts to self-neutralize, so the cost is close to flavour. 2 was the recommendation.                                                                                                                              |
+
+**Not adopted, and still open:** All-In Mauling's energy cost. At 6 against a mean drip of 3.5 per turn the economy already gates it to roughly every second turn, so its `cooldownTurns: 0` — the only thing distinguishing it from Velvet Rope, which is the same cost and damage at longer range with a pull — buys nothing. Either the cost drops to 3 or the zero cooldown should be dropped as fiction.
+
+### Resolved
+
+- **Kurbyn's passive carries its speed as the status entry's magnitude**, and `SpeedModifier` sums signed magnitudes across every active status and passive. This also gives Slow a per-source size for the first time and is what makes the haste payout expressible at all.
+- **Passives are stored separately from applied statuses**, so `ClearAll` on neutralize no longer deletes them. Before this, Kurbyn would have lost Evasive Protocol permanently the first time he died — had the passive been working.
+- **Every band label in Amendments 2 through 4 is to be read as base speeds**, with Kurbyn 0.5 lower than stated.
+- **The values in the table above are provisional.** They ship so the mark is playable; they are not confirmed.
+
+### Revisit trigger
+
+A harness run, in this order, each sweep separable:
+
+1. **Re-baseline** on the fixed core and regenerate the `tools/sim/README` tripwire row. Nothing below is meaningful until this exists.
+2. **Rule on slow stacking.** `GameEngine` sums the status and aura speed channels, so Slow plus Intimidating Presence reaches the `MinSpeedMultiplier` floor — two half-slows becoming a hard stop, which `COMBAT_SYSTEMS` §5.2 exists to prevent. The scripted player triggers this constantly, so it distorts any measurement taken before it is settled.
+3. **Sweep `MarkDamagePerTurn` at 1 / 2 / 3 against durations 2 / 3.** The figure to watch is not match length but _what share of marked targets die to the mark itself_ rather than to a follow-up. A high share means the payout is self-fulfilling regardless of what pacing says.
+4. **Re-check `HasteSpeedBonus`** against the corrected band.
+5. **Re-check `SlowSpeedPenalty`**, which was measured against 1.5–2.0 and never re-run when Amendment 4 lowered the band. At −0.5 against a 1.0 operator it now reaches the floor on its own.
 
 ---
 
@@ -295,7 +351,7 @@ Matches go from 13.9 turns to 19.6, with a p90 of 24. At four players that is ro
 
 ## Status history
 
-- 2026-09-12 — Corrected. Kurbyn's passive speed bonus was declared but never consumed by the engine, and permanent passives were being wiped on neutralize. Both fixed; every figure in Amendments 3 and 4 re-measured. The test that should have caught it asserted arithmetic on two constants and has been replaced with one that drives the engine.
+- 2026-09-12 — Amended. Mark given damage over time and Tagged From Above's payout implemented; values adopted by reasoning rather than measurement, and marked as such. A measurement fault found: Kurbyn's passive speed bonus never reached the engine, so every band label in Amendments 2 through 4 overstates him by 0.5 and every absolute figure is withdrawn pending a re-baseline.
 - 2026-09-12 — Amended again after the first human session. Compact 24×2 withdrawn: it moved pieces across 53% of the loop per turn. Speed band lowered to 1.0–1.5, which delivers the same combat at 19%. "Mean move as a share of the loop" recorded as the constraint that actually governs readability.
 - 2026-09-12 — Amended. Harness ported onto the live core; pacing confirmed, combat figures corrected sharply downward. Laps introduced; two shipping profiles (Standard 48×1, Compact 24×2) adopted; opening deployments adopted; lever ranking replaced and `CollisionDamage` struck as a dial.
 - 2026-09-11 — Corrected during core implementation. The `HomeColumnLength = PlayerStartOffset / 2` invariant and the "one integer defines a board" claim were wrong for 36 and 52; home column length is explicit config with the halving rule demoted to a guideline.

@@ -12,7 +12,7 @@ namespace NonaRoyale.Core.Services
     /// Drives the turn: upkeep, roll, action, end (COMBAT_SYSTEMS §6).
     /// </summary>
     /// <remarks>
-    /// <b>It orchestrates, it does not decide.</b> Bleed damage goes through the
+    /// <b>It orchestrates, it does not decide.</b> Upkeep damage goes through the
     /// pipeline, energy through the ledger, expiry through the registry. Nothing
     /// here re-implements a rule that lives elsewhere — this type owns only the
     /// order things happen in, which is itself a rule and the one no other
@@ -83,9 +83,9 @@ namespace NonaRoyale.Core.Services
             Phase == TurnPhase.Action && _lastRollWasDouble && RollsRemaining > 0;
 
         /// <summary>
-        /// Starts the next seat's turn and runs upkeep: bleed ticks, evasion
-        /// charges re-arm. Cooldowns need no work — they are absolute turn
-        /// indices, so advancing the turn advances them.
+        /// Starts the next seat's turn and runs upkeep: bleed ticks, then mark
+        /// ticks, then evasion charges re-arm. Cooldowns need no work — they are
+        /// absolute turn indices, so advancing the turn advances them.
         /// </summary>
         public UpkeepReport BeginTurn()
         {
@@ -105,19 +105,24 @@ namespace NonaRoyale.Core.Services
             {
                 _statuses.RefreshEvasion(op);
 
-                int bleed = _statuses.ConsumeBleed(op);
-                if (bleed <= 0) continue;
+                // Both sources are read before any damage lands. Neutralizing
+                // clears every status, so a mark that kills — or a bleed that
+                // kills a marked operator — would otherwise erase the source
+                // that Tagged From Above's payout has to credit (§10.2).
+                int markDamage = _statuses.MarkTickDamage(op);
+                int markSource = _statuses.MarkedBy(op) ?? op.Id;
 
-                // Bleed is Atomic, so it goes around evasion and shields. An
-                // operator that dies at upkeep never gets its turn (§5.3).
-                var result = _damage.Apply(op, new DamageInstance(bleed, DamageType.Atomic, op.Id, "bleed"));
-                ticks.Add(result);
+                int bleedDamage = _statuses.ConsumeBleed(op);
 
-                if (result.Outcome == DamageOutcome.Neutralized)
-                {
-                    _neutralize.Apply(op);
-                    neutralized.Add(op);
-                }
+                // Bleed first, then marks. Nothing on the alpha roster
+                // distinguishes the order, but an unspecified one is a bug
+                // waiting for the operator that cares (§6). Both are Atomic, so
+                // both go around evasion and shields, and an operator that dies
+                // here never gets its turn.
+                if (!TickUpkeepDamage(op, bleedDamage, op.Id, "bleed", ticks, neutralized))
+                    continue;
+
+                TickUpkeepDamage(op, markDamage, markSource, "mark", ticks, neutralized);
             }
 
             Phase = TurnPhase.AwaitingRoll;
@@ -179,6 +184,39 @@ namespace NonaRoyale.Core.Services
 
             if (winner == null) CurrentPlayer = null;
             return report;
+        }
+
+        /// <summary>
+        /// Runs one source of upkeep damage. Returns <c>false</c> if the operator
+        /// was neutralized, so the caller stops billing a piece that is already
+        /// back in its yard.
+        /// </summary>
+        /// <remarks>
+        /// Extracted rather than written twice: bleed and marks differ only in
+        /// what they owe and who is credited for it, and two copies of the
+        /// neutralize handling is exactly the shape of duplication ADR-0004 was
+        /// written about.
+        /// </remarks>
+        private bool TickUpkeepDamage(
+            OperatorState op,
+            int amount,
+            int sourceOperatorId,
+            string label,
+            List<DamageResult> ticks,
+            List<OperatorState> neutralized)
+        {
+            if (amount <= 0) return true;
+
+            var result = _damage.Apply(
+                op, new DamageInstance(amount, DamageType.Atomic, sourceOperatorId, label));
+
+            ticks.Add(result);
+
+            if (result.Outcome != DamageOutcome.Neutralized) return true;
+
+            _neutralize.Apply(op);
+            neutralized.Add(op);
+            return false;
         }
 
         private void RequirePhase(TurnPhase expected, string action)

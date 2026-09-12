@@ -9,6 +9,11 @@ namespace NonaRoyale.Core.Model
     /// ability — Kurbyn simply has it — but modelling it as a permanent status
     /// means "passives stay live through stun" (§5.1) is one rule rather than a
     /// special case, and the per-round charge has somewhere to live.
+    ///
+    /// <b>Values are explicit and append-only.</b> Reordering these renumbers
+    /// them, and anything that ever persists a status by ordinal — a save, a
+    /// replay, a serialised test fixture — would silently read back a different
+    /// effect. New kinds go on the end.
     /// </remarks>
     public enum StatusKind
     {
@@ -30,7 +35,18 @@ namespace NonaRoyale.Core.Model
         /// <summary>Absorbs one whole instance of Normal damage, then expires.</summary>
         Shield = 5,
 
-        /// <summary>Bookkeeping only. Applies no modifier; read by Tagged From Above's payout.</summary>
-        Mark = 6
+        /// <summary>
+        /// Atomic damage at the holder's upkeep, every turn it is active, and it
+        /// is not spent by ticking. Records who applied it, which is what Tagged
+        /// From Above's payout reads (§5.7).
+        /// </summary>
+        Mark = 6,
+
+        /// <summary>
+        /// Speed multiplier increased. Granted to the whole squad by Tagged From
+        /// Above's payout (§10.2). Carries its size in the entry's magnitude
+        /// rather than in a config constant, so two sources of haste can differ.
+        /// </summary>
+        Hastened = 7
     }
 }

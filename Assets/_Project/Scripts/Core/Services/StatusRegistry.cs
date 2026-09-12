@@ -20,13 +20,20 @@ namespace NonaRoyale.Core.Services
     /// opponent's turn ticks away before the target ever acts, and it makes the
     /// boundary case a single assertion instead of a simulation.
     ///
-    /// <b>Bleed is reported, never applied here.</b> Bleed deals damage, and the
-    /// damage pipeline consults this registry for evasion and shields — having
-    /// the registry call the pipeline would close a dependency cycle. So
-    /// <see cref="ConsumeBleed"/> returns what the tick is worth and clears the
-    /// stacks; the caller feeds it through the pipeline as Atomic damage. The
-    /// registry decides <i>what</i> bleed owes, the pipeline decides how damage
-    /// lands, and neither knows the other exists.
+    /// <b>Passives are stored separately from applied statuses.</b> Neutralize
+    /// clears everything an operator is carrying, but a passive is who an
+    /// operator <i>is</i> — an operator returning to its yard is still itself
+    /// (§1.2, §5.1). Keeping them in their own dictionary makes that structural
+    /// rather than something every future caller of <see cref="ClearAll"/> has
+    /// to remember to undo.
+    ///
+    /// <b>Damage is reported, never applied here.</b> Bleed and marks deal
+    /// damage, and the damage pipeline consults this registry for evasion and
+    /// shields — having the registry call the pipeline would close a dependency
+    /// cycle. So <see cref="ConsumeBleed"/> and <see cref="MarkTickDamage"/>
+    /// return what the tick is worth; the caller feeds it through the pipeline
+    /// as Atomic damage. The registry decides <i>what</i> is owed, the pipeline
+    /// decides how damage lands, and neither knows the other exists.
     /// </remarks>
     public sealed class StatusRegistry : IDamageMitigation
     {
@@ -42,6 +49,10 @@ namespace NonaRoyale.Core.Services
         }
 
         private readonly Dictionary<int, Dictionary<StatusKind, Entry>> _byOperator =
+            new Dictionary<int, Dictionary<StatusKind, Entry>>();
+
+        /// <summary>Permanent passives. Untouched by <see cref="ClearAll"/> and by expiry.</summary>
+        private readonly Dictionary<int, Dictionary<StatusKind, Entry>> _passives =
             new Dictionary<int, Dictionary<StatusKind, Entry>>();
 
         private readonly HashSet<int> _evasionSpentThisRound = new HashSet<int>();
@@ -68,8 +79,14 @@ namespace NonaRoyale.Core.Services
         /// the target's own turn, as a self-buff like Stealth is, it takes hold
         /// immediately and "current turn + 1" is simply duration 2.
         ///
-        /// Re-application refreshes the duration and keeps the larger magnitude.
-        /// Only <see cref="StatusKind.Bleed"/> accumulates stacks (§5.3).
+        /// Re-application refreshes the duration and keeps the stronger
+        /// magnitude. Only <see cref="StatusKind.Bleed"/> accumulates stacks
+        /// (§5.3).
+        ///
+        /// A magnitude of zero means "use this kind's default", which is how
+        /// Slow and Hastened get their size without <c>AlphaRoster</c> needing a
+        /// dependency on config. An ability that wants a different size states
+        /// one and it is honoured.
         /// </remarks>
         public void Apply(
             OperatorState target,
@@ -83,12 +100,7 @@ namespace NonaRoyale.Core.Services
             if (duration < 1) throw new ArgumentOutOfRangeException(nameof(duration));
             if (stacks < 1) throw new ArgumentOutOfRangeException(nameof(stacks));
 
-            // Slow carries its strength as a magnitude like everything else. An
-            // ability that names no magnitude gets the configured default, so
-            // the roster never has to reach into CombatConfig — but a future
-            // ability can hit harder by saying so.
-            if (kind == StatusKind.Slow && Math.Abs(magnitude) < 0.0001)
-                magnitude = -_config.SlowSpeedPenalty;
+            if (magnitude == 0.0) magnitude = DefaultMagnitudeFor(kind);
 
             int ownerTurn = _clock.TurnIndexOf(target.Owner);
             bool onTargetsOwnTurn = _clock.ActivePlayer == target.Owner;
@@ -100,11 +112,13 @@ namespace NonaRoyale.Core.Services
             {
                 existing.FirstActiveTurn = Math.Min(existing.FirstActiveTurn, firstActive);
                 existing.LastActiveTurn = Math.Max(existing.LastActiveTurn, firstActive + duration - 1);
-                // The stronger effect wins, by absolute size — Math.Max would
-                // have kept the *weaker* of two slows, since they are negative.
+                existing.SourceOperatorId = sourceOperatorId;
+
+                // Sources do not stack; the strongest applies (§5.2). Compared
+                // by absolute value because magnitudes are signed — a plain
+                // Math.Max would let a weak slow override a strong one.
                 if (Math.Abs(magnitude) > Math.Abs(existing.Magnitude))
                     existing.Magnitude = magnitude;
-                existing.SourceOperatorId = sourceOperatorId;
 
                 if (kind == StatusKind.Bleed) existing.Stacks += stacks;
                 return;
@@ -121,15 +135,22 @@ namespace NonaRoyale.Core.Services
         }
 
         /// <summary>
-        /// Grants a permanent passive — Kurbyn's Evasive Protocol. Never expires
-        /// and is unaffected by stun: a passive is who an operator is, not what
-        /// it does (§5.1).
+        /// Grants a permanent passive — Kurbyn's Evasive Protocol. Never expires,
+        /// survives neutralize, and is unaffected by stun: a passive is who an
+        /// operator is, not what it does (§1.2, §5.1).
         /// </summary>
+        /// <remarks>
+        /// <paramref name="magnitude"/> is a signed speed delta, read by
+        /// <see cref="SpeedModifier"/>. Evasive Protocol's +0.5 lives here
+        /// rather than as a constant in movement code, which is what lets one
+        /// passive carry both a mitigation effect and a speed effect without a
+        /// special case anywhere.
+        /// </remarks>
         public void ApplyPassive(OperatorState target, StatusKind kind, double magnitude = 0.0)
         {
             if (target == null) throw new ArgumentNullException(nameof(target));
 
-            EntriesFor(target.Id)[kind] = new Entry
+            PassivesFor(target.Id)[kind] = new Entry
             {
                 Magnitude = magnitude,
                 Stacks = 1,
@@ -147,34 +168,43 @@ namespace NonaRoyale.Core.Services
         public bool IsStunned(OperatorState op) => Has(op, StatusKind.Stun);
 
         /// <summary>
-        /// Total speed change from every active status, ready to hand to
-        /// <c>MovementResolver.EffectiveSpeed</c>.
+        /// Net speed modifier from every active status and passive, ready to
+        /// hand to <c>MovementResolver.EffectiveSpeed</c>.
         /// </summary>
         /// <remarks>
-        /// Sums <c>Magnitude</c> across statuses rather than testing for one
-        /// kind. That is what lets a passive speed bonus and a slow coexist —
-        /// Kurbyn's Evasive Protocol adds, From the Hip subtracts, and the two
-        /// resolve against each other without a special case.
+        /// Summed across kinds rather than switched on one. A slowed and hasted
+        /// operator correctly nets to zero, and a passive carrying a speed bonus
+        /// needs no special case here. Within a single kind there is only ever
+        /// one entry, so "sources do not stack" (§5.2) is enforced at
+        /// application time rather than in this sum.
         ///
-        /// Slows from several sources still do not stack (§5.2), because a
-        /// status is one entry per kind and re-application keeps the stronger
-        /// magnitude rather than adding to it.
+        /// An applied status shadows a passive of the same kind — the same
+        /// precedence <see cref="ActiveEntry"/> uses — so a temporary override
+        /// of a passive never double-counts.
         /// </remarks>
         public double SpeedModifier(OperatorState op)
         {
             if (op == null) throw new ArgumentNullException(nameof(op));
-            if (!_byOperator.TryGetValue(op.Id, out var entries)) return 0.0;
 
             int ownerTurn = _clock.TurnIndexOf(op.Owner);
             double total = 0.0;
 
-            foreach (var pair in entries)
-            {
-                var entry = pair.Value;
-                if (ownerTurn < entry.FirstActiveTurn) continue;
-                if (entry.LastActiveTurn != Permanent && ownerTurn > entry.LastActiveTurn) continue;
+            _byOperator.TryGetValue(op.Id, out var applied);
+            _passives.TryGetValue(op.Id, out var passives);
 
-                total += entry.Magnitude;
+            if (applied != null)
+            {
+                foreach (var pair in applied)
+                    if (IsActive(pair.Value, ownerTurn)) total += pair.Value.Magnitude;
+            }
+
+            if (passives != null)
+            {
+                foreach (var pair in passives)
+                {
+                    if (applied != null && applied.ContainsKey(pair.Key)) continue;
+                    total += pair.Value.Magnitude;
+                }
             }
 
             return total;
@@ -200,7 +230,7 @@ namespace NonaRoyale.Core.Services
         /// Stealth scopes untargetability to <b>enemies only</b>, so it never
         /// locks an operator out of its own team's repositioning or healing
         /// (§5.4). It is also the whole of what stealth does: AOE, passive auras,
-        /// collision and already-applied bleed all still reach it.
+        /// collision and already-applied bleed or marks all still reach it.
         /// </remarks>
         public bool CanBeSingleTargetedBy(OperatorState target, PlayerColor by)
         {
@@ -236,6 +266,25 @@ namespace NonaRoyale.Core.Services
         }
 
         /// <summary>
+        /// Atomic damage the mark owes this turn, or 0 if unmarked. Called at the
+        /// marked operator's upkeep.
+        /// </summary>
+        /// <remarks>
+        /// Unlike <see cref="ConsumeBleed"/> this leaves the entry standing. A
+        /// mark is a lingering condition that bills every turn until its duration
+        /// runs out, cleared only by expiry, neutralize, or its payout firing
+        /// (§5.7) — named <c>Tick</c> rather than <c>Consume</c> for exactly that
+        /// reason. Like bleed, it may neutralize, and an operator dying at
+        /// upkeep never gets its turn.
+        /// </remarks>
+        public int MarkTickDamage(OperatorState op)
+        {
+            if (op == null) throw new ArgumentNullException(nameof(op));
+
+            return ActiveEntry(op, StatusKind.Mark) != null ? _config.MarkDamagePerTurn : 0;
+        }
+
+        /// <summary>
         /// Re-arms the evasion charge. Called at the holder's upkeep, which makes
         /// "round" mean <i>since this operator's last turn began</i> — the window
         /// during which opponents actually attack it (§5.5).
@@ -247,8 +296,43 @@ namespace NonaRoyale.Core.Services
         }
 
         /// <summary>
+        /// Every status currently in effect on an operator, passives included.
+        /// </summary>
+        /// <remarks>
+        /// For presentation. The registry already answers "is this one kind
+        /// active" in several places; this answers "which are", so the view can
+        /// draw a badge per status without knowing the list of kinds — a new
+        /// StatusKind shows up on the board without the view being touched.
+        ///
+        /// Uses the same activity window as every other query: in effect from
+        /// its first active turn, gone after its last.
+        /// </remarks>
+        public IReadOnlyList<StatusKind> ActiveKinds(OperatorState op)
+        {
+            if (op == null) throw new ArgumentNullException(nameof(op));
+
+            var active = new List<StatusKind>();
+            if (!_byOperator.TryGetValue(op.Id, out var entries)) return active;
+
+            int ownerTurn = _clock.TurnIndexOf(op.Owner);
+
+            foreach (var pair in entries)
+            {
+                var entry = pair.Value;
+                if (ownerTurn < entry.FirstActiveTurn) continue;
+                if (entry.LastActiveTurn != Permanent && ownerTurn > entry.LastActiveTurn) continue;
+
+                active.Add(pair.Key);
+            }
+
+            return active;
+        }
+
+
+        /// <summary>
         /// Sweeps statuses whose last active turn is the one now closing, and
         /// reports them so the caller can emit <c>StatusExpired</c> events.
+        /// Passives are never swept.
         /// </summary>
         /// <remarks>
         /// <b>Called at End of turn, which is why the comparison includes the
@@ -283,32 +367,16 @@ namespace NonaRoyale.Core.Services
 
         /// <summary>
         /// Strips every applied status on neutralize — stun, slow, bleed,
-        /// stealth, shield, mark (§1.2) — and <b>keeps permanent passives</b>.
+        /// stealth, shield, mark, haste (§1.2). <b>Passives survive</b>: they
+        /// live in their own store and an operator returning to the yard is
+        /// still itself.
         /// </summary>
-        /// <remarks>
-        /// An operator returning to its yard is still itself. Kurbyn does not
-        /// forget how to dodge because he was neutralized once.
-        ///
-        /// This previously removed the operator's whole entry, passives
-        /// included, and relied on "whoever rebuilds the operator" to grant them
-        /// again. Nothing rebuilds an operator — <c>MatchFactory</c> grants
-        /// passives once at match start — so Evasive Protocol was lost
-        /// permanently the first time Kurbyn died.
-        /// </remarks>
         public void ClearAll(OperatorState op)
         {
             if (op == null) throw new ArgumentNullException(nameof(op));
 
+            _byOperator.Remove(op.Id);
             _evasionSpentThisRound.Remove(op.Id);
-
-            if (!_byOperator.TryGetValue(op.Id, out var entries)) return;
-
-            var applied = new List<StatusKind>();
-
-            foreach (var pair in entries)
-                if (pair.Value.LastActiveTurn != Permanent) applied.Add(pair.Key);
-
-            foreach (var kind in applied) entries.Remove(kind);
         }
 
         // ── IDamageMitigation ────────────────────────────────────────────
@@ -347,29 +415,69 @@ namespace NonaRoyale.Core.Services
 
         // ── Internals ────────────────────────────────────────────────────
 
-        private Dictionary<StatusKind, Entry> EntriesFor(int operatorId)
+        private Dictionary<StatusKind, Entry> EntriesFor(int operatorId) =>
+            StoreFor(_byOperator, operatorId);
+
+        private Dictionary<StatusKind, Entry> PassivesFor(int operatorId) =>
+            StoreFor(_passives, operatorId);
+
+        private static Dictionary<StatusKind, Entry> StoreFor(
+            Dictionary<int, Dictionary<StatusKind, Entry>> store, int operatorId)
         {
-            if (!_byOperator.TryGetValue(operatorId, out var entries))
+            if (!store.TryGetValue(operatorId, out var entries))
             {
                 entries = new Dictionary<StatusKind, Entry>();
-                _byOperator[operatorId] = entries;
+                store[operatorId] = entries;
             }
 
             return entries;
         }
 
+        private static bool IsActive(Entry entry, int ownerTurn)
+        {
+            if (ownerTurn < entry.FirstActiveTurn) return false;
+            return entry.LastActiveTurn == Permanent || ownerTurn <= entry.LastActiveTurn;
+        }
+
+        /// <summary>
+        /// The live entry for a kind, or null. An applied status takes
+        /// precedence over a passive of the same kind, so a temporary override
+        /// works without the passive having to be removed and restored.
+        /// </summary>
         private Entry ActiveEntry(OperatorState op, StatusKind kind)
         {
             if (op == null) throw new ArgumentNullException(nameof(op));
-            if (!_byOperator.TryGetValue(op.Id, out var entries)) return null;
-            if (!entries.TryGetValue(kind, out var entry)) return null;
 
             int ownerTurn = _clock.TurnIndexOf(op.Owner);
 
-            if (ownerTurn < entry.FirstActiveTurn) return null;                      // not yet in effect
-            if (entry.LastActiveTurn != Permanent && ownerTurn > entry.LastActiveTurn) return null;
+            if (_byOperator.TryGetValue(op.Id, out var applied)
+                && applied.TryGetValue(kind, out var entry)
+                && IsActive(entry, ownerTurn))
+            {
+                return entry;
+            }
 
-            return entry;
+            if (_passives.TryGetValue(op.Id, out var passives)
+                && passives.TryGetValue(kind, out var passive))
+            {
+                return passive;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// The size a kind takes when an ability does not state one. Signed:
+        /// negative slows, positive hastens.
+        /// </summary>
+        private double DefaultMagnitudeFor(StatusKind kind)
+        {
+            switch (kind)
+            {
+                case StatusKind.Slow: return -_config.SlowSpeedPenalty;
+                case StatusKind.Hastened: return _config.HasteSpeedBonus;
+                default: return 0.0;
+            }
         }
     }
 }

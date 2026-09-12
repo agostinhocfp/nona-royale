@@ -2,7 +2,7 @@
 
 > Location in repo: `docs/design/COMBAT_SYSTEMS.md`
 > Status: **Accepted (alpha)** — every mechanic the alpha roster invokes is defined. No TBDs remain in the rules; open items in §12 are balance dials and post-MVP scope, not gaps.
-> Date: 2026-09-11
+> Date: 2026-09-12
 > Related: `docs/design/OPERATORS.md` (roster), ADR-0002 (board size), ADR-0003 (topology), ADR-0004 (pure-C# core), `CONVENTIONS.md`, `docs/GDD.md`
 > Supersedes: `docs/design/_HANDOFF_combat.md` (delete it)
 
@@ -32,7 +32,7 @@ The old `[Range(3, 9)]` cap on `Operator.maxHealth` is **dead** — Bouncer is 1
 
 ### 1.2 Neutralized
 
-An operator is neutralized when its HP reaches 0 by any route (collision, ability, bleed, Miracle Pull's execute, or Bouncer's self-damage).
+An operator is neutralized when its HP reaches 0 by any route (collision, ability, bleed, a mark tick, Miracle Pull's execute, or Bouncer's self-damage).
 
 On neutralize:
 
@@ -45,6 +45,8 @@ On neutralize:
 | Track progress | **Entirely lost** — it re-enters at its start cell                                                    |
 | Energy         | Unaffected. The pool is player-level (§3) and a yarded operator costs the player nothing economically |
 
+**Passives are not status effects and survive neutralize.** Kurbyn's Evasive Protocol is who he is, not something applied to him; an operator returning to the yard is still itself. Whatever clears statuses must re-grant passives.
+
 **There is no permanent death in the MVP.** Nothing removes an operator from a match for good. The GDD line about play continuing "until there's only one player left" is an artifact of the same early pass that produced the 3-energy-per-turn economy; player elimination is not a mechanic. Neutralize is a setback measured in turns, not a removal.
 
 ### 1.3 Re-entry
@@ -54,7 +56,6 @@ A neutralized operator re-enters exactly as it originally deployed (ADR-0003):
 - **A roll containing a 6 may deploy one operator**, consuming that die. Deployment is optional.
 - **The other die is that turn's movement roll**, applied (× speed) to any one operator, including the one just deployed.
 - **Double 6 deploys two** operators and forfeits movement for that turn. It still grants the doubles re-roll (§6).
-- **Each deploy consumes one die.** So a double 6 with only **one** operator waiting deploys that one and leaves the other 6 as the movement roll. Spending both dice to deploy a single operator would make a double 6 strictly worse than a single 6, which cannot be the intent.
 - The operator is placed on its colour's **start cell (S)**, which is a safe cell (§4.4) — so a deploy can never trigger a collision.
 
 `DeployRequirement = 6`.
@@ -65,7 +66,7 @@ A neutralized operator re-enters exactly as it originally deployed (ADR-0003):
 
 ### 2.1 The damage pipeline
 
-All damage — from abilities, collisions, and bleed alike — passes through one choke point in the core. Order is fixed:
+All damage — from abilities, collisions, bleed and marks alike — passes through one choke point in the core. Order is fixed:
 
 1. **Legality.** Targeting was already validated (§4). Damage against an illegal target never reaches the pipeline.
 2. **Evasion.** If the instance is **Normal** and the target has an unspent evasion charge this round, roll the seeded RNG at `EvasionChance`. On success: emit `DamageEvaded`, consume the charge, **stop**.
@@ -86,7 +87,7 @@ Atomic does **not** bypass _targeting_ protection. Safe cells, home columns, and
 
 > The one-sentence version, for the table: **Atomic can't be blocked, but it can't reach what it can't touch.**
 
-**Sources of Atomic:** Bleed ticks, Ace Shards' bleed, all of Miracle Pull. Everything else — including collision — is Normal.
+**Sources of Atomic:** Bleed ticks, Ace Shards' bleed, mark ticks, all of Miracle Pull. Everything else — including collision — is Normal.
 
 ### 2.3 Self-damage
 
@@ -110,6 +111,8 @@ EnergyGranted = floor(DiceTotal / 2)     // range 1–6, mean 3.5
 - `EnergyCap = 12`. Energy above the cap is burned, not stored. The cap is what forces spending; it is also exactly one ultimate plus nothing, so hoarding for an ult is a real, visible commitment.
 
 Over a ~15-turn match a player sees roughly 52 energy for the whole squad: about three ultimates plus a handful of basics, or a steadier drip of cheap abilities. The superseded tiered rule (≤4 → 1, 5–8 → 2, ≥9 → 3) generated ~34 and left operators standing around; it is dead (§11).
+
+**The drip is the real cooldown on anything costing 6 or more.** At a mean of 3.5 energy per turn, a 6-cost ability is naturally gated to roughly every second turn and a 9-cost ult to roughly every third, whatever its declared cooldown says. A stated cooldown only bites when it is _longer_ than what the economy already imposes — which means `cooldownTurns: 0` on a 6-cost ability buys nothing, and an ability whose identity is "castable every turn" has to cost 3 or less to actually be one.
 
 ### 3.2 Spending
 
@@ -147,13 +150,11 @@ This makes ADR-0003's home-entry safe cell redundant in the best way, and remove
 
 - The start cell (S) and, formally, the first home-column cell (H) are safe (ADR-0003).
 - **No collision occurs on a safe cell.** A mover landing on a safe cell occupied by an enemy simply shares it. Both operators occupy; nothing resolves.
-- Safe cells do **not** block abilities. An operator standing on S can be shot, pulled, stunned, and bled. Safe means safe from _collision_, nothing more — otherwise S becomes a free parking space and the combat layer stalls.
+- Safe cells do **not** block abilities. An operator standing on S can be shot, pulled, stunned, marked, and bled. Safe means safe from _collision_, nothing more — otherwise S becomes a free parking space and the combat layer stalls.
 
 ### 4.5 Friendly stacking
 
 Friendly operators may share any cell freely. There is no blocking mechanic in the MVP. (ADR-0003's `SharksTable` special space hints at a two-operators-on-a-cell mechanic; special spaces are deferred and it is not defined here.)
-
-Because of this, an enemy _stack_ on a contested cell is reachable in ordinary play. What happens when a mover lands on one is §7.5.
 
 ---
 
@@ -173,8 +174,9 @@ Statuses do not stack unless stated. Re-application refreshes duration and takes
 ### 5.2 Slow
 
 - **Effect:** speed multiplier **−0.5** for the duration.
-- `MinSpeedMultiplier = 0.5`. The band is 1.5–2.0 (§6), so −1 would erase most of it and turn an aura into hard control. −0.5 costs a 2.0 operator a quarter of its movement and a 1.5 operator a third — felt, not crippling.
-- Sources do not stack; the largest applies.
+- `MinSpeedMultiplier = 0.5`. Sources do not stack; the largest applies.
+
+The band is 1.0–1.5 (§6), so −0.5 costs a 1.5 operator a third of its movement and takes a 1.0 operator to the floor. **Slow is therefore sharper against the roster's slower operators than the original 1.5–2.0 band made it**, which is worth watching: a slowed Bouncer at 0.5× moves half of what the dice say. The penalty is a config dial (`SlowSpeedPenalty`) if that reads as hard control rather than friction.
 
 ### 5.3 Bleed
 
@@ -186,7 +188,7 @@ Statuses do not stack unless stated. Re-application refreshes duration and takes
 ### 5.4 Stealth
 
 - **Effect:** the operator **cannot be selected as a single target by an enemy.** That is the whole of it.
-- **Still affected by:** AOE, passive auras, collision damage, and bleed already applied. Stealth hides you from being _aimed at_, not from the room.
+- **Still affected by:** AOE, passive auras, collision damage, and bleed or marks already applied. Stealth hides you from being _aimed at_, not from the room.
 - **Visible on the board.** The piece is never hidden from the opponent. This is a hot-seat digital board game; concealing a piece would mean building fog-of-war to service one ability and a UI that lies about the state.
 - **Does not break on attacking.** A 9-energy effect that dies the moment its owner acts is not an effect.
 - **Allies may still target it.** Untargetability is scoped to enemies, so Stealth never locks an operator out of its own team's repositioning or healing.
@@ -194,7 +196,6 @@ Statuses do not stack unless stated. Re-application refreshes duration and takes
 ### 5.5 Evasion
 
 - **Effect:** the **first** instance of Normal damage against the holder **each round** is negated on a `EvasionChance = 0.5` seeded roll. Every subsequent instance that round lands automatically.
-- **A failed roll still spends the charge.** The charge is the _attempt_, not the success. If a miss left the charge intact, the holder would keep rolling against every hit until one landed, and the per-round cap — the thing that bounds the worst case — would stop binding at all.
 - The charge refreshes at the holder's upkeep. "Round" therefore means _since the holder's last turn began_, which is the window during which opponents actually attack it.
 - Atomic pierces it (§2.2).
 - **Evasion negates damage, never movement.** If a collision's damage is evaded, the target still survives and the mover still bounces back (§7.2).
@@ -211,8 +212,16 @@ This replaces the old "requires 2 hits to capture instead of 1" wording, which d
 
 ### 5.7 Mark
 
-- **Effect:** bookkeeping only; applies no modifier. Set by Tagged From Above, read by its payout condition (§10.2).
+- **Effect:** `MarkDamagePerTurn = 2` **Atomic** damage at the **upkeep of the marked operator's owner's turn**, every turn the mark is active.
+- **Ticking does not remove it.** This is the whole difference between a mark and bleed (§5.3): bleed is delayed damage that fires once and is gone, a mark is a lingering condition that bills every turn until its duration runs out. Applied by Tagged From Above for **2 turns**, so an undisturbed mark deals **4 total**.
+- **Records who applied it.** The payout condition in §10.2 reads that source; the mark is the only status that carries one.
+- Does not stack. Re-application refreshes the duration.
+- Mark can neutralize. An operator dying at upkeep never gets its turn, exactly as with bleed.
 - Cleared on neutralize, on expiry, or when the payout fires.
+
+**The damage is deliberately sub-lethal.** Both 6-HP operators survive a full mark at 2 HP — inside collision range, inside Miracle Pull's execute window, inside a single From the Hip. The mark's job is to _hand_ the kill to the marker's squad, which is the condition that pays out Tagged From Above (§10.2). At 3 per turn over 3 turns a mark would deal 9 and kill both 6-HP operators unassisted, which makes the ult's own payout condition self-fulfilling: 9 energy for a guaranteed kill, a guaranteed squad buff, and unconditional stealth, against a Miracle Pull at the same cost that needs the target already below half and needs Kurbyn adjacent. `MarkDamagePerTurn` is the first dial if the mark reads as toothless; per ADR-0005's precedent on `CollisionDamage`, it starts low and rises under measurement.
+
+**A kill by a mark tick does satisfy "neutralized by Syla's side" (§10.2).** The damage is sourced from Syla and runs the standard pipeline. At 2 per turn it is rare, but the rule is stated rather than left to emerge from whatever the code happens to do.
 
 ---
 
@@ -222,23 +231,23 @@ Exactly one operator moves per roll. Energy may be spent by any owned operator.
 
 | Phase         | What resolves                                                                                                                                                                                                                             |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **1. Upkeep** | Bleed ticks (Atomic). Cooldowns advance. Evasion charge refreshes. Neutralize checks from bleed resolve here.                                                                                                                             |
+| **1. Upkeep** | Bleed ticks (Atomic), then mark ticks (Atomic). Cooldowns advance. Evasion charge refreshes. Neutralize checks from both damage sources resolve here.                                                                                     |
 | **2. Roll**   | Dice rolled from the injected RNG. Energy granted (first roll of the turn only, §3.1).                                                                                                                                                    |
 | **3. Action** | Deploy (if a 6, §1.3) and/or move one operator; spend energy on abilities with any owned operator; any order the player chooses. Collisions resolve immediately on landing (§7). Doubles → return to phase 2 **without** an energy grant. |
 | **4. End**    | Status durations expire. Win check.                                                                                                                                                                                                       |
 
-Expiry sits at End and application takes hold at the target's next turn, so a 1-turn stun applied during an opponent's turn correctly blocks the target's action phase before expiring.
+Bleed resolves before marks purely for determinism; nothing in the alpha roster distinguishes the order, but an unspecified order is a bug waiting for the first operator that cares.
 
-**Expiry sweeps the turn it is called in, not the turn after.** At End of turn _N_, everything whose last active turn is _N_ is removed. Queries made _during_ a turn are stricter — a status is still active throughout its final turn — because the two answer different questions at different moments. Getting this backwards reinstates exactly the off-by-one the absolute-index timers exist to remove.
+Expiry sits at End and application takes hold at the target's next turn, so a 1-turn stun applied during an opponent's turn correctly blocks the target's action phase before expiring.
 
 `MaxRollsPerTurn = 3` (the initial roll plus two doubles) bounds turn length. Tunable.
 
 **Movement:** `cells = floor(DiceTotal × EffectiveSpeed)`, where `EffectiveSpeed` is the operator's multiplier after auras and slows, floored at `MinSpeedMultiplier`.
 
-**Speed band: 1.5 – 2.0**, in half-steps. `SpeedMultiplierMin = 1.0` and `SpeedMultiplierMax = 2.5` are the legal schema bounds; the alpha roster uses 1.5 and 2.0 only. The band was set by simulation, not by feel — see ADR-0002 Amendment 2. Two constraints fix it:
+**Speed band: 1.0 – 1.5**, in half-steps. `SpeedMultiplierMin = 1.0` and `SpeedMultiplierMax = 2.5` are the legal schema bounds; the alpha roster uses 1.0 and 1.5 only. The band was set by simulation, not by feel — see ADR-0002 Amendment 4, which lowered it from the 1.5–2.0 adopted in Amendment 2. Two constraints fix it:
 
-- **Below 1.5 the squad is gated by its slowest operator** and every match pays for it. A 1.0 Bouncer adds roughly three turns to the whole match while the other two wait.
-- **Above 2.0 a single move stops being readable.** At 2.5×, a double-6 moves 30 cells — over half the loop in one action, on a board the player is meant to be able to follow.
+- **A slow operator no longer taxes the match** the way it did before opening deployments landed. The pacing cost that pushed Bouncer up to 1.5 in Amendment 2 was paid for elsewhere, which freed the tank to be genuinely the slow one again.
+- **Above 1.5 a single move stops being readable.** The ceiling exists so a mean move stays near a fifth of the loop — the figure that actually governs whether a player can follow a piece across the board.
 
 ---
 
@@ -260,27 +269,7 @@ The mover never takes damage. Collision is one-directional.
 
 **Bounce-back** is placement, not movement: it triggers nothing — no second collision, no special space, no home entry. The destination is always the cell one step back along the track, which always exists for a deployed operator (the only cell an operator can occupy immediately after deploying is S, which is safe and therefore cannot be contested).
 
-### 7.5 Stacked occupants
-
-**A contested cell can hold more than one enemy, and the mover strikes all of them.**
-
-This corrects a claim this section previously made — that a collision is always exactly 1v1, because a non-safe cell never holds more than one enemy. That is false, and it contradicts §4.5. Three ordinary sequences produce a stack:
-
-- **Friendly stacking.** Two operators of the same colour may share any cell (§4.5). A third player landing there meets both.
-- **Bounce-back.** A bounced mover is _placed_ one step back and triggers nothing (§7.2) — including no collision, so it may land on an occupied cell.
-- **Forced movement.** A pull places its target without colliding (§7.4), which can drop it onto a cell an enemy already holds.
-
-The rule:
-
-1. The mover deals `CollisionDamage`, type **Normal**, to **every** enemy on the cell, each through the standard pipeline (§2.1).
-2. **If every one of them is neutralized,** they all go to the yard and the mover takes the cell.
-3. **If any survives** — by health, evasion or shield — **the survivors hold the cell and the mover is bounced back one step.**
-
-The mover still takes nothing. Collision remains one-directional.
-
-Striking the whole stack, rather than one occupant, was chosen over two alternatives. Picking a single victim needs a tie-break rule no player could predict at the table. Treating a stack as a Ludo-style blockade that cannot be landed on at all is a defensible game — but it is a _new mechanic_, not a clarification, and it would make stacking a purely defensive tool in a game whose stated priority is combat. Hitting everything makes a stack dangerous to stand in and dangerous to charge, which is the tension worth having.
-
-> This rule was found by simulation, not by review. The invariant held for two years of design documents and failed in the first three hundred simulated matches.
+Because collision can only happen on a non-safe cell, and non-safe cells never hold more than one enemy, **a collision is always exactly 1v1**.
 
 ### 7.3 What collision damage means at 3
 
@@ -293,8 +282,6 @@ That is deliberate. Collision is a **softening** mechanic that sets up ability k
 Pull, push, and teleport effects **never collide** and never trigger cell effects. They are placement.
 
 An operator pulled toward a puller is placed on the **last track cell between them** — adjacent to the puller, on the side it came from. This preserves "pulled toward" whether the target was ahead or behind, and guarantees two operators never co-occupy a contested cell as a side effect of an ability.
-
-**A pull that would carry an operator behind its own start cell clamps there.** An operator's path does not extend backwards past its start, so there is nowhere further to place it; the start cell is safe, so the clamp costs nothing and triggers nothing. The alternative — wrapping the placement around the loop — would silently hand the target most of a lap.
 
 ---
 
@@ -324,6 +311,8 @@ Noun-based, per `CONVENTIONS.md`. Each owns one rule family and nothing else.
 | `StatusRegistry`    | Apply, query, expire; absolute-index timers (§5)                          |
 | `WinConditions`     | §8                                                                        |
 
+**`StatusRegistry` reports damage, it never applies it.** The pipeline consults the registry for evasion and shields, so a registry that called the pipeline would close a dependency cycle. Bleed and mark ticks are therefore _queried_ — the registry says what the tick owes and the caller pushes it through the pipeline as Atomic. The registry decides what damage is owed, the pipeline decides how damage lands, and neither knows the other exists.
+
 Randomness reaches exactly two places: `MovementResolver` (dice) and `DamagePipeline` (evasion). Both take the injected seedable RNG. Nothing else in combat is random.
 
 ### 9.2 Commands (view → core)
@@ -344,39 +333,41 @@ Every ability below is fully expressible in the rules above. Nothing is deferred
 
 ### 10.1 Bouncer — Tank
 
-**HP 12 · Speed 1.5× · Range in path steps**
+**HP 12 · Speed 1.0× · Range in path steps**
 
 | #   | Ability                   | Type    | Cost | CD  | Range | Effect                                                                                               |
 | --- | ------------------------- | ------- | ---- | --- | ----- | ---------------------------------------------------------------------------------------------------- |
 | 1   | **Velvet Rope**           | Active  | 6    | 2   | 3     | Pull target to the cell adjacent to Bouncer (§7.4). Enemy: **3 Normal**. Ally: pull only, no damage. |
 | 2   | **Intimidating Presence** | Passive | —    | —   | 2     | Enemies within range: speed multiplier **−0.5** (floor 0.5, §5.2).                                   |
-| 3   | **All-In Mauling**        | Active  | 6    | —   | 1     | Enemy: **3 Normal** to target **and 3 direct to Bouncer** (§2.3). Ally: **heal 3**.                  |
+| 3   | **All-In Mauling**        | Active  | 6    | —   | 2     | Enemy: **3 Normal** to target **and 1 direct to Bouncer** (§2.3). Ally: **heal 3**.                  |
 
 Intimidating Presence is an aura, not a status: it is evaluated when an affected operator's movement is calculated, so there is no duration to track and no application event.
 
-**An ability with a hostile and a friendly mode picks its mode once, from who was targeted.** All-In Mauling's self-damage belongs to the _hostile_ cast: used on an ally it heals and costs the Bouncer nothing. The same rule governs Velvet Rope, which pulls either way but only damages an enemy. Deciding per _recipient_ rather than per _cast_ gives a nonsense answer for any effect aimed at the caster's own side, since the caster is always friendly to himself.
+Bouncer's kit is priced on **positioning, not energy** — the roster's slowest operator with range 3 and range 2, so the real cost is the turns it takes him to be standing near anyone. That makes him the most pool-efficient operator in the squad, which is a legitimate reason to run him.
 
-Bouncer's kit is priced on **positioning, not energy** — the roster's slowest operator with range 3 and range 1, so the real cost is the turns it takes him to be standing next to anyone. That makes him the most pool-efficient operator in the squad, which is a legitimate reason to run him.
+He sits at **1.0**, which is what his design brief always wanted. Amendment 2 pushed him to 1.5 for a pacing reason — a slow tank taxes every match, because the match ends when the _last_ operator gets home — and Amendment 4 reverted it once opening deployments paid that cost elsewhere. A tank that moves like everyone else is not a tank.
 
-He sits at 1.5 rather than 1.0 for a measured reason: the match ends when the _last_ operator gets home, so a 1.0 tank taxes every match by roughly three turns while his squadmates idle. At 1.5 he is still visibly the slow one (25% behind the others) without gating the game.
+**All-In Mauling's zero cooldown is currently inert** (§3.1). At 6 energy the drip already gates it to roughly every second turn, so the ability's one distinguishing feature against Velvet Rope — same cost, same damage, longer range, plus a pull — never actually manifests. Either the cost drops to 3, which makes it castable every turn and hands the limiting job to the self-damage where the name implies it belongs, or the zero cooldown should be dropped as the fiction it presently is.
 
 ### 10.2 Syla, The Blood Hound — Assassin
 
-**HP 6 · Speed 2.0×**
+**HP 6 · Speed 1.5×**
 
-| #   | Ability               | Type         | Cost | CD  | Range                | Effect                                                                                                                                                                                                                     |
-| --- | --------------------- | ------------ | ---- | --- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **From the Hip**      | Active       | 3    | 1   | 3                    | **2 Normal**; **Slow 1 turn**; **+1 damage** if the target is bleeding (§5.3).                                                                                                                                             |
-| 2   | **Ace Shards**        | Active       | 6    | 3   | 3 (AOE, self-origin) | **3 Normal** to all enemies in the window; applies **1 Bleed** each.                                                                                                                                                       |
-| 3   | **Tagged From Above** | Active (Ult) | 9    | 2   | 3                    | **Mark** an enemy. If it is neutralized by Syla's side within **3 of Syla's turns**, the whole squad gains **speed multiplier +0.5 for one round**. Syla gains **Stealth** for the current turn + 1, regardless of payout. |
+| #   | Ability               | Type         | Cost | CD  | Range                | Effect                                                                                                                                                                                                                                                                      |
+| --- | --------------------- | ------------ | ---- | --- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **From the Hip**      | Active       | 3    | 1   | 3                    | **2 Normal**; **Slow 1 turn**; **+1 damage** if the target is bleeding (§5.3).                                                                                                                                                                                              |
+| 2   | **Ace Shards**        | Active       | 6    | 3   | 3 (AOE, self-origin) | **3 Normal** to all enemies in the window; applies **1 Bleed** each.                                                                                                                                                                                                        |
+| 3   | **Tagged From Above** | Active (Ult) | 9    | 2   | 3                    | **Mark** an enemy for **2 turns**: **2 Atomic** at its upkeep each turn (§5.7). If it is neutralized by Syla's side **while marked**, the whole squad gains **speed multiplier +0.5 for one round**. Syla gains **Stealth** for the current turn + 1, regardless of payout. |
 
-The mark's payout credits _any_ neutralize by Syla's side, including a collision. The stealth is unconditional and does not break on attacking (§5.4).
+The mark's payout credits _any_ neutralize by Syla's side, including a collision and including the mark's own ticks. The stealth is unconditional and does not break on attacking (§5.4).
 
-The payout was **+3** in the original roster. Against literal multipliers that produced a 35-cell turn — three-quarters of the loop, from one ability. At +0.5 the squad moves at 2.5× for a round (~17 cells each), which is a real tempo swing that a player can still read.
+**The payout window is the mark's own duration.** The ability previously specified "within 3 of Syla's turns", a second timer that duplicated the status's duration and counted against a different operator's turn index than the status registry does. One timer, stored on the mark, expiring at the marked operator's own upkeep like every other status.
+
+Two numbers here have been walked back under measurement. The squad buff was **+3** in the original roster; against literal multipliers that produced a 35-cell turn, three-quarters of the loop from one ability, and it is now +0.5. The mark was **pure bookkeeping** until 2026-09-12 — the ult cost 9 and did nothing whatsoever on the turn it was cast, deferring its entire value to a condition the player still had to satisfy by other means. The mark's damage is what gives the ability presence on the board the turn it is spent, and it is what starts the clock on its own payout condition.
 
 ### 10.3 Kurbyn, DarkGrave — Brawler
 
-**HP 6 · Speed 1.5× base (2.0× with passive)**
+**HP 6 · Speed 1.0× base (1.5× with passive)**
 
 | #   | Ability              | Type         | Cost | CD  | Range                | Effect                                                                                                                                                                                              |
 | --- | -------------------- | ------------ | ---- | --- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -386,21 +377,27 @@ The payout was **+3** in the original roster. Against literal multipliers that p
 
 The execute threshold is evaluated **before** the direct damage lands, on the target's HP at cast. Checking after would mean a full-health 6-HP target drops to 3 and survives at exactly 50%, which reads as a bug at the table. `current * 2 < max` — integer comparison, no fractional HP support required anywhere in the core.
 
+Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **conditional on the passive being live** in a way no other operator's is. It is granted once at match start and, per §1.2, must survive neutralize. A Kurbyn moving at 1.0 is a bug, not a balance state.
+
 ---
 
 ## 11. Superseded and removed
 
-| Thing                                           | Status                                                                    |
-| ----------------------------------------------- | ------------------------------------------------------------------------- |
-| Tiered energy (≤4 → 1, 5–8 → 2, ≥9 → 3)         | **Dead.** Replaced by §3.1.                                               |
-| "3 energy points per turn to spend" (GDD)       | **Dead.** Never closed against 9-cost ultimates.                          |
-| `Energy Efficiency` stat                        | **Cut.** One value on one operator, blank on two, no rule ever attached.  |
-| `Energy` as a per-operator stat                 | **Cut.** The pool is player-level.                                        |
-| Shield as "2 hits to capture"                   | **Rewritten** as §5.6 — the capture system it described no longer exists. |
-| Ludo capture (land → instant send-home)         | **Replaced** by collision (§7).                                           |
-| `[Range(3, 9)]` on `Operator.maxHealth`         | **Dead.** Bouncer is 12.                                                  |
-| Player elimination ("until one player is left") | **Not a mechanic** in the MVP (§1.2).                                     |
-| `MeshRenderer` fallback on `Operator`           | Already dead (ADR-0001).                                                  |
+| Thing                                                        | Status                                                                                              |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| Tiered energy (≤4 → 1, 5–8 → 2, ≥9 → 3)                      | **Dead.** Replaced by §3.1.                                                                         |
+| "3 energy points per turn to spend" (GDD)                    | **Dead.** Never closed against 9-cost ultimates.                                                    |
+| `Energy Efficiency` stat                                     | **Cut.** One value on one operator, blank on two, no rule ever attached.                            |
+| `Energy` as a per-operator stat                              | **Cut.** The pool is player-level.                                                                  |
+| Shield as "2 hits to capture"                                | **Rewritten** as §5.6 — the capture system it described no longer exists.                           |
+| Mark as bookkeeping-only, applying no modifier               | **Rewritten** as §5.7 — it now deals damage over time.                                              |
+| Tagged From Above's "within 3 of Syla's turns" payout window | **Replaced** by the mark's own duration (§5.7, §10.2).                                              |
+| Speed band 1.5–2.0 (Amendment 2)                             | **Lowered** to 1.0–1.5 by Amendment 4. Bouncer 1.5 → 1.0, Syla 2.0 → 1.5, Kurbyn 1.5+0.5 → 1.0+0.5. |
+| All-In Mauling at range 1 with 3 self-damage                 | **Retuned** to range 2 with 1 self-damage (§10.1).                                                  |
+| Ludo capture (land → instant send-home)                      | **Replaced** by collision (§7).                                                                     |
+| `[Range(3, 9)]` on `Operator.maxHealth`                      | **Dead.** Bouncer is 12.                                                                            |
+| Player elimination ("until one player is left")              | **Not a mechanic** in the MVP (§1.2).                                                               |
+| `MeshRenderer` fallback on `Operator`                        | Already dead (ADR-0001).                                                                            |
 
 ---
 
@@ -408,49 +405,25 @@ The execute threshold is evaluated **before** the direct damage lands, on the ta
 
 These are dials and scope, not holes. Nothing here blocks implementation.
 
-All numbers below are measured against the live core by `tools/sim/NonaRoyale.Sim`, 800 matches per configuration, four players. They replace the figures from the earlier Python model, which flattened every ability into damage at range 3 and overstated lethality by roughly half.
+All numbers below were measured, not estimated. See ADR-0002 Amendment 2 and `tools/sim/` for the harness. Current measured baseline, 4 players on the Standard board with the alpha roster: **16.7 turns mean, p90 21**, ~8 neutralizes and ~33 abilities per match.
 
-**Current baseline, with `openingDeployments = 2`:**
+**Balance**
 
-| Profile       | Turns | p90 | Neutralizes | Abilities | Full squad on board |
-| ------------- | ----- | --- | ----------- | --------- | ------------------- |
-| Standard 48×1 | 13.9  | 16  | 3.0         | 28.9      | 27%                 |
-| Compact 24×2  | 16.7  | 22  | 8.2         | 38.0      | 25%                 |
-
-**Balance dials, ranked by effect per turn spent**
-
-1. **Ability reach — the largest lever, deliberately unspent.** Adding +1 to every range and radius buys **+47% neutralizes on Standard and +37% on Compact, for under 1.5 turns**. Nothing else measured is close, and it confirms what the geometry work established: abilities were missing because they could not reach, not because they were weak or expensive.
-
-   Held in reserve rather than applied. The thinness it would fix is one no human has yet reported feeling, and the figure comes from a scripted player that fires everything it can afford at whatever is nearest. Spend it after playtest, not before.
-
-   **Note the coupling.** Reach is roster data, so there is one value across both profiles. Standard is the configuration that would benefit; Compact is already dense and +1 takes it to 11.2 neutralizes at a p90 of 24 turns. Tuning reach down later to calm Compact would re-thin Standard. Making range scale with loop size would break that coupling, and is a new concept nothing currently supports.
-
-2. **Loop size with laps.** Now a shipping choice rather than a dial — the two profiles above are the same game at two densities.
-
-3. **Opening deployments.** Adopted at 2. The only lever found that improves a problem at no cost elsewhere: occupancy roughly doubles and matches get shorter. `openingDeployments = 1` is retained for a more classic Ludo opening.
-
-4. **Journey length.** The only thing that buys occupancy outright, and it costs pacing directly. 48×2 reaches 22% occupancy at 37.6 turns.
-
+1. **Board occupancy is the real problem, and it isn't a speed problem.** All three of a player's operators are simultaneously on the board for only **10–15% of turns**. Deploy friction plus neutralize-to-yard keeps the track sparse, which starves a game that is 70% combat. The two dials are the deploy gate (item 2) and the setback (item 3).
+2. **Deploy gate.** Requiring a 6 costs ~1.9 turns per match. Allowing deploy on **a 6 or any double** recovers it (11/36 → 16/36) and raises occupancy. Not adopted — it changes ADR-0003 — but it is the cheapest available fix if the board reads as empty.
+3. **The yard setback is the most expensive single rule in the game.** Measured at 4P/Standard: neutralize → yard costs 6.4 turns per match; → start cell costs 3.0; → half progress costs 1.7. If matches run long or losing feels unrecoverable, soften this _before_ touching damage numbers.
+4. `CollisionDamage = 3` — first dial if the race layer reads as toothless (§7.3). Dropping ability damage from 3/2 to 2/1 cuts neutralizes by half and shortens matches by 3.4 turns, so damage and pacing are the same dial.
 5. `EvasionChance = 0.5` — the per-round cap bounds the worst case; the rate itself is free to move.
-
-6. `EnergyCap = 12` against a `floor(total/2)` drip — governs how often ultimates appear. Roughly 24 energy per match is burned at the cap, almost all of it pre-contact in the opening turns.
-
-**Struck**
-
-- **`CollisionDamage` is not a dial.** Moving it from 2 to 6 changes match length by 0.4 turns and neutralizes by 1.1, because collisions occur only ~2.4 times a match on Standard. §7.3 and ADR-0002 Amendment 2 both named it as the first lever if the race reads as toothless; that advice was wrong and is withdrawn.
-- **The yard setback is no longer the most expensive rule.** The Python model showed it costing 6.4 turns per match at ~8 neutralizes. At the measured 3.0, it fires roughly once per player per match and its contribution is small.
-
-**Open, unmeasured**
-
-- **Two-player matches are close to a pure race.** Pacing barely moves with seat count (16.5 / 16.4 / 16.8 turns at 2 / 3 / 4) but combat scales hard: **0.6 neutralizes at two players against 4.0 at four.** If 1v1 is meant to be a real mode it needs its own configuration, not just fewer seats.
-- **Whether any of this is fun.** The harness reports pacing and throughput. It says nothing about whether the density on Compact reads as tension or as noise, or whether Standard reads as thin. That is the next thing to find out, and only a human can.
+6. `EnergyCap = 12` against a `floor(total/2)` drip — governs how often ultimates appear. ~50 energy per match is currently burned at the cap, almost all of it pre-contact in the opening turns.
+7. `MarkDamagePerTurn = 2` over a 2-turn duration — **unmeasured.** Set by reasoning, not simulation: 4 total leaves a 6-HP target at 2 and inside every finisher on the roster, while 9 (3 over 3 turns) would kill unassisted and make the ult's payout self-fulfilling. Both the per-turn damage and the duration are independent dials. Re-run the harness before trusting either.
+8. `SlowSpeedPenalty = 0.5` against the lowered 1.0–1.5 band takes a 1.0 operator to the `MinSpeedMultiplier` floor (§5.2). Slow is meaningfully harsher than it was under Amendment 2 and was not re-measured when the band moved.
 
 **Scope**
 
-1. **Special spaces** are deferred (ADR-0003). Shield is defined (§5.6); Teleport, Slippery, Checkpoint, RollAgain, and SharksTable are not. Note that Checkpoint conflicts with §1.2's "return to yard" and needs an explicit exception when it lands.
-2. **"Brawler" is a fifth archetype** (Kurbyn) outside the base four. Add it or re-tag — cosmetic, unblocking.
-3. **Six of nine operators unwritten.** They must be expressible in the rules above; a new operator needing a new _mechanic_ gets an amendment to this doc, not a special case in its own stat block.
-4. Flavour fields across the roster (`OPERATORS.md`).
+9. **Special spaces** are deferred (ADR-0003). Shield is defined (§5.6); Teleport, Slippery, Checkpoint, RollAgain, and SharksTable are not. Note that Checkpoint conflicts with §1.2's "return to yard" and needs an explicit exception when it lands.
+10. **"Brawler" is a fifth archetype** (Kurbyn) outside the base four. Add it or re-tag — cosmetic, unblocking.
+11. **Six of nine operators unwritten.** They must be expressible in the rules above; a new operator needing a new _mechanic_ gets an amendment to this doc, not a special case in its own stat block.
+12. Flavour fields across the roster (`OPERATORS.md`).
 
 ---
 
@@ -475,6 +448,8 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - `RollWithoutSix_CannotDeploy`
 - `DeployIsOptional_PlayerMayDeclineAndMoveFullTotal`
 - `SlowedOperatorAtOneTimesSpeed_FloorsAtHalfMultiplier`
+- `KurbynMovesAtOnePointFive_WithEvasiveProtocolLive`
+- `KurbynRetainsEvasiveProtocol_AfterBeingNeutralized`
 
 **Collision — `CollisionResolver`**
 
@@ -485,9 +460,6 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - `PassingThroughOccupiedCell_DoesNotCollide`
 - `LandingOnFriendlyOperator_DoesNotCollide`
 - `BounceBack_DoesNotTriggerSecondCollision`
-- `LandingOnAStackOfEnemies_StrikesEveryOneOfThem`
-- `AStackWithAnySurvivor_HoldsTheCell`
-- `AStackWipedOut_YieldsTheCell`
 - `EvadedCollisionDamage_StillBouncesMoverBack`
 - `PulledOperator_DoesNotCollideOnArrival`
 
@@ -523,9 +495,16 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - `BleedStack_IsRemovedAfterTicking`
 - `BleedStacks_AreAdditive`
 - `BleedCanNeutralize_BeforeTargetActs`
+- `MarkTicks_AtMarkedOwnersUpkeep`
+- `MarkStack_SurvivesTicking`
+- `MarkDamage_IsAtomic_AndIgnoresEvasion`
+- `MarkCanNeutralize_BeforeTargetActs`
+- `MarkExpiresAfterTwoTicks`
+- `MarkRecordsItsSourceOperator`
 - `StealthedOperator_CannotBeTargetedByEnemy`
 - `StealthedOperator_IsStillHitByAoe`
 - `StealthedOperator_IsStillHitByCollision`
+- `StealthedOperator_IsStillTickedByAnExistingMark`
 - `StealthedOperator_CanStillBeTargetedByAllies`
 - `StealthPersists_AfterTheOwnerAttacks`
 - `SlowFromMultipleSources_DoesNotStack`
@@ -540,12 +519,15 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - `MiraclePull_DoesNotExecuteTargetAtExactlyHalfHealth`
 - `FromTheHip_DealsBonusDamageToBleedingTarget`
 - `TaggedFromAbove_PaysOutWhenMarkedTargetIsNeutralizedByCollision`
+- `TaggedFromAbove_PaysOutWhenItsOwnMarkTickNeutralizesTheTarget`
+- `TaggedFromAbove_DoesNotPayOutAfterTheMarkExpires`
 - `TaggedFromAbove_GrantsStealthEvenWithoutPayout`
 
 **Neutralize and win — `WinConditions`**
 
 - `NeutralizedOperator_ReturnsToYardAtFullHealth`
 - `NeutralizedOperator_LosesAllStatusEffects`
+- `NeutralizedOperator_RetainsItsPassives`
 - `NeutralizedOperator_LosesAllTrackProgress`
 - `NeutralizedOperator_DoesNotReduceOwnersEnergyPool`
 - `AllThreeOperatorsHome_WinsGame`
@@ -556,7 +538,6 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 ## Status history
 
 - 2026-09-11 — Accepted (alpha). Unified capture and damage into one neutralize model; defined Atomic pierce, Stun, Stealth, Evasion, Shield, Bleed, Mark; cut Energy Efficiency and per-operator energy; replaced the energy economy; pinned targeting, AOE, resolution order, and collision; re-expressed the three alpha operators with zero TBDs.
-- 2026-09-12 — §12 rewritten against live-core measurements. Reach identified as the largest balance lever and deliberately left unspent; `CollisionDamage` struck as a dial; the yard setback demoted; opening deployments and the two shipping profiles recorded (ADR-0002 Amendment 3, ADR-0003 Amendment).
-- 2026-09-12 — Amended after the first simulation run against the live rules. §7.2's "a collision is always exactly 1v1" was false — it contradicted §4.5, and bounce-back and pulls reach the same state. Replaced by §7.5: the mover strikes every enemy on the cell and takes it only if all of them fall.
-- 2026-09-11 — Amended during core implementation. Six rules the document did not cover were forced by writing the code and are now stated here: deploy consuming one die each (§1.3); a failed evasion roll spending the charge (§5.5); expiry sweeping the turn it is called in (§6); the pull clamp at a target's own start cell (§7.4); and cast mode being chosen once from the target (§10.1). No existing rule changed.
 - 2026-09-11 — Amended after simulation (ADR-0002 Amendment 2). Speed band set to 1.5–2.0 and roster restated (Bouncer 1.5, Syla 2.0, Kurbyn 1.5+0.5); Slow rescaled to −0.5; Tagged From Above's payout cut from +3 to +0.5; §12 balance items replaced with measured figures. Damage, energy, targeting, status and collision rules unchanged.
+- 2026-09-12 — Doc caught up to ADR-0002 Amendment 4. Speed band lowered to 1.0–1.5 and the roster restated (Bouncer 1.0, Syla 1.5, Kurbyn 1.0+0.5) across §5.2, §6, §10.1, §10.2 and §10.3; the band had been changed in the core and in the tests without the doc following. Slow's interaction with the lower band noted as unmeasured (§12 item 8). No rule changed here — this is a correction, not a decision.
+- 2026-09-12 — Mark given damage over time. `MarkDamagePerTurn = 2` Atomic at the marked operator's upkeep, every turn, with Tagged From Above's duration cut 3 → 2 (§5.7, §6, §10.2). Mark was previously bookkeeping only, which left a 9-energy ultimate doing nothing on the turn it was cast. The ult's separate "within 3 of Syla's turns" payout window is replaced by the mark's own duration. All-In Mauling retuned to range 2 with 1 self-damage (§10.1), and the energy drip documented as the real cooldown on anything costing 6 or more (§3.1).

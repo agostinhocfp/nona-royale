@@ -150,14 +150,19 @@ namespace NonaRoyale.Core
             var collisions = new CollisionResolver(map, combatConfig, damage, movement);
             var abilities = new AbilityResolver(map, clock, energy, statuses, targeting, damage);
             var auraRules = new AuraRules(targeting, auras);
-            var neutralize = new NeutralizeRules(statuses, abilities);
+
+            // NeutralizeRules needs the full roster to pay out Tagged From
+            // Above's mark to the marker's squad (§10.2), which is why it is
+            // built after the seat loop rather than inside it.
+            var neutralize = new NeutralizeRules(statuses, abilities, operators, combatConfig);
             var win = new WinConditions(map);
 
             // Kurbyn's Evasive Protocol is permanent and never "used", so it is
-            // granted once here rather than resolved as an ability. Its speed
-            // bonus rides on the status magnitude — without that it was a
-            // declared constant nothing consumed, and Kurbyn moved at his base
-            // speed for every match and every simulation run.
+            // granted once here rather than resolved as an ability. The
+            // magnitude is its speed bonus: passives carry their speed effect on
+            // the status entry, which is what StatusRegistry.SpeedModifier sums
+            // (§5.5, §10.3). Passing it here is what finally connects
+            // KurbynPassiveSpeedBonus to the engine.
             foreach (var op in operators)
                 if (op.Name == "Kurbyn")
                     statuses.ApplyPassive(op, StatusKind.Evasion, AlphaRoster.KurbynPassiveSpeedBonus);
@@ -171,7 +176,7 @@ namespace NonaRoyale.Core
 
             var engine = new GameEngine(
                 operators, abilityBook, map, turns, movement, collisions,
-                abilities, statuses, auraRules, neutralize, win);
+                abilities, statuses, auraRules, neutralize, win, combatConfig);
 
             return new Match(engine, players, operators, map, abilitiesByOperator);
         }

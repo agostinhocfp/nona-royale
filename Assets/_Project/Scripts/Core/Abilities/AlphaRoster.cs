@@ -22,7 +22,7 @@ namespace NonaRoyale.Core.Abilities
     /// </remarks>
     public static class AlphaRoster
     {
-        // Stats, per COMBAT_SYSTEMS §10 and ADR-0002 Amendment 2.
+        // Stats, per COMBAT_SYSTEMS §10 and ADR-0002 Amendment 4.
         public const int BouncerMaxHealth = 12;
 
         /// <summary>
@@ -39,7 +39,11 @@ namespace NonaRoyale.Core.Abilities
         public const int KurbynMaxHealth = 6;
         public const double KurbynBaseSpeed = 1.0;
 
-        /// <summary>Kurbyn's Evasive Protocol adds this on top of his base speed.</summary>
+        /// <summary>
+        /// Kurbyn's Evasive Protocol adds this on top of his base speed. Handed
+        /// to <c>StatusRegistry.ApplyPassive</c> as the passive's magnitude at
+        /// composition, which is what makes it reach the engine at all.
+        /// </summary>
         public const double KurbynPassiveSpeedBonus = 0.5;
 
         /// <summary>Intimidating Presence: enemies within this many steps of Bouncer are slowed.</summary>
@@ -65,7 +69,7 @@ namespace NonaRoyale.Core.Abilities
             effects: new[]
             {
                 AbilityEffect.Pull(EffectAudience.Any),
-                AbilityEffect.Damage(EffectScope.PrimaryTarget, 3, DamageType.Normal, EffectAudience.EnemyOnly)
+                AbilityEffect.Damage(EffectScope.PrimaryTarget, 3, DamageType.Atomic, EffectAudience.EnemyOnly)
             });
 
         /// <summary>
@@ -74,13 +78,22 @@ namespace NonaRoyale.Core.Abilities
         /// which routes it around the pipeline entirely (§2.3) — it cannot be
         /// evaded or shielded and it can neutralize him.
         /// </summary>
+        /// <remarks>
+        /// <b>The zero cooldown is currently inert.</b> At 6 energy against a
+        /// mean drip of 3.5 per turn (§3.1), the economy already gates this to
+        /// roughly every second turn, so the ability's one distinguishing
+        /// feature against Velvet Rope — same cost, same damage, one less range,
+        /// no pull — never manifests. Either the cost drops to 3, handing the
+        /// limiting job to the self-damage where the name implies it belongs, or
+        /// the zero cooldown should be dropped. Undecided; decision log D-011.
+        /// </remarks>
         public static AbilityDefinition AllInMauling { get; } = new AbilityDefinition(
-            id: 102, name: "All-In Mauling", energyCost: 3, cooldownTurns: 0, range: 2,
+            id: 102, name: "All-In Mauling", energyCost: 6, cooldownTurns: 0, range: 2,
             effects: new[]
             {
-        AbilityEffect.Damage(EffectScope.PrimaryTarget, 3, DamageType.Normal, EffectAudience.EnemyOnly),
-        AbilityEffect.Damage(EffectScope.Caster, 2, DamageType.Normal, EffectAudience.EnemyOnly),
-        AbilityEffect.Heal(EffectScope.PrimaryTarget, 3, EffectAudience.AllyOnly)
+                AbilityEffect.Damage(EffectScope.PrimaryTarget, 3, DamageType.Normal, EffectAudience.EnemyOnly),
+                AbilityEffect.Damage(EffectScope.Caster, 1, DamageType.Normal, EffectAudience.EnemyOnly),
+                AbilityEffect.Heal(EffectScope.PrimaryTarget, 3, EffectAudience.AllyOnly)
             });
 
         // ── Syla, Assassin ───────────────────────────────────────────────
@@ -112,15 +125,24 @@ namespace NonaRoyale.Core.Abilities
             });
 
         /// <summary>
-        /// Marks an enemy and cloaks Syla. The mark's payout is resolved
-        /// elsewhere — it fires on a neutralize by Syla's side, which is a
-        /// condition no ability can evaluate at cast time.
+        /// Marks an enemy and cloaks Syla. The mark deals Atomic damage at the
+        /// marked operator's upkeep every turn it is active (§5.7), and its
+        /// payout is resolved in <c>NeutralizeRules</c> — a neutralize by the
+        /// marker's side is a condition no ability can evaluate at cast time.
         /// </summary>
+        /// <remarks>
+        /// Duration 2, not 3. The mark's duration <i>is</i> the payout window;
+        /// the ability previously carried a separate "within 3 of Syla's turns"
+        /// timer that duplicated it and counted against a different operator's
+        /// turn index. At 2 turns and 2 damage a mark totals 4 — enough to leave
+        /// a 6-health target inside every finisher on the roster, not enough to
+        /// kill on its own and make the payout self-fulfilling.
+        /// </remarks>
         public static AbilityDefinition TaggedFromAbove { get; } = new AbilityDefinition(
             id: 203, name: "Tagged From Above", energyCost: 9, cooldownTurns: 2, range: 3,
             effects: new[]
             {
-                AbilityEffect.Status_(EffectScope.PrimaryTarget, StatusKind.Mark, duration: 3),
+                AbilityEffect.Status_(EffectScope.PrimaryTarget, StatusKind.Mark, duration: 2),
                 AbilityEffect.Status_(EffectScope.Caster, StatusKind.Stealth, duration: 2,
                     audience: EffectAudience.Any)
             });
@@ -145,7 +167,7 @@ namespace NonaRoyale.Core.Abilities
         /// exactly half and then spared — which would read as a bug at the table.
         /// </summary>
         public static AbilityDefinition MiraclePull { get; } = new AbilityDefinition(
-            id: 302, name: "Miracle Pull", energyCost: 9, cooldownTurns: 2, range: 2,
+            id: 302, name: "Miracle Pull", energyCost: 9, cooldownTurns: 2, range: 1,
             effects: new[]
             {
                 AbilityEffect.Execute(1, 2, fallbackAmount: 3, fallbackType: DamageType.Atomic),
