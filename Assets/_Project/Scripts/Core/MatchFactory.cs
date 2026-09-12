@@ -154,9 +154,13 @@ namespace NonaRoyale.Core
             var win = new WinConditions(map);
 
             // Kurbyn's Evasive Protocol is permanent and never "used", so it is
-            // granted once here rather than resolved as an ability.
+            // granted once here rather than resolved as an ability. Its speed
+            // bonus rides on the status magnitude — without that it was a
+            // declared constant nothing consumed, and Kurbyn moved at his base
+            // speed for every match and every simulation run.
             foreach (var op in operators)
-                if (op.Name == "Kurbyn") statuses.ApplyPassive(op, StatusKind.Evasion);
+                if (op.Name == "Kurbyn")
+                    statuses.ApplyPassive(op, StatusKind.Evasion, AlphaRoster.KurbynPassiveSpeedBonus);
 
             var turns = new TurnStateMachine(
                 players, clock, gameConfig, random, energy, statuses, damage, neutralize, win);

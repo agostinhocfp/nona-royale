@@ -83,6 +83,13 @@ namespace NonaRoyale.Core.Services
             if (duration < 1) throw new ArgumentOutOfRangeException(nameof(duration));
             if (stacks < 1) throw new ArgumentOutOfRangeException(nameof(stacks));
 
+            // Slow carries its strength as a magnitude like everything else. An
+            // ability that names no magnitude gets the configured default, so
+            // the roster never has to reach into CombatConfig — but a future
+            // ability can hit harder by saying so.
+            if (kind == StatusKind.Slow && Math.Abs(magnitude) < 0.0001)
+                magnitude = -_config.SlowSpeedPenalty;
+
             int ownerTurn = _clock.TurnIndexOf(target.Owner);
             bool onTargetsOwnTurn = _clock.ActivePlayer == target.Owner;
             int firstActive = onTargetsOwnTurn ? ownerTurn : ownerTurn + 1;
@@ -93,7 +100,10 @@ namespace NonaRoyale.Core.Services
             {
                 existing.FirstActiveTurn = Math.Min(existing.FirstActiveTurn, firstActive);
                 existing.LastActiveTurn = Math.Max(existing.LastActiveTurn, firstActive + duration - 1);
-                existing.Magnitude = Math.Max(existing.Magnitude, magnitude);
+                // The stronger effect wins, by absolute size — Math.Max would
+                // have kept the *weaker* of two slows, since they are negative.
+                if (Math.Abs(magnitude) > Math.Abs(existing.Magnitude))
+                    existing.Magnitude = magnitude;
                 existing.SourceOperatorId = sourceOperatorId;
 
                 if (kind == StatusKind.Bleed) existing.Stacks += stacks;
@@ -137,12 +147,38 @@ namespace NonaRoyale.Core.Services
         public bool IsStunned(OperatorState op) => Has(op, StatusKind.Stun);
 
         /// <summary>
-        /// Total speed modifier from slows. Sources do not stack; the largest
-        /// applies (§5.2). Returned negative, ready to hand to
+        /// Total speed change from every active status, ready to hand to
         /// <c>MovementResolver.EffectiveSpeed</c>.
         /// </summary>
-        public double SpeedModifier(OperatorState op) =>
-            Has(op, StatusKind.Slow) ? -_config.SlowSpeedPenalty : 0.0;
+        /// <remarks>
+        /// Sums <c>Magnitude</c> across statuses rather than testing for one
+        /// kind. That is what lets a passive speed bonus and a slow coexist —
+        /// Kurbyn's Evasive Protocol adds, From the Hip subtracts, and the two
+        /// resolve against each other without a special case.
+        ///
+        /// Slows from several sources still do not stack (§5.2), because a
+        /// status is one entry per kind and re-application keeps the stronger
+        /// magnitude rather than adding to it.
+        /// </remarks>
+        public double SpeedModifier(OperatorState op)
+        {
+            if (op == null) throw new ArgumentNullException(nameof(op));
+            if (!_byOperator.TryGetValue(op.Id, out var entries)) return 0.0;
+
+            int ownerTurn = _clock.TurnIndexOf(op.Owner);
+            double total = 0.0;
+
+            foreach (var pair in entries)
+            {
+                var entry = pair.Value;
+                if (ownerTurn < entry.FirstActiveTurn) continue;
+                if (entry.LastActiveTurn != Permanent && ownerTurn > entry.LastActiveTurn) continue;
+
+                total += entry.Magnitude;
+            }
+
+            return total;
+        }
 
         public int BleedStacks(OperatorState op)
         {
@@ -246,16 +282,33 @@ namespace NonaRoyale.Core.Services
         }
 
         /// <summary>
-        /// Strips everything on neutralize — stun, slow, bleed, stealth, shield,
-        /// mark (§1.2). Passives are re-granted by whoever rebuilds the operator,
-        /// since an operator returning to the yard is still itself.
+        /// Strips every applied status on neutralize — stun, slow, bleed,
+        /// stealth, shield, mark (§1.2) — and <b>keeps permanent passives</b>.
         /// </summary>
+        /// <remarks>
+        /// An operator returning to its yard is still itself. Kurbyn does not
+        /// forget how to dodge because he was neutralized once.
+        ///
+        /// This previously removed the operator's whole entry, passives
+        /// included, and relied on "whoever rebuilds the operator" to grant them
+        /// again. Nothing rebuilds an operator — <c>MatchFactory</c> grants
+        /// passives once at match start — so Evasive Protocol was lost
+        /// permanently the first time Kurbyn died.
+        /// </remarks>
         public void ClearAll(OperatorState op)
         {
             if (op == null) throw new ArgumentNullException(nameof(op));
 
-            _byOperator.Remove(op.Id);
             _evasionSpentThisRound.Remove(op.Id);
+
+            if (!_byOperator.TryGetValue(op.Id, out var entries)) return;
+
+            var applied = new List<StatusKind>();
+
+            foreach (var pair in entries)
+                if (pair.Value.LastActiveTurn != Permanent) applied.Add(pair.Key);
+
+            foreach (var kind in applied) entries.Remove(kind);
         }
 
         // ── IDamageMitigation ────────────────────────────────────────────

@@ -325,5 +325,49 @@ namespace NonaRoyale.Core.Tests.Engine
             Assert.That(log.Any(e => e is OperatorMoved), Is.True);
         }
 
+        // ── Passives, end to end ─────────────────────────────────────────
+
+        [Test]
+        public void KurbynMovesAtHisPassiveSpeed_NotHisBaseSpeed()
+        {
+            // Drives the whole chain: MatchFactory grants the passive with its
+            // magnitude, StatusRegistry reports it, MovementResolver applies it.
+            //
+            // The test this replaces added two constants together and asserted
+            // they summed to 1.5. It stayed green while the engine moved Kurbyn
+            // at 1.0, because it never touched the engine.
+            var solo = MatchFactory.CreateAlphaMatch(
+                new[] { PlayerColor.Red }, seed: 11, openingDeployments: 3);
+
+            solo.Engine.Start();
+
+            var kurbyn = solo.Operators.First(o => o.Name == "Kurbyn");
+            int total = First<DiceRolled>(solo.Engine.Execute(new RollDiceCommand())).Roll.Total;
+
+            var moved = First<OperatorMoved>(solo.Engine.Execute(new MoveCommand(kurbyn.Id)));
+
+            Assert.That(moved, Is.Not.Null);
+            Assert.That(moved.To - moved.From,
+                Is.EqualTo((int)(total * (AlphaRoster.KurbynBaseSpeed + AlphaRoster.KurbynPassiveSpeedBonus))));
+        }
+
+        [Test]
+        public void TheTank_MovesAtItsBaseSpeed_WithNoPassiveToAdd()
+        {
+            // The control. If this and the test above ever agree, the passive
+            // has stopped reaching the engine again.
+            var solo = MatchFactory.CreateAlphaMatch(
+                new[] { PlayerColor.Red }, seed: 11, openingDeployments: 3);
+
+            solo.Engine.Start();
+
+            var bouncer = solo.Operators.First(o => o.Name == "Bouncer");
+            int total = First<DiceRolled>(solo.Engine.Execute(new RollDiceCommand())).Roll.Total;
+
+            var moved = First<OperatorMoved>(solo.Engine.Execute(new MoveCommand(bouncer.Id)));
+
+            Assert.That(moved.To - moved.From, Is.EqualTo((int)(total * AlphaRoster.BouncerSpeed)));
+        }
+
     }
 }

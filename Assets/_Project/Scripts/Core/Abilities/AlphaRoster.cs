@@ -75,12 +75,12 @@ namespace NonaRoyale.Core.Abilities
         /// evaded or shielded and it can neutralize him.
         /// </summary>
         public static AbilityDefinition AllInMauling { get; } = new AbilityDefinition(
-            id: 102, name: "All-In Mauling", energyCost: 6, cooldownTurns: 0, range: 1,
+            id: 102, name: "All-In Mauling", energyCost: 3, cooldownTurns: 0, range: 2,
             effects: new[]
             {
-                AbilityEffect.Damage(EffectScope.PrimaryTarget, 3, DamageType.Normal, EffectAudience.EnemyOnly),
-                AbilityEffect.Damage(EffectScope.Caster, 3, DamageType.Normal, EffectAudience.EnemyOnly),
-                AbilityEffect.Heal(EffectScope.PrimaryTarget, 3, EffectAudience.AllyOnly)
+        AbilityEffect.Damage(EffectScope.PrimaryTarget, 3, DamageType.Normal, EffectAudience.EnemyOnly),
+        AbilityEffect.Damage(EffectScope.Caster, 2, DamageType.Normal, EffectAudience.EnemyOnly),
+        AbilityEffect.Heal(EffectScope.PrimaryTarget, 3, EffectAudience.AllyOnly)
             });
 
         // ── Syla, Assassin ───────────────────────────────────────────────
@@ -145,7 +145,7 @@ namespace NonaRoyale.Core.Abilities
         /// exactly half and then spared — which would read as a bug at the table.
         /// </summary>
         public static AbilityDefinition MiraclePull { get; } = new AbilityDefinition(
-            id: 302, name: "Miracle Pull", energyCost: 9, cooldownTurns: 2, range: 1,
+            id: 302, name: "Miracle Pull", energyCost: 9, cooldownTurns: 2, range: 2,
             effects: new[]
             {
                 AbilityEffect.Execute(1, 2, fallbackAmount: 3, fallbackType: DamageType.Atomic),

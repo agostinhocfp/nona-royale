@@ -200,6 +200,67 @@ namespace NonaRoyale.Core.Tests.Status
         }
 
         [Test]
+        public void APassiveSpeedBonus_ReachesTheSpeedModifier()
+        {
+            // Magnitude is the single channel for speed effects. Before this,
+            // SpeedModifier tested for Slow and nothing else, so a passive bonus
+            // was written into the registry and never read out again.
+            _statuses.ApplyPassive(_blue, StatusKind.Evasion, 0.5);
+
+            Assert.That(_statuses.SpeedModifier(_blue), Is.EqualTo(0.5));
+        }
+
+        [Test]
+        public void APassiveBonusAndASlow_ResolveAgainstEachOther()
+        {
+            _statuses.ApplyPassive(_blue, StatusKind.Evasion, 0.5);
+            _statuses.Apply(_blue, StatusKind.Slow, duration: 1);
+            _clock.BeginTurnFor(PlayerColor.Blue);
+
+            Assert.That(_statuses.SpeedModifier(_blue), Is.EqualTo(0.0));
+        }
+
+        [Test]
+        public void AStrongerSlow_OverridesAWeakerOne()
+        {
+            // Merging used Math.Max, which on negative magnitudes kept the
+            // weaker slow. The stronger effect has to win.
+            _statuses.Apply(_blue, StatusKind.Slow, duration: 1);
+            _statuses.Apply(_blue, StatusKind.Slow, duration: 1, magnitude: -1.5);
+            _clock.BeginTurnFor(PlayerColor.Blue);
+
+            Assert.That(_statuses.SpeedModifier(_blue), Is.EqualTo(-1.5));
+        }
+
+        [Test]
+        public void AWeakerSlow_DoesNotDowngradeAStrongerOne()
+        {
+            _statuses.Apply(_blue, StatusKind.Slow, duration: 1, magnitude: -1.5);
+            _statuses.Apply(_blue, StatusKind.Slow, duration: 1);
+            _clock.BeginTurnFor(PlayerColor.Blue);
+
+            Assert.That(_statuses.SpeedModifier(_blue), Is.EqualTo(-1.5));
+        }
+
+        [Test]
+        public void ClearAll_StripsAppliedStatuses_ButKeepsPassives()
+        {
+            // An operator returning to its yard is still itself. Nothing
+            // re-grants passives after a match starts, so wiping them here cost
+            // Kurbyn his Evasive Protocol permanently the first time he died.
+            _statuses.ApplyPassive(_blue, StatusKind.Evasion, 0.5);
+            _statuses.Apply(_blue, StatusKind.Stun, duration: 5);
+            _statuses.Apply(_blue, StatusKind.Slow, duration: 5);
+            _clock.BeginTurnFor(PlayerColor.Blue);
+
+            _statuses.ClearAll(_blue);
+
+            Assert.That(_statuses.IsStunned(_blue), Is.False);
+            Assert.That(_statuses.Has(_blue, StatusKind.Evasion), Is.True);
+            Assert.That(_statuses.SpeedModifier(_blue), Is.EqualTo(0.5));
+        }
+
+        [Test]
         public void AnUnslowedOperator_HasNoSpeedModifier()
         {
             Assert.That(_statuses.SpeedModifier(_blue), Is.EqualTo(0.0));

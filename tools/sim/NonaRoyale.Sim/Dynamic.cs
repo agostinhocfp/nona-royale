@@ -26,7 +26,7 @@ namespace NonaRoyale.Sim
             var labels = new[]
             {
                 "1.0 / 1.0 / 1.0", "1.0 / 1.25 / 1.25", "1.0 / 1.5 / 1.5",
-                "1.25 / 1.5 / 1.5", "adopted 1.5 / 2.0 / 2.0"
+                "1.25 / 1.5 / 1.5", "adopted (RosterSpeeds.Default)"
             };
 
             var bands = new[]

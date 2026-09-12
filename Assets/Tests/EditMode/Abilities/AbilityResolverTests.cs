@@ -504,7 +504,12 @@ namespace NonaRoyale.Core.Tests.Abilities
             // whether a player can follow a piece.
             Assert.That(AlphaRoster.BouncerSpeed, Is.EqualTo(1.0));
             Assert.That(AlphaRoster.SylaSpeed, Is.EqualTo(1.5));
-            Assert.That(AlphaRoster.KurbynBaseSpeed + AlphaRoster.KurbynPassiveSpeedBonus, Is.EqualTo(1.5));
+            Assert.That(AlphaRoster.KurbynBaseSpeed, Is.EqualTo(1.0));
+            Assert.That(AlphaRoster.KurbynPassiveSpeedBonus, Is.EqualTo(0.5));
+
+            // Declared values only. That the passive actually reaches the engine
+            // is proved by GameEngineTests.KurbynMovesAtHisPassiveSpeed —
+            // an assertion about two constants cannot prove it, and did not.
         }
 
         [Test]
