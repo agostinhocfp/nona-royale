@@ -37,8 +37,9 @@ namespace NonaRoyale.Core.Board
         /// <summary>Cells in each colour's private home column, mouth to HOME.</summary>
         public int HomeColumnLength { get; }
 
-        public BoardProfile(string name, int circuitLength, int homeColumnLength)
+        public BoardProfile(string name, int circuitLength, int homeColumnLength, int laps = 1)
         {
+            if (laps < 1) throw new ArgumentOutOfRangeException(nameof(laps));
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("A board profile needs a name.", nameof(name));
 
@@ -61,7 +62,18 @@ namespace NonaRoyale.Core.Board
             Name = name;
             CircuitLength = circuitLength;
             HomeColumnLength = homeColumnLength;
+            Laps = laps;
         }
+
+        /// <summary>
+        /// Circuits an operator must complete before turning into its home
+        /// column. More than one keeps operators on the board longer without
+        /// making any single move less readable.
+        /// </summary>
+        public int Laps { get; }
+
+        /// <summary>Cells of outer track an operator traverses in total.</summary>
+        public int TrackLength => CircuitLength * Laps;
 
         /// <summary>Distance between adjacent colours' start cells, in track steps.</summary>
         public int PlayerStartOffset => CircuitLength / PlayerCount;
@@ -71,7 +83,7 @@ namespace NonaRoyale.Core.Board
         /// loop, then its home column. Progress at or beyond this value means
         /// the operator has finished.
         /// </summary>
-        public int Journey => CircuitLength + HomeColumnLength;
+        public int Journey => TrackLength + HomeColumnLength;
 
         /// <summary>
         /// Total distinct positions on the board — the shared loop plus four
@@ -128,6 +140,8 @@ namespace NonaRoyale.Core.Board
         public static BoardProfile Long { get; } = new BoardProfile("Long", 60, 7);
 
         public override string ToString() =>
-            $"{Name} ({CircuitLength}/{HomeColumnLength}, journey {Journey})";
+            Laps == 1
+                ? $"{Name} ({CircuitLength}/{HomeColumnLength}, journey {Journey})"
+                : $"{Name} ({CircuitLength}x{Laps}/{HomeColumnLength}, journey {Journey})";
     }
 }

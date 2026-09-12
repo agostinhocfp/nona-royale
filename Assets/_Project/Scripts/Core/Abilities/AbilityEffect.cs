@@ -62,6 +62,12 @@ namespace NonaRoyale.Core.Abilities
         public int ExecuteNumerator { get; }
         public int ExecuteDenominator { get; }
 
+        /// <summary>A copy with a different radius. For balance sweeps only.</summary>
+        public AbilityEffect WithRadius(int radius) =>
+            new AbilityEffect(Kind, Scope, Audience, Amount, DamageType, radius,
+                Status, Duration, Stacks, Magnitude, BonusIfBleeding,
+                ExecuteNumerator, ExecuteDenominator);
+
         public static AbilityEffect Damage(
             EffectScope scope, int amount, DamageType type,
             EffectAudience audience = EffectAudience.EnemyOnly,

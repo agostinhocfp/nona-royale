@@ -35,6 +35,11 @@ namespace NonaRoyale.Sim
 
             Console.WriteLine($"Nona Royale — simulation against the live core, {matches} matches per row\n");
 
+            if (args.Length > 1 && args[1] == "laps") { Laps.Run(matches); return; }
+            if (args.Length > 1 && args[1] == "opening") { Opening.Run(matches); return; }
+            if (args.Length > 1 && args[1] == "reach") { Reach.Run(matches); return; }
+            if (args.Length > 1 && args[1] == "dynamic") { Dynamic.Run(matches); return; }
+
             Header("SPEED BAND — 4 players, Standard board");
             foreach (var band in new[]
                      {

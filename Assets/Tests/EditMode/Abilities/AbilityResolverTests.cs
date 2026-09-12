@@ -498,11 +498,13 @@ namespace NonaRoyale.Core.Tests.Abilities
         [Test]
         public void RosterSpeeds_SitInsideTheAdoptedBand()
         {
-            // ADR-0002 Amendment 2: the band is 1.5 to 2.0, and Kurbyn reaches
-            // 2.0 only via his passive.
-            Assert.That(AlphaRoster.BouncerSpeed, Is.EqualTo(1.5));
-            Assert.That(AlphaRoster.SylaSpeed, Is.EqualTo(2.0));
-            Assert.That(AlphaRoster.KurbynBaseSpeed + AlphaRoster.KurbynPassiveSpeedBonus, Is.EqualTo(2.0));
+            // ADR-0002 Amendment 4: the band is 1.0 to 1.5, and Kurbyn reaches
+            // 1.5 only via his passive. The ceiling exists so a mean move stays
+            // near a fifth of the loop — the figure that actually governs
+            // whether a player can follow a piece.
+            Assert.That(AlphaRoster.BouncerSpeed, Is.EqualTo(1.0));
+            Assert.That(AlphaRoster.SylaSpeed, Is.EqualTo(1.5));
+            Assert.That(AlphaRoster.KurbynBaseSpeed + AlphaRoster.KurbynPassiveSpeedBonus, Is.EqualTo(1.5));
         }
 
         [Test]

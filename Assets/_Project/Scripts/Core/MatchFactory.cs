@@ -25,6 +25,33 @@ namespace NonaRoyale.Core
     /// </remarks>
     public static class MatchFactory
     {
+        /// <summary>
+        /// Rebuilds a set of abilities with their reach adjusted. A balance knob
+        /// for the simulation harness — both the single-target range and any
+        /// area radius move together, since "reach" means both.
+        /// </summary>
+        private static IReadOnlyList<AbilityDefinition> Retune(
+            IReadOnlyList<AbilityDefinition> abilities, int rangeBonus)
+        {
+            if (rangeBonus == 0) return abilities;
+
+            var tuned = new List<AbilityDefinition>(abilities.Count);
+
+            foreach (var ability in abilities)
+            {
+                var effects = new List<AbilityEffect>(ability.Effects.Count);
+
+                foreach (var effect in ability.Effects)
+                    effects.Add(effect.WithRadius(effect.Radius > 0 ? effect.Radius + rangeBonus : 0));
+
+                tuned.Add(new AbilityDefinition(
+                    ability.Id, ability.Name, ability.EnergyCost, ability.CooldownTurns,
+                    ability.Range + rangeBonus, effects, ability.RequiresTarget));
+            }
+
+            return tuned;
+        }
+
         /// <summary>Everything a match is made of, for callers that need to look inside.</summary>
         public sealed class Match
         {
@@ -65,7 +92,9 @@ namespace NonaRoyale.Core
             GameConfig gameConfig = null,
             CombatConfig combatConfig = null,
             EnergyConfig energyConfig = null,
-            RosterSpeeds speeds = null)
+            RosterSpeeds speeds = null,
+            int openingDeployments = 0,
+            int abilityRangeBonus = 0)
         {
             if (seats == null) throw new ArgumentNullException(nameof(seats));
             if (seats.Count == 0) throw new ArgumentException("A match needs at least one seat.", nameof(seats));
@@ -97,9 +126,15 @@ namespace NonaRoyale.Core
                 };
 
                 auras[bouncerId] = AlphaRoster.IntimidatingPresence;
-                abilitiesByOperator[bouncerId] = AlphaRoster.BouncerAbilities;
-                abilitiesByOperator[sylaId] = AlphaRoster.SylaAbilities;
-                abilitiesByOperator[kurbynId] = AlphaRoster.KurbynAbilities;
+                abilitiesByOperator[bouncerId] = Retune(AlphaRoster.BouncerAbilities, abilityRangeBonus);
+                abilitiesByOperator[sylaId] = Retune(AlphaRoster.SylaAbilities, abilityRangeBonus);
+                abilitiesByOperator[kurbynId] = Retune(AlphaRoster.KurbynAbilities, abilityRangeBonus);
+
+                // Operators that start the match already on the board, skipping
+                // the deploy roll. Start cells are safe and one per colour, so
+                // an opening deployment can never contest anything.
+                for (int i = 0; i < openingDeployments && i < squad.Length; i++)
+                    squad[i].MoveTo(0);
 
                 operators.AddRange(squad);
                 players.Add(new PlayerState(seat, squad));
@@ -127,7 +162,8 @@ namespace NonaRoyale.Core
                 players, clock, gameConfig, random, energy, statuses, damage, neutralize, win);
 
             var abilityBook = new Dictionary<int, AbilityDefinition>();
-            foreach (var ability in AlphaRoster.All) abilityBook[ability.Id] = ability;
+            foreach (var list in abilitiesByOperator.Values)
+                foreach (var ability in list) abilityBook[ability.Id] = ability;
 
             var engine = new GameEngine(
                 operators, abilityBook, map, turns, movement, collisions,

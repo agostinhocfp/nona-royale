@@ -76,8 +76,8 @@ namespace NonaRoyale.Core.Board
             if (progress >= _profile.Journey)
                 return CellRef.Home(color);
 
-            if (progress >= _profile.CircuitLength)
-                return CellRef.HomeColumn(color, progress - _profile.CircuitLength);
+            if (progress >= _profile.TrackLength)
+                return CellRef.HomeColumn(color, progress - _profile.TrackLength);
 
             int index = (StartTrackIndex(color) + progress) % _profile.CircuitLength;
             return CellRef.Track(index);
@@ -132,11 +132,11 @@ namespace NonaRoyale.Core.Board
 
         /// <summary>True while the operator is on the shared outer loop, where it can be collided with.</summary>
         public bool IsOnOuterTrack(int progress) =>
-            progress >= 0 && progress < _profile.CircuitLength;
+            progress >= 0 && progress < _profile.TrackLength;
 
         /// <summary>True once the operator has left the loop for its own home column.</summary>
         public bool IsInHomeColumn(int progress) =>
-            progress >= _profile.CircuitLength && progress < _profile.Journey;
+            progress >= _profile.TrackLength && progress < _profile.Journey;
 
         /// <summary>True once the operator has reached HOME and is out of the match.</summary>
         public bool HasFinished(int progress) => progress >= _profile.Journey;

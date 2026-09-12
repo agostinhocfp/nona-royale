@@ -186,7 +186,7 @@ The cost is that it removes most of the classic Ludo opening scramble. If that s
 | **Standard** | 48      | 1    | 6    | 54      | 2       | 13.9 turns, 27% occupancy, 3.0 neutralizes |
 | **Compact**  | 24      | 2    | 3    | 51      | 2       | 16.7 turns, 25% occupancy, 8.2 neutralizes |
 
-Both ship. They are the same game at two densities, and which one players prefer is a question simulation cannot answer. `Sprint` (24 × 1) is retained as a development board; `Long` (60 × 1) for measurement only.
+_Superseded by Amendment 4: Compact was withdrawn after a human session, having shipped with the very readability defect its speed band was meant to prevent._ Both were adopted here on the reasoning that they are the same game at two densities, and that which one players prefer is a question simulation cannot answer — which turned out to be true, and answered against Compact. `Sprint` (24 × 1) is retained as a development board; `Long` (60 × 1) for measurement only.
 
 ### The lever ranking is replaced again
 
@@ -208,6 +208,65 @@ Whether any of this is fun. The harness reports pacing and throughput; it says n
 
 ---
 
+## Amendment 4 (2026-09-12) — Compact withdrawn; the speed band lowered
+
+### What a human saw that the harness could not
+
+Compact 24×2 was adopted in Amendment 3 on the strength of 2.4× the combat at an identical journey. The first session playing it reported that operators _jump around the board_ — pieces cross too much ground per move to follow.
+
+The arithmetic confirms it immediately, using a figure this ADR had never tracked:
+
+> **Mean move as a share of the loop** = `7 × mean speed ÷ CircuitLength`
+
+| Configuration                      | Share of loop per move |
+| ---------------------------------- | ---------------------- |
+| Standard, adopted band 1.5/2.0/2.0 | 27%                    |
+| **Compact 24×2, adopted band**     | **53%**                |
+| Standard, band 1.0/1.5/1.5         | 19%                    |
+
+Amendment 2 capped the speed band at 2.0 precisely because "above 2.0 a single move stops being readable." **That constraint was then never re-applied when the loop halved.** A 2.0 multiplier on a 24-cell loop is proportionally a 4.0 multiplier on a 48-cell one. Compact shipped with the exact defect its own band was set to prevent.
+
+### The real governing number
+
+Raw multiplier was the wrong thing to track. What a player can follow is **how much of the board a move crosses**, and that depends on the loop as much as the speed. Recorded here as the constraint to check whenever either changes:
+
+> **Target: a mean move covers roughly a fifth of the loop. Past a third it stops being readable.**
+
+### Measured — Standard board, slower bands, 4 players, opening 2, 600 matches
+
+| Band                    | Turns    | p90    | Neutralizes | Abilities | 3-up    | Move %  |
+| ----------------------- | -------- | ------ | ----------- | --------- | ------- | ------- |
+| 1.0 / 1.0 / 1.0         | 37.7     | 49     | 13.8        | 79.0      | 21%     | 15%     |
+| 1.0 / 1.25 / 1.25       | 28.3     | 36     | 10.0        | 60.5      | 26%     | 17%     |
+| **1.0 / 1.5 / 1.5**     | **22.7** | **28** | **7.7**     | **49.0**  | **30%** | **19%** |
+| 1.25 / 1.5 / 1.5        | 20.0     | 24     | 5.9         | 42.4      | 26%     | 21%     |
+| adopted 1.5 / 2.0 / 2.0 | 13.9     | 17     | 3.0         | 29.0      | 27%     | 27%     |
+| _Compact 24×2, adopted_ | _16.8_   | _22_   | _8.3_       | _38.2_    | _25%_   | _53%_   |
+
+**The Standard board at 1.0/1.5/1.5 delivers Compact's combat at a third of its move size** — 7.7 neutralizes against 8.3, at 19% of the loop against 53%. It also produces the highest squad occupancy measured anywhere, 30%.
+
+The density was never about board size. It was about how much of the board a move covers, and shrinking the loop was the worst available way to buy it, because it moved the numerator and the denominator in opposite directions.
+
+### Resolved
+
+- **Compact 24×2 is withdrawn** as a shipping profile. Laps remain implemented in `BoardProfile` and are retained for measurement; nothing about them was wrong, and a lapped board at a proportionate speed band stays a legitimate future option.
+- **Standard 48×1 is the shipping board**, sole.
+- **The speed band becomes 1.0 – 1.5.** Bouncer 1.0, Syla 1.5, Kurbyn 1.0 base + 0.5 passive = 1.5. Schema bounds stay 1.0–2.5 so measurement is unconstrained.
+- **`openingDeployments = 2` is unchanged.**
+- Expected match: **22.7 turns, p90 28, 7.7 neutralizes, 30% occupancy.**
+
+### This reverses Amendment 2, and the reason it does is worth keeping
+
+Amendment 2 set the band floor at 1.5 because a 1.0 tank taxes every match by roughly three turns while its squadmates idle. That was correct when it was written and nothing else had changed.
+
+It stopped being correct once two other levers landed. Opening deployments absorbed part of the tax, and the slower band turns the rest of it into combat and occupancy rather than dead time. It also restores Bouncer's designed identity — `COMBAT_SYSTEMS` §10.1 calls him the squad's roadblock, and raising him to 1.5 for pacing reasons had quietly contradicted that.
+
+### The cost, stated plainly
+
+Matches go from 13.9 turns to 22.7, with a p90 of 28. At four players that is roughly 91 player-turns against 56. **Whether that is too long is the one thing simulation cannot answer**, and it is now the open question ahead of the next playtest. If it runs long, the levers in order are reach (already unspent), then `openingDeployments = 3`, then the band back toward 1.25.
+
+---
+
 ## Alternatives considered
 
 - **36 circuit:** punchier/faster but cramped and swingy. Rejected as too chaotic for a first cut. _(Amendment 2: measures 18.5 turns; now the primary fallback if 48 runs long.)_
@@ -223,6 +282,7 @@ Whether any of this is fun. The harness reports pacing and throughput; it says n
 
 ## Status history
 
+- 2026-09-12 — Amended again after the first human session. Compact 24×2 withdrawn: it moved pieces across 53% of the loop per turn. Speed band lowered to 1.0–1.5, which delivers the same combat at 19%. "Mean move as a share of the loop" recorded as the constraint that actually governs readability.
 - 2026-09-12 — Amended. Harness ported onto the live core; pacing confirmed, combat figures corrected sharply downward. Laps introduced; two shipping profiles (Standard 48×1, Compact 24×2) adopted; opening deployments adopted; lever ranking replaced and `CollisionDamage` struck as a dial.
 - 2026-09-11 — Corrected during core implementation. The `HomeColumnLength = PlayerStartOffset / 2` invariant and the "one integer defines a board" claim were wrong for 36 and 52; home column length is explicit config with the halving rule demoted to a guideline.
 - 2026-07-10 — Accepted (provisional). 48 chosen; 60 held open as tested fallback.

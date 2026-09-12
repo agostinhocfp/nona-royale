@@ -1,0 +1,15 @@
+C:\Users\agost\Documents\dev\gamedev\unity\nona-royale\tools\sim\NonaRoyale.Sim\bin\Debug\net8.0\NonaRoyale.Sim.exe
+C:\Users\agost\Documents\dev\gamedev\unity\nona-royale\tools\sim\NonaRoyale.Sim\bin\Debug\net8.0\NonaRoyale.Sim.deps.json
+C:\Users\agost\Documents\dev\gamedev\unity\nona-royale\tools\sim\NonaRoyale.Sim\bin\Debug\net8.0\NonaRoyale.Sim.runtimeconfig.json
+C:\Users\agost\Documents\dev\gamedev\unity\nona-royale\tools\sim\NonaRoyale.Sim\bin\Debug\net8.0\NonaRoyale.Sim.dll
+C:\Users\agost\Documents\dev\gamedev\unity\nona-royale\tools\sim\NonaRoyale.Sim\bin\Debug\net8.0\NonaRoyale.Sim.pdb
+C:\Users\agost\Documents\dev\gamedev\unity\nona-royale\tools\sim\NonaRoyale.Sim\obj\Debug\net8.0\NonaRoyale.Sim.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\agost\Documents\dev\gamedev\unity\nona-royale\tools\sim\NonaRoyale.Sim\obj\Debug\net8.0\NonaRoyale.Sim.AssemblyInfoInputs.cache
+C:\Users\agost\Documents\dev\gamedev\unity\nona-royale\tools\sim\NonaRoyale.Sim\obj\Debug\net8.0\NonaRoyale.Sim.AssemblyInfo.cs
+C:\Users\agost\Documents\dev\gamedev\unity\nona-royale\tools\sim\NonaRoyale.Sim\obj\Debug\net8.0\NonaRoyale.Sim.csproj.CoreCompileInputs.cache
+C:\Users\agost\Documents\dev\gamedev\unity\nona-royale\tools\sim\NonaRoyale.Sim\obj\Debug\net8.0\NonaRoyale.Sim.sourcelink.json
+C:\Users\agost\Documents\dev\gamedev\unity\nona-royale\tools\sim\NonaRoyale.Sim\obj\Debug\net8.0\NonaRoyale.Sim.dll
+C:\Users\agost\Documents\dev\gamedev\unity\nona-royale\tools\sim\NonaRoyale.Sim\obj\Debug\net8.0\refint\NonaRoyale.Sim.dll
+C:\Users\agost\Documents\dev\gamedev\unity\nona-royale\tools\sim\NonaRoyale.Sim\obj\Debug\net8.0\NonaRoyale.Sim.pdb
+C:\Users\agost\Documents\dev\gamedev\unity\nona-royale\tools\sim\NonaRoyale.Sim\obj\Debug\net8.0\NonaRoyale.Sim.genruntimeconfig.cache
+C:\Users\agost\Documents\dev\gamedev\unity\nona-royale\tools\sim\NonaRoyale.Sim\obj\Debug\net8.0\ref\NonaRoyale.Sim.dll

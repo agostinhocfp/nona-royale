@@ -24,13 +24,20 @@ namespace NonaRoyale.Core.Abilities
     {
         // Stats, per COMBAT_SYSTEMS §10 and ADR-0002 Amendment 2.
         public const int BouncerMaxHealth = 12;
-        public const double BouncerSpeed = 1.5;
+
+        /// <summary>
+        /// The squad's roadblock, and genuinely the slow one (ADR-0002
+        /// Amendment 4). He briefly sat at 1.5 for pacing reasons, which
+        /// contradicted his own design brief; opening deployments made that
+        /// compromise unnecessary.
+        /// </summary>
+        public const double BouncerSpeed = 1.0;
 
         public const int SylaMaxHealth = 6;
-        public const double SylaSpeed = 2.0;
+        public const double SylaSpeed = 1.5;
 
         public const int KurbynMaxHealth = 6;
-        public const double KurbynBaseSpeed = 1.5;
+        public const double KurbynBaseSpeed = 1.0;
 
         /// <summary>Kurbyn's Evasive Protocol adds this on top of his base speed.</summary>
         public const double KurbynPassiveSpeedBonus = 0.5;
