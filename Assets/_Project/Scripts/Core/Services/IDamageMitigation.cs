@@ -26,4 +26,4 @@ namespace NonaRoyale.Core.Services
         /// <summary>Attempts to absorb the whole instance with a shield, consuming it.</summary>
         bool TryAbsorb(OperatorState target);
     }
-}
+} 

@@ -32,18 +32,26 @@ namespace NonaRoyale.Core
                 GameEngine engine,
                 IReadOnlyList<PlayerState> players,
                 IReadOnlyList<OperatorState> operators,
-                PathMap map)
+                PathMap map,
+                IReadOnlyDictionary<int, IReadOnlyList<AbilityDefinition>> abilitiesByOperator)
             {
                 Engine = engine;
                 Players = players;
                 Operators = operators;
                 Map = map;
+                AbilitiesByOperator = abilitiesByOperator;
             }
 
             public GameEngine Engine { get; }
             public IReadOnlyList<PlayerState> Players { get; }
             public IReadOnlyList<OperatorState> Operators { get; }
             public PathMap Map { get; }
+
+            /// <summary>
+            /// What each operator can cast. Needed by any automated player, and
+            /// by the view to draw an ability tray.
+            /// </summary>
+            public IReadOnlyDictionary<int, IReadOnlyList<AbilityDefinition>> AbilitiesByOperator { get; }
         }
 
         /// <summary>
@@ -56,7 +64,8 @@ namespace NonaRoyale.Core
             BoardProfile board = null,
             GameConfig gameConfig = null,
             CombatConfig combatConfig = null,
-            EnergyConfig energyConfig = null)
+            EnergyConfig energyConfig = null,
+            RosterSpeeds speeds = null)
         {
             if (seats == null) throw new ArgumentNullException(nameof(seats));
             if (seats.Count == 0) throw new ArgumentException("A match needs at least one seat.", nameof(seats));
@@ -65,27 +74,32 @@ namespace NonaRoyale.Core
             gameConfig = gameConfig ?? GameConfig.Default;
             combatConfig = combatConfig ?? CombatConfig.Default;
             energyConfig = energyConfig ?? EnergyConfig.Default;
+            speeds = speeds ?? RosterSpeeds.Default;
 
             var map = new PathMap(board);
             var operators = new List<OperatorState>();
             var players = new List<PlayerState>();
             var auras = new Dictionary<int, AuraDefinition>();
+            var abilitiesByOperator = new Dictionary<int, IReadOnlyList<AbilityDefinition>>();
 
             int nextId = 1;
             foreach (var seat in seats)
             {
                 int bouncerId = nextId++;
+                int sylaId = nextId++;
+                int kurbynId = nextId++;
+
                 var squad = new[]
                 {
-                    new OperatorState(bouncerId, "Bouncer", seat,
-                        AlphaRoster.BouncerMaxHealth, AlphaRoster.BouncerSpeed),
-                    new OperatorState(nextId++, "Syla", seat,
-                        AlphaRoster.SylaMaxHealth, AlphaRoster.SylaSpeed),
-                    new OperatorState(nextId++, "Kurbyn", seat,
-                        AlphaRoster.KurbynMaxHealth, AlphaRoster.KurbynBaseSpeed)
+                    new OperatorState(bouncerId, "Bouncer", seat, AlphaRoster.BouncerMaxHealth, speeds.Bouncer),
+                    new OperatorState(sylaId, "Syla", seat, AlphaRoster.SylaMaxHealth, speeds.Syla),
+                    new OperatorState(kurbynId, "Kurbyn", seat, AlphaRoster.KurbynMaxHealth, speeds.KurbynBase)
                 };
 
                 auras[bouncerId] = AlphaRoster.IntimidatingPresence;
+                abilitiesByOperator[bouncerId] = AlphaRoster.BouncerAbilities;
+                abilitiesByOperator[sylaId] = AlphaRoster.SylaAbilities;
+                abilitiesByOperator[kurbynId] = AlphaRoster.KurbynAbilities;
 
                 operators.AddRange(squad);
                 players.Add(new PlayerState(seat, squad));
@@ -119,7 +133,7 @@ namespace NonaRoyale.Core
                 operators, abilityBook, map, turns, movement, collisions,
                 abilities, statuses, auraRules, neutralize, win);
 
-            return new Match(engine, players, operators, map);
+            return new Match(engine, players, operators, map, abilitiesByOperator);
         }
     }
 }

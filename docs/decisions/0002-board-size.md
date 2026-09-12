@@ -116,6 +116,98 @@ The halving rule is a good guide for _choosing_ a home column: it makes the colu
 
 **All three of a player's operators are on the board together only 10–15% of turns.** Deploy friction and the yard setback compound, and the track stays sparse. For a game whose stated priority is 70% combat, that is a more serious number than any pacing figure in this ADR, and it is not a board-size problem — see ADR-0005 Consequences and `COMBAT_SYSTEMS.md` §12 items 1–3.
 
+---
+
+## Amendment 3 (2026-09-12) — laps, two shipping boards, and opening deployments
+
+### What changed
+
+Amendment 2's figures came from a Python _model_ of the rules. The model has been replaced by a harness driving `NonaRoyale.Core` itself (`tools/sim/NonaRoyale.Sim`), so every number below is produced by the code that ships.
+
+Pacing held up almost exactly — 16.8 turns measured against 16.7 modelled. **Combat did not.** The model predicted ~8 neutralizes per match; the real rules produce **4.0**. The model flattened every ability into damage at range 3, ignoring cooldowns, range 1 on two of the strongest abilities, and stun and slow consuming a cast without killing anything. The game is materially less lethal than Amendment 2 implied.
+
+### The diagnosis, corrected
+
+Amendment 2 blamed low occupancy on the yard setback. **That is wrong.** At 4.0 neutralizes across four players — one per player — the setback barely fires.
+
+The actual cause: **an operator crosses the whole board in about four of its own moves.** At 2.0× a roll of 7 covers 14 cells against a 54-cell journey. It deploys after ~3 turns and is home ~4 turns later. It exists for a quarter of the match, mostly alone.
+
+So the lever is journey length relative to speed — how many turns an operator is _on the board_ — not damage, not the deploy gate, not collision.
+
+### Laps
+
+`BoardProfile` gains a **`Laps`** value. An operator completes `Laps` circuits before turning into its home column: `Journey = CircuitLength × Laps + HomeColumnLength`.
+
+This decouples two things the ADR had treated as one. A shorter loop travelled more times gives the same journey in half the space, which is where encounters come from — and it does so without making any single move less readable, which is what compressing the speed band would have cost.
+
+Two operators on the same cell with different lap counts **do** collide. The lap count is bookkeeping on the operator, not on the board.
+
+### Measured — loop size against laps, 4 players, adopted band, 800 matches each
+
+| Profile    | Journey | Turns | p90 | Neutralizes | Abilities | Collisions | 3-up |
+| ---------- | ------- | ----- | --- | ----------- | --------- | ---------- | ---- |
+| **48 × 1** | 54      | 16.8  | 20  | 4.0         | 31.4      | 2.3        | 12%  |
+| **24 × 2** | 51      | 20.1  | 26  | **9.6**     | **42.0**  | **5.5**    | 11%  |
+| 16 × 3     | 50      | 24.4  | 33  | 15.7        | 52.5      | 8.4        | 11%  |
+| 24 × 3     | 75      | 38.0  | 52  | 24.1        | 84.1      | 12.4       | 16%  |
+| 48 × 2     | 102     | 37.6  | 49  | 15.6        | 80.4      | 7.6        | 22%  |
+
+**Halving the loop and doubling the laps gives 2.4× the combat for 3.3 turns, at an identical journey.** No combat value changed.
+
+### Density and occupancy are different problems
+
+This ADR and `COMBAT_SYSTEMS` §12 have treated them as one figure. They are not:
+
+- **Loop size buys encounters.** It leaves occupancy flat at 11–12%.
+- **Journey length buys occupancy**, and only it does — 48 × 2 reaches 22%, at 37.6 turns.
+- **Opening deployments buy occupancy for free**, which nothing else does (below).
+
+### Opening deployments
+
+`openingDeployments` puts operators on their start cells at match start, skipping the deploy roll for those.
+
+| Board      | Opening | Turns    | Neutralizes | 3-up    |
+| ---------- | ------- | -------- | ----------- | ------- |
+| 48 × 1     | 0       | 16.8     | 4.0         | 12%     |
+| 48 × 1     | 2       | 13.9     | 3.0         | **27%** |
+| 24 × 2     | 0       | 20.1     | 9.6         | 11%     |
+| **24 × 2** | **2**   | **16.7** | **8.2**     | **25%** |
+
+**This is the only lever measured that improves a problem while costing nothing elsewhere** — occupancy more than doubles and matches get _shorter_.
+
+It also reframes the deploy rule usefully. Deploy-on-a-6 currently acts as an opening tax: the first three turns are spent waiting to play. With two operators already out, the yard becomes almost entirely a **consequence of losing a fight**, which is where that friction belongs.
+
+The cost is that it removes most of the classic Ludo opening scramble. If that scramble is wanted, `openingDeployments = 1` still buys 15% occupancy and two turns.
+
+### Resolved — two shipping profiles
+
+| Profile      | Circuit | Laps | Home | Journey | Opening | Measured                                   |
+| ------------ | ------- | ---- | ---- | ------- | ------- | ------------------------------------------ |
+| **Standard** | 48      | 1    | 6    | 54      | 2       | 13.9 turns, 27% occupancy, 3.0 neutralizes |
+| **Compact**  | 24      | 2    | 3    | 51      | 2       | 16.7 turns, 25% occupancy, 8.2 neutralizes |
+
+Both ship. They are the same game at two densities, and which one players prefer is a question simulation cannot answer. `Sprint` (24 × 1) is retained as a development board; `Long` (60 × 1) for measurement only.
+
+### The lever ranking is replaced again
+
+Amendment 2 ranked the levers as yard setback, deploy gate, ability damage, then board length. Measured against the live rules, in order of effect per turn spent:
+
+1. **Ability reach.** +1 to every range and radius: **+36% neutralizes for 0.4 turns**. Nothing else is close. It confirms the diagnosis — abilities were missing because they could not reach, not because they were weak or expensive.
+2. **Loop size with laps.** 2.4× combat for 3.3 turns.
+3. **Opening deployments.** Occupancy for free.
+4. **Journey length.** Occupancy, at real pacing cost.
+5. **`CollisionDamage` is not a dial at all.** From 2 to 6 moves match length by 0.4 turns and neutralizes by 1.1, because collisions only occur ~2.4 times a match. **Amendment 2 and `COMBAT_SYSTEMS` §12 both name it as the first lever if the race reads as toothless. That advice is struck.**
+
+### Also measured
+
+**Player count barely affects pacing** — 16.5 / 16.4 / 16.8 turns at 2 / 3 / 4 seats — but combat scales hard with it: **0.6 neutralizes at two players against 4.0 at four.** A two-player match is close to a pure race. If 1v1 is meant to be a real mode it needs its own configuration, not just fewer seats.
+
+### Still not measured
+
+Whether any of this is fun. The harness reports pacing and throughput; it says nothing about whether 2.4× the combat reads as tension or as noise. That remains a human playtest.
+
+---
+
 ## Alternatives considered
 
 - **36 circuit:** punchier/faster but cramped and swingy. Rejected as too chaotic for a first cut. _(Amendment 2: measures 18.5 turns; now the primary fallback if 48 runs long.)_
@@ -131,6 +223,7 @@ The halving rule is a good guide for _choosing_ a home column: it makes the colu
 
 ## Status history
 
+- 2026-09-12 — Amended. Harness ported onto the live core; pacing confirmed, combat figures corrected sharply downward. Laps introduced; two shipping profiles (Standard 48×1, Compact 24×2) adopted; opening deployments adopted; lever ranking replaced and `CollisionDamage` struck as a dial.
 - 2026-09-11 — Corrected during core implementation. The `HomeColumnLength = PlayerStartOffset / 2` invariant and the "one integer defines a board" claim were wrong for 36 and 52; home column length is explicit config with the halving rule demoted to a guideline.
 - 2026-07-10 — Accepted (provisional). 48 chosen; 60 held open as tested fallback.
 - 2026-07-10 — Amended. HomeColumnLength = 6 (was HomeStretchLength = 4); canonical constants corrected to total 72 path positions.

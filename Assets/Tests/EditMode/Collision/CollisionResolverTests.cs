@@ -81,7 +81,7 @@ namespace NonaRoyale.Core.Tests.Collision
             var result = Move(mover, 20, victim);
 
             Assert.That(result.Occurred, Is.True);
-            Assert.That(result.Damage.AmountApplied, Is.EqualTo(3));
+            Assert.That(result.FirstDamage.AmountApplied, Is.EqualTo(3));
             Assert.That(victim.Health, Is.EqualTo(3));
         }
 
@@ -107,7 +107,7 @@ namespace NonaRoyale.Core.Tests.Collision
 
             var result = Move(mover, 20, victim);
 
-            Assert.That(result.OccupantNeutralized, Is.True);
+            Assert.That(result.AllOccupantsNeutralized, Is.True);
             Assert.That(result.MoverBouncedBack, Is.False);
             Assert.That(result.MoverFinalProgress, Is.EqualTo(20));
         }
@@ -235,7 +235,7 @@ namespace NonaRoyale.Core.Tests.Collision
 
             var result = Move(mover, 20, victim);
 
-            Assert.That(result.Damage.Outcome, Is.EqualTo(DamageOutcome.Evaded));
+            Assert.That(result.FirstDamage.Outcome, Is.EqualTo(DamageOutcome.Evaded));
             Assert.That(victim.Health, Is.EqualTo(3), "no health lost");
             Assert.That(result.MoverBouncedBack, Is.True);
             Assert.That(result.MoverFinalProgress, Is.EqualTo(19));
@@ -261,17 +261,50 @@ namespace NonaRoyale.Core.Tests.Collision
         // ── Invariants ───────────────────────────────────────────────────
 
         [Test]
-        public void TwoEnemiesOnOneContestedCell_IsRefusedRatherThanGuessed()
+        public void LandingOnAStackOfEnemies_StrikesEveryOneOfThem()
         {
-            // The rules make this impossible: collisions only occur on non-safe
-            // cells, and a non-safe cell can hold at most one enemy. If it
-            // happens, a collision was skipped somewhere upstream — better a
-            // loud failure than silently picking a victim.
+            // A contested cell can hold several enemies: friendly operators
+            // stack freely (§4.5), and bounce-back and pulls are placement that
+            // never collides. The mover hits all of them.
             var mover = RedTank(0);
-            var first = BlueAssassin(8);                              // track 20
-            var second = Op(5, "Syla", PlayerColor.Green, 6, 44);     // green starts at 24 -> track 20
+            var first = BlueAssassin(8);                             // track 20
+            var second = Op(5, "Syla", PlayerColor.Green, 6, 44);    // green starts at 24 -> track 20
 
-            Assert.Throws<InvalidOperationException>(() => Move(mover, 20, first, second));
+            var result = Move(mover, 20, first, second);
+
+            Assert.That(result.Occurred, Is.True);
+            Assert.That(result.Occupants.Count, Is.EqualTo(2));
+            Assert.That(first.Health, Is.EqualTo(3));
+            Assert.That(second.Health, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void AStackWithAnySurvivor_HoldsTheCell()
+        {
+            var mover = RedTank(0);
+            var dying = BlueAssassin(8);
+            dying.SetHealth(3);                                      // dies to the collision
+            var survivor = Op(5, "Bouncer", PlayerColor.Green, 12, 44);
+
+            var result = Move(mover, 20, dying, survivor);
+
+            Assert.That(result.MoverBouncedBack, Is.True);
+            Assert.That(result.MoverFinalProgress, Is.EqualTo(19));
+        }
+
+        [Test]
+        public void AStackWipedOut_YieldsTheCell()
+        {
+            var mover = RedTank(0);
+            var first = BlueAssassin(8);
+            first.SetHealth(3);
+            var second = Op(5, "Syla", PlayerColor.Green, 6, 44);
+            second.SetHealth(2);
+
+            var result = Move(mover, 20, first, second);
+
+            Assert.That(result.MoverBouncedBack, Is.False);
+            Assert.That(result.MoverFinalProgress, Is.EqualTo(20));
         }
 
         [Test]

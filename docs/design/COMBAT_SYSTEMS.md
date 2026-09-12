@@ -153,6 +153,8 @@ This makes ADR-0003's home-entry safe cell redundant in the best way, and remove
 
 Friendly operators may share any cell freely. There is no blocking mechanic in the MVP. (ADR-0003's `SharksTable` special space hints at a two-operators-on-a-cell mechanic; special spaces are deferred and it is not defined here.)
 
+Because of this, an enemy _stack_ on a contested cell is reachable in ordinary play. What happens when a mover lands on one is §7.5.
+
 ---
 
 ## 5. Status effects
@@ -258,7 +260,27 @@ The mover never takes damage. Collision is one-directional.
 
 **Bounce-back** is placement, not movement: it triggers nothing — no second collision, no special space, no home entry. The destination is always the cell one step back along the track, which always exists for a deployed operator (the only cell an operator can occupy immediately after deploying is S, which is safe and therefore cannot be contested).
 
-Because collision can only happen on a non-safe cell, and non-safe cells never hold more than one enemy, **a collision is always exactly 1v1**.
+### 7.5 Stacked occupants
+
+**A contested cell can hold more than one enemy, and the mover strikes all of them.**
+
+This corrects a claim this section previously made — that a collision is always exactly 1v1, because a non-safe cell never holds more than one enemy. That is false, and it contradicts §4.5. Three ordinary sequences produce a stack:
+
+- **Friendly stacking.** Two operators of the same colour may share any cell (§4.5). A third player landing there meets both.
+- **Bounce-back.** A bounced mover is _placed_ one step back and triggers nothing (§7.2) — including no collision, so it may land on an occupied cell.
+- **Forced movement.** A pull places its target without colliding (§7.4), which can drop it onto a cell an enemy already holds.
+
+The rule:
+
+1. The mover deals `CollisionDamage`, type **Normal**, to **every** enemy on the cell, each through the standard pipeline (§2.1).
+2. **If every one of them is neutralized,** they all go to the yard and the mover takes the cell.
+3. **If any survives** — by health, evasion or shield — **the survivors hold the cell and the mover is bounced back one step.**
+
+The mover still takes nothing. Collision remains one-directional.
+
+Striking the whole stack, rather than one occupant, was chosen over two alternatives. Picking a single victim needs a tie-break rule no player could predict at the table. Treating a stack as a Ludo-style blockade that cannot be landed on at all is a defensible game — but it is a _new mechanic_, not a clarification, and it would make stacking a purely defensive tool in a game whose stated priority is combat. Hitting everything makes a stack dangerous to stand in and dangerous to charge, which is the tension worth having.
+
+> This rule was found by simulation, not by review. The invariant held for two years of design documents and failed in the first three hundred simulated matches.
 
 ### 7.3 What collision damage means at 3
 
@@ -386,23 +408,49 @@ The execute threshold is evaluated **before** the direct damage lands, on the ta
 
 These are dials and scope, not holes. Nothing here blocks implementation.
 
-All numbers below were measured, not estimated. See ADR-0002 Amendment 2 and `tools/sim/` for the harness. Current measured baseline, 4 players on the Standard board with the alpha roster: **16.7 turns mean, p90 21**, ~8 neutralizes and ~33 abilities per match.
+All numbers below are measured against the live core by `tools/sim/NonaRoyale.Sim`, 800 matches per configuration, four players. They replace the figures from the earlier Python model, which flattened every ability into damage at range 3 and overstated lethality by roughly half.
 
-**Balance**
+**Current baseline, with `openingDeployments = 2`:**
 
-1. **Board occupancy is the real problem, and it isn't a speed problem.** All three of a player's operators are simultaneously on the board for only **10–15% of turns**. Deploy friction plus neutralize-to-yard keeps the track sparse, which starves a game that is 70% combat. The two dials are the deploy gate (item 2) and the setback (item 3).
-2. **Deploy gate.** Requiring a 6 costs ~1.9 turns per match. Allowing deploy on **a 6 or any double** recovers it (11/36 → 16/36) and raises occupancy. Not adopted — it changes ADR-0003 — but it is the cheapest available fix if the board reads as empty.
-3. **The yard setback is the most expensive single rule in the game.** Measured at 4P/Standard: neutralize → yard costs 6.4 turns per match; → start cell costs 3.0; → half progress costs 1.7. If matches run long or losing feels unrecoverable, soften this _before_ touching damage numbers.
-4. `CollisionDamage = 3` — first dial if the race layer reads as toothless (§7.3). Dropping ability damage from 3/2 to 2/1 cuts neutralizes by half and shortens matches by 3.4 turns, so damage and pacing are the same dial.
+| Profile       | Turns | p90 | Neutralizes | Abilities | Full squad on board |
+| ------------- | ----- | --- | ----------- | --------- | ------------------- |
+| Standard 48×1 | 13.9  | 16  | 3.0         | 28.9      | 27%                 |
+| Compact 24×2  | 16.7  | 22  | 8.2         | 38.0      | 25%                 |
+
+**Balance dials, ranked by effect per turn spent**
+
+1. **Ability reach — the largest lever, deliberately unspent.** Adding +1 to every range and radius buys **+47% neutralizes on Standard and +37% on Compact, for under 1.5 turns**. Nothing else measured is close, and it confirms what the geometry work established: abilities were missing because they could not reach, not because they were weak or expensive.
+
+   Held in reserve rather than applied. The thinness it would fix is one no human has yet reported feeling, and the figure comes from a scripted player that fires everything it can afford at whatever is nearest. Spend it after playtest, not before.
+
+   **Note the coupling.** Reach is roster data, so there is one value across both profiles. Standard is the configuration that would benefit; Compact is already dense and +1 takes it to 11.2 neutralizes at a p90 of 24 turns. Tuning reach down later to calm Compact would re-thin Standard. Making range scale with loop size would break that coupling, and is a new concept nothing currently supports.
+
+2. **Loop size with laps.** Now a shipping choice rather than a dial — the two profiles above are the same game at two densities.
+
+3. **Opening deployments.** Adopted at 2. The only lever found that improves a problem at no cost elsewhere: occupancy roughly doubles and matches get shorter. `openingDeployments = 1` is retained for a more classic Ludo opening.
+
+4. **Journey length.** The only thing that buys occupancy outright, and it costs pacing directly. 48×2 reaches 22% occupancy at 37.6 turns.
+
 5. `EvasionChance = 0.5` — the per-round cap bounds the worst case; the rate itself is free to move.
-6. `EnergyCap = 12` against a `floor(total/2)` drip — governs how often ultimates appear. ~50 energy per match is currently burned at the cap, almost all of it pre-contact in the opening turns.
+
+6. `EnergyCap = 12` against a `floor(total/2)` drip — governs how often ultimates appear. Roughly 24 energy per match is burned at the cap, almost all of it pre-contact in the opening turns.
+
+**Struck**
+
+- **`CollisionDamage` is not a dial.** Moving it from 2 to 6 changes match length by 0.4 turns and neutralizes by 1.1, because collisions occur only ~2.4 times a match on Standard. §7.3 and ADR-0002 Amendment 2 both named it as the first lever if the race reads as toothless; that advice was wrong and is withdrawn.
+- **The yard setback is no longer the most expensive rule.** The Python model showed it costing 6.4 turns per match at ~8 neutralizes. At the measured 3.0, it fires roughly once per player per match and its contribution is small.
+
+**Open, unmeasured**
+
+- **Two-player matches are close to a pure race.** Pacing barely moves with seat count (16.5 / 16.4 / 16.8 turns at 2 / 3 / 4) but combat scales hard: **0.6 neutralizes at two players against 4.0 at four.** If 1v1 is meant to be a real mode it needs its own configuration, not just fewer seats.
+- **Whether any of this is fun.** The harness reports pacing and throughput. It says nothing about whether the density on Compact reads as tension or as noise, or whether Standard reads as thin. That is the next thing to find out, and only a human can.
 
 **Scope**
 
-7. **Special spaces** are deferred (ADR-0003). Shield is defined (§5.6); Teleport, Slippery, Checkpoint, RollAgain, and SharksTable are not. Note that Checkpoint conflicts with §1.2's "return to yard" and needs an explicit exception when it lands.
-8. **"Brawler" is a fifth archetype** (Kurbyn) outside the base four. Add it or re-tag — cosmetic, unblocking.
-9. **Six of nine operators unwritten.** They must be expressible in the rules above; a new operator needing a new _mechanic_ gets an amendment to this doc, not a special case in its own stat block.
-10. Flavour fields across the roster (`OPERATORS.md`).
+1. **Special spaces** are deferred (ADR-0003). Shield is defined (§5.6); Teleport, Slippery, Checkpoint, RollAgain, and SharksTable are not. Note that Checkpoint conflicts with §1.2's "return to yard" and needs an explicit exception when it lands.
+2. **"Brawler" is a fifth archetype** (Kurbyn) outside the base four. Add it or re-tag — cosmetic, unblocking.
+3. **Six of nine operators unwritten.** They must be expressible in the rules above; a new operator needing a new _mechanic_ gets an amendment to this doc, not a special case in its own stat block.
+4. Flavour fields across the roster (`OPERATORS.md`).
 
 ---
 
@@ -437,6 +485,9 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - `PassingThroughOccupiedCell_DoesNotCollide`
 - `LandingOnFriendlyOperator_DoesNotCollide`
 - `BounceBack_DoesNotTriggerSecondCollision`
+- `LandingOnAStackOfEnemies_StrikesEveryOneOfThem`
+- `AStackWithAnySurvivor_HoldsTheCell`
+- `AStackWipedOut_YieldsTheCell`
 - `EvadedCollisionDamage_StillBouncesMoverBack`
 - `PulledOperator_DoesNotCollideOnArrival`
 
@@ -505,5 +556,7 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 ## Status history
 
 - 2026-09-11 — Accepted (alpha). Unified capture and damage into one neutralize model; defined Atomic pierce, Stun, Stealth, Evasion, Shield, Bleed, Mark; cut Energy Efficiency and per-operator energy; replaced the energy economy; pinned targeting, AOE, resolution order, and collision; re-expressed the three alpha operators with zero TBDs.
+- 2026-09-12 — §12 rewritten against live-core measurements. Reach identified as the largest balance lever and deliberately left unspent; `CollisionDamage` struck as a dial; the yard setback demoted; opening deployments and the two shipping profiles recorded (ADR-0002 Amendment 3, ADR-0003 Amendment).
+- 2026-09-12 — Amended after the first simulation run against the live rules. §7.2's "a collision is always exactly 1v1" was false — it contradicted §4.5, and bounce-back and pulls reach the same state. Replaced by §7.5: the mover strikes every enemy on the cell and takes it only if all of them fall.
 - 2026-09-11 — Amended during core implementation. Six rules the document did not cover were forced by writing the code and are now stated here: deploy consuming one die each (§1.3); a failed evasion roll spending the charge (§5.5); expiry sweeping the turn it is called in (§6); the pull clamp at a target's own start cell (§7.4); and cast mode being chosen once from the target (§10.1). No existing rule changed.
 - 2026-09-11 — Amended after simulation (ADR-0002 Amendment 2). Speed band set to 1.5–2.0 and roster restated (Bouncer 1.5, Syla 2.0, Kurbyn 1.5+0.5); Slow rescaled to −0.5; Tagged From Above's payout cut from +3 to +0.5; §12 balance items replaced with measured figures. Damage, energy, targeting, status and collision rules unchanged.

@@ -264,13 +264,19 @@ namespace NonaRoyale.Core
 
             if (collision.Occurred)
             {
-                EmitDamage(collision.Occupant, collision.Damage, events);
-                events.Add(new CollisionResolved(op, collision.Occupant, collision.MoverBouncedBack));
-
-                if (collision.OccupantNeutralized)
+                for (int i = 0; i < collision.Occupants.Count; i++)
                 {
-                    _neutralize.Apply(collision.Occupant);
-                    events.Add(new OperatorNeutralized(collision.Occupant));
+                    var occupant = collision.Occupants[i];
+                    var result = collision.Damage[i];
+
+                    EmitDamage(occupant, result, events);
+                    events.Add(new CollisionResolved(op, occupant, collision.MoverBouncedBack));
+
+                    if (result.Outcome == DamageOutcome.Neutralized)
+                    {
+                        _neutralize.Apply(occupant);
+                        events.Add(new OperatorNeutralized(occupant));
+                    }
                 }
             }
 

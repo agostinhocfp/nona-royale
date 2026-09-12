@@ -23,11 +23,13 @@ namespace NonaRoyale.Core.Services
     ///
     /// <list type="bullet">
     /// <item><b>Collision is one-directional.</b> The mover never takes damage.</item>
-    /// <item><b>Collision is always exactly 1v1.</b> It can only happen on a
-    /// non-safe cell, and non-safe cells never hold more than one enemy — so
-    /// there is no multi-target case to design for. Finding two enemies means
-    /// something upstream is broken, and this type says so rather than picking
-    /// one.</item>
+    /// <item><b>A contested cell can hold more than one enemy.</b> Friendly
+    /// operators stack freely (§4.5), and both bounce-back and pulls are
+    /// placement that never collides — so a stack of enemies on a non-safe cell
+    /// is reachable by ordinary play. The mover strikes <i>every</i> enemy on
+    /// the cell, and takes it only if all of them fall. Running into a pair
+    /// should be dangerous for them and hard for you, not a coin flip over which
+    /// one you hit.</item>
     /// <item><b>Bounce-back is placement, not movement.</b> It triggers nothing:
     /// no second collision, no special space, no home entry (§7.2).</item>
     /// </list>
@@ -77,42 +79,44 @@ namespace NonaRoyale.Core.Services
             if (_map.IsSafe(move.Destination))
                 return CollisionResult.None(move.To);
 
-            OperatorState occupant = FindSoleEnemyOn(move.Destination, mover, allOperators);
+            var occupants = FindEnemiesOn(move.Destination, mover, allOperators);
 
-            // Friendly operators stack freely; there is no blocking in the MVP (§4.5).
-            if (occupant == null)
+            if (occupants.Count == 0)
                 return CollisionResult.None(move.To);
 
-            var damage = _damage.Apply(occupant, new DamageInstance(
-                _config.CollisionDamage, DamageType.Normal, mover.Id, "collision"));
+            var damage = new List<DamageResult>(occupants.Count);
+            bool anySurvived = false;
 
-            // A surviving occupant holds the cell — however it survived.
-            // Evasion negates damage, never movement (§5.5).
-            if (damage.TargetSurvived)
-                return CollisionResult.Bounced(occupant, damage, _movement.BounceBackProgress(move.To));
+            foreach (var occupant in occupants)
+            {
+                var result = _damage.Apply(occupant, new DamageInstance(
+                    _config.CollisionDamage, DamageType.Normal, mover.Id, "collision"));
 
-            return CollisionResult.CellTaken(occupant, damage, move.To);
+                damage.Add(result);
+                if (result.TargetSurvived) anySurvived = true;
+            }
+
+            // Any survivor holds the cell — however it survived. Evasion negates
+            // damage, never movement (§5.5).
+            if (anySurvived)
+                return CollisionResult.Bounced(occupants, damage, _movement.BounceBackProgress(move.To));
+
+            return CollisionResult.CellTaken(occupants, damage, move.To);
         }
 
-        private OperatorState FindSoleEnemyOn(
+        private List<OperatorState> FindEnemiesOn(
             CellRef cell, OperatorState mover, IEnumerable<OperatorState> allOperators)
         {
-            OperatorState found = null;
+            var found = new List<OperatorState>();
 
             foreach (var candidate in allOperators)
             {
                 if (candidate == null || ReferenceEquals(candidate, mover)) continue;
-                if (candidate.Owner == mover.Owner) continue;
+                if (candidate.Owner == mover.Owner) continue;      // friendlies stack freely (§4.5)
                 if (!_map.IsOnOuterTrack(candidate.Progress)) continue;
                 if (_map.CellAt(candidate.Owner, candidate.Progress) != cell) continue;
 
-                if (found != null)
-                    throw new InvalidOperationException(
-                        $"Two enemies occupy {cell}, which the rules make impossible: " +
-                        "collisions only happen on non-safe cells, and a non-safe cell can hold " +
-                        "at most one enemy. Something upstream let a collision be skipped.");
-
-                found = candidate;
+                found.Add(candidate);
             }
 
             return found;
