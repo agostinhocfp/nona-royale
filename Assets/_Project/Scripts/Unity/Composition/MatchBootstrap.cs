@@ -87,7 +87,7 @@ namespace NonaRoyale.Unity.Composition
                 go.transform.SetParent(transform, false);
 
                 var piece = go.AddComponent<OperatorPiece>();
-                piece.Bind(op, _layout.CellSize * 0.62f);
+                piece.Bind(op, _layout.CellSize);
                 _pieces.Add(piece);
             }
 

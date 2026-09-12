@@ -1,76 +1,3 @@
-// // Assets/_Project/Scripts/Unity/View/OperatorPiece.cs
-// using NonaRoyale.Core.Model;
-// using UnityEngine;
-
-// namespace NonaRoyale.Unity.View
-// {
-//     /// <summary>
-//     /// One operator on screen. Holds no game state — it is told where to be and
-//     /// slides there.
-//     /// </summary>
-//     /// <remarks>
-//     /// The piece animates toward its target rather than snapping, purely so a
-//     /// human can follow what happened. A move of eight cells is legible when it
-//     /// travels; it is a teleport when it snaps, and telling a bounce-back from a
-//     /// normal move becomes impossible.
-//     /// </remarks>
-//     public sealed class OperatorPiece : MonoBehaviour
-//     {
-//         private const float SlideSpeed = 9f;
-
-//         private SpriteRenderer _body;
-//         private SpriteRenderer _outline;
-//         private Vector3 _target;
-
-//         public OperatorState Operator { get; private set; }
-
-//         public void Bind(OperatorState op, float size)
-//         {
-//             Operator = op;
-//             name = $"{op.Owner}_{op.Name}";
-
-//             _body = gameObject.AddComponent<SpriteRenderer>();
-//             _body.sprite = Primitives.Disc;
-//             _body.color = BoardLayout.ColourOf(op.Owner);
-//             _body.sortingOrder = 2;
-
-//             var outlineGo = new GameObject("outline");
-//             outlineGo.transform.SetParent(transform, false);
-//             outlineGo.transform.localScale = Vector3.one * 1.35f;
-
-//             _outline = outlineGo.AddComponent<SpriteRenderer>();
-//             _outline.sprite = Primitives.Ring;
-//             _outline.color = new Color(0.05f, 0.05f, 0.07f);
-//             _outline.sortingOrder = 1;
-
-//             transform.localScale = Vector3.one * size;
-//         }
-
-//         public void MoveTo(Vector3 position, bool immediate)
-//         {
-//             _target = position;
-//             if (immediate) transform.position = position;
-//         }
-
-//         /// <summary>Dims a wounded operator, so health is readable without a bar.</summary>
-//         public void Refresh()
-//         {
-//             if (Operator == null || _body == null) return;
-
-//             float health = Mathf.Clamp01((float)Operator.Health / Operator.MaxHealth);
-//             _body.color = Color.Lerp(
-//                 BoardLayout.ColourOf(Operator.Owner) * 0.35f,
-//                 BoardLayout.ColourOf(Operator.Owner),
-//                 0.35f + 0.65f * health);
-//         }
-
-//         private void Update()
-//         {
-//             transform.position = Vector3.Lerp(transform.position, _target, Time.deltaTime * SlideSpeed);
-//         }
-//     }
-// }
-
 // Assets/_Project/Scripts/Unity/View/OperatorPiece.cs
 using NonaRoyale.Core.Model;
 using UnityEngine;
@@ -93,30 +20,37 @@ namespace NonaRoyale.Unity.View
 
         private SpriteRenderer _body;
         private SpriteRenderer _outline;
+        private Color _seatColour;
         private Vector3 _target;
 
         public OperatorState Operator { get; private set; }
 
-        public void Bind(OperatorState op, float size)
+        public void Bind(OperatorState op, float cellSize)
         {
             Operator = op;
             name = $"{op.Owner}_{op.Name}";
 
-            _body = gameObject.AddComponent<SpriteRenderer>();
-            _body.sprite = Primitives.Disc;
-            _body.color = BoardLayout.ColourOf(op.Owner);
-            _body.sortingOrder = 2;
+            _seatColour = BoardLayout.ColourOf(op.Owner);
+            var shape = PieceShape.For(op);
 
+            _body = gameObject.AddComponent<SpriteRenderer>();
+            _body.sprite = shape;
+            _body.color = _seatColour;
+            _body.sortingOrder = 3;
+
+            // The same shape, larger and dark, behind: an outline that works for
+            // any silhouette without a second sprite per shape.
             var outlineGo = new GameObject("outline");
             outlineGo.transform.SetParent(transform, false);
-            outlineGo.transform.localScale = Vector3.one * 1.35f;
+            outlineGo.transform.localScale = Vector3.one * 1.28f;
 
             _outline = outlineGo.AddComponent<SpriteRenderer>();
-            _outline.sprite = Primitives.Ring;
-            _outline.color = new Color(0.05f, 0.05f, 0.07f);
-            _outline.sortingOrder = 1;
+            _outline.sprite = shape;
+            _outline.color = new Color(0.04f, 0.04f, 0.06f);
+            _outline.sortingOrder = 2;
 
-            transform.localScale = Vector3.one * size;
+            transform.localScale = Vector3.one * cellSize * PieceShape.SizeFor(op);
+            Refresh();
         }
 
         public void MoveTo(Vector3 position, bool immediate)
@@ -125,16 +59,20 @@ namespace NonaRoyale.Unity.View
             if (immediate) transform.position = position;
         }
 
-        /// <summary>Dims a wounded operator, so health is readable without a bar.</summary>
+        /// <summary>
+        /// Dims a wounded operator and greys out one in the yard, so health and
+        /// availability are readable without a bar or a label.
+        /// </summary>
         public void Refresh()
         {
             if (Operator == null || _body == null) return;
 
             float health = Mathf.Clamp01((float)Operator.Health / Operator.MaxHealth);
-            _body.color = Color.Lerp(
-                BoardLayout.ColourOf(Operator.Owner) * 0.35f,
-                BoardLayout.ColourOf(Operator.Owner),
-                0.35f + 0.65f * health);
+            var tint = Color.Lerp(_seatColour * 0.3f, _seatColour, 0.3f + 0.7f * health);
+
+            if (Operator.IsInYard) tint = Color.Lerp(tint, new Color(0.4f, 0.4f, 0.42f), 0.55f);
+
+            _body.color = tint;
         }
 
         private void Update()
