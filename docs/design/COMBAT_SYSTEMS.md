@@ -156,6 +156,8 @@ This makes ADR-0003's home-entry safe cell redundant in the best way, and remove
 
 Friendly operators may share any cell freely. There is no blocking mechanic in the MVP. (ADR-0003's `SharksTable` special space hints at a two-operators-on-a-cell mechanic; special spaces are deferred and it is not defined here.)
 
+Because of this, an enemy _stack_ on a contested cell is reachable in ordinary play. What happens when a mover lands on one is §7.5.
+
 ---
 
 ## 5. Status effects
@@ -283,6 +285,30 @@ Pull, push, and teleport effects **never collide** and never trigger cell effect
 
 An operator pulled toward a puller is placed on the **last track cell between them** — adjacent to the puller, on the side it came from. This preserves "pulled toward" whether the target was ahead or behind, and guarantees two operators never co-occupy a contested cell as a side effect of an ability.
 
+```markdown
+### 7.5 Stacked occupants
+
+**A contested cell can hold more than one enemy, and the mover strikes all of them.**
+
+This corrects a claim this section previously made — that a collision is always exactly 1v1, because a non-safe cell never holds more than one enemy. That is false, and it contradicts §4.5. Three ordinary sequences produce a stack:
+
+- **Friendly stacking.** Two operators of the same colour may share any cell (§4.5). A third player landing there meets both.
+- **Bounce-back.** A bounced mover is _placed_ one step back and triggers nothing (§7.2) — including no collision, so it may land on an occupied cell.
+- **Forced movement.** A pull places its target without colliding (§7.4), which can drop it onto a cell an enemy already holds.
+
+The rule:
+
+1. The mover deals `CollisionDamage`, type **Normal**, to **every** enemy on the cell, each through the standard pipeline (§2.1).
+2. **If every one of them is neutralized,** they all go to the yard and the mover takes the cell.
+3. **If any survives** — by health, evasion or shield — **the survivors hold the cell and the mover is bounced back one step.**
+
+The mover still takes nothing. Collision remains one-directional.
+
+Striking the whole stack, rather than one occupant, was chosen over two alternatives. Picking a single victim needs a tie-break rule no player could predict at the table. Treating a stack as a Ludo-style blockade that cannot be landed on at all is a defensible game — but it is a _new mechanic_, not a clarification, and it would make stacking a purely defensive tool in a game whose stated priority is combat. Hitting everything makes a stack dangerous to stand in and dangerous to charge, which is the tension worth having.
+
+> This rule was found by simulation, not by review. The invariant held for two years of design documents and failed in the first three hundred simulated matches.
+```
+
 ---
 
 ## 8. Win condition
@@ -405,18 +431,46 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 These are dials and scope, not holes. Nothing here blocks implementation.
 
-All numbers below were measured, not estimated. See ADR-0002 Amendment 2 and `tools/sim/` for the harness. Current measured baseline, 4 players on the Standard board with the alpha roster: **16.7 turns mean, p90 21**, ~8 neutralizes and ~33 abilities per match.
+All numbers below are measured against the live core by `tools/sim/NonaRoyale.Sim`, 600–800 matches per configuration, four players. They replace the figures from the earlier Python model, which flattened every ability into damage at range 3 and overstated lethality by roughly half.
 
-**Balance**
+**Current baseline** — Standard 48×1, band 1.0/1.5/1.5, `openingDeployments = 2`:
 
-1. **Board occupancy is the real problem, and it isn't a speed problem.** All three of a player's operators are simultaneously on the board for only **10–15% of turns**. Deploy friction plus neutralize-to-yard keeps the track sparse, which starves a game that is 70% combat. The two dials are the deploy gate (item 2) and the setback (item 3).
-2. **Deploy gate.** Requiring a 6 costs ~1.9 turns per match. Allowing deploy on **a 6 or any double** recovers it (11/36 → 16/36) and raises occupancy. Not adopted — it changes ADR-0003 — but it is the cheapest available fix if the board reads as empty.
-3. **The yard setback is the most expensive single rule in the game.** Measured at 4P/Standard: neutralize → yard costs 6.4 turns per match; → start cell costs 3.0; → half progress costs 1.7. If matches run long or losing feels unrecoverable, soften this _before_ touching damage numbers.
-4. `CollisionDamage = 3` — first dial if the race layer reads as toothless (§7.3). Dropping ability damage from 3/2 to 2/1 cuts neutralizes by half and shortens matches by 3.4 turns, so damage and pacing are the same dial.
-5. `EvasionChance = 0.5` — the per-round cap bounds the worst case; the rate itself is free to move.
-6. `EnergyCap = 12` against a `floor(total/2)` drip — governs how often ultimates appear. ~50 energy per match is currently burned at the cap, almost all of it pre-contact in the opening turns.
-7. `MarkDamagePerTurn = 2` over a 2-turn duration — **unmeasured.** Set by reasoning, not simulation: 4 total leaves a 6-HP target at 2 and inside every finisher on the roster, while 9 (3 over 3 turns) would kill unassisted and make the ult's payout self-fulfilling. Both the per-turn damage and the duration are independent dials. Re-run the harness before trusting either.
-8. `SlowSpeedPenalty = 0.5` against the lowered 1.0–1.5 band takes a 1.0 operator to the `MinSpeedMultiplier` floor (§5.2). Slow is meaningfully harsher than it was under Amendment 2 and was not re-measured when the band moved.
+**19.6 turns, p90 24, 6.7 neutralizes, 43.3 abilities, 33% squad occupancy.**
+
+**Balance dials, ranked by effect per turn spent**
+
+1. **Ability reach — the largest lever, deliberately unspent.** Adding +1 to every range and radius buys **+47% neutralizes on Standard, for under 1.5 turns**. Nothing else measured is close, and it confirms what the geometry work established: abilities were missing because they could not reach, not because they were weak or expensive.
+
+   Held in reserve rather than applied. The thinness it would fix is one no human has yet reported feeling, and the figure comes from a scripted player that fires everything it can afford at whatever is nearest. Spend it after playtest, not before.
+
+2. **Opening deployments.** Adopted at 2. The only lever found that improves a problem at no cost elsewhere: occupancy roughly doubles and matches get _shorter_. `openingDeployments = 1` is retained for a more classic Ludo opening.
+
+3. **Journey length.** The only thing that buys occupancy outright, and it costs pacing directly.
+
+4. `EvasionChance = 0.5` — the per-round cap bounds the worst case; the rate itself is free to move.
+
+5. `EnergyCap = 12` against a `floor(total/2)` drip — governs how often ultimates appear. Roughly 24 energy per match is burned at the cap, almost all of it pre-contact in the opening turns.
+
+6. `MarkDamagePerTurn = 2` over a 2-turn duration — **unmeasured.** Set by reasoning, not simulation: 4 total leaves a 6-HP target at 2 and inside every finisher on the roster, while 9 (3 over 3 turns) would kill unassisted and make the ult's payout self-fulfilling. Both the per-turn damage and the duration are independent dials. Re-run the harness before trusting either.
+
+7. `SlowSpeedPenalty = 0.5` against the lowered 1.0–1.5 band takes a 1.0 operator to the `MinSpeedMultiplier` floor (§5.2). Slow is meaningfully harsher than it was under the earlier band and was not re-measured when the band moved.
+
+**Struck**
+
+- **`CollisionDamage` is not a dial.** Moving it from 2 to 6 changes match length by 0.4 turns and neutralizes by 1.1, because collisions occur only ~2.4 times a match on Standard. This section and ADR-0002 Amendment 2 both named it as the first lever if the race reads as toothless; that advice was wrong and is withdrawn.
+- **The yard setback is not the most expensive rule.** The Python model showed it costing 6.4 turns per match at ~8 neutralizes. At the measured 6.7 across four players it fires under twice per player per match, and its contribution is far smaller than claimed.
+- **Occupancy is no longer 10–15%.** It measured that under the old speed band. At the adopted band with opening deployments it is **33%** — the highest measured anywhere, and no longer the headline problem.
+
+**Open, unresolved rules conflict**
+
+- **Slows and auras stack, and §5.2 says they should not.** `GameEngine` sums two channels when computing effective speed — `StatusRegistry.SpeedModifier` and `AuraRules.SpeedModifierFor` — so From the Hip's slow and Bouncer's Intimidating Presence apply together. §5.2 states that slow sources do not stack and the largest applies. Within each channel that holds; across the two it does not.
+
+  Both readings are defensible: an aura and a status are arguably different things, and a tank's presence compounding a wound is reasonable. But the doc says one thing and the code does another, which is the state this project exists to avoid. **Decide it.** _(Formerly decision-log D-007, which is abandoned.)_
+
+**Open, unmeasured**
+
+- **Two-player matches are close to a pure race.** Pacing barely moves with seat count but combat scales hard: **0.6 neutralizes at two players against 4.0 at four**, measured under the older band. If 1v1 is meant to be a real mode it needs its own configuration, not just fewer seats.
+- **Whether any of this is fun.** The harness reports pacing and throughput. It says nothing about whether the density reads as tension or as thinness. Only a human can.
 
 **Scope**
 
@@ -460,6 +514,9 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - `PassingThroughOccupiedCell_DoesNotCollide`
 - `LandingOnFriendlyOperator_DoesNotCollide`
 - `BounceBack_DoesNotTriggerSecondCollision`
+- `LandingOnAStackOfEnemies_StrikesEveryOneOfThem`
+- `AStackWithAnySurvivor_HoldsTheCell`
+- `AStackWipedOut_YieldsTheCell`
 - `EvadedCollisionDamage_StillBouncesMoverBack`
 - `PulledOperator_DoesNotCollideOnArrival`
 
@@ -541,3 +598,7 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - 2026-09-11 — Amended after simulation (ADR-0002 Amendment 2). Speed band set to 1.5–2.0 and roster restated (Bouncer 1.5, Syla 2.0, Kurbyn 1.5+0.5); Slow rescaled to −0.5; Tagged From Above's payout cut from +3 to +0.5; §12 balance items replaced with measured figures. Damage, energy, targeting, status and collision rules unchanged.
 - 2026-09-12 — Doc caught up to ADR-0002 Amendment 4. Speed band lowered to 1.0–1.5 and the roster restated (Bouncer 1.0, Syla 1.5, Kurbyn 1.0+0.5) across §5.2, §6, §10.1, §10.2 and §10.3; the band had been changed in the core and in the tests without the doc following. Slow's interaction with the lower band noted as unmeasured (§12 item 8). No rule changed here — this is a correction, not a decision.
 - 2026-09-12 — Mark given damage over time. `MarkDamagePerTurn = 2` Atomic at the marked operator's upkeep, every turn, with Tagged From Above's duration cut 3 → 2 (§5.7, §6, §10.2). Mark was previously bookkeeping only, which left a 9-energy ultimate doing nothing on the turn it was cast. The ult's separate "within 3 of Syla's turns" payout window is replaced by the mark's own duration. All-In Mauling retuned to range 2 with 1 self-damage (§10.1), and the energy drip documented as the real cooldown on anything costing 6 or more (§3.1).
+- 2026-09-12 — Amended after the first simulation run against the live rules. §7.2's "a collision is always exactly 1v1" was false — it contradicted §4.5, and bounce-back and pulls reach the same state. Replaced by §7.5: the mover strikes every enemy on the cell and takes it only if all of them fall.
+- 2026-09-12 — §12 rewritten against live-core measurements, replacing the Python model's figures. Reach identified as the largest balance lever and deliberately left unspent; `CollisionDamage` struck as a dial; the yard setback demoted; occupancy corrected from 10–15% to 33%. Gained the slow/aura stacking conflict, rehoused from the abandoned decision log.
+- 2026-09-12 — Amended after the first simulation run against the live rules. §7.2's "a collision is always exactly 1v1" was false — it contradicted §4.5, and bounce-back and pulls reach the same state. Replaced by §7.5: the mover strikes every enemy on the cell and takes it only if all of them fall.
+- 2026-09-12 — §12 rewritten against live-core measurements, replacing the Python model's figures. Reach identified as the largest balance lever and deliberately left unspent; `CollisionDamage` struck as a dial; the yard setback demoted; occupancy corrected from 10–15% to 33%. Gained the slow/aura stacking conflict, rehoused from the abandoned decision log.

@@ -18,9 +18,11 @@ That divergence is the same failure that caused the project restart, one layer u
 
 ## Roster scope
 
-The pool is **nine operators**; each player fields **three per match**. Three are built for the alpha. The remaining six are unwritten.
+The pool is **nine operators**; each player fields **three per match**. Three are built for the alpha. One more is in design. The remaining five are unwritten.
 
 A new operator must be expressible in the existing combat rules. One that needs a genuinely new _mechanic_ gets an amendment to `COMBAT_SYSTEMS.md` — never a special case inside its own stat block. That rule is what stops the roster from becoming nine sets of bespoke exceptions.
+
+**An operator is not finished until its mechanics exist.** Flavour can be written here at any time; §10 takes an operator only once every rule it needs is implemented and tested. Until then it lives under _In design_ below, with what it is blocked on written down.
 
 ---
 
@@ -28,7 +30,7 @@ A new operator must be expressible in the existing combat rules. One that needs 
 
 The base four are **Tank**, **Assassin**, **Controller**, **Support**.
 
-Kurbyn is tagged **Brawler**, which is a fifth. That is unresolved: either Brawler joins the list as a defined archetype with its own design brief, or Kurbyn is re-tagged. Cosmetic, but it should not stay ambiguous once six more operators need slotting.
+Kurbyn is tagged **Brawler**, which is a fifth. That is unresolved: either Brawler joins the list as a defined archetype with its own design brief, or Kurbyn is re-tagged. Cosmetic, but it should not stay ambiguous once five more operators need slotting.
 
 ---
 
@@ -56,6 +58,28 @@ Read at the table: _the one who is always already there._
 
 ---
 
+## In design
+
+### Mimi — Controller
+
+A cryogenics rig and a coordinate-swap device. She freezes the ground out from under a target, hangs a field of cold on herself that bites anything that lingers, and when the fight arrives at her she simply trades places with whoever brought it.
+
+She is the most fragile operator on the roster and moves at the same speed as the tank, so she cannot run from anything. What she has instead is reach — she can open an exchange from further out than any other operator can answer from, and she can leave one the same way. A player who treats her as a damage dealer will lose her in two hits; a player who treats her as a lever will move the whole board with her.
+
+Her entire kit is one damage type, deliberately: she is the answer to an opponent who hides behind barriers, and she is helpless against one who simply doesn't get hit.
+
+Read at the table: _the one who is never where you left her._
+
+**Blocked on three mechanics that do not exist yet:**
+
+- **The Tech damage type.** Deferred pending shields having a real source. Mimi is currently the strongest argument for building both — an anti-shield operator is a reason for the type to exist at all.
+- **A swap effect.** Needs a sixth effect kind, and it inherits the backwards-wrap edge case that `AbilityResolver.PlaceAdjacentToCaster` already clamps for Velvet Rope without `COMBAT_SYSTEMS` §7.4 covering it. Translocation makes that amendment overdue rather than optional.
+- **A field that damages on a duration.** Auras are currently permanent and carry speed effects only.
+
+Until all three land, her numbers stay in the draft and out of §10.
+
+---
+
 ## Design constraints on future operators
 
 - **Silhouette-first.** Identifiable in pure black at board scale (`ART_DIRECTION.md` §5).
@@ -63,13 +87,16 @@ Read at the table: _the one who is always already there._
 - **A discreet tech tell.** Formalwear silhouette, with one visible device that hints at the ability.
 - **Expressible in the existing rules**, per Roster scope above.
 - **No operator carries a stat nobody can feel.** Energy Efficiency was cut for exactly this reason: one value on one operator, blank on two, and no rule ever attached to it.
+- **One damage type is an identity, not a default.** A kit built entirely around a single type says what that operator answers and what answers it. It only works while the types stay scarce — the moment most abilities pierce most defences, the defences stop existing and so does the identity.
 
 ---
 
 ## Open items
 
 - [ ] Resolve **Brawler**: define it as a fifth archetype, or re-tag Kurbyn.
-- [ ] Write the remaining **six operators**, mechanically and in flavour.
+- [ ] Unblock **Mimi** — Tech damage type, swap effect, duration field. Then write her into `COMBAT_SYSTEMS.md` §10.4.
+- [ ] Settle the **tech level**. Bouncer has a rope and Kurbyn has a neural-prediction rig; Mimi has a singularity core and tachyon targeting. Those are not the same world. Either the ceiling moves up for everyone or Mimi's fiction comes down to meet the others — but nine operators should not be spread across three centuries by accident.
+- [ ] Write the remaining **five operators**, mechanically and in flavour.
 - [ ] Backstory and world placement for the alpha three — how they connect to the casino, to each other, and to whoever runs the house.
 - [ ] Strengths, weaknesses, synergies, counters, playstyle notes per operator. Deferred to the balance pass; they are currently implied by the kits rather than stated.
 - [ ] Voice and naming conventions for the roster — "Nona" is nine, and the pool is nine. Whether that is coincidence or canon is undecided.

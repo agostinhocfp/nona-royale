@@ -54,6 +54,51 @@ This project is a solo effort by a full-stack developer who values testing. The 
 - **Cost:** more upfront structure than "script on a GameObject." Accepted deliberately — the stated bar is "extremely well done, polished, runs well," and a tested core is how a solo dev hits it without the game becoming unmaintainable.
 - Combat/ability rules (from `OPERATORS.md`) and the still-undefined mechanics (Atomic pierce, Stun, Stealth, Evasion, Energy Efficiency) are **core** logic and get defined in `COMBAT_SYSTEMS.md` against this architecture.
 
+---
+
+## Amendment (2026-09-12) — the boundary governs reads, not just writes
+
+### Context
+
+This ADR established that rules live in the core and the view renders state. That framing implicitly covered **writes**: the view must not mutate state, and the command/event boundary enforces it — the view has no handle on a service and could not mutate anything if it tried.
+
+It said nothing about **reads the view performs by deriving rather than asking.**
+
+The gap surfaced building the move preview. The view needs to show where an operator would land. It already receives the dice roll as an event and can read `BaseSpeedMultiplier` off an operator, so the multiplication is three lines in the view and needs no core change.
+
+That version is wrong, and wrong in the way that matters least visibly: distance also depends on status modifiers and enemy auras, neither of which the view can see. The preview would agree with the rules in the ordinary case and **disagree exactly when a slow or an aura is in play** — the moment a player most relies on it.
+
+Status badges were the same shape. `StatusApplied` and `StatusExpired` events could sustain a badge layer in the view with no core change — but passives are granted at match start without an event, and bleed stacks are consumed at upkeep without a `StatusExpired`, so the inferred layer drifts.
+
+Neither would have been caught by a test. Both would have been caught by a player, eventually, as "the game lied to me."
+
+### Decision
+
+**The single-source rule applies to derived values, not only to state changes.**
+
+> If a number appears on screen and the core can produce it, the core produces it. The view displays; it does not calculate.
+
+Concretely, a derived value the view needs becomes a **read-only query on `GameEngine`** that shares the code path of the rule it previews, rather than a calculation in the view that mirrors it.
+
+Two such queries exist:
+
+- `PreviewLandings()` — shares `Move`'s arithmetic rather than restating it.
+- `ActiveStatusesOn(op)` — surfaces `StatusRegistry.ActiveKinds`.
+
+### Why
+
+A derived value in the view is a **second implementation of a rule**, subject to the same failure this ADR was written about. The old codebase had the energy formula in two files with different thresholds; a preview that computes its own distance is that bug with a nicer excuse, because "it is only for display" is true right up until a player makes a decision on it.
+
+Read-only queries cost the core almost nothing. They add no state, cannot mutate, and are covered by the tests already exercising the path they share.
+
+### Consequences
+
+- The view's public surface on `GameEngine` will grow as presentation gets richer. That is correct: each addition is a rule the view stopped guessing at.
+- A query that does **not** share an existing code path is a warning sign — it means the rule it previews does not exist yet, and writing it in the query would put a rule in the wrong place.
+- The view layer's own rules now live in `docs/design/PRESENTATION.md`, which this amendment establishes as their owner. Before it, view decisions had no home, which is how the derive-it-locally version nearly shipped.
+
+---
+
 ## Alternatives considered
 
 - **Keep MonoBehaviour-centric, just de-singleton (DI the managers).** Less churn, but rules stay entangled with Unity and remain slow/awkward to test. Rejected: doesn't fix the core problem (testability), only the symptom (globals).
@@ -61,4 +106,5 @@ This project is a solo effort by a full-stack developer who values testing. The 
 
 ## Status history
 
+- 2026-09-12 — Amended. The single-source rule extended to derived values: the view displays numbers the core produces rather than recomputing them. `docs/design/PRESENTATION.md` established as the owner of view-layer rules.
 - 2026-07-10 — Accepted. Pure-C# core + thin Unity view + command/event boundary; hard testability wall via asmdef; hot-seat now, online-capable seam preserved.

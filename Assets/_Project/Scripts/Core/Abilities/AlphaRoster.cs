@@ -47,7 +47,7 @@ namespace NonaRoyale.Core.Abilities
         public const double KurbynPassiveSpeedBonus = 0.5;
 
         /// <summary>Intimidating Presence: enemies within this many steps of Bouncer are slowed.</summary>
-        public const int IntimidatingPresenceRadius = 2;
+        public const int IntimidatingPresenceRadius = 3;
 
         /// <summary>
         /// Bouncer's passive aura. Not an ability — it is never used, has no
@@ -103,7 +103,7 @@ namespace NonaRoyale.Core.Abilities
             id: 201, name: "From the Hip", energyCost: 3, cooldownTurns: 1, range: 3,
             effects: new[]
             {
-                AbilityEffect.Damage(EffectScope.PrimaryTarget, 2, DamageType.Normal,
+                AbilityEffect.Damage(EffectScope.PrimaryTarget, 1, DamageType.Normal,
                     EffectAudience.EnemyOnly, bonusIfBleeding: 1),
                 AbilityEffect.Status_(EffectScope.PrimaryTarget, StatusKind.Slow, duration: 1)
             });
