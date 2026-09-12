@@ -33,6 +33,10 @@ namespace NonaRoyale.Sim
         {
             int matches = args.Length > 0 && int.TryParse(args[0], out var n) ? n : 2000;
 
+            // Invariant formatting so output matches the ADR tables on any locale.
+            System.Globalization.CultureInfo.DefaultThreadCurrentCulture =
+                System.Globalization.CultureInfo.InvariantCulture;
+
             Console.WriteLine($"Nona Royale — simulation against the live core, {matches} matches per row\n");
 
             if (args.Length > 1 && args[1] == "laps") { Laps.Run(matches); return; }
@@ -40,27 +44,27 @@ namespace NonaRoyale.Sim
             if (args.Length > 1 && args[1] == "reach") { Reach.Run(matches); return; }
             if (args.Length > 1 && args[1] == "dynamic") { Dynamic.Run(matches); return; }
 
-            Header("SPEED BAND — 4 players, Standard board");
+            Header("SPEED BAND — 4 players, Standard board, opening 2");
             foreach (var band in new[]
                      {
                          ("flat 1.0", new RosterSpeeds(1.0, 1.0, 1.0)),
-                         ("1.0 / 1.5 / 1.5", new RosterSpeeds(1.0, 1.5, 1.0)),
-                         ("adopted 1.5 / 2.0 / 2.0", RosterSpeeds.Default),
+                         ("adopted 1.0 / 1.5 / 1.5", RosterSpeeds.Default),
+                         ("1.25 / 1.75 / 1.75", new RosterSpeeds(1.25, 1.75, 1.25)),
                          ("fast 2.0 / 2.5 / 2.5", new RosterSpeeds(2.0, 2.5, 2.0))
                      })
             {
                 Row(band.Item1, 4, Run(matches, 4, BoardProfile.Standard, band.Item2));
             }
 
-            Header("BOARD PROFILE — 4 players, adopted band");
+            Header("BOARD PROFILE — 4 players, adopted band, opening 2");
             foreach (var board in new[] { BoardProfile.Sprint, BoardProfile.Standard, BoardProfile.Long })
                 Row(board.ToString(), 4, Run(matches, 4, board, RosterSpeeds.Default));
 
-            Header("PLAYER COUNT — Standard board, adopted band");
+            Header("PLAYER COUNT — Standard board, adopted band, opening 2");
             for (int seats = 2; seats <= 4; seats++)
                 Row($"{seats} players", seats, Run(matches, seats, BoardProfile.Standard, RosterSpeeds.Default));
 
-            Header("COLLISION DAMAGE — 4 players, Standard board");
+            Header("COLLISION DAMAGE — 4 players, Standard board, opening 2");
             foreach (int damage in new[] { 2, 3, 4, 6 })
             {
                 Row($"CollisionDamage = {damage}", 4,
@@ -77,9 +81,12 @@ namespace NonaRoyale.Sim
 
             for (int i = 0; i < matches; i++)
             {
+                // openingDeployments: 2 is the adopted configuration (ADR-0002
+                // Amendment 3). The default sweep measured 0 for a while, which
+                // meant the headline table described a board nobody ships.
                 var match = MatchFactory.CreateAlphaMatch(
                     colours.Take(seats).ToList(), seed: i, board: board,
-                    combatConfig: combat, speeds: speeds);
+                    combatConfig: combat, speeds: speeds, openingDeployments: 2);
 
                 var stats = new MatchStats();
                 stats.Observe(match.Engine.Start());

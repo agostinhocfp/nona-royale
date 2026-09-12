@@ -21,6 +21,20 @@ namespace NonaRoyale.Core.Services
         OutOfRange = 3,
 
         /// <summary>Stealthed against this caster. Allies are unaffected (§5.4).</summary>
-        Stealthed = 4
+        Stealthed = 4,
+
+        /// <summary>
+        /// A swap would carry an operator behind its own start cell or into a
+        /// home column (§7.4).
+        /// </summary>
+        /// <remarks>
+        /// The odd one out: every verdict above is about whether the target can
+        /// be <i>aimed at</i>, and this one is about where the effect would
+        /// <i>put</i> someone. It lives here anyway because the view needs one
+        /// place to look up why a click did nothing, and inventing a second
+        /// vocabulary for the same job would be worse than the mild
+        /// inconsistency.
+        /// </remarks>
+        SwapWouldLeaveTheTrack = 5
     }
 }

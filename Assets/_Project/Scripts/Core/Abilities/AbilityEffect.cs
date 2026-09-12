@@ -103,6 +103,22 @@ namespace NonaRoyale.Core.Abilities
                 0, default, 0, default, 0, 0, 0, 0, 0, 0);
 
         /// <summary>
+        /// Caster and target exchange board cells. Placement, not movement — it
+        /// collides with nothing and triggers nothing (§7.4).
+        /// </summary>
+        /// <remarks>
+        /// Defaults to <see cref="EffectAudience.Any"/>: Mimi's Translocation
+        /// swaps with a friend or a foe, and the two modes are the same effect
+        /// rather than two branches of one ability.
+        ///
+        /// A swap can be refused after targeting has already passed — see
+        /// <see cref="EffectKind.SwapWithCaster"/>.
+        /// </remarks>
+        public static AbilityEffect Swap(EffectAudience audience = EffectAudience.Any) =>
+            new AbilityEffect(EffectKind.SwapWithCaster, EffectScope.PrimaryTarget, audience,
+                0, default, 0, default, 0, 0, 0, 0, 0, 0);
+
+        /// <summary>
         /// Neutralize if health is below <paramref name="numerator"/>/<paramref name="denominator"/>
         /// of maximum at cast time; otherwise deal <paramref name="fallbackAmount"/> instead.
         /// </summary>

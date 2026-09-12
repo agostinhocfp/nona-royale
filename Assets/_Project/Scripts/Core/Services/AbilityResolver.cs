@@ -14,7 +14,7 @@ namespace NonaRoyale.Core.Services
     /// <remarks>
     /// <b>There is no branch on which ability is being used.</b> Every ability is
     /// data (see <see cref="AlphaRoster"/>), and this resolver knows only the
-    /// five effect kinds. Adding operators four through nine should not touch
+    /// six effect kinds. Adding operators four through nine should not touch
     /// this file — if it has to, the design has introduced a genuinely new
     /// mechanic and that is worth an amendment to <c>COMBAT_SYSTEMS.md</c>
     /// rather than an <c>if</c>.
@@ -108,6 +108,16 @@ namespace NonaRoyale.Core.Services
                     return AbilityResolution.Refused(AbilityRefusal.IllegalTarget, verdict.Verdict);
             }
 
+            // Legality that depends on where an effect would *put* someone, not
+            // on whether the target can be aimed at. Checked here so a refusal
+            // still costs nothing, which is the invariant every other refusal
+            // upholds.
+            if (!SwapWouldBeLegal(ability, caster, primaryTarget))
+            {
+                return AbilityResolution.Refused(
+                    AbilityRefusal.IllegalTarget, TargetingVerdict.SwapWouldLeaveTheTrack);
+            }
+
             // Energy last, so a refusal names the problem the player can fix and
             // an illegal attempt never costs anything.
             if (!_energy.CanAfford(casterPlayer, ability.EnergyCost))
@@ -163,6 +173,10 @@ namespace NonaRoyale.Core.Services
                     case EffectKind.PullToCaster:
                         int placed = PlaceAdjacentToCaster(caster, recipient);
                         outcomes.Add(EffectOutcome.Pulled(recipient, placed));
+                        break;
+
+                    case EffectKind.SwapWithCaster:
+                        SwapWithCaster(caster, recipient, outcomes);
                         break;
 
                     case EffectKind.Execute:
@@ -245,6 +259,114 @@ namespace NonaRoyale.Core.Services
             return progress;
         }
 
+        /// <summary>
+        /// Exchanges the caster's and the target's board cells. Placement, never
+        /// movement: it collides with nothing and triggers nothing (§7.4).
+        /// </summary>
+        /// <remarks>
+        /// Legality was settled before payment by <see cref="TrySwapProgress"/>,
+        /// so this cannot fail. Emitting one outcome per operator is deliberate —
+        /// two pieces move, and a view told about only one of them would draw a
+        /// board that is wrong.
+        /// </remarks>
+        private void SwapWithCaster(OperatorState caster, OperatorState target, List<EffectOutcome> outcomes)
+        {
+            int casterProgress, targetProgress;
+
+            if (!TrySwapProgress(caster, target, out casterProgress, out targetProgress))
+                return;
+
+            caster.MoveTo(casterProgress);
+            target.MoveTo(targetProgress);
+
+            outcomes.Add(EffectOutcome.Pulled(caster, casterProgress));
+            outcomes.Add(EffectOutcome.Pulled(target, targetProgress));
+        }
+
+        /// <summary>
+        /// Whether every swap in this ability could legally resolve, evaluated
+        /// before the ability is paid for.
+        /// </summary>
+        /// <remarks>
+        /// Abilities without a swap always pass, so this costs a loop over a
+        /// two- or three-item list and nothing else.
+        /// </remarks>
+        private bool SwapWouldBeLegal(
+            AbilityDefinition ability, OperatorState caster, OperatorState primaryTarget)
+        {
+            EffectAudience castMode = CastMode(caster, primaryTarget);
+
+            foreach (var effect in ability.Effects)
+            {
+                if (effect.Kind != EffectKind.SwapWithCaster) continue;
+                if (!AudienceAllows(effect.Audience, castMode)) continue;
+                if (primaryTarget == null) return false;
+
+                int ignoredA, ignoredB;
+                if (!TrySwapProgress(caster, primaryTarget, out ignoredA, out ignoredB)) return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Where a swap would leave each operator, or <c>false</c> if it would
+        /// carry either of them off its own track.
+        /// </summary>
+        /// <remarks>
+        /// <b>A swap exchanges cells, not progress.</b> Each colour starts at a
+        /// different cell, so two operators can sit four cells apart while their
+        /// progress values differ by forty. Converting the cell exchange into a
+        /// signed shift on each operator's own progress is what stops a swap
+        /// silently granting or costing a lap — the same conversion
+        /// <see cref="PlaceAdjacentToCaster"/> performs for a pull.
+        ///
+        /// <b>It is refused rather than clamped, and both ends are checked.</b>
+        /// Clamping the way a pull does would not produce a swap at all: an
+        /// operator whose new progress went negative would land on its own start
+        /// cell instead of the caster's, which is a total progress wipe for the
+        /// price of a cheap ability — a harsher punish than neutralizing it.
+        /// Forwards is worse still: a caster near the end of the circuit would be
+        /// placed inside its own home column, skipping the rest of the loop.
+        /// Refusing keeps the ability honest in both directions, and a player can
+        /// read the board and see why.
+        ///
+        /// The target's shift is the exact negation of the caster's rather than a
+        /// second shortest-way-round calculation, because at exactly half the
+        /// circuit the two calculations agree on direction and would push both
+        /// operators the same way.
+        /// </remarks>
+        private bool TrySwapProgress(
+            OperatorState caster, OperatorState target,
+            out int casterProgress, out int targetProgress)
+        {
+            casterProgress = caster.Progress;
+            targetProgress = target.Progress;
+
+            if (caster.IsInYard || target.IsInYard) return false;
+
+            int circuit = _map.Profile.CircuitLength;
+            int track = _map.Profile.TrackLength;
+
+            int casterCell = _map.CellAt(caster.Owner, caster.Progress).Index;
+            int targetCell = _map.CellAt(target.Owner, target.Progress).Index;
+
+            int raw = ((targetCell - casterCell) % circuit + circuit) % circuit;
+            int shift = raw <= circuit / 2 ? raw : raw - circuit;
+
+            casterProgress = caster.Progress + shift;
+            targetProgress = target.Progress - shift;
+
+            // Both must land on the shared circuit. Below zero is behind an
+            // operator's own start, where its path does not exist; at or above
+            // the track length is inside its private home column, which no
+            // ability may reach into or out of (§4.3).
+            if (casterProgress < 0 || casterProgress >= track) return false;
+            if (targetProgress < 0 || targetProgress >= track) return false;
+
+            return true;
+        }
+
         private IEnumerable<OperatorState> Recipients(
             AbilityEffect effect,
             OperatorState caster,
@@ -270,6 +392,13 @@ namespace NonaRoyale.Core.Services
                     return _targeting.EnemiesInArea(
                         _targeting.CellOf(primaryTarget), effect.Radius, caster.Owner,
                         allOperators, exclude: primaryTarget);
+
+                // Same window, target included. The only difference is whether
+                // the primary target was already hit separately by this ability.
+                case EffectScope.EnemiesAroundPrimaryTargetInclusive:
+                    if (primaryTarget == null) return Array.Empty<OperatorState>();
+                    return _targeting.EnemiesInArea(
+                        _targeting.CellOf(primaryTarget), effect.Radius, caster.Owner, allOperators);
 
                 default:
                     return Array.Empty<OperatorState>();
