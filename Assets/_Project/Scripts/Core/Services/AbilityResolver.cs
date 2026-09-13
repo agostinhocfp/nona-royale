@@ -108,6 +108,18 @@ namespace NonaRoyale.Core.Services
                     return AbilityResolution.Refused(AbilityRefusal.IllegalTarget, verdict.Verdict);
             }
 
+            // An ability with both a hostile and a friendly mode picks its mode
+            // once, from who was targeted — not per effect recipient. All-In
+            // Mauling's self-damage belongs to the hostile cast; on an ally the
+            // Bouncer must pay nothing.
+            EffectAudience castMode = CastMode(caster, primaryTarget);
+
+            // An ability every one of whose effects is scoped away in this mode
+            // would resolve, do nothing, and charge for it. A heal aimed at an
+            // enemy was never a legal cast.
+            if (!AnyEffectApplies(ability, castMode))
+                return AbilityResolution.Refused(AbilityRefusal.IllegalTarget, TargetingVerdict.WrongSide);
+
             // Legality that depends on where an effect would *put* someone, not
             // on whether the target can be aimed at. Checked here so a refusal
             // still costs nothing, which is the invariant every other refusal
@@ -125,12 +137,6 @@ namespace NonaRoyale.Core.Services
 
             _energy.Spend(casterPlayer, ability.EnergyCost);
             PutOnCooldown(caster, ability);
-
-            // An ability with both a hostile and a friendly mode picks its mode
-            // once, from who was targeted — not per effect recipient. All-In
-            // Mauling's self-damage belongs to the hostile cast; on an ally the
-            // Bouncer must pay nothing.
-            EffectAudience castMode = CastMode(caster, primaryTarget);
 
             var outcomes = new List<EffectOutcome>();
             foreach (var effect in ability.Effects)
@@ -177,6 +183,11 @@ namespace NonaRoyale.Core.Services
 
                     case EffectKind.SwapWithCaster:
                         SwapWithCaster(caster, recipient, outcomes);
+                        break;
+
+                    case EffectKind.RemoveStatuses:
+                        foreach (var kind in _statuses.ClearApplied(recipient))
+                            outcomes.Add(EffectOutcome.StatusRemoved(recipient, kind));
                         break;
 
                     case EffectKind.Execute:
@@ -279,8 +290,26 @@ namespace NonaRoyale.Core.Services
             caster.MoveTo(casterProgress);
             target.MoveTo(targetProgress);
 
-            outcomes.Add(EffectOutcome.Pulled(caster, casterProgress));
-            outcomes.Add(EffectOutcome.Pulled(target, targetProgress));
+            outcomes.Add(EffectOutcome.Swapped(caster, casterProgress));
+            outcomes.Add(EffectOutcome.Swapped(target, targetProgress));
+        }
+
+        /// <summary>
+        /// Whether at least one of this ability's effects survives the cast
+        /// mode's audience filter.
+        /// </summary>
+        /// <remarks>
+        /// Cheap insurance against a whole class of silent failures: a
+        /// single-mode ability aimed at the wrong side would otherwise pay its
+        /// cost, take its cooldown, and produce an empty outcome list that the
+        /// view has nothing to draw from.
+        /// </remarks>
+        private static bool AnyEffectApplies(AbilityDefinition ability, EffectAudience castMode)
+        {
+            foreach (var effect in ability.Effects)
+                if (AudienceAllows(effect.Audience, castMode)) return true;
+
+            return false;
         }
 
         /// <summary>
@@ -398,6 +427,11 @@ namespace NonaRoyale.Core.Services
                 case EffectScope.EnemiesAroundPrimaryTargetInclusive:
                     if (primaryTarget == null) return Array.Empty<OperatorState>();
                     return _targeting.EnemiesInArea(
+                        _targeting.CellOf(primaryTarget), effect.Radius, caster.Owner, allOperators);
+
+                case EffectScope.AlliesAroundPrimaryTarget:
+                    if (primaryTarget == null) return Array.Empty<OperatorState>();
+                    return _targeting.AlliesInArea(
                         _targeting.CellOf(primaryTarget), effect.Radius, caster.Owner, allOperators);
 
                 default:

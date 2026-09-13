@@ -153,6 +153,49 @@ namespace NonaRoyale.Core.Services
             return hit;
         }
 
+        /// <summary>
+        /// Every operator belonging to <paramref name="casterColor"/> inside an
+        /// area. Javi's Nanite Infusion, whose splash heal is centred on the
+        /// enemy it just damaged.
+        /// </summary>
+        /// <remarks>
+        /// <b>The caster is included when it stands close enough.</b> It is an
+        /// ally in the area, and excluding it would be an arbitrary carve-out —
+        /// the ability already prices being near an enemy, which is the tension
+        /// it exists for.
+        ///
+        /// Stealth is irrelevant here for a different reason than in
+        /// <see cref="EnemiesInArea"/>: stealth is scoped to enemies only (§5.4),
+        /// so it never hides an operator from its own side under any
+        /// circumstances.
+        /// </remarks>
+        public IReadOnlyList<OperatorState> AlliesInArea(
+            CellRef origin,
+            int radius,
+            PlayerColor casterColor,
+            IEnumerable<OperatorState> candidates,
+            OperatorState exclude = null)
+        {
+            if (candidates == null) throw new ArgumentNullException(nameof(candidates));
+            if (casterColor == PlayerColor.None)
+                throw new ArgumentException("An area needs a caster's seat to know who its allies are.", nameof(casterColor));
+
+            var hit = new List<OperatorState>();
+
+            foreach (var candidate in candidates)
+            {
+                if (candidate == null) continue;
+                if (candidate.Owner != casterColor) continue;
+                if (exclude != null && ReferenceEquals(candidate, exclude)) continue;
+                if (!IsInPlay(candidate)) continue;
+
+                if (IsInArea(origin, _map.CellAt(candidate.Owner, candidate.Progress), radius))
+                    hit.Add(candidate);
+            }
+
+            return hit;
+        }
+
         /// <summary>The cell an operator occupies, for use as an area's origin.</summary>
         public CellRef CellOf(OperatorState op)
         {

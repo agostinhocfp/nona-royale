@@ -20,6 +20,19 @@ namespace NonaRoyale.Unity.View
     /// </remarks>
     public static class PieceShape
     {
+        /// <summary>
+        /// Health at the smallest silhouette, and at the largest.
+        /// </summary>
+        /// <remarks>
+        /// The floor tracks the frailest operator on the roster rather than a
+        /// round number. It was 6 while the alpha three were the whole roster,
+        /// which drew Mimi's 5 health at exactly Syla's size — hiding the single
+        /// most important thing about her. Drop it again if anything ever ships
+        /// below 5.
+        /// </remarks>
+        private const float SmallestHealth = 5f;
+        private const float LargestHealth = 12f;
+
         public static Sprite For(OperatorState op)
         {
             switch (op.Name)
@@ -35,12 +48,18 @@ namespace NonaRoyale.Unity.View
                 // on the axes already, so 45 would square it up.
                 case "Kurbyn": return Primitives.Polygon(4, 0f);
 
+                // Mimi, Controller: a pentagon, point up. The only odd-sided
+                // shape besides Syla's triangle, and the two are hard to confuse
+                // because size separates them — she is the smallest piece on the
+                // board and Syla is not.
+                case "Mimi": return Primitives.Polygon(5, 90f);
+
                 default: return Primitives.Disc;
             }
         }
 
         /// <summary>Scale relative to a board cell, taken from maximum health.</summary>
         public static float SizeFor(OperatorState op) =>
-            Mathf.Lerp(0.56f, 0.84f, Mathf.InverseLerp(6f, 12f, op.MaxHealth));
+            Mathf.Lerp(0.52f, 0.84f, Mathf.InverseLerp(SmallestHealth, LargestHealth, op.MaxHealth));
     }
 }

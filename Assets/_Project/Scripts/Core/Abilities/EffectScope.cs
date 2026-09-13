@@ -34,6 +34,18 @@ namespace NonaRoyale.Core.Abilities
         /// aimed at the target and one at the ring around it: the same radius
         /// written twice drifts the first time somebody tunes one of them.
         /// </remarks>
-        EnemiesAroundPrimaryTargetInclusive = 4
+        EnemiesAroundPrimaryTargetInclusive = 4,
+
+        /// <summary>
+        /// Every ally of the caster within the radius of the primary target,
+        /// including the caster if it stands close enough. Javi's Nanite
+        /// Infusion.
+        /// </summary>
+        /// <remarks>
+        /// The first scope that looks for friends around an <i>enemy</i>, and
+        /// the reason it exists is the tension it creates: it pays a squad for
+        /// standing where Ace Shards and Dargin Pulse punish them for standing.
+        /// </remarks>
+        AlliesAroundPrimaryTarget = 5
     }
 }

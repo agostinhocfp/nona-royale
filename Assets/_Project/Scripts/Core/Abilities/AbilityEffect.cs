@@ -79,13 +79,33 @@ namespace NonaRoyale.Core.Abilities
                 default, 0, 0, 0, bonusIfBleeding, 0, 0);
         }
 
-        public static AbilityEffect Heal(EffectScope scope, int amount, EffectAudience audience = EffectAudience.AllyOnly)
+        /// <summary>
+        /// Restore health, capped at maximum.
+        /// </summary>
+        /// <remarks>
+        /// <paramref name="radius"/> is only read by the area scopes. A heal
+        /// that reaches an area is still audience-scoped by the <i>cast mode</i>,
+        /// not by who receives it — Nanite Infusion's splash heal is declared
+        /// <see cref="EffectAudience.EnemyOnly"/> because it belongs to the
+        /// hostile cast, even though every operator it touches is friendly.
+        /// </remarks>
+        public static AbilityEffect Heal(
+            EffectScope scope, int amount,
+            EffectAudience audience = EffectAudience.AllyOnly,
+            int radius = 0)
         {
             if (amount < 0) throw new ArgumentOutOfRangeException(nameof(amount));
 
-            return new AbilityEffect(EffectKind.Heal, scope, audience, amount, default, 0,
+            return new AbilityEffect(EffectKind.Heal, scope, audience, amount, default, radius,
                 default, 0, 0, 0, 0, 0, 0);
         }
+
+        /// <summary>
+        /// Strip every applied status from the target. Passives survive.
+        /// </summary>
+        public static AbilityEffect Cleanse(EffectAudience audience = EffectAudience.AllyOnly) =>
+            new AbilityEffect(EffectKind.RemoveStatuses, EffectScope.PrimaryTarget, audience,
+                0, default, 0, default, 0, 0, 0, 0, 0, 0);
 
         public static AbilityEffect Status_(
             EffectScope scope, StatusKind status, int duration,

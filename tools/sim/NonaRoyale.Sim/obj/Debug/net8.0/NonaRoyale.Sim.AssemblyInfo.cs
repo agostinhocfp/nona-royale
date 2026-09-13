@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("NonaRoyale.Sim")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c9ba5ddf6c6b2d3470d8cdc1b9922da6ee174c69")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2db07a2f963eb45b54c7cfd237d863ef57ea035c")]
 [assembly: System.Reflection.AssemblyProductAttribute("NonaRoyale.Sim")]
 [assembly: System.Reflection.AssemblyTitleAttribute("NonaRoyale.Sim")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

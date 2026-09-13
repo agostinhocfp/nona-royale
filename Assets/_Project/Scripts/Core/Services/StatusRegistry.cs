@@ -296,40 +296,6 @@ namespace NonaRoyale.Core.Services
         }
 
         /// <summary>
-        /// Every status currently in effect on an operator, passives included.
-        /// </summary>
-        /// <remarks>
-        /// For presentation. The registry already answers "is this one kind
-        /// active" in several places; this answers "which are", so the view can
-        /// draw a badge per status without knowing the list of kinds — a new
-        /// StatusKind shows up on the board without the view being touched.
-        ///
-        /// Uses the same activity window as every other query: in effect from
-        /// its first active turn, gone after its last.
-        /// </remarks>
-        public IReadOnlyList<StatusKind> ActiveKinds(OperatorState op)
-        {
-            if (op == null) throw new ArgumentNullException(nameof(op));
-
-            var active = new List<StatusKind>();
-            if (!_byOperator.TryGetValue(op.Id, out var entries)) return active;
-
-            int ownerTurn = _clock.TurnIndexOf(op.Owner);
-
-            foreach (var pair in entries)
-            {
-                var entry = pair.Value;
-                if (ownerTurn < entry.FirstActiveTurn) continue;
-                if (entry.LastActiveTurn != Permanent && ownerTurn > entry.LastActiveTurn) continue;
-
-                active.Add(pair.Key);
-            }
-
-            return active;
-        }
-
-
-        /// <summary>
         /// Sweeps statuses whose last active turn is the one now closing, and
         /// reports them so the caller can emit <c>StatusExpired</c> events.
         /// Passives are never swept.
@@ -363,6 +329,33 @@ namespace NonaRoyale.Core.Services
 
             foreach (var kind in expired) entries.Remove(kind);
             return expired;
+        }
+
+        /// <summary>
+        /// Strips every applied status from an operator and reports what went,
+        /// leaving passives and the evasion charge alone. Javi's Neural Purge.
+        /// </summary>
+        /// <remarks>
+        /// <b>Not <see cref="ClearAll"/>.</b> That method also clears the
+        /// spent-evasion flag, which on neutralize is correct — the operator is
+        /// leaving the board. Here it would silently re-arm an ally's evasion
+        /// charge mid-round, a second benefit nobody asked the ability for.
+        ///
+        /// Statuses that have not taken hold yet go too. A stun applied on an
+        /// opponent's turn is not active until its target's next one (§5), and a
+        /// cleanse that could not remove it would be unable to answer the only
+        /// window in which it matters.
+        /// </remarks>
+        public IReadOnlyList<StatusKind> ClearApplied(OperatorState op)
+        {
+            if (op == null) throw new ArgumentNullException(nameof(op));
+
+            if (!_byOperator.TryGetValue(op.Id, out var entries) || entries.Count == 0)
+                return Array.Empty<StatusKind>();
+
+            var removed = new List<StatusKind>(entries.Keys);
+            _byOperator.Remove(op.Id);
+            return removed;
         }
 
         /// <summary>

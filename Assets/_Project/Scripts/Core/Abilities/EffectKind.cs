@@ -41,6 +41,19 @@ namespace NonaRoyale.Core.Abilities
         /// own track is refused before the ability is paid for. See
         /// <c>AbilityResolver.TrySwapProgress</c>.
         /// </remarks>
-        SwapWithCaster = 5
+        SwapWithCaster = 5,
+
+        /// <summary>
+        /// Removes every applied status from the recipient. Passives are
+        /// untouched — a passive is who an operator is, not what it is carrying
+        /// (§1.2, §5.1).
+        /// </summary>
+        /// <remarks>
+        /// The first kind that <i>subtracts</i> from the status registry. That
+        /// makes it the first whose interaction with other rules is a design
+        /// question rather than an implementation one: a cleansed mark is gone,
+        /// and its payout goes with it.
+        /// </remarks>
+        RemoveStatuses = 6
     }
 }

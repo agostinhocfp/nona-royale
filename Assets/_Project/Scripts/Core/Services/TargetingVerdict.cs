@@ -35,6 +35,18 @@ namespace NonaRoyale.Core.Services
         /// vocabulary for the same job would be worse than the mild
         /// inconsistency.
         /// </remarks>
-        SwapWouldLeaveTheTrack = 5
+        SwapWouldLeaveTheTrack = 5,
+
+        /// <summary>
+        /// The target is on the wrong side for anything this ability does — a
+        /// heal aimed at an enemy, or a cleanse aimed at one.
+        /// </summary>
+        /// <remarks>
+        /// Without this, an ability whose every effect is audience-scoped away
+        /// resolves successfully, does nothing, and still charges for it. Cast
+        /// mode is decided once from who was targeted (§10), so an ability with
+        /// no applicable effect in that mode was never a legal cast.
+        /// </remarks>
+        WrongSide = 6
     }
 }

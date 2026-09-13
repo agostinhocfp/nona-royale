@@ -9,7 +9,22 @@ namespace NonaRoyale.Core.Services
         Healed = 1,
         StatusApplied = 2,
         Pulled = 3,
-        Executed = 4
+        Executed = 4,
+
+        /// <summary>
+        /// One end of a swap. Two of these are emitted per swap, one per
+        /// operator — a view told about only one would draw a board that is
+        /// wrong.
+        /// </summary>
+        /// <remarks>
+        /// Distinct from <see cref="Pulled"/> even though both are placement,
+        /// because the view plays them differently: a pull drags one piece
+        /// toward another, a swap exchanges two at once.
+        /// </remarks>
+        Swapped = 5,
+
+        /// <summary>One status stripped by a cleanse. One of these per status removed.</summary>
+        StatusRemoved = 6
     }
 
     /// <summary>
@@ -44,7 +59,7 @@ namespace NonaRoyale.Core.Services
         public StatusKind Status { get; }
         public int Duration { get; }
 
-        /// <summary>Where a pulled operator was placed.</summary>
+        /// <summary>Where a pulled or swapped operator was placed.</summary>
         public int Progress { get; }
 
         public static EffectOutcome Damaged(OperatorState recipient, DamageResult damage) =>
@@ -56,8 +71,14 @@ namespace NonaRoyale.Core.Services
         public static EffectOutcome StatusApplied(OperatorState recipient, StatusKind status, int duration) =>
             new EffectOutcome(EffectOutcomeKind.StatusApplied, recipient, default, 0, status, duration, 0);
 
+        public static EffectOutcome StatusRemoved(OperatorState recipient, StatusKind status) =>
+            new EffectOutcome(EffectOutcomeKind.StatusRemoved, recipient, default, 0, status, 0, 0);
+
         public static EffectOutcome Pulled(OperatorState recipient, int progress) =>
             new EffectOutcome(EffectOutcomeKind.Pulled, recipient, default, 0, default, 0, progress);
+
+        public static EffectOutcome Swapped(OperatorState recipient, int progress) =>
+            new EffectOutcome(EffectOutcomeKind.Swapped, recipient, default, 0, default, 0, progress);
 
         public static EffectOutcome Executed(OperatorState recipient) =>
             new EffectOutcome(EffectOutcomeKind.Executed, recipient, default, 0, default, 0, 0);
