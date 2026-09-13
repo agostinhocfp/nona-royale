@@ -22,6 +22,9 @@ namespace NonaRoyale.Sim
     /// A real player is better than this, so the turn counts it produces are a
     /// mild over-estimate. What the harness measures reliably is the
     /// <i>relative</i> effect of a config change, not an absolute figure.
+    ///
+    /// <b>It never splits a roll.</b> See <see cref="Move"/> — this is a
+    /// deliberate choice, and it bounds what the current figures mean.
     /// </remarks>
     public sealed class ScriptedPlayer
     {
@@ -78,14 +81,53 @@ namespace NonaRoyale.Sim
             }
         }
 
+        /// <summary>
+        /// Spends the roll on movement, pooling rather than splitting, and keeps
+        /// going until the engine says nothing is owed.
+        /// </summary>
+        /// <remarks>
+        /// <b>Pooling is a policy, and it is the one that measures least.</b>
+        /// Any split policy is a tactical judgement the harness would be making
+        /// on the player's behalf — the same flaw that made its neutralize
+        /// figures an upper bound — so this makes the conservative choice and
+        /// declines to split at all. The consequence is worth stating plainly:
+        /// <b>these runs measure compulsory movement, not splitting.</b>
+        /// Splitting roughly doubles landings per roll, and a landing is what
+        /// triggers a collision (§7.1), so its effect on contact will not appear
+        /// in any figure this file produces.
+        ///
+        /// The loop exists because pooling can fail. If the leader is stunned or
+        /// already home, that command is rejected and the dice are still owed —
+        /// and <c>EndTurnCommand</c> now refuses while any operator could move,
+        /// so a single attempt would hang the turn rather than merely waste it.
+        /// It tries each candidate in turn and gives up only when the engine
+        /// accepts nothing, which is precisely the case where the dice are
+        /// genuinely forfeit.
+        /// </remarks>
         private void Move(PlayerState seat)
         {
-            var leader = seat.Operators
-                .Where(o => !o.IsInYard && o.Progress < _match.Map.Profile.Journey)
-                .OrderByDescending(o => o.Progress)
-                .FirstOrDefault();
+            var engine = _match.Engine;
 
-            if (leader != null) Send(new MoveCommand(leader.Id));
+            while (engine.MustSpendRoll)
+            {
+                var candidates = seat.Operators
+                    .Where(o => !o.IsInYard && o.Progress < _match.Map.Profile.Journey)
+                    .OrderByDescending(o => o.Progress)
+                    .ToList();
+
+                bool spent = false;
+
+                foreach (var op in candidates)
+                {
+                    if (!Send(new MoveCommand(op.Id)).Any(e => e is CommandRejected))
+                    {
+                        spent = true;
+                        break;
+                    }
+                }
+
+                if (!spent) break;
+            }
         }
 
         /// <summary>

@@ -8,7 +8,7 @@ namespace NonaRoyale.Core.Commands
 
     /// <summary>
     /// Put one operator on its start cell, consuming a die showing the deploy
-    /// face. Optional — declining keeps the full total as movement.
+    /// face. Optional — a declined deploy leaves that die available to move with.
     /// </summary>
     public sealed class DeployCommand : ICommand
     {
@@ -16,11 +16,44 @@ namespace NonaRoyale.Core.Commands
         public int OperatorId { get; }
     }
 
-    /// <summary>Move one operator with the movement left on this roll. Exactly one per roll.</summary>
+    /// <summary>
+    /// Move one operator, spending either every unspent die on this roll or a
+    /// single named one (COMBAT_SYSTEMS §6).
+    /// </summary>
+    /// <remarks>
+    /// <b><see cref="DieFace"/> null means pool.</b> That is the common case and
+    /// the old behaviour, so <c>new MoveCommand(id)</c> still means what it
+    /// always meant. Naming a face is how a player splits a roll between two
+    /// operators — or spends it on one operator in two separate steps, which is
+    /// a different thing because each step lands, and a landing is what triggers
+    /// a collision (§7.1).
+    ///
+    /// <b>The face identifies the die, not a position.</b> On a double the two
+    /// dice are indistinguishable; on any other roll the face is unique. There
+    /// is nothing an index would disambiguate that a face does not, and a face
+    /// is what the player actually clicked.
+    ///
+    /// Splitting is not free: the floor in <c>CellsFor</c> applies per move, so
+    /// two odd dice spent separately arrive one cell short of the same two
+    /// pooled. Routing a die through a slower operator costs considerably more
+    /// than that. Both are the player's to weigh, which is why
+    /// <c>GameEngine.PreviewLandings</c> reports every option before one is
+    /// chosen.
+    /// </remarks>
     public sealed class MoveCommand : ICommand
     {
-        public MoveCommand(int operatorId) { OperatorId = operatorId; }
+        public MoveCommand(int operatorId) : this(operatorId, null) { }
+
+        public MoveCommand(int operatorId, int? dieFace)
+        {
+            OperatorId = operatorId;
+            DieFace = dieFace;
+        }
+
         public int OperatorId { get; }
+
+        /// <summary>The single die to spend, or null to spend all of them at once.</summary>
+        public int? DieFace { get; }
     }
 
     /// <summary>
@@ -41,7 +74,10 @@ namespace NonaRoyale.Core.Commands
         public int? TargetOperatorId { get; }
     }
 
-    /// <summary>Close the turn and hand over to the next seat.</summary>
+    /// <summary>
+    /// Close the turn and hand over to the next seat. Rejected while an unspent
+    /// die still has an operator that could legally move with it (§6).
+    /// </summary>
     public sealed class EndTurnCommand : ICommand
     {
     }

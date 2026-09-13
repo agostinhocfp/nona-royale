@@ -266,14 +266,22 @@ Not a status — the absence of them. Javi's Neural Purge removes every **applie
 
 ## 6. Turn structure and resolution order
 
-Exactly one operator moves per roll. Energy may be spent by any owned operator.
+Every die is consumed exactly once, by a deploy or by a move.\*\* Dice spent on movement may be pooled onto one operator or dealt one to each of two — or spent on the same operator in two separate steps. A die is forfeit only when no legal consumer exists for it. Energy may be spent by any owned operator and consumes no dice.
 
-| Phase         | What resolves                                                                                                                                                                                                                             |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **1. Upkeep** | Bleed ticks (Atomic), then mark ticks (Atomic). Cooldowns advance. Evasion charge refreshes. Neutralize checks from both damage sources resolve here, and a mark payout can fire here.                                                    |
-| **2. Roll**   | Dice rolled from the injected RNG. Energy granted (first roll of the turn only, §3.1).                                                                                                                                                    |
-| **3. Action** | Deploy (if a 6, §1.3) and/or move one operator; spend energy on abilities with any owned operator; any order the player chooses. Collisions resolve immediately on landing (§7). Doubles → return to phase 2 **without** an energy grant. |
-| **4. End**    | Status durations expire. Win check.                                                                                                                                                                                                       |
+| Phase         | What resolves                                                                                                                                                                                                                                                                                                                                  |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1. Upkeep** | Bleed ticks (Atomic), then mark ticks (Atomic). Cooldowns advance. Evasion charge refreshes. Neutralize checks from both damage sources resolve here, and a mark payout can fire here.                                                                                                                                                         |
+| **2. Roll**   | Dice rolled from the injected RNG. Energy granted (first roll of the turn only, §3.1).                                                                                                                                                                                                                                                         |
+| **3. Action** | Deploy (if an unspent 6, §1.3) and move until the roll is spent; spend energy on abilities with any owned operator; any order the player chooses. Deploying no longer has to precede moving. Collisions resolve immediately on landing (§7). Doubles → return to phase 2 **without** an energy grant, and only once the roll in hand is spent. |
+| **4. End**    | Status durations expire. Win check.                                                                                                                                                                                                                                                                                                            |
+
+**Movement is compulsory.** A turn cannot be ended, and a doubles re-roll cannot be taken, while any of the current player's operators could legally move with an unspent die. "Legally" excludes operators in the yard, stunned (§5.1), or already
+
+> home, and excludes a die whose pips floor to zero cells at that operator's current speed — a die that can only move somebody nowhere has no consumer and is forfeit.
+> Deploying stays optional (§1.3). A declined deploy leaves the 6 available as movement, so no die is stranded by declining.
+> **Knowingly out of scope:** rolling is not compulsory. A player who never rolls forfeits both their energy grant and their movement, which is self-punishing enough that no rule is needed. Revisit if it ever becomes a real tactic.
+
+                                                                                                                                 |
 
 Bleed resolves before marks purely for determinism; nothing in the alpha roster distinguishes the order, but an unspecified order is a bug waiting for the first operator that cares.
 
@@ -281,7 +289,9 @@ Expiry sits at End and application takes hold at the target's next turn, so a 1-
 
 `MaxRollsPerTurn = 3` (the initial roll plus two doubles) bounds turn length. Tunable.
 
-**Movement:** `cells = floor(DiceTotal × EffectiveSpeed)`, where `EffectiveSpeed` is the operator's multiplier after auras and statuses, floored at `MinSpeedMultiplier`.
+**Movement:** `cells = floor(Pips × EffectiveSpeed)`, where `Pips` is the sum of the dice being spent on this move — the whole unspent roll, or one die. `EffectiveSpeed` is the moving operator's multiplier after auras and slows, floored at `MinSpeedMultiplier`. **The floor applies per move, which is what splitting costs.** Two dice pooled lose at most one half-cell to it; spent separately they lose one each. The two coincide exactly when both dice are odd — 9 rolls in 36 — and at whole-number
+speeds the loss is zero. **The larger cost is routing a die through a slower operator**, which forfeits that operator's whole speed deficit on those pips: a double six pooled onto a 1.5 operator moves 18, split between a 1.5 and a 1.0
+operator moves 15.
 
 **Speed band: 1.0 – 1.5**, in half-steps. `SpeedMultiplierMin = 1.0` and `SpeedMultiplierMax = 2.5` are the legal schema bounds; the roster uses 1.0 and 1.5 only. The band was set by simulation, not by feel — see ADR-0002 Amendment 4, which lowered it from the 1.5–2.0 adopted in Amendment 2. Two constraints fix it:
 
@@ -791,3 +801,17 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - 2026-09-12 — **Placement extended to swaps.** `EffectKind` gains `SwapWithCaster`, the sixth kind and the first added since the core was written. §7.4 rewritten: placement is computed in cells and applied in progress, and the two ways a destination can leave an operator's own path are now stated — backwards behind the start cell, and forwards into the home column, which nobody had noticed until the swap arithmetic forced it. A pull clamps, a swap refuses. §4.2 gains the inclusive area scope, and §7.5 notes swaps as a third route to a stacked cell.
 - 2026-09-12 — **Bouncer tuned down after human play**, on all three axes at once: 12 → 9 health, Velvet Rope range 4 → 3, All-In Mauling 3 → 2 damage with self-damage 1 → 2. Miracle Pull widened 1 → 2 (§10.3). The rope-into-Mauling one-turn kill is gone by design — six damage killed a 6-health operator from full, five leaves them at 1. §7.3 corrected from four collisions to three. Every change in the pass moved power the same way, and the rope is the only single-cast route through Evasive Protocol; if Kurbyn is dominant again, its range is the first thing to restore.
 - 2026-09-12 — **Mimi and Javi added as §10.4 and §10.5**, both incomplete and both in the draft pool. `EffectKind` gains `RemoveStatuses`, the seventh kind and the first that subtracts from the status registry — §5.8 states its edges, including that a cleansed mark takes its payout with it. §5.9 documents Hastened, which had been granted by the payout without ever being defined. §5.6 records that the whole-instance shield is a timing lottery and becomes a pool when Carapace lands. Every ability now carries a required player-facing description (§10). §10's opening claim that nothing is deferred is retired: two of five operators have an unbuilt ability, and the banners say which.
+
+- Up to two operator-moves per roll, and `MaxRollsPerTurn = 3`, so up to **six
+  moves in a turn** against one to three before. Expect materially shorter
+  matches.
+- Landings per roll roughly double when players split, and a landing is the
+  collision trigger (§7.1). `CollisionDamage` was restored as a dial in §12
+  because that trigger started firing more often; this moves the same lever
+  again, in the same direction.
+- **Unmeasured.** `ScriptedPlayer` pools and never splits, by deliberate policy,
+  so harness runs measure compulsory movement only. Splitting's effect on contact
+  will not appear in any current figure.
+- Measure against `CreateAlphaMatch`, and measure this **together with** the 52/6
+  board (ADR-0002 Amdt 5), which pushed journey the other way. Read separately,
+  each will be contaminated by the other.

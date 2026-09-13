@@ -1,6 +1,7 @@
 // Assets/_Project/Scripts/Core/GameEngine.cs
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using NonaRoyale.Core.Abilities;
 using NonaRoyale.Core.Board;
 using NonaRoyale.Core.Commands;
@@ -54,13 +55,28 @@ namespace NonaRoyale.Core
         private readonly WinConditions _win;
         private readonly CombatConfig _config;
 
-        // Per-roll action state. Exactly one operator moves per roll (§6).
-        private DiceRoll _currentRoll;
-        private DeployOption _deployOption;
-        private int _deploysThisRoll;
-        private int _movementValue;
+        /// <summary>
+        /// The dice from this roll that have not been spent yet.
+        /// </summary>
+        /// <remarks>
+        /// <b>This replaced a single <c>_movementValue</c> int and a
+        /// <c>_hasMovedThisRoll</c> flag.</b> Those encoded "exactly one operator
+        /// moves per roll", and §6 no longer says that. The dice are now tracked
+        /// individually because both new rules are about individual dice:
+        /// movement is compulsory <i>per die</i>, and a split spends one die
+        /// rather than the total.
+        ///
+        /// Deploy already worked this way — §1.3 has always consumed one die per
+        /// deployed operator — so this makes movement consistent with it rather
+        /// than inventing a second accounting scheme. It also removed the
+        /// deploy-before-move ordering rule, which only existed because the
+        /// movement total was computed up front and could not be un-spent.
+        /// </remarks>
+        private readonly List<int> _unspentDice = new List<int>(2);
+
+        private readonly ReadOnlyCollection<int> _unspentView;
+
         private bool _hasRolled;
-        private bool _hasMovedThisRoll;
 
         public GameEngine(
             IReadOnlyList<OperatorState> operators,
@@ -88,11 +104,35 @@ namespace NonaRoyale.Core
             _neutralize = neutralize ?? throw new ArgumentNullException(nameof(neutralize));
             _win = win ?? throw new ArgumentNullException(nameof(win));
             _config = config ?? throw new ArgumentNullException(nameof(config));
+
+            _unspentView = new ReadOnlyCollection<int>(_unspentDice);
         }
 
         public TurnPhase Phase => _turns.Phase;
         public PlayerState CurrentPlayer => _turns.CurrentPlayer;
         public bool MatchOver => _turns.Phase == TurnPhase.MatchOver;
+
+        /// <summary>
+        /// The faces still unspent on the current roll, in the order they were
+        /// rolled. Empty before the first roll and after the roll is used up.
+        /// </summary>
+        /// <remarks>
+        /// A live read-only view rather than a copy: <c>OnGUI</c> reads it many
+        /// times a frame, and allocating a fresh array each read is the kind of
+        /// small waste that only shows up once a profiler is pointed at it.
+        /// </remarks>
+        public IReadOnlyList<int> UnspentDice => _unspentView;
+
+        /// <summary>
+        /// Whether the current player still owes the board a move. True exactly
+        /// when <see cref="EndTurnCommand"/> would be rejected.
+        /// </summary>
+        /// <remarks>
+        /// For greying out the end-turn button rather than letting a player press
+        /// it and read a refusal — the same reasoning that put
+        /// <see cref="CheckAbility"/> here.
+        /// </remarks>
+        public bool MustSpendRoll => HasLegalMove();
 
         /// <summary>Opens the match. Runs the first upkeep and reports it.</summary>
         public IReadOnlyList<IGameEvent> Start()
@@ -166,15 +206,22 @@ namespace NonaRoyale.Core
                 return;
             }
 
+            // Doubles grant a fresh roll, not an escape from the one in hand.
+            // Without this a player could roll doubles, decline to move, and
+            // re-roll into a set of dice they liked better — which is the same
+            // dodge compulsory movement exists to close (§6).
+            if (_hasRolled && HasLegalMove())
+            {
+                events.Add(new CommandRejected("spend the dice you are holding before rolling again"));
+                return;
+            }
+
             var report = _turns.Roll();
 
-            _currentRoll = report.Roll;
-            _deploysThisRoll = 0;
-            _hasMovedThisRoll = false;
+            _unspentDice.Clear();
+            _unspentDice.Add(report.Roll.First);
+            _unspentDice.Add(report.Roll.Second);
             _hasRolled = true;
-
-            _deployOption = _movement.GetDeployOption(_currentRoll, CountInYard(_turns.CurrentPlayer));
-            _movementValue = _deployOption.TotalIfDeclined;
 
             events.Add(new DiceRolled(report.Roll, report.GrantsAnotherRoll));
 
@@ -187,6 +234,16 @@ namespace NonaRoyale.Core
 
         private void EndTurn(List<IGameEvent> events)
         {
+            // Movement is compulsory (§6). The check is "does a legal consumer
+            // exist", not "are the dice gone" — a die nobody can spend is
+            // forfeit, and a turn must always be endable or the match deadlocks.
+            if (HasLegalMove())
+            {
+                events.Add(new CommandRejected(
+                    "you must use your roll: an operator can still move with it"));
+                return;
+            }
+
             var report = _turns.EndTurn();
 
             foreach (var expired in report.Expired)
@@ -218,23 +275,22 @@ namespace NonaRoyale.Core
                 return;
             }
 
-            if (!_deployOption.IsAvailable || _deploysThisRoll >= _deployOption.MaxOperators)
+            int face = _movement.DeployFace;
+
+            if (!_unspentDice.Contains(face))
             {
-                events.Add(new CommandRejected("this roll cannot deploy another operator"));
+                events.Add(new CommandRejected($"deploying needs an unspent {face}"));
                 return;
             }
 
-            if (_hasMovedThisRoll)
-            {
-                // A deploy consumes a die, so it has to be declared before the
-                // movement value is spent.
-                events.Add(new CommandRejected("deploy before moving on this roll"));
-                return;
-            }
+            // Deploy no longer has to precede movement. It used to, because the
+            // movement total was computed up front from the whole roll and a
+            // later deploy could not take a die back out of it. Now a deploy
+            // just removes a die from the unspent set, so moving with one die
+            // and deploying with the other in either order is coherent (§6).
+            _unspentDice.Remove(face);
 
             op.MoveTo(_movement.DeployProgress);
-            _deploysThisRoll++;
-            _movementValue = _deployOption.MovementAfterDeploying(_deploysThisRoll);
 
             events.Add(new OperatorDeployed(op, _map.CellAt(op.Owner, op.Progress)));
         }
@@ -246,15 +302,9 @@ namespace NonaRoyale.Core
             var op = FindOwnedOperator(command.OperatorId, events);
             if (op == null) return;
 
-            if (_hasMovedThisRoll)
+            if (_unspentDice.Count == 0)
             {
-                events.Add(new CommandRejected("exactly one operator moves per roll"));
-                return;
-            }
-
-            if (_movementValue <= 0)
-            {
-                events.Add(new CommandRejected("this roll has no movement left"));
+                events.Add(new CommandRejected("this roll has no dice left to spend"));
                 return;
             }
 
@@ -264,28 +314,57 @@ namespace NonaRoyale.Core
                 return;
             }
 
+            if (_win.HasFinished(op))
+            {
+                events.Add(new CommandRejected($"{op.Name} is already home"));
+                return;
+            }
+
             if (_statuses.IsStunned(op))
             {
                 events.Add(new CommandRejected($"{op.Name} is stunned"));
                 return;
             }
 
-            // Speed is base, plus statuses, plus any enemy aura reaching it —
-            // all evaluated now, because an aura's truth changes with position.
-            //
-            // The two channels are summed, which means a slow and an enemy aura
-            // stack even though COMBAT_SYSTEMS §5.2 says slow sources do not.
-            // Pre-existing and unresolved — COMBAT_SYSTEMS §12.
-            double speed = _movement.EffectiveSpeed(
-                op.BaseSpeedMultiplier,
-                _statuses.SpeedModifier(op) + _auras.SpeedModifierFor(op, _operators));
+            int pips;
 
-            int cells = _movement.CellsFor(_movementValue, speed);
+            if (command.DieFace == null)
+            {
+                pips = UnspentTotal();
+            }
+            else
+            {
+                if (!_unspentDice.Contains(command.DieFace.Value))
+                {
+                    events.Add(new CommandRejected($"no unspent die showing {command.DieFace.Value}"));
+                    return;
+                }
+
+                pips = command.DieFace.Value;
+            }
+
+            int cells = _movement.CellsFor(pips, SpeedOf(op));
+
+            // A single low die under a heavy slow can floor to nothing. Spending
+            // it would be a move that moves nobody, and it would ask
+            // CollisionResolver what happens when an operator lands on the cell
+            // it is already standing on. Refuse instead — and HasLegalMove
+            // applies the same test, so a die that can only do this is forfeit
+            // rather than a turn that cannot be ended.
+            if (cells <= 0)
+            {
+                events.Add(new CommandRejected(
+                    $"{pips} moves {op.Name} nowhere at its current speed"));
+                return;
+            }
+
             var move = _movement.ResolveMove(op, cells);
             var collision = _collisions.Resolve(op, move, _operators);
 
             op.MoveTo(collision.MoverFinalProgress);
-            _hasMovedThisRoll = true;
+
+            if (command.DieFace == null) _unspentDice.Clear();
+            else _unspentDice.Remove(command.DieFace.Value);
 
             events.Add(new OperatorMoved(op, move.From, collision.MoverFinalProgress,
                 _map.CellAt(op.Owner, collision.MoverFinalProgress)));
@@ -504,9 +583,8 @@ namespace NonaRoyale.Core
         }
 
         /// <summary>
-        /// Where each of the current player's operators would land if moved with
-        /// the movement left on this roll. Empty before the first roll, or once
-        /// an operator has already moved.
+        /// Every move the current player could make with the dice still in hand:
+        /// per operator, the pooled move and one per distinct unspent face.
         /// </summary>
         /// <remarks>
         /// <b>Read-only, and deliberately shares <see cref="Move"/>'s arithmetic
@@ -515,31 +593,63 @@ namespace NonaRoyale.Core
         /// time a slow or an aura is in play — which is precisely when a player
         /// is relying on the preview.
         ///
+        /// <b>Every option, not just the best one.</b> Splitting a roll costs
+        /// cells — a little to the per-move floor, a lot to routing a die through
+        /// a slower operator — and a player cannot weigh that against the board
+        /// position unless both landings are on screen before either is chosen.
+        /// The engine is the only thing that can say what they are.
+        ///
+        /// A double offers one split option, not two: its faces are equal, so the
+        /// second would draw a marker on top of the first.
+        ///
         /// It stops short of collision: it reports the landing, not whether the
         /// landing is contested. Showing the bounce-back would be showing the
         /// player the outcome of a fight before they commit to it.
         /// </remarks>
-        public IReadOnlyDictionary<int, int> PreviewLandings()
+        public IReadOnlyList<LandingPreview> PreviewLandings()
         {
-            var landings = new Dictionary<int, int>();
+            var previews = new List<LandingPreview>();
 
-            if (_turns.Phase != TurnPhase.Action || _hasMovedThisRoll || _movementValue <= 0)
-                return landings;
+            if (_turns.Phase != TurnPhase.Action || _unspentDice.Count == 0) return previews;
+
+            int pooled = UnspentTotal();
 
             foreach (var op in _turns.CurrentPlayer.Operators)
             {
-                if (op.IsInYard || _win.HasFinished(op)) continue;
-                if (_statuses.IsStunned(op)) continue;
+                if (!CanBeMoved(op)) continue;
 
-                double speed = _movement.EffectiveSpeed(
-                    op.BaseSpeedMultiplier,
-                    _statuses.SpeedModifier(op) + _auras.SpeedModifierFor(op, _operators));
+                double speed = SpeedOf(op);
 
-                var move = _movement.ResolveMove(op, _movement.CellsFor(_movementValue, speed));
-                landings[op.Id] = move.To;
+                AddPreview(previews, op, null, pooled, speed);
+
+                if (_unspentDice.Count < 2) continue;
+
+                for (int i = 0; i < _unspentDice.Count; i++)
+                {
+                    if (IsRepeatedFace(i)) continue;
+                    AddPreview(previews, op, _unspentDice[i], _unspentDice[i], speed);
+                }
             }
 
-            return landings;
+            return previews;
+        }
+
+        private void AddPreview(
+            List<LandingPreview> into, OperatorState op, int? die, int pips, double speed)
+        {
+            int cells = _movement.CellsFor(pips, speed);
+            if (cells <= 0) return;
+
+            var move = _movement.ResolveMove(op, cells);
+            into.Add(new LandingPreview(op.Id, die, move.To, cells));
+        }
+
+        private bool IsRepeatedFace(int index)
+        {
+            for (int i = 0; i < index; i++)
+                if (_unspentDice[i] == _unspentDice[index]) return true;
+
+            return false;
         }
 
         /// <summary>
@@ -560,6 +670,67 @@ namespace NonaRoyale.Core
             return _statuses.ActiveKinds(op);
         }
 
+        /// <summary>
+        /// Whether any operator could still legally move with an unspent die.
+        /// </summary>
+        /// <remarks>
+        /// <b>Pooling is always available, and the pooled total is at least as
+        /// large as any single die</b>, so a player who cannot move by pooling
+        /// cannot move at all. That is what lets this answer the question with
+        /// one arithmetic check per operator instead of one per operator per die.
+        ///
+        /// This is the whole of "movement is compulsory": <see cref="EndTurn"/>
+        /// refuses while it is true, <see cref="Roll"/> refuses a doubles re-roll
+        /// while it is true, and nothing else needs to know.
+        /// </remarks>
+        private bool HasLegalMove()
+        {
+            if (_turns.Phase != TurnPhase.Action) return false;
+            if (_unspentDice.Count == 0) return false;
+
+            var player = _turns.CurrentPlayer;
+            if (player == null) return false;
+
+            int pooled = UnspentTotal();
+
+            foreach (var op in player.Operators)
+            {
+                if (!CanBeMoved(op)) continue;
+                if (_movement.CellsFor(pooled, SpeedOf(op)) > 0) return true;
+            }
+
+            return false;
+        }
+
+        private bool CanBeMoved(OperatorState op) =>
+            !op.IsInYard && !_win.HasFinished(op) && !_statuses.IsStunned(op);
+
+        /// <summary>
+        /// Speed is base, plus statuses, plus any enemy aura reaching it — all
+        /// evaluated now, because an aura's truth changes with position.
+        /// </summary>
+        /// <remarks>
+        /// The two channels are summed, which means a slow and an enemy aura
+        /// stack even though COMBAT_SYSTEMS §5.2 says slow sources do not.
+        /// Pre-existing and unresolved — COMBAT_SYSTEMS §12.
+        ///
+        /// Extracted from <c>Move</c> once <c>PreviewLandings</c> and
+        /// <c>HasLegalMove</c> both needed it. Three copies of this expression
+        /// would be three places for the aura rule to drift.
+        /// </remarks>
+        private double SpeedOf(OperatorState op) =>
+            _movement.EffectiveSpeed(
+                op.BaseSpeedMultiplier,
+                _statuses.SpeedModifier(op) + _auras.SpeedModifierFor(op, _operators));
+
+        private int UnspentTotal()
+        {
+            int total = 0;
+            for (int i = 0; i < _unspentDice.Count; i++) total += _unspentDice[i];
+
+            return total;
+        }
+
         private bool RequireAction(List<IGameEvent> events)
         {
             if (_turns.Phase == TurnPhase.Action) return true;
@@ -571,19 +742,7 @@ namespace NonaRoyale.Core
         private void ResetRollState()
         {
             _hasRolled = false;
-            _hasMovedThisRoll = false;
-            _deploysThisRoll = 0;
-            _movementValue = 0;
-            _deployOption = DeployOption.Unavailable(0);
-        }
-
-        private int CountInYard(PlayerState player)
-        {
-            int count = 0;
-            foreach (var op in player.Operators)
-                if (op.IsInYard) count++;
-
-            return count;
+            _unspentDice.Clear();
         }
 
         private OperatorState FindOperator(int id)

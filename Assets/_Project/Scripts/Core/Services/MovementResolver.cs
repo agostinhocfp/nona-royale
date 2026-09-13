@@ -21,6 +21,11 @@ namespace NonaRoyale.Core.Services
     /// It also knows nothing about occupancy. Whether an enemy is standing on
     /// the destination is <c>CollisionResolver</c>'s question; this type only
     /// says where the destination is.
+    ///
+    /// <b>It knows nothing about how many dice a move spends either.</b>
+    /// <see cref="CellsFor"/> takes a pip count, so a pooled two-die move and a
+    /// single-die move are the same call with different arguments. Splitting a
+    /// roll (§6) therefore needed no change here at all.
     /// </remarks>
     public sealed class MovementResolver
     {
@@ -32,6 +37,13 @@ namespace NonaRoyale.Core.Services
             _map = map ?? throw new ArgumentNullException(nameof(map));
             _config = config ?? throw new ArgumentNullException(nameof(config));
         }
+
+        /// <summary>
+        /// The die face a deploy consumes (§1.3). Exposed so <c>GameEngine</c>
+        /// can ask which of the dice it is holding could be spent on a deploy
+        /// without reaching for <c>GameConfig</c>, which it does not own.
+        /// </summary>
+        public int DeployFace => _config.DeployRequirement;
 
         /// <summary>
         /// Effective speed after auras and slows, floored at
@@ -54,6 +66,12 @@ namespace NonaRoyale.Core.Services
         /// cell. At 1.5×, a roll of 7 moves 10, not 11 — and the player can
         /// verify it by halving in their head, which is the readability
         /// constraint that fixed the speed band in the first place.
+        ///
+        /// <b>The floor is per move, not per roll</b>, which is what gives
+        /// splitting its price. Two dice pooled lose at most one half-cell;
+        /// spent separately they can lose one each. The two losses coincide
+        /// exactly when both dice are odd — 9 rolls in 36 — and at whole-number
+        /// speeds they never happen at all.
         /// </remarks>
         public int CellsFor(int diceValue, double effectiveSpeed)
         {
@@ -70,6 +88,15 @@ namespace NonaRoyale.Core.Services
         /// Reports possibilities only — deployment is optional, so the choice
         /// belongs to the command layer (COMBAT_SYSTEMS §1.3).
         /// </summary>
+        /// <remarks>
+        /// <b><c>GameEngine</c> no longer calls this.</b> Once the engine began
+        /// tracking unspent dice individually (§6), it could answer "may I
+        /// deploy" by looking for an unspent <see cref="DeployFace"/> and
+        /// "how many" by deploying one per die, which made
+        /// <c>DeployOption.TotalIfDeclined</c> and
+        /// <c>MovementAfterDeploying</c> redundant. Kept because it is still the
+        /// honest way for a caller outside the engine to ask what a roll offers.
+        /// </remarks>
         public DeployOption GetDeployOption(DiceRoll roll, int operatorsInYard)
         {
             if (operatorsInYard < 0)

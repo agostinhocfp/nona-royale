@@ -309,6 +309,12 @@ namespace NonaRoyale.Unity.Composition
         /// consecutive progress values are not adjacent on screen, the piece
         /// visibly leaps. That is how the arm-tip gap in the old 48-cell board
         /// was caught (ADR-0002 Amendment 5). Keep it walking one cell at a time.
+        ///
+        /// <b>A split roll produces two walks, one per command</b> (§6). On two
+        /// different pieces they run side by side and read fine. On the same
+        /// piece twice they arrive back to back, and whether the second
+        /// interrupts the first is <c>OperatorPiece.Walk</c>'s business —
+        /// PRESENTATION §3 wants them sequenced, not overlapping.
         /// </remarks>
         private void WalkMoves(IReadOnlyList<IGameEvent> events)
         {
@@ -338,6 +344,11 @@ namespace NonaRoyale.Unity.Composition
         /// Distance depends on slows and auras, and a preview that did its own
         /// arithmetic would disagree with the rules exactly when a player is
         /// leaning on it.
+        ///
+        /// Since a roll can be split (§6) the engine reports several options per
+        /// operator. The pooled landing is drawn bold and each single-die landing
+        /// faintly, so what splitting costs is visible on the board before a die
+        /// is clicked rather than discovered after.
         /// </remarks>
         private void RefreshHighlights()
         {
@@ -346,16 +357,21 @@ namespace NonaRoyale.Unity.Composition
             _highlights.Clear();
             if (_match.Engine.MatchOver) return;
 
-            var landings = _match.Engine.PreviewLandings();
-            var cells = new List<CellRef>();
+            var pooled = new List<CellRef>();
+            var perDie = new List<CellRef>();
 
-            foreach (var pair in landings)
+            foreach (var landing in _match.Engine.PreviewLandings())
             {
-                var op = _match.Operators.FirstOrDefault(o => o.Id == pair.Key);
-                if (op != null) cells.Add(_match.Map.CellAt(op.Owner, pair.Value));
+                var op = _match.Operators.FirstOrDefault(o => o.Id == landing.OperatorId);
+                if (op == null) continue;
+
+                var cell = _match.Map.CellAt(op.Owner, landing.Progress);
+
+                if (landing.IsPooled) pooled.Add(cell);
+                else perDie.Add(cell);
             }
 
-            _highlights.ShowLandings(cells);
+            _highlights.ShowLandings(pooled, perDie);
 
             if (_selectedCaster != null && _selectedAbility != null && !_selectedCaster.IsInYard)
             {
@@ -461,8 +477,22 @@ namespace NonaRoyale.Unity.Composition
 
             GUILayout.Space(6);
 
+            // Movement is compulsory (§6), so the engine refuses both of these
+            // while a die is still spendable. Greying them out says so before
+            // the click rather than after — the same reasoning that put
+            // CheckAbility behind the ability tray.
+            bool owesMovement = engine.MustSpendRoll;
+            var dice = engine.UnspentDice;
+
+            GUILayout.Label(dice.Count == 0
+                ? "<i>no dice in hand</i>"
+                : $"unspent: <b>{Faces(dice)}</b>");
+
+            GUI.enabled = !owesMovement;
             if (GUILayout.Button("Roll")) Send(new RollDiceCommand());
-            if (GUILayout.Button("End turn")) Send(new EndTurnCommand());
+            if (GUILayout.Button(owesMovement ? "End turn — spend your roll first" : "End turn"))
+                Send(new EndTurnCommand());
+            GUI.enabled = true;
 
             GUILayout.Space(8);
             GUILayout.Label("<b>Your operators</b>");
@@ -471,19 +501,19 @@ namespace NonaRoyale.Unity.Composition
             {
                 GUILayout.BeginHorizontal();
 
-                GUILayout.Label($"{op.Name} {op.Health}/{op.MaxHealth}", GUILayout.Width(120));
+                GUILayout.Label($"{op.Name} {op.Health}/{op.MaxHealth}", GUILayout.Width(110));
 
                 if (op.IsInYard)
                 {
-                    if (GUILayout.Button("Deploy")) Send(new DeployCommand(op.Id));
+                    if (GUILayout.Button("Deploy", GUILayout.Width(78))) Send(new DeployCommand(op.Id));
                 }
-                else if (GUILayout.Button("Move"))
+                else
                 {
-                    Send(new MoveCommand(op.Id));
+                    DrawMoveButtons(op, dice);
                 }
 
                 bool selected = ReferenceEquals(op, _selectedCaster);
-                if (GUILayout.Toggle(selected, "cast", GUI.skin.button, GUILayout.Width(46)) != selected)
+                if (GUILayout.Toggle(selected, "cast", GUI.skin.button, GUILayout.Width(42)) != selected)
                 {
                     _selectedCaster = selected ? null : op;
                     _selectedAbility = null;      // an ability belongs to its caster
@@ -502,6 +532,68 @@ namespace NonaRoyale.Unity.Composition
 
             DrawLog();
             GUILayout.EndArea();
+        }
+
+        /// <summary>
+        /// One button per way this operator could spend the roll: the whole thing
+        /// at once, or a single die.
+        /// </summary>
+        /// <remarks>
+        /// The split buttons only appear when there is a split to make. With one
+        /// die left there is nothing to choose, and on a double the two faces are
+        /// equal, so a second button would be a second way to press the first.
+        ///
+        /// Labelled with pips rather than cells. Cells depend on the operator's
+        /// speed and the board already shows where each option lands, so putting
+        /// the converted number here would be a third place for the same
+        /// arithmetic to live.
+        /// </remarks>
+        private void DrawMoveButtons(OperatorState op, IReadOnlyList<int> dice)
+        {
+            if (dice.Count == 0)
+            {
+                GUILayout.Label("—", GUILayout.Width(78));
+                return;
+            }
+
+            if (dice.Count == 1)
+            {
+                if (GUILayout.Button($"Move {dice[0]}", GUILayout.Width(78)))
+                    Send(new MoveCommand(op.Id));
+
+                return;
+            }
+
+            int total = 0;
+            for (int i = 0; i < dice.Count; i++) total += dice[i];
+
+            if (GUILayout.Button($"{total}", GUILayout.Width(30))) Send(new MoveCommand(op.Id));
+
+            for (int i = 0; i < dice.Count; i++)
+            {
+                if (SeenEarlier(dice, i)) continue;
+
+                if (GUILayout.Button($"{dice[i]}", GUILayout.Width(22)))
+                    Send(new MoveCommand(op.Id, dice[i]));
+            }
+        }
+
+        private static bool SeenEarlier(IReadOnlyList<int> dice, int index)
+        {
+            for (int i = 0; i < index; i++)
+                if (dice[i] == dice[index]) return true;
+
+            return false;
+        }
+
+        private static string Faces(IReadOnlyList<int> dice)
+        {
+            var text = "";
+
+            for (int i = 0; i < dice.Count; i++)
+                text += i == 0 ? dice[i].ToString() : $" + {dice[i]}";
+
+            return text;
         }
 
         private void DrawAbilities(PlayerState seat)

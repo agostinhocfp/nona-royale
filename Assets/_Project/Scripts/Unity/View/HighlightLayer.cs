@@ -30,11 +30,31 @@ namespace NonaRoyale.Unity.View
             _markers.Clear();
         }
 
-        /// <summary>Ghost markers on the cells this roll would carry each operator to.</summary>
-        public void ShowLandings(IEnumerable<CellRef> cells)
+        /// <summary>
+        /// Ghost markers on the cells this roll could carry each operator to.
+        /// </summary>
+        /// <remarks>
+        /// <b>Two weights, because a split roll offers two answers per
+        /// operator.</b> The bold marker is where the whole roll lands the piece;
+        /// the faint smaller ones are where each single die would. Drawing them
+        /// identically would be worse than drawing one — a player would read a
+        /// cluster of equal ghosts as a range rather than a menu.
+        ///
+        /// <paramref name="perDie"/> is optional so the single-die case (one
+        /// die left, nothing to choose between) stays a one-argument call.
+        /// </remarks>
+        public void ShowLandings(IEnumerable<CellRef> pooled, IEnumerable<CellRef> perDie = null)
         {
-            foreach (var cell in cells)
-                Spawn(cell, _layout.CellSize * 0.92f, new Color(0.95f, 0.92f, 0.70f, 0.35f), 1);
+            if (pooled != null)
+            {
+                foreach (var cell in pooled)
+                    Spawn(cell, _layout.CellSize * 0.92f, new Color(0.95f, 0.92f, 0.70f, 0.35f), 1);
+            }
+
+            if (perDie == null) return;
+
+            foreach (var cell in perDie)
+                Spawn(cell, _layout.CellSize * 0.58f, new Color(0.95f, 0.92f, 0.70f, 0.15f), 1);
         }
 
         /// <summary>

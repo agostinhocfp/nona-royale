@@ -324,6 +324,168 @@ namespace NonaRoyale.Core.Tests.Engine
                 Is.EqualTo(new[] { "Bouncer", "Syla", "Kurbyn" }));
         }
 
+        // ── The engine says what it did ──────────────────────────────────
+        //
+        // Three separate faults this session have had the same shape: the state
+        // changed correctly and nothing announced it. The board kept working,
+        // so nothing screamed — badges draw from ActiveStatusesOn, pieces
+        // reposition from their progress, and only the explanation went missing.
+        // These tests exist to make that class of failure loud.
+
+        /// <summary>
+        /// A match with everything deployed, Red banked and on its turn, having
+        /// already rolled.
+        /// </summary>
+        /// <remarks>
+        /// The pool is filled by taking turns rather than set directly.
+        /// <c>PlayerState.SetEnergy</c> is not visible from the test assembly,
+        /// and that is right — the ledger owns the pool (§3), and a test that
+        /// reached past it would be asserting against a state no match can
+        /// actually reach.
+        /// </remarks>
+        private static MatchFactory.Match Armed(int minimumEnergy = 12, int seed = 3)
+        {
+            var match = MatchFactory.CreateAlphaMatch(
+                new[] { PlayerColor.Red, PlayerColor.Blue }, seed, openingDeployments: 3);
+
+            var engine = match.Engine;
+            engine.Start();
+
+            // Energy arrives only on the first roll of a turn (§3.1), so a full
+            // pool costs several turns. Nothing moves in them: no MoveCommand is
+            // issued, so every operator stays on its start cell.
+            while (match.Players[0].Energy < minimumEnergy ||
+                   engine.CurrentPlayer.Color != PlayerColor.Red)
+            {
+                engine.Execute(new RollDiceCommand());
+                engine.Execute(new EndTurnCommand());
+            }
+
+            engine.Execute(new RollDiceCommand());
+            return match;
+        }
+
+        private static OperatorState Of(MatchFactory.Match match, PlayerColor seat, string name) =>
+            match.Operators.First(o => o.Owner == seat && o.Name == name);
+
+        [Test]
+        public void AnAbilityThatAppliesAStatus_SaysSo()
+        {
+            var match = Armed();
+            var syla = Of(match, PlayerColor.Red, "Syla");
+            var enemy = Of(match, PlayerColor.Blue, "Bouncer");
+
+            syla.MoveTo(11);                        // two cells from Blue's start
+
+            var events = match.Engine.Execute(
+                new UseAbilityCommand(syla.Id, Syla.FromTheHip.Id, enemy.Id));
+
+            Assert.That(events.Any(e => e is CommandRejected), Is.False,
+                string.Join(" | ", events.Select(e => e.ToString())));
+
+            var applied = events.OfType<StatusApplied>().FirstOrDefault();
+
+            Assert.That(applied, Is.Not.Null, "From the Hip slows, and the slow has to be announced");
+            Assert.That(applied.Status, Is.EqualTo(StatusKind.Slow));
+            Assert.That(applied.Target, Is.SameAs(enemy));
+        }
+
+        [Test]
+        public void AHealIsAnnounced()
+        {
+            // The roster's only heal, and the ally mode was unreachable in the
+            // view until recently — so this path had never been exercised end to
+            // end by anything.
+            var match = Armed();
+            var bouncer = Of(match, PlayerColor.Red, "Bouncer");
+            var syla = Of(match, PlayerColor.Red, "Syla");
+
+            bouncer.MoveTo(10);
+            syla.MoveTo(11);
+            syla.SetHealth(2);
+
+            var events = match.Engine.Execute(
+                new UseAbilityCommand(bouncer.Id, Bouncer.AllInMauling.Id, syla.Id));
+
+            var healed = events.OfType<HealApplied>().FirstOrDefault();
+
+            Assert.That(healed, Is.Not.Null);
+            Assert.That(healed.Target, Is.SameAs(syla));
+            Assert.That(healed.Amount, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void APullIsAnnounced()
+        {
+            var match = Armed();
+            var bouncer = Of(match, PlayerColor.Red, "Bouncer");
+            var enemy = Of(match, PlayerColor.Blue, "Syla");
+
+            bouncer.MoveTo(10);
+
+            var events = match.Engine.Execute(
+                new UseAbilityCommand(bouncer.Id, Bouncer.VelvetRope.Id, enemy.Id));
+
+            Assert.That(events.OfType<OperatorMoved>().Any(m => ReferenceEquals(m.Operator, enemy)),
+                Is.True, "the pulled operator moved, so the view has to be told");
+        }
+
+        [Test]
+        public void AnUpkeepMarkPayout_IsAnnouncedNotJustApplied()
+        {
+            // The fault this is named for: TurnStateMachine applies an upkeep
+            // neutralize itself, so GameEngine reports rather than resolves —
+            // and the hastened allies were applied to state and never emitted.
+            // The badges appeared on a later refresh with nothing explaining them.
+            var match = Armed();
+            var syla = Of(match, PlayerColor.Red, "Syla");
+            var victim = Of(match, PlayerColor.Blue, "Syla");
+
+            syla.MoveTo(11);
+            victim.SetHealth(2);                    // one mark tick finishes it
+
+            match.Engine.Execute(new UseAbilityCommand(syla.Id, Syla.TaggedFromAbove.Id, victim.Id));
+
+            // Handing over runs Blue's upkeep, where the mark bills.
+            var events = match.Engine.Execute(new EndTurnCommand());
+
+            var down = events.OfType<OperatorNeutralized>().FirstOrDefault();
+            Assert.That(down, Is.Not.Null, "the mark should have finished it");
+            Assert.That(down.Cause, Is.EqualTo("mark"));
+
+            var hastened = events.OfType<StatusApplied>()
+                .Where(s => s.Status == StatusKind.Hastened)
+                .ToList();
+
+            Assert.That(hastened.Count, Is.EqualTo(3), "the marker's whole squad, announced");
+            Assert.That(hastened.All(s => s.Target.Owner == PlayerColor.Red), Is.True);
+        }
+
+        [Test]
+        public void AKillAtUpkeep_PaysItsMarkerOnAnotherPlayersTurn()
+        {
+            // The only path where a bounty lands on a seat that is not taking
+            // the turn. Red spends 9 on the ult and is left under the cap, so
+            // the credit is visible rather than absorbed.
+            var match = Armed();
+            var syla = Of(match, PlayerColor.Red, "Syla");
+            var victim = Of(match, PlayerColor.Blue, "Syla");
+
+            syla.MoveTo(11);
+            victim.SetHealth(2);
+
+            match.Engine.Execute(new UseAbilityCommand(syla.Id, Syla.TaggedFromAbove.Id, victim.Id));
+            int redEnergy = match.Players[0].Energy;
+
+            var events = match.Engine.Execute(new EndTurnCommand());
+
+            var bounty = events.OfType<EnergyGranted>()
+                .FirstOrDefault(g => g.Player == PlayerColor.Red);
+
+            Assert.That(bounty, Is.Not.Null, "the marker collected, and it has to be reported");
+            Assert.That(match.Players[0].Energy, Is.GreaterThan(redEnergy));
+        }
+
         // ── A whole match, through the boundary only ─────────────────────
 
         [Test]
