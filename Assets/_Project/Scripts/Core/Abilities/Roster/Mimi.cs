@@ -5,8 +5,8 @@ using NonaRoyale.Core.Model;
 namespace NonaRoyale.Core.Abilities
 {
     /// <summary>
-    /// Operator #4, transcribed from <c>OPERATORS.md</c>. Content, not logic —
-    /// same contract as the alpha three.
+    /// Operator #4 — Controller. Content, not logic — same contract as the
+    /// alpha three.
     /// </summary>
     /// <remarks>
     /// <b>Two of three abilities.</b> Cryo Field is deliberately absent: it
@@ -20,9 +20,10 @@ namespace NonaRoyale.Core.Abilities
     /// it does mean her whole identity as the anti-shield operator is currently
     /// unexpressed.
     ///
-    /// <b>She is not yet reachable.</b> <c>MatchFactory.CreateAlphaMatch</c>
-    /// hardcodes three operators per seat, so nothing in a match or a sweep has
-    /// ever executed either of these abilities.
+    /// <b>Reachable, and unmeasured.</b> Drafting made her fieldable, so a
+    /// random-squad match or sweep can now execute both of these — neither of
+    /// which has ever been simulated. Cryo-Pulse's remote origin and
+    /// Translocation's cooldown are both reasoned values.
     /// </remarks>
     public static class Mimi
     {
@@ -35,8 +36,6 @@ namespace NonaRoyale.Core.Abilities
         /// operator survives.
         /// </summary>
         public const double Speed = 1.0;
-
-        // ── Abilities ────────────────────────────────────────────────────
 
         /// <summary>
         /// An entropy field around a target foe: everything near it loses
@@ -64,7 +63,10 @@ namespace NonaRoyale.Core.Abilities
         /// game. Kept as written pending a sweep.
         /// </remarks>
         public static AbilityDefinition CryoPulse { get; } = new AbilityDefinition(
-            id: 401, name: "Cryo-Pulse", energyCost: 6, cooldownTurns: 3, range: 3,
+            id: 401, name: "Cryo-Pulse",
+            description:
+                "Freezes the ground around an enemy. Everything caught in it is wounded, slowed, and cracks open as it thaws.",
+            energyCost: 6, cooldownTurns: 3, range: 3,
             effects: new[]
             {
                 AbilityEffect.Damage(EffectScope.EnemiesAroundPrimaryTargetInclusive, 2,
@@ -80,10 +82,10 @@ namespace NonaRoyale.Core.Abilities
         /// friend or foe, exchange coordinates instantly.
         /// </summary>
         /// <remarks>
-        /// Range 6 is the longest in the game — half again Velvet Rope's 4 — and
-        /// that is the point. It is the only compensation a 5-health operator
-        /// gets for being in a fight at all: she can open an exchange from
-        /// outside everything else's reach, and leave one the same way.
+        /// Range 6 is the longest in the game, and that is the point. It is the
+        /// only compensation a 5-health operator gets for being in a fight at
+        /// all: she can open an exchange from outside everything else's reach,
+        /// and leave one the same way.
         ///
         /// Because progress moves one-for-one with cells, the range also bounds
         /// the swing: a swap shifts either operator by at most 6 cells of
@@ -101,19 +103,15 @@ namespace NonaRoyale.Core.Abilities
         /// drip (§3.1) both 3 and 4 gate to roughly every turn, and 4 is off the
         /// 3/6/9 tier besides — the same objection that repriced Cryo-Pulse. A
         /// cooldown longer than the economy imposes is precisely what §3.1 says
-        /// a stated cooldown is for. At 4 turns this drops from about seven
-        /// casts a match to about four.
+        /// a stated cooldown is for.
         /// </remarks>
         public static AbilityDefinition Translocation { get; } = new AbilityDefinition(
-            id: 402, name: "Translocation", energyCost: 3, cooldownTurns: 4, range: 6,
+            id: 402, name: "Translocation",
+            description:
+                "Trade places with anyone on the board, friend or enemy.",
+            energyCost: 3, cooldownTurns: 4, range: 6,
             effects: new[] { AbilityEffect.Swap() });
 
-        // ── Lookups ──────────────────────────────────────────────────────
-
-        /// <summary>
-        /// Her kit. Named <c>All</c> to match every other operator file, which
-        /// is what <c>Roster.Build</c> expects.
-        /// </summary>
         public static IReadOnlyList<AbilityDefinition> All { get; } =
             new[] { CryoPulse, Translocation };
 

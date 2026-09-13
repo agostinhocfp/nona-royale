@@ -13,12 +13,23 @@ namespace NonaRoyale.Sim
     /// speed band instead of shrinking the loop? Readability is the constraint:
     /// a move should be a fraction of the loop a player can follow.
     /// </summary>
+    /// <remarks>
+    /// The answer was yes, and it is what ADR-0002 Amendment 4 adopted. Retained
+    /// because the question recurs every time the band or the loop moves, and
+    /// because the <c>move%</c> column is the only place the governing figure —
+    /// mean move as a share of the loop — is computed at all.
+    /// </remarks>
     public static class Dynamic
     {
         public static void Run(int matches)
         {
             var standard = BoardProfile.Standard;
-            var compact = new BoardProfile("Compact", 24, 3, laps: 2);
+
+            // 28x2, not the old 24x2: a circuit outside the 8L+4 family cannot
+            // be drawn as a cross (ADR-0002 Amendment 6). Its journey is now 59
+            // against Standard's 58, so "Compact" is the longer board — kept
+            // only as the density comparison this sweep was written for.
+            var compact = BoardProfile.Cross("Compact", 3, laps: 2);
 
             Console.WriteLine($"\nSTANDARD BOARD, SLOWER BANDS — 4 players, opening 2, {matches} matches");
             Console.WriteLine($"{"",-34} {"turns",6} {"p90",5} {"neut",6} {"abil",6} {"coll",6} {"3-up",6} {"move%",6}");
@@ -29,6 +40,9 @@ namespace NonaRoyale.Sim
                 "1.25 / 1.5 / 1.5", "adopted (RosterSpeeds.Default)"
             };
 
+            // Kurbyn is constructed at his BASE speed; the passive adds the rest.
+            // Every label states the effective band, which is why this array
+            // looks half a step low on its third column.
             var bands = new[]
             {
                 new RosterSpeeds(1.0, 1.0, 0.5),
@@ -46,7 +60,7 @@ namespace NonaRoyale.Sim
                 Row(labels[i] + " r+1", standard, bands[i], 1, matches);
 
             Console.WriteLine("\n  for comparison");
-            Row("Compact 24x2, adopted", compact, RosterSpeeds.Default, 0, matches);
+            Row($"Compact {compact.CircuitLength}x2, adopted", compact, RosterSpeeds.Default, 0, matches);
         }
 
         private static void Row(string label, BoardProfile board, RosterSpeeds speeds, int reach, int matches)
@@ -68,9 +82,11 @@ namespace NonaRoyale.Sim
                 runs.Add(stats);
             }
 
-            // A mean roll of 7, at the squad's mean speed, as a share of the loop.
+            // A mean roll of 7, at the squad's mean effective speed, as a share
+            // of the loop. ADR-0002 Amendment 4: target roughly a fifth; past a
+            // third a move stops being followable.
             double meanSpeed = (speeds.Bouncer + speeds.Syla +
-                                speeds.KurbynBase + AlphaRoster.KurbynPassiveSpeedBonus) / 3.0;
+                                speeds.KurbynBase + Kurbyn.PassiveSpeedBonus) / 3.0;
             double movePercent = 7.0 * meanSpeed / board.CircuitLength * 100.0;
 
             var turns = runs.Select(r => (double)r.Turns / 4).OrderBy(t => t).ToList();

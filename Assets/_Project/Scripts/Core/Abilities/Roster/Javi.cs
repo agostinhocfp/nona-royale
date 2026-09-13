@@ -62,7 +62,10 @@ namespace NonaRoyale.Core.Abilities
         /// punish them for standing.
         /// </remarks>
         public static AbilityDefinition NaniteInfusion { get; } = new AbilityDefinition(
-            id: 501, name: "Nanite Infusion", energyCost: 3, cooldownTurns: 2, range: 3,
+            id: 501, name: "Nanite Infusion",
+            description:
+                "Nanites seal an ally's wounds. Turned on an enemy they do the opposite, and your squad standing near them catches the runoff.",
+            energyCost: 3, cooldownTurns: 2, range: 3,
             effects: new[]
             {
                 AbilityEffect.Heal(EffectScope.PrimaryTarget, 2, EffectAudience.AllyOnly),
@@ -94,7 +97,10 @@ namespace NonaRoyale.Core.Abilities
         /// Tagged From Above reads, and removing the status removes the source.
         /// </remarks>
         public static AbilityDefinition NeuralPurge { get; } = new AbilityDefinition(
-            id: 503, name: "Neural Purge", energyCost: 6, cooldownTurns: 3, range: 3,
+            id: 503, name: "Neural Purge",
+            description:
+                "Floods an ally's nerves with inhibitory signals, washing out everything riding them.",
+            energyCost: 6, cooldownTurns: 3, range: 3,
             effects: new[] { AbilityEffect.Cleanse() });
 
         // id 502 is reserved for Carapace, so his ids stay in cast order when it

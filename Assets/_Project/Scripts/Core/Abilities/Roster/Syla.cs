@@ -33,7 +33,10 @@ namespace NonaRoyale.Core.Abilities
         /// not need to carry the ability.
         /// </remarks>
         public static AbilityDefinition FromTheHip { get; } = new AbilityDefinition(
-            id: 201, name: "From the Hip", energyCost: 3, cooldownTurns: 1, range: 3,
+            id: 201, name: "From the Hip",
+            description:
+                "A quick shot that leaves the target struggling to keep pace. It bites much deeper into someone already bleeding.",
+            energyCost: 3, cooldownTurns: 1, range: 3,
             effects: new[]
             {
                 AbilityEffect.Damage(EffectScope.PrimaryTarget, 1, DamageType.Normal,
@@ -51,7 +54,10 @@ namespace NonaRoyale.Core.Abilities
         /// only if she set it up first.
         /// </remarks>
         public static AbilityDefinition AceShards { get; } = new AbilityDefinition(
-            id: 202, name: "Ace Shards", energyCost: 6, cooldownTurns: 3, range: 3,
+            id: 202, name: "Ace Shards",
+            description:
+                "Scatters shrapnel around you, opening wounds on every enemy close enough to catch it.",
+            energyCost: 6, cooldownTurns: 3, range: 3,
             requiresTarget: false,
             effects: new[]
             {
@@ -81,7 +87,10 @@ namespace NonaRoyale.Core.Abilities
         /// did nothing on the turn it was cast.
         /// </remarks>
         public static AbilityDefinition TaggedFromAbove { get; } = new AbilityDefinition(
-            id: 203, name: "Tagged From Above", energyCost: 9, cooldownTurns: 2, range: 3,
+            id: 203, name: "Tagged From Above",
+            description:
+                "Paints an enemy for the squad and slips you out of sight. If your side finishes them while the mark holds, everyone moves faster.",
+            energyCost: 9, cooldownTurns: 2, range: 3,
             effects: new[]
             {
                 AbilityEffect.Status_(EffectScope.PrimaryTarget, StatusKind.Mark, duration: 2),

@@ -160,7 +160,7 @@ namespace NonaRoyale.Core.Board
     /// <remarks>
     /// ADR-0002 originally stated the constraint as
     /// <c>HomeColumnLength = PlayerStartOffset / 2</c>, implying one integer
-    /// defines a board. That rule is <b>dead</b> as of Amendment 5: it does not
+    /// defines a board. That rule is <b>dead</b> as of Amendment 6: it does not
     /// describe a drawable Ludo cross. The real family is
     /// <c>CircuitLength = 8L + 4, HomeColumnLength = L</c> for an arm length L —
     /// see <see cref="Cross"/>, and <c>BoardLayout</c> for the derivation.
@@ -267,7 +267,7 @@ namespace NonaRoyale.Core.Board
         /// <b>Superseded by <see cref="Cross"/>; kept for the harness only.</b>
         /// The halving rule produces boards that cannot be drawn as a cross — it
         /// is what produced the 48/6 Standard, whose loop had to jump a cell at
-        /// each arm tip (ADR-0002 Amendment 5). Do not use it for a shipping
+        /// each arm tip (ADR-0002 Amendment 6). Do not use it for a shipping
         /// board.
         /// </remarks>
         public static BoardProfile FromCircuitLength(string name, int circuitLength)
@@ -290,7 +290,7 @@ namespace NonaRoyale.Core.Board
         }
 
         /// <summary>
-        /// The shipping board (ADR-0002 Amendment 5): classic Ludo, 52/6 on a
+        /// The shipping board (ADR-0002 Amendment 6): classic Ludo, 52/6 on a
         /// 15x15 grid, journey 58. Was 48/6, which could not be drawn without a
         /// gap at each arm tip.
         /// </summary>
@@ -306,7 +306,7 @@ namespace NonaRoyale.Core.Board
 
         /// <summary>
         /// Retained for measurement only; not a shipping candidate. 60/7 on
-        /// 17x17 — already a valid cross, unchanged by Amendment 5.
+        /// 17x17 — already a valid cross, unchanged by Amendment 6.
         /// </summary>
         public static BoardProfile Long { get; } = Cross("Long", 7);
 

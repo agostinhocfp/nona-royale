@@ -39,7 +39,10 @@ namespace NonaRoyale.Core.Abilities
 
         /// <summary>Self-origin area that damages and stuns. His control tool.</summary>
         public static AbilityDefinition DarginPulse { get; } = new AbilityDefinition(
-            id: 301, name: "Dargin Pulse", energyCost: 6, cooldownTurns: 3, range: 2,
+            id: 301, name: "Dargin Pulse",
+            description:
+                "A burst that scrambles motor function, leaving every enemy nearby unable to act.",
+            energyCost: 6, cooldownTurns: 3, range: 2,
             requiresTarget: false,
             effects: new[]
             {
@@ -72,7 +75,10 @@ namespace NonaRoyale.Core.Abilities
         /// correction or an overcorrection is a measurement, not an argument.
         /// </remarks>
         public static AbilityDefinition MiraclePull { get; } = new AbilityDefinition(
-            id: 302, name: "Miracle Pull", energyCost: 9, cooldownTurns: 2, range: 2,
+            id: 302, name: "Miracle Pull",
+            description:
+                "A gravitic tether no defence can stop, collapsing in on everything around the target. An enemy already wounded is finished outright.",
+            energyCost: 9, cooldownTurns: 2, range: 2,
             effects: new[]
             {
                 AbilityEffect.Execute(1, 2, fallbackAmount: 3, fallbackType: DamageType.Atomic),

@@ -254,6 +254,14 @@ namespace NonaRoyale.Core
         /// for the simulation harness — both the single-target range and any
         /// area radius move together, since "reach" means both.
         /// </summary>
+        /// <remarks>
+        /// <b>Every field has to be carried across by hand, and nothing warns
+        /// you when one is not.</b> This rebuilds an ability from its parts, so a
+        /// field added to <see cref="AbilityDefinition"/> and forgotten here is
+        /// silently dropped from every swept match. Adding a field to that type
+        /// means editing this method — the description was the first to catch it,
+        /// and only because the constructor refuses an empty one.
+        /// </remarks>
         private static IReadOnlyList<AbilityDefinition> Retune(
             IReadOnlyList<AbilityDefinition> abilities, int rangeBonus)
         {
@@ -269,7 +277,8 @@ namespace NonaRoyale.Core
                     effects.Add(effect.WithRadius(effect.Radius > 0 ? effect.Radius + rangeBonus : 0));
 
                 tuned.Add(new AbilityDefinition(
-                    ability.Id, ability.Name, ability.EnergyCost, ability.CooldownTurns,
+                    ability.Id, ability.Name, ability.Description,
+                    ability.EnergyCost, ability.CooldownTurns,
                     ability.Range + rangeBonus, effects, ability.RequiresTarget));
             }
 

@@ -83,7 +83,10 @@ namespace NonaRoyale.Core.Abilities
         /// through Evasive Protocol that is not a two-ability sequence.
         /// </remarks>
         public static AbilityDefinition VelvetRope { get; } = new AbilityDefinition(
-            id: 101, name: "Velvet Rope", energyCost: 6, cooldownTurns: 2, range: 3,
+            id: 101, name: "Velvet Rope",
+            description:
+                "Drags an enemy to your side, and nothing they carry will stop it. On an ally, repositions them unharmed.",
+            energyCost: 6, cooldownTurns: 2, range: 3,
             effects: new[]
             {
                 AbilityEffect.Pull(EffectAudience.Any),
@@ -114,7 +117,10 @@ namespace NonaRoyale.Core.Abilities
         /// one — for 4 self-damage, which is now most of what he can pay.
         /// </remarks>
         public static AbilityDefinition AllInMauling { get; } = new AbilityDefinition(
-            id: 102, name: "All-In Mauling", energyCost: 6, cooldownTurns: 0, range: 2,
+            id: 102, name: "All-In Mauling",
+            description:
+                "A brutal exchange at close quarters that costs you blood as well. On an ally, a rough grapple that patches them up instead.",
+            energyCost: 6, cooldownTurns: 0, range: 2,
             effects: new[]
             {
                 AbilityEffect.Damage(EffectScope.PrimaryTarget, 2, DamageType.Normal, EffectAudience.EnemyOnly),

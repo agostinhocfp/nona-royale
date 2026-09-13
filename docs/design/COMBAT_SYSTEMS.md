@@ -639,3 +639,26 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - 2026-09-12 — §12 rewritten against live-core measurements, replacing the Python model's figures. Reach identified as the largest balance lever; `CollisionDamage` struck as a dial; the yard setback demoted; occupancy corrected from 10–15% to 33%. Gained the slow/aura stacking conflict, rehoused from the abandoned decision log.
 - 2026-09-12 — Roster corrections after the first human sessions; **code was authoritative and the doc had drifted behind it**. Velvet Rope becomes **3 Atomic at range 4** (§2.2, §10.1), a targeted counter to Evasion chosen over weakening Evasion itself after Kurbyn dominated early play. Intimidating Presence radius **2 → 3**, matching the rope's previous reach. From the Hip **2 → 1** base damage (§10.2), making it a control tool with a damage rider. §3.1's claim that a zero cooldown on a 6-cost ability buys nothing softened: at the cap it enables the Velvet Rope → All-In Mauling combo, six damage in one turn. §2.2 gained a note on Atomic being concentrated in two operators, which becomes a drafting question at 3-from-9. §12 flagged wholly stale: the figures predate five roster changes, four of which raise lethality.
   2026-09-12 — Placement extended to swaps. EffectKind gains SwapWithCaster, the sixth kind and the first added since the core was written. §7.4 rewritten: placement is computed in cells and applied in progress, and the two ways a destination can leave an operator's own path are now stated — backwards behind the start cell, and forwards into the home column, which nobody had noticed until the swap arithmetic forced it. A pull clamps, a swap refuses; the rule is that placement moving one operator clamps and placement moving two refuses, because a clamp that breaks a swap's symmetry has stopped being the effect the player cast. §4.2 gains the inclusive area scope, and §7.5 notes swaps as a third route to a stacked cell. Mimi is written but stays out of §10 — two of her three abilities are castable, and Cryo Field still needs a status that damages an area at its holder's upkeep.
+
+tune bouncer down after human play
+
+He was too strong across all three axes, so all three came down: 12 -> 9
+health, Velvet Rope range 4 -> 3, All-In Mauling 3 -> 2 damage with self
+1 -> 2. Miracle Pull gains range 1 -> 2.
+
+The rope-into-mauling one-turn kill is gone by design. Six damage killed
+either 6-health operator from full for the price of a banked pool; five
+leaves them at 1, which is a setup the victim gets a turn to answer.
+Self-damage at 1 against 12 health was flavour text - at 2 against 9 it
+is four casts, and a wounded Bouncer has to decide whether he can afford
+the exchange.
+
+Intimidating Presence stays at 3 and now equals the rope's reach again.
+Reach and aura are one kit: if one moves, move the other.
+
+All four changes push power the same way, and the rope is the only
+single-cast route through Evasive Protocol - Syla's is a two-ability
+sequence. If Kurbyn reads as dominant again, the rope's range is the
+first thing to restore.
+
+COMBAT_SYSTEMS 7.3, 10.1, 10.3, 11 and 12 updated.

@@ -1,7 +1,10 @@
-# ADR-0002: Board Size — 48-Space Circuit
+# ADR-0002: Board Size — 52-Space Circuit
 
 > Location in repo: `docs/decisions/0002-board-size.md`
-> Status: **Accepted** — 48 confirmed by simulation; no longer provisional.
+> Status: **Accepted** — 52/6, the classic Ludo cross. 48 was adopted for four amendments and could not be drawn (Amendment 6).
+
+- 2026-09-12 — Amended. 48 shown to be undrawable as a four-arm cross: the loop needs `8L + 4` cells and 48 implies an arm of 5.5, which `BoardLayout` had been absorbing with four two-cell gaps in the track and home columns one cell short. Board corrected to **52/6, journey 58** — classic Ludo, which ADR-0003 always said this board was. `% 8 == 0` struck as a false invariant. Every absolute figure re-baselined; the match now runs 21.3 turns against a 15–20 minute budget, and 44/5 recorded as the in-budget fallback the old constraint had hidden.
+
 > Date: 2026-07-10 · Amended 2026-07-10 (home-column length + constants) · Amended 2026-09-11 (pacing model corrected, speed band, board profiles) · Amended 2026-09-12 (laps and shipping profiles; Compact withdrawn and band lowered; mark damage, haste payout, and a measurement fault)
 > Related: `docs/GDD.md`, ADR-0003 (board topology), ADR-0005 (unified neutralize), `docs/design/COMBAT_SYSTEMS.md`, `PathManager.cs`
 
@@ -328,13 +331,74 @@ So every band label in Amendments 2, 3 and 4 overstates Kurbyn by 0.5, and every
 
 A harness run, in this order, each sweep separable:
 
-1. **Re-baseline** on the fixed core and regenerate the `tools/sim/README` tripwire row. Nothing below is meaningful until this exists.
+1. 1. ~~**Re-baseline** on the fixed core and regenerate the `tools/sim/README` tripwire row.~~ **Done** — but twice, because the first re-baseline measured a board that was then found undrawable. The current figures are in Amendment 6. The `tools/sim/README` tripwire row still needs regenerating.
 2. **Rule on slow stacking.** `GameEngine` sums the status and aura speed channels, so Slow plus Intimidating Presence reaches the `MinSpeedMultiplier` floor — two half-slows becoming a hard stop, which `COMBAT_SYSTEMS` §5.2 exists to prevent. The scripted player triggers this constantly, so it distorts any measurement taken before it is settled.
 3. **Sweep `MarkDamagePerTurn` at 1 / 2 / 3 against durations 2 / 3.** The figure to watch is not match length but _what share of marked targets die to the mark itself_ rather than to a follow-up. A high share means the payout is self-fulfilling regardless of what pacing says.
 4. **Re-check `HasteSpeedBonus`** against the corrected band.
 5. **Re-check `SlowSpeedPenalty`**, which was measured against 1.5–2.0 and never re-run when Amendment 4 lowered the band. At −0.5 against a 1.0 operator it now reaches the floor on its own.
 
 ---
+
+---
+
+## Amendment 6 (2026-09-12) — 48 cannot be drawn, and never could
+
+### The fault
+
+**48 is not a circuit a four-arm Ludo cross can have.**
+
+A cross's loop threads each arm as two flanking lanes of length L plus the tip cell of the centre lane it has to cross. Four arms, so:
+
+> `CircuitLength = 4 × (2L + 1) = 8L + 4`, on a grid of `2L + 3`.
+
+48 needs L = 5.5. The drawable circuits are **28, 36, 44, 52, 60** — and 52 on a 15×15 grid is classic Ludo, which is what this project said it was copying 1:1 from the beginning (ADR-0003).
+
+`BoardLayout` had been absorbing the mismatch by handing each arm's tip cell to the home column and letting the loop hop over it. That put **four visible two-cell gaps in the track** and left **every home column one cell short of HOME**. It was caught by the only code that enumerates intermediate cells — the view's move animation, which walks a piece one cell at a time and so made a piece visibly leap at each arm tip.
+
+Nothing in the core was wrong. `PathMap` knows that cell 14 follows cell 13 and nothing about where either one is (ADR-0004), which is exactly why the rules, the tests and every measurement were unaffected by a board that could not be drawn. **The separation worked; it also meant the defect could survive four amendments of simulation.**
+
+### Resolved
+
+- **`CircuitLength = 52`, `HomeColumnLength = 6`, journey 58, on a 15×15 grid.** Total path positions `52 + (4 × 6) = 76`. `PlayerStartOffset = 13`.
+- **`CircuitLength % 8 == 0` is dead.** It was never a real invariant — it was a coincidence of the boards being considered. The genuine constraint is the cross family above.
+- **The constraint lives in `BoardLayout`, not in `BoardProfile`.** The core tolerates any circuit divisible by four, because the rules do not care about arm geometry and nothing in the core should start caring. A board has to be drawable only where it is drawn, and the harness legitimately measures boards that will never be rendered. `BoardProfile.Cross(name, armLength)` is the constructor for anything intended to ship.
+- **Profiles restated:**
+
+| Profile      | Circuit | Home | Laps | Journey | Grid  | Note                                          |
+| ------------ | ------- | ---- | ---- | ------- | ----- | --------------------------------------------- |
+| **Sprint**   | 28      | 3    | 1    | 31      | 9×9   | was 24/3                                      |
+| **Standard** | 52      | 6    | 1    | 58      | 15×15 | was 48/6 — the shipping board                 |
+| **Long**     | 60      | 7    | 1    | 67      | 17×17 | already a valid cross; unchanged              |
+| _Compact_    | 28      | 3    | 2    | 59      | 9×9   | was 24×2. Withdrawn in Amendment 4 regardless |
+
+`BoardProfile.FromCircuitLength` is kept for the harness and marked superseded. It is the halving rule that produced 48/6 in the first place.
+
+### Re-baselined — 4 players, adopted band, opening 2, 800 matches
+
+|             | Sprint 28/3 | **Standard 52/6** | Long 60/7 |
+| ----------- | ----------- | ----------------- | --------- |
+| Journey     | 31          | **58**            | 67        |
+| Turns       | 12.7        | **21.3**          | 23.7      |
+| p90         | 16          | **26**            | 28        |
+| Neutralizes | 4.5         | **6.8**           | 7.2       |
+| Abilities   | 29.0        | **46.9**          | 51.9      |
+| Occupancy   | 32%         | **34%**           | 35%       |
+
+These supersede every absolute figure in Amendments 2 through 5, and close the withdrawal Amendment 5 opened.
+
+### The cost, and it is not small
+
+**Standard went from 19.7 turns to 21.3, p90 23 to 26.** The 15–20 minute budget this ADR was written to protect is now **overdrawn**, and it was spent by a correctness fix rather than a design choice — nothing was bought with it.
+
+Amendment 4 already stated the cost plainly and named the levers if it ran long: reach, then `openingDeployments = 3`, then the band back toward 1.25. `COMBAT_SYSTEMS` §12 has since established that every remaining lever trades at roughly **one turn per 1.5 neutralizes**, so all three buy pacing by giving up combat.
+
+**The geometry offers a fourth that the old family could not.** L = 5 gives **44/5, journey 49, on a 13×13 grid** — an estimated 18.4 turns, inside budget, and a legitimate Ludo cross. It was unreachable before because 44 fails `% 8 == 0`, the constraint this amendment strikes.
+
+Not adopted. It is a smaller board than classic Ludo and the readability constraint from Amendment 4 has to be re-checked against it — a mean move covers 21% of a 44-cell loop against 18% of 52, still inside the "roughly a fifth" target but worth measuring rather than asserting. **Recorded as the first thing to try if 21.3 turns reads long in a human session.**
+
+### Revisit trigger
+
+A human session on Standard 52/6. If it reads long, measure 44/5 before touching any combat dial — it is the only lever that buys pacing without giving up combat, and it exists solely because this amendment widened the family.
 
 ## Alternatives considered
 

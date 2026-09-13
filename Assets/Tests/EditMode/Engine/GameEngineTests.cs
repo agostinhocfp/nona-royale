@@ -225,7 +225,7 @@ namespace NonaRoyale.Core.Tests.Engine
 
             // Nothing in range and a thin pool: either way it comes back refused.
             var events = _engine.Execute(new UseAbilityCommand(
-                syla.Id, AlphaRoster.TaggedFromAbove.Id, Op(PlayerColor.Blue, "Syla").Id));
+                syla.Id, Syla.TaggedFromAbove.Id, Op(PlayerColor.Blue, "Syla").Id));
 
             Assert.That(Has<CommandRejected>(events), Is.True);
         }
@@ -266,6 +266,62 @@ namespace NonaRoyale.Core.Tests.Engine
             Assert.That(Has<GameWon>(ending), Is.True);
             Assert.That(_engine.MatchOver, Is.True);
             Assert.That(Has<CommandRejected>(_engine.Execute(new RollDiceCommand())), Is.True);
+        }
+
+        // ── Drafting ─────────────────────────────────────────────────────
+
+        [Test]
+        public void ADraftedSquad_NeverRepeatsAnOperator()
+        {
+            // GDD §2.2: a seat fields three distinct operators. Two players may
+            // field the same one; one player may not field it twice. Nothing
+            // tested this until the roster grew past three and the rule started
+            // being able to fail.
+            for (int seed = 0; seed < 40; seed++)
+            {
+                var drafted = MatchFactory.Create(
+                    new[] { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Yellow },
+                    seed);
+
+                foreach (var player in drafted.Players)
+                {
+                    var names = player.Operators.Select(o => o.Name).ToList();
+
+                    Assert.That(names.Count, Is.EqualTo(Roster.SquadSize));
+                    Assert.That(names.Distinct().Count(), Is.EqualTo(names.Count),
+                        $"seed {seed}, {player.Color} drafted {string.Join(", ", names)}");
+                }
+            }
+        }
+
+        [Test]
+        public void TheSameSeed_DraftsTheSameSquads()
+        {
+            // Drafting draws from the match RNG, so reproducibility covers the
+            // squads as well as the dice. The harness depends on this entirely,
+            // and it is also why adding an operator shifts the dice stream and
+            // invalidates figures measured before the change.
+            var seats = new[] { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green };
+
+            var first = MatchFactory.Create(seats, seed: 4242);
+            var second = MatchFactory.Create(seats, seed: 4242);
+
+            Assert.That(
+                second.Operators.Select(o => $"{o.Owner}:{o.Name}"),
+                Is.EqualTo(first.Operators.Select(o => $"{o.Owner}:{o.Name}").ToList()));
+        }
+
+        [Test]
+        public void ANamedSquad_IsFieldedExactlyAsGiven()
+        {
+            // The path CreateAlphaMatch takes, and the one every measurement in
+            // ADR-0002 used. If this ever drafts instead, every figure in
+            // COMBAT_SYSTEMS §12 quietly stops being comparable.
+            var alpha = MatchFactory.CreateAlphaMatch(new[] { PlayerColor.Red }, seed: 99);
+
+            Assert.That(
+                alpha.Operators.Select(o => o.Name),
+                Is.EqualTo(new[] { "Bouncer", "Syla", "Kurbyn" }));
         }
 
         // ── A whole match, through the boundary only ─────────────────────
@@ -348,7 +404,7 @@ namespace NonaRoyale.Core.Tests.Engine
 
             Assert.That(moved, Is.Not.Null);
             Assert.That(moved.To - moved.From,
-                Is.EqualTo((int)(total * (AlphaRoster.KurbynBaseSpeed + AlphaRoster.KurbynPassiveSpeedBonus))));
+                Is.EqualTo((int)(total * (Kurbyn.BaseSpeed + Kurbyn.PassiveSpeedBonus))));
         }
 
         [Test]
@@ -366,8 +422,7 @@ namespace NonaRoyale.Core.Tests.Engine
 
             var moved = First<OperatorMoved>(solo.Engine.Execute(new MoveCommand(bouncer.Id)));
 
-            Assert.That(moved.To - moved.From, Is.EqualTo((int)(total * AlphaRoster.BouncerSpeed)));
+            Assert.That(moved.To - moved.From, Is.EqualTo((int)(total * Bouncer.Speed)));
         }
-
     }
 }
