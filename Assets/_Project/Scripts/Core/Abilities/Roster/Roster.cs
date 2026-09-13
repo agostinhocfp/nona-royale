@@ -1,4 +1,4 @@
-// Assets/_Project/Scripts/Core/Abilities/Roster.cs
+// Assets/_Project/Scripts/Core/Abilities/Roster/Roster.cs
 using System.Collections.Generic;
 
 namespace NonaRoyale.Core.Abilities
@@ -8,12 +8,11 @@ namespace NonaRoyale.Core.Abilities
     /// </summary>
     /// <remarks>
     /// <b>It exists for the invariants, not for lookup.</b> Ability ids must be
-    /// unique and costs must sit on the 3/6/9 tier (§3.2), and both were
-    /// previously checked against <see cref="AlphaRoster.All"/> — which stopped
-    /// covering the roster the moment a fourth operator was written in its own
-    /// file. A duplicate id between two operator files would compile, run, and
-    /// silently register one ability under the other's key in
-    /// <c>MatchFactory</c>'s ability book.
+    /// unique and costs must sit on the 3/6/9 tier (§3.2), and both were once
+    /// checked against a single three-operator file — which stopped covering the
+    /// roster the moment a fourth operator was written. A duplicate id between
+    /// two operator files would compile, run, and silently register one ability
+    /// under the other's key in <c>MatchFactory</c>'s ability book.
     ///
     /// Adding an operator means adding one line here. That is deliberate: the
     /// alternative is reflection over the assembly, which would make the roster
@@ -27,7 +26,9 @@ namespace NonaRoyale.Core.Abilities
         {
             var all = new List<AbilityDefinition>();
 
-            all.AddRange(AlphaRoster.All);
+            all.AddRange(Bouncer.All);
+            all.AddRange(Syla.All);
+            all.AddRange(Kurbyn.All);
             all.AddRange(Mimi.All);
 
             return all;

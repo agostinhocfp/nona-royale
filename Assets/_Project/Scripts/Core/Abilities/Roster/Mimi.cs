@@ -1,4 +1,4 @@
-// Assets/_Project/Scripts/Core/Abilities/Mimi.cs
+// Assets/_Project/Scripts/Core/Abilities/Roster/Mimi.cs
 using System.Collections.Generic;
 using NonaRoyale.Core.Model;
 
@@ -6,15 +6,9 @@ namespace NonaRoyale.Core.Abilities
 {
     /// <summary>
     /// Operator #4, transcribed from <c>OPERATORS.md</c>. Content, not logic —
-    /// same contract as <see cref="AlphaRoster"/>.
+    /// same contract as the alpha three.
     /// </summary>
     /// <remarks>
-    /// <b>Her own file, not an addition to AlphaRoster.</b> The alpha three are
-    /// a fixed set the harness and the MVP scene both build directly; Mimi is
-    /// the first of the other six, and at nine operators one file per operator
-    /// is the shape that stays readable. <see cref="All"/> exists so a future
-    /// aggregate roster can pick her up without anyone editing this file.
-    ///
     /// <b>Two of three abilities.</b> Cryo Field is deliberately absent: it
     /// needs a status that damages an area at its holder's upkeep, and no such
     /// mechanic exists (<c>OPERATORS.md</c>, In design). Shipping her partial
@@ -25,6 +19,10 @@ namespace NonaRoyale.Core.Abilities
     /// Normal behave identically, so the substitution changes no outcome — but
     /// it does mean her whole identity as the anti-shield operator is currently
     /// unexpressed.
+    ///
+    /// <b>She is not yet reachable.</b> <c>MatchFactory.CreateAlphaMatch</c>
+    /// hardcodes three operators per seat, so nothing in a match or a sweep has
+    /// ever executed either of these abilities.
     /// </remarks>
     public static class Mimi
     {
@@ -58,6 +56,12 @@ namespace NonaRoyale.Core.Abilities
         /// at takes no separate hit, so excluding it the way Miracle Pull's
         /// splash does would make the chosen target the one enemy the field
         /// misses.
+        ///
+        /// <b>Unmeasured, and possibly stronger than Dargin Pulse.</b> Same
+        /// cost, same radius, same damage, but it originates on a target three
+        /// cells away rather than on the caster, and applies two statuses rather
+        /// than one. For a 1.0-speed operator, remote origin is most of the
+        /// game. Kept as written pending a sweep.
         /// </remarks>
         public static AbilityDefinition CryoPulse { get; } = new AbilityDefinition(
             id: 401, name: "Cryo-Pulse", energyCost: 6, cooldownTurns: 3, range: 3,
@@ -76,10 +80,10 @@ namespace NonaRoyale.Core.Abilities
         /// friend or foe, exchange coordinates instantly.
         /// </summary>
         /// <remarks>
-        /// Range 6 is double the longest range in the game, and that is the
-        /// point — it is the only compensation a 5-health operator gets for
-        /// being in a fight at all. She can open an exchange from outside
-        /// everything else's reach, and leave one the same way.
+        /// Range 6 is the longest in the game — half again Velvet Rope's 4 — and
+        /// that is the point. It is the only compensation a 5-health operator
+        /// gets for being in a fight at all: she can open an exchange from
+        /// outside everything else's reach, and leave one the same way.
         ///
         /// Because progress moves one-for-one with cells, the range also bounds
         /// the swing: a swap shifts either operator by at most 6 cells of
@@ -87,18 +91,37 @@ namespace NonaRoyale.Core.Abilities
         /// them off its own track is refused before it is paid for
         /// (<c>AbilityResolver.TrySwapProgress</c>).
         ///
-        /// Priced at 3, on tier: it deals no damage and applies no status.
+        /// <b>Cooldown 4, and the cooldown is the whole limiter.</b> This is the
+        /// cheapest denial tool in the design — swap with an operator four cells
+        /// from its home mouth and it goes backwards while you take its cell,
+        /// which is the play <c>_HANDOFF_opt_out_home_entry.md</c> prices at 3–6
+        /// energy as an entire new mechanic.
+        ///
+        /// Raising the cost would not have limited it. Against a 3.5-per-turn
+        /// drip (§3.1) both 3 and 4 gate to roughly every turn, and 4 is off the
+        /// 3/6/9 tier besides — the same objection that repriced Cryo-Pulse. A
+        /// cooldown longer than the economy imposes is precisely what §3.1 says
+        /// a stated cooldown is for. At 4 turns this drops from about seven
+        /// casts a match to about four.
         /// </remarks>
         public static AbilityDefinition Translocation { get; } = new AbilityDefinition(
-            id: 402, name: "Translocation", energyCost: 3, cooldownTurns: 2, range: 6,
+            id: 402, name: "Translocation", energyCost: 3, cooldownTurns: 4, range: 6,
             effects: new[] { AbilityEffect.Swap() });
 
         // ── Lookups ──────────────────────────────────────────────────────
 
-        public static IReadOnlyList<AbilityDefinition> Abilities { get; } =
-            new[] { CryoPulse, Translocation };
-
+        /// <summary>
+        /// Her kit. Named <c>All</c> to match every other operator file, which
+        /// is what <c>Roster.Build</c> expects.
+        /// </summary>
         public static IReadOnlyList<AbilityDefinition> All { get; } =
             new[] { CryoPulse, Translocation };
+
+        /// <summary>Her uniform shape, for drafting. Two of three abilities.</summary>
+        public static OperatorDefinition Definition { get; } = new OperatorDefinition(
+            name: "Mimi",
+            maxHealth: MaxHealth,
+            baseSpeed: Speed,
+            abilities: All);
     }
 }
