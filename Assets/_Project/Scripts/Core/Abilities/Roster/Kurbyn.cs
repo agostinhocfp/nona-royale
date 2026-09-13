@@ -55,8 +55,24 @@ namespace NonaRoyale.Core.Abilities
         /// to exactly half and then spared — which would read as a bug at the
         /// table.
         /// </summary>
+        /// <remarks>
+        /// <b>Range 2, not 1.</b> At range 1 the finisher needed Kurbyn standing
+        /// on the cell beside his target, which on a board where placement is
+        /// mostly dice meant the ult was often unspendable at the moment it was
+        /// worth spending. At 2 he can close from a roll rather than needing the
+        /// roll to land exactly.
+        ///
+        /// It also widens the splash's practical reach without touching its
+        /// radius, since the origin is the primary target and he can now pick a
+        /// target one cell further out.
+        ///
+        /// Note this moves the same direction as everything else in the same
+        /// pass: Bouncer lost health, reach and damage, and the operator Bouncer
+        /// exists to counter gained reach on his ultimate. Whether that is one
+        /// correction or an overcorrection is a measurement, not an argument.
+        /// </remarks>
         public static AbilityDefinition MiraclePull { get; } = new AbilityDefinition(
-            id: 302, name: "Miracle Pull", energyCost: 9, cooldownTurns: 2, range: 1,
+            id: 302, name: "Miracle Pull", energyCost: 9, cooldownTurns: 2, range: 2,
             effects: new[]
             {
                 AbilityEffect.Execute(1, 2, fallbackAmount: 3, fallbackType: DamageType.Atomic),
