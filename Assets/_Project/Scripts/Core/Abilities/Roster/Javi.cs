@@ -102,5 +102,16 @@ namespace NonaRoyale.Core.Abilities
 
         public static IReadOnlyList<AbilityDefinition> All { get; } =
             new[] { NaniteInfusion, NeuralPurge };
+
+        /// <summary>
+        /// His uniform shape, for drafting. No aura, no passive — and two
+        /// abilities where every other operator has two or three, until Carapace
+        /// lands. A drafted Javi is playable but thin.
+        /// </summary>
+        public static OperatorDefinition Definition { get; } = new OperatorDefinition(
+            name: "Javi",
+            maxHealth: MaxHealth,
+            baseSpeed: Speed,
+            abilities: All);
     }
 }
