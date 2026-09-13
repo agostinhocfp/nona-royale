@@ -37,11 +37,11 @@ namespace NonaRoyale.Core.Services
     /// </remarks>
     public readonly struct UpkeepNeutralize
     {
-        public UpkeepNeutralize(OperatorState op, string cause, IReadOnlyList<OperatorState> hastened)
+        public UpkeepNeutralize(OperatorState op, string cause, NeutralizeOutcome outcome)
         {
             Operator = op;
             Cause = cause;
-            Hastened = hastened ?? Array.Empty<OperatorState>();
+            Outcome = outcome;
         }
 
         public OperatorState Operator { get; }
@@ -49,10 +49,12 @@ namespace NonaRoyale.Core.Services
         /// <summary>What finished it — "bleed" or "mark" (§5.3, §5.7).</summary>
         public string Cause { get; }
 
-        /// <summary>Allies hastened by a mark payout this kill triggered (§10.2). Never null.</summary>
-        public IReadOnlyList<OperatorState> Hastened { get; }
+        /// <summary>The mark payout and the bounty this death produced.</summary>
+        public NeutralizeOutcome Outcome { get; }
 
-        public override string ToString() => $"{Operator?.Name} neutralized by {Cause}";
+        /// <summary>Allies hastened by a mark payout this kill triggered (§10.2). Never null.</summary>
+        public IReadOnlyList<OperatorState> Hastened => Outcome.Hastened;
+
     }
 
     /// <summary>What upkeep resolved: over-time ticks, and anyone they finished off.</summary>
