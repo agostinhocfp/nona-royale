@@ -114,7 +114,7 @@ Read at the table: _the one you have to kill twice._
 
 **One blocker, and it is the roster's most consequential:**
 
-- **A shield with a per-ability value.** Shields currently absorb one whole instance whatever its size, granted by a board space that is itself deferred — which could never generate enough uptime for a mitigation type to mean anything. **Carapace is not implemented and he plays without it.** It lands with the mitigation pass already rewriting the same interface for deterministic evasion; doing both in parallel would collide.
+- **A shield with a per-ability value.** Shields currently absorb one whole instance whatever its size, granted by a board space that is itself deferred — which could never generate enough uptime for a mitigation type to mean anything. **Trauma Plate is not implemented and he plays without it.** It lands with the mitigation pass already rewriting the same interface for deterministic evasion; doing both in parallel would collide.
 
 **And one thing that is not a blocker but should be settled before he is measured.** §12 records that neutralizing rewards the attacker with nothing, and suspects that suppresses combat in human play in a way the harness cannot detect, because the scripted player fights unconditionally. A dedicated healer makes kills materially harder to land. His measured strength depends entirely on which way that question goes.
 

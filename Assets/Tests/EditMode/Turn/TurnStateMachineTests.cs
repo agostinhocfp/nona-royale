@@ -95,7 +95,7 @@ namespace NonaRoyale.Core.Tests.Turn
             _targeting = new TargetingRules(_map, _statuses);
             _abilities = new AbilityResolver(_map, _clock, _energy, _statuses, _targeting, _damage);
 
-            _neutralize = new NeutralizeRules(_statuses, _abilities, _operators, _combat);
+            _neutralize = new NeutralizeRules(_statuses, _abilities, _energy, _operators, _players, _combat);
             _win = new WinConditions(_map);
         }
 
@@ -673,7 +673,7 @@ namespace NonaRoyale.Core.Tests.Turn
             var energy = new EnergyLedger(EnergyConfig.Default);
             var damage = new DamagePipeline(_statuses, new SeededRandom(1));
             _abilities = new AbilityResolver(_map, _clock, energy, _statuses, targeting, damage);
-            _neutralize = new NeutralizeRules(_statuses, _abilities, _operators, _combat);
+            _neutralize = new NeutralizeRules(_statuses, _abilities, energy, _operators, new[] { _red, _blue }, _combat);
 
             _clock.BeginTurnFor(_red);
         }
@@ -747,7 +747,7 @@ namespace NonaRoyale.Core.Tests.Turn
         {
             MarkTheEnemy();
 
-            var hastened = _neutralize.Apply(_enemy);
+            var hastened = _neutralize.Apply(_enemy).Hastened;
 
             Assert.That(hastened.Count, Is.EqualTo(2));
             Assert.That(hastened, Has.Member(_syla).And.Member(_bouncer));
@@ -771,7 +771,7 @@ namespace NonaRoyale.Core.Tests.Turn
             _clock.BeginTurnFor(_blue);
             _enemy.SetHealth(0);
 
-            var hastened = _neutralize.Apply(_enemy);
+            var hastened = _neutralize.Apply(_enemy).Hastened;
 
             Assert.That(hastened, Is.Empty);
         }

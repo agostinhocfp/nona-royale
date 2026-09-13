@@ -9,24 +9,29 @@ namespace NonaRoyale.Core.Abilities
     /// archetype. Content, not logic.
     /// </summary>
     /// <remarks>
-    /// <b>He is the reason the shield layer will matter.</b> Shields are
-    /// currently granted by a deferred board space, which could never generate
-    /// enough uptime for a mitigation type to mean anything. A support who puts
-    /// them up on demand is what makes the Normal/Force/Tech distinction real,
-    /// and therefore what unblocks Mimi's identity as well as his own.
+    /// <b>He is the reason the shield layer matters.</b> Shields were granted
+    /// only by a deferred board space, which could never generate enough uptime
+    /// for a mitigation type to mean anything. A support who puts them up on
+    /// demand is what makes the Normal/Force/Tech distinction real, and
+    /// therefore what unblocks Mimi's identity as well as his own. <b>The Tech
+    /// and Force types are still unbuilt</b> — this removed their blocker, not
+    /// the work.
     ///
-    /// <b>Two of three abilities.</b> Carapace is absent: a shield with a
-    /// per-ability pool means reworking <c>IDamageMitigation.TryAbsorb</c> from
-    /// a bool to a pool, which is the same interface and the same pipeline
-    /// branch the deterministic-evasion work is rewriting. It lands with that
-    /// mitigation pass, not before.
+    /// <b>Complete as of 2026-09-13.</b> Trauma Plate landed with the shield
+    /// half of the mitigation pass, which reworked
+    /// <c>IDamageMitigation.TryAbsorb</c> into <c>AbsorbFrom</c> and turned a
+    /// whole-instance absorb into a pool. The evasion half of that pass — a flat
+    /// reduction replacing the roll — was <b>declined</b>; the rate moved to 0.3
+    /// instead. Anyone reading <c>_HANDOFF_mitigation.md</c> should know only
+    /// half of it was adopted.
     ///
-    /// <b>He may be the operator that tips a combat game into a race.</b>
-    /// COMBAT_SYSTEMS §12 records that neutralizing rewards the attacker with
-    /// nothing, and suspects this suppresses combat in human play in a way the
-    /// harness cannot detect. A dedicated healer makes kills materially harder
-    /// to land. His measured strength depends entirely on how that question is
-    /// settled, so settle it before fielding him.
+    /// <b>He may be the operator that tips a combat game into a race.</b> A
+    /// dedicated healer with a castable shield makes kills materially harder to
+    /// land, on a board whose stated priority is 70% combat. The kill bounty
+    /// (§1.2) pushes the other way and landed at the same time. Neither
+    /// direction has been measured, and no figure in §12 was taken with either
+    /// of them in play — so his strength is an open question, not an unsettled
+    /// design.
     /// </remarks>
     public static class Javi
     {
@@ -76,15 +81,71 @@ namespace NonaRoyale.Core.Abilities
             });
 
         /// <summary>
+        /// A ballistic insert bolted onto an ally's plate carrier. It takes what
+        /// comes, and then it fails.
+        /// </summary>
+        /// <remarks>
+        /// <b>The name is the mechanic.</b> A ballistic insert absorbs a fixed
+        /// amount and then stops working, which is exactly what a pool does.
+        /// Nothing about it needs a number to be understood, which is the bar
+        /// every ability description has to clear.
+        ///
+        /// <b>Pool 2, against a Normal spread of 1, 2, 2, 2, 3 and collision at
+        /// 3.</b> It eats one small hit whole or takes the edge off a collision,
+        /// never both. A 1-point pool was rejected: it cancels From the Hip
+        /// outright, halves three of the four 2-damage abilities, and saves
+        /// nobody from the collision that actually kills them — blunting
+        /// everything that does not matter and nothing that does.
+        ///
+        /// <b>Cost walked 3 → 6 → 4.</b> The original sketch was 3, which was
+        /// too cheap next to a 6-energy Velvet Rope. 6 was settled on 2026-09-12
+        /// and then reconsidered: the same 6 buys Atomic damage that ignores
+        /// every defence in the game, and 2 points of absorb is a poor rate
+        /// against that. 4 is the compromise and is <b>reasoned, not
+        /// measured</b> — revisit after the harness re-baseline.
+        ///
+        /// <b>Cooldown 3 against duration 2, deliberately.</b> The original
+        /// cooldown 1 gave permanent uptime: he could hold plates on two
+        /// operators forever and near-cover all three, which is not a shield at
+        /// all but flat damage reduction on a squad. At 3 the plate is up for two
+        /// of every four of the holder's turns, so choosing <i>when</i> is the
+        /// whole skill of the ability.
+        ///
+        /// <b>Range 3, not the sketched 6.</b> Range 6 is Mimi's, and §10.4 makes
+        /// it the sole compensation for her 5 health. It also contradicts his own
+        /// rule: he pays for reach in fragility, not in distance.
+        ///
+        /// <b>Ally-only, so a hostile cast is refused and costs nothing.</b>
+        /// Every effect scoped away by the cast mode returns
+        /// <c>TargetingVerdict.WrongSide</c> before payment.
+        ///
+        /// <b>Neural Purge destroys it.</b> A cleanse is indiscriminate and
+        /// strips the shield along with everything else, so casting his own two
+        /// abilities in the wrong order on the same ally wastes one of them.
+        /// That is a real cost, and the badge shows the player it coming.
+        /// </remarks>
+        public static AbilityDefinition TraumaPlate { get; } = new AbilityDefinition(
+            id: 502, name: "Trauma Plate",
+            description:
+                "Bolts a ballistic insert onto an ally's carrier. It takes what comes until it is spent, then fails.",
+            energyCost: 4, cooldownTurns: 3, range: 3,
+            effects: new[]
+            {
+                AbilityEffect.Status_(
+                    EffectScope.PrimaryTarget, StatusKind.Shield, duration: 2,
+                    EffectAudience.AllyOnly, magnitude: 2)
+            });
+
+        /// <summary>
         /// A cortical dampening field floods an ally's pain pathways with
         /// inhibitory signals, and everything riding those pathways goes with it.
         /// </summary>
         /// <remarks>
-        /// <b>Redesigned from damage reduction, which duplicated Carapace and
-        /// lost.</b> Armor 2 absorbs more than a 50% cut, at half the cost; and a
-        /// percentage forces fractional health into a pipeline that has none —
-        /// half of 3 is 1.5, and the rounding rule would decide more than the
-        /// design did.
+        /// <b>Redesigned from damage reduction, which duplicated Trauma Plate
+        /// and lost.</b> A flat pool absorbs more than a percentage cut and does
+        /// it predictably; and a percentage forces fractional health into a
+        /// pipeline that has none — half of 3 is 1.5, and the rounding rule would
+        /// decide more than the design did.
         ///
         /// A cleanse gives him something no other operator has and no overlap
         /// with his own shield. It is also a specific answer to two specific
@@ -95,6 +156,10 @@ namespace NonaRoyale.Core.Abilities
         /// <b>A cleansed mark is gone, and its payout goes with it.</b> That is a
         /// rule, not an implementation detail — the mark carries the source
         /// Tagged From Above reads, and removing the status removes the source.
+        ///
+        /// <b>It does not re-arm an evasion charge</b> (§5.8), and it
+        /// <i>does</i> strip a friendly Trauma Plate, because
+        /// <c>StatusRegistry.ClearApplied</c> is indiscriminate on purpose.
         /// </remarks>
         public static AbilityDefinition NeuralPurge { get; } = new AbilityDefinition(
             id: 503, name: "Neural Purge",
@@ -103,16 +168,13 @@ namespace NonaRoyale.Core.Abilities
             energyCost: 6, cooldownTurns: 3, range: 3,
             effects: new[] { AbilityEffect.Cleanse() });
 
-        // id 502 is reserved for Carapace, so his ids stay in cast order when it
-        // lands rather than being renumbered around it.
-
+        /// <remarks>Cast order, and id order — 501, 502, 503.</remarks>
         public static IReadOnlyList<AbilityDefinition> All { get; } =
-            new[] { NaniteInfusion, NeuralPurge };
+            new[] { NaniteInfusion, TraumaPlate, NeuralPurge };
 
         /// <summary>
-        /// His uniform shape, for drafting. No aura, no passive — and two
-        /// abilities where every other operator has two or three, until Carapace
-        /// lands. A drafted Javi is playable but thin.
+        /// His uniform shape, for drafting. No aura, no passive — three
+        /// abilities, all range 3, all pointed at keeping somebody else alive.
         /// </summary>
         public static OperatorDefinition Definition { get; } = new OperatorDefinition(
             name: "Javi",

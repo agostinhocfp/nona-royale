@@ -10,11 +10,30 @@ namespace NonaRoyale.Core.Abilities
     /// </summary>
     /// <remarks>
     /// <b>It exists for the invariants, not for lookup.</b> Ability ids must be
-    /// unique and costs must sit on the 3/6/9 tier (§3.2), and both were once
-    /// checked against a single three-operator file — which stopped covering the
-    /// roster the moment a fourth operator was written. A duplicate id between
-    /// two operator files would compile, run, and silently register one ability
-    /// under the other's key in <c>MatchFactory</c>'s ability book.
+    /// unique across the whole pool, and they were once checked against a single
+    /// three-operator file — which stopped covering the roster the moment a
+    /// fourth operator was written. A duplicate id between two operator files
+    /// would compile, run, and silently register one ability under the other's
+    /// key in <c>MatchFactory</c>'s ability book.
+    ///
+    /// <b>The 3/6/9 cost tier was abolished on 2026-09-13.</b> It had become a
+    /// rule three abilities ignored — Javi's Trauma Plate and both of Kian's,
+    /// each priced at 4 on its own merits — and a constraint that is overridden
+    /// every time it binds is worse than no constraint, because it makes the
+    /// exceptions look like oversights rather than decisions. Costs are now free
+    /// integers, argued for one ability at a time in the operator file, against
+    /// that ability's peers.
+    ///
+    /// <b>No price moved when it was dropped.</b> Cryo-Pulse stays at 6 and
+    /// Translocation at 3. Each had a second reason — one did more than either
+    /// 6-cost area ability for two-thirds the price, the other is gated by its
+    /// cooldown rather than its cost — and those were always the real ones.
+    ///
+    /// <b>What replaced it is a bound, not a tier.</b> A cost above
+    /// <c>EnergyConfig.EnergyCap</c> defines an ability that is legal to write,
+    /// visible in the UI, and impossible to cast in any match. The tier caught
+    /// that by accident; something should catch it on purpose. The assertion
+    /// itself lives in the roster tests, not here.
     ///
     /// Adding an operator means adding one line to <see cref="All"/>. That is
     /// deliberate: the alternative is reflection over the assembly, which would
@@ -32,7 +51,8 @@ namespace NonaRoyale.Core.Abilities
             Syla.Definition,
             Kurbyn.Definition,
             Mimi.Definition,
-            Javi.Definition
+            Javi.Definition,
+            Kian.Definition
         };
 
         /// <summary>The alpha three, in order. What every sweep and test measured.</summary>
@@ -63,7 +83,7 @@ namespace NonaRoyale.Core.Abilities
         /// <b>Distinct within a seat, duplicated freely across seats.</b> Three
         /// Bouncers on one side is a legitimate configuration to measure but a
         /// poor one to play against while the roster is this small, and with
-        /// five operators and four seats no rule could give every seat a unique
+        /// six operators and four seats no rule could give every seat a unique
         /// squad anyway. The GDD's draft rules are open (§2.2); this is the
         /// simplest thing that produces varied matches.
         ///
@@ -79,6 +99,12 @@ namespace NonaRoyale.Core.Abilities
         /// With Atomic concentrated in two operators (§2.2), a legal draw can
         /// produce a squad with no way through Kurbyn. That is a real drafting
         /// question and it is open.
+        ///
+        /// <b>Two of the six are incomplete.</b> Mimi is missing Cryo Field and
+        /// Kian is missing Drone Strike, so a third of the pool draws with two
+        /// abilities where the rest have two or three. The draft does not know
+        /// or care, which is correct — but any sweep run now is measuring a pool
+        /// that is deliberately uneven.
         /// </remarks>
         public static IReadOnlyList<OperatorDefinition> DraftRandom(IRandom random)
         {

@@ -13,16 +13,17 @@ namespace NonaRoyale.Core.Services
     /// </summary>
     /// <remarks>
     /// <b>There is no branch on which ability is being used.</b> Every ability is
-    /// data (see <see cref="AlphaRoster"/>), and this resolver knows only the
-    /// six effect kinds. Adding operators four through nine should not touch
-    /// this file — if it has to, the design has introduced a genuinely new
-    /// mechanic and that is worth an amendment to <c>COMBAT_SYSTEMS.md</c>
-    /// rather than an <c>if</c>.
+    /// data (see <see cref="Roster"/>), and this resolver knows only the effect
+    /// kinds. Adding operators should not touch this file — if it has to, the
+    /// design has introduced a genuinely new mechanic and that is worth an
+    /// amendment to <c>COMBAT_SYSTEMS.md</c> rather than an <c>if</c>.
     ///
     /// <b>Order within the effect list is a rule, not a detail.</b> Miracle
     /// Pull's execute check sits first so the threshold reads health at cast
     /// time; Velvet Rope pulls before it damages so the damage lands after
-    /// repositioning.
+    /// repositioning; and Sonic Disrupter pushes <i>last</i>, because its
+    /// recipients are recomputed per effect and a shockwave that moved everyone
+    /// out of its own radius first would then fail to slow them.
     /// </remarks>
     public sealed class AbilityResolver
     {
@@ -124,6 +125,10 @@ namespace NonaRoyale.Core.Services
             // on whether the target can be aimed at. Checked here so a refusal
             // still costs nothing, which is the invariant every other refusal
             // upholds.
+            //
+            // A push is deliberately absent from this check: it clamps rather
+            // than refusing, because a self-origin area gives the player no
+            // alternative target to pick instead (see EffectKind.PushFromCaster).
             if (!SwapWouldBeLegal(ability, caster, primaryTarget))
             {
                 return AbilityResolution.Refused(
@@ -179,6 +184,18 @@ namespace NonaRoyale.Core.Services
                     case EffectKind.PullToCaster:
                         int placed = PlaceAdjacentToCaster(caster, recipient);
                         outcomes.Add(EffectOutcome.Pulled(recipient, placed));
+                        break;
+
+                    case EffectKind.PushFromCaster:
+                        // Nothing shoves itself. Guarded rather than assumed:
+                        // the scope is enemy-only today, and a future ability
+                        // pushing an area that includes the caster would
+                        // otherwise compute a direction from a zero-length arc
+                        // and fling him backwards.
+                        if (ReferenceEquals(recipient, caster)) break;
+
+                        int shoved = PushAwayFromCaster(caster, recipient, effect.Amount);
+                        outcomes.Add(EffectOutcome.Pushed(recipient, shoved));
                         break;
 
                     case EffectKind.SwapWithCaster:
@@ -259,13 +276,51 @@ namespace NonaRoyale.Core.Services
             int step = forward <= circuit / 2 ? 1 : -1;
             int destinationCell = ((casterCell + step) % circuit + circuit) % circuit;
 
-            // Convert the cell back into the target's own progress, as a signed
-            // shift from where it stands, so the pull never silently costs or
-            // grants a whole lap.
-            int rawShift = ((destinationCell - targetCell) % circuit + circuit) % circuit;
-            int shift = rawShift <= circuit / 2 ? rawShift : rawShift - circuit;
+            int progress = Math.Max(0, target.Progress + SignedShortestShift(targetCell, destinationCell));
+            target.MoveTo(progress);
+            return progress;
+        }
 
-            int progress = Math.Max(0, target.Progress + shift);
+        /// <summary>
+        /// Shoves an operator <paramref name="distance"/> cells directly away
+        /// from the caster along the loop. Placement, never movement (§7.4).
+        /// </summary>
+        /// <remarks>
+        /// <b>It clamps at both ends and refuses nothing.</b> A push is the only
+        /// placement effect with no chosen target, so there is no alternative
+        /// the player could have picked instead — refusing would punish them for
+        /// a board state they did not author. See
+        /// <see cref="EffectKind.PushFromCaster"/>.
+        ///
+        /// <b>The forward clamp is load-bearing.</b> An enemy standing ahead of
+        /// the caster is pushed toward its own home column, and without the stop
+        /// at the last outer-track cell a 4-energy ability could carry an
+        /// opponent across its home entry — finishing their lap for them. The
+        /// backward clamp at progress 0 is the milder twin of the one
+        /// <see cref="PlaceAdjacentToCaster"/> already applies.
+        ///
+        /// <b>Sharing the caster's cell has no direction</b>, and that is
+        /// reachable: a safe cell resolves no collision, so enemies can and do
+        /// stand on top of each other there. Such an operator is pushed
+        /// backwards, which is the decision rather than the accident — a
+        /// shockwave that left the free-parkers untouched would miss the
+        /// situation the ability exists for.
+        /// </remarks>
+        private int PushAwayFromCaster(OperatorState caster, OperatorState target, int distance)
+        {
+            int track = _map.Profile.TrackLength;
+
+            int casterCell = _map.CellAt(caster.Owner, caster.Progress).Index;
+            int targetCell = _map.CellAt(target.Owner, target.Progress).Index;
+
+            int shortest = SignedShortestShift(casterCell, targetCell);
+            int step = shortest == 0 ? -1 : Math.Sign(shortest);
+
+            int progress = target.Progress + (step * distance);
+
+            if (progress < 0) progress = 0;
+            if (progress > track - 1) progress = track - 1;
+
             target.MoveTo(progress);
             return progress;
         }
@@ -348,7 +403,8 @@ namespace NonaRoyale.Core.Services
         /// progress values differ by forty. Converting the cell exchange into a
         /// signed shift on each operator's own progress is what stops a swap
         /// silently granting or costing a lap — the same conversion
-        /// <see cref="PlaceAdjacentToCaster"/> performs for a pull.
+        /// <see cref="PlaceAdjacentToCaster"/> and
+        /// <see cref="PushAwayFromCaster"/> perform.
         ///
         /// <b>It is refused rather than clamped, and both ends are checked.</b>
         /// Clamping the way a pull does would not produce a swap at all: an
@@ -374,14 +430,12 @@ namespace NonaRoyale.Core.Services
 
             if (caster.IsInYard || target.IsInYard) return false;
 
-            int circuit = _map.Profile.CircuitLength;
             int track = _map.Profile.TrackLength;
 
             int casterCell = _map.CellAt(caster.Owner, caster.Progress).Index;
             int targetCell = _map.CellAt(target.Owner, target.Progress).Index;
 
-            int raw = ((targetCell - casterCell) % circuit + circuit) % circuit;
-            int shift = raw <= circuit / 2 ? raw : raw - circuit;
+            int shift = SignedShortestShift(casterCell, targetCell);
 
             casterProgress = caster.Progress + shift;
             targetProgress = target.Progress - shift;
@@ -394,6 +448,28 @@ namespace NonaRoyale.Core.Services
             if (targetProgress < 0 || targetProgress >= track) return false;
 
             return true;
+        }
+
+        /// <summary>
+        /// Steps from one track cell to another, signed, by the shorter way
+        /// round. Positive is forward along the loop.
+        /// </summary>
+        /// <remarks>
+        /// Because progress moves one-for-one with cells, this doubles as the
+        /// shift to apply to an operator's own progress — which is what stops
+        /// every placement effect from silently granting or costing a lap. It
+        /// was written out three times before it was worth a name.
+        ///
+        /// At exactly half the circuit it resolves forward. Arbitrary, but fixed
+        /// rather than incidental: <see cref="TrySwapProgress"/> depends on both
+        /// ends of a swap agreeing on one answer.
+        /// </remarks>
+        private int SignedShortestShift(int fromCell, int toCell)
+        {
+            int circuit = _map.Profile.CircuitLength;
+            int raw = ((toCell - fromCell) % circuit + circuit) % circuit;
+
+            return raw <= circuit / 2 ? raw : raw - circuit;
         }
 
         private IEnumerable<OperatorState> Recipients(
@@ -433,6 +509,11 @@ namespace NonaRoyale.Core.Services
                     if (primaryTarget == null) return Array.Empty<OperatorState>();
                     return _targeting.AlliesInArea(
                         _targeting.CellOf(primaryTarget), effect.Radius, caster.Owner, allOperators);
+
+                // Directional, and the radius carries the line's length rather
+                // than a symmetric reach.
+                case EffectScope.EnemiesInLineFromCaster:
+                    return _targeting.EnemiesInLineAhead(caster, effect.Radius, allOperators);
 
                 default:
                     return Array.Empty<OperatorState>();

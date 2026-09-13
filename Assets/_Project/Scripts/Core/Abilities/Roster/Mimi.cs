@@ -44,8 +44,13 @@ namespace NonaRoyale.Core.Abilities
         /// <remarks>
         /// Priced against its peers, not its flavour. Dargin Pulse is 6 for 2
         /// area damage plus Stun; Ace Shards is 6 for 3 plus Bleed. At 4 energy
-        /// this did more than either for two-thirds the cost, and 4 is off the
-        /// 3/6/9 tier besides.
+        /// this did more than either for two-thirds the cost.
+        ///
+        /// <b>The 3/6/9 cost tier was a second reason to reprice it, and the
+        /// tier is now abolished</b> (2026-09-13, <c>Roster</c>). The price does
+        /// not move back: the peer comparison above was always the real
+        /// argument, and the tier was a second reason stacked on a sufficient
+        /// first one.
         ///
         /// The "shattering damage next round" is <see cref="StatusKind.Bleed"/>,
         /// not a second damage type — delayed damage at the target's upkeep at
@@ -100,10 +105,14 @@ namespace NonaRoyale.Core.Abilities
         /// energy as an entire new mechanic.
         ///
         /// Raising the cost would not have limited it. Against a 3.5-per-turn
-        /// drip (§3.1) both 3 and 4 gate to roughly every turn, and 4 is off the
-        /// 3/6/9 tier besides — the same objection that repriced Cryo-Pulse. A
-        /// cooldown longer than the economy imposes is precisely what §3.1 says
-        /// a stated cooldown is for.
+        /// drip (§3.1) both 3 and 4 gate to roughly every turn, so the cost is
+        /// not the dial that binds here whatever it is set to. A cooldown longer
+        /// than the economy imposes is precisely what §3.1 says a stated
+        /// cooldown is for.
+        ///
+        /// The 3/6/9 tier was a second reason to stay at 3, and it is now
+        /// abolished (<c>Roster</c>). The first reason stands, so the price does
+        /// not move.
         /// </remarks>
         public static AbilityDefinition Translocation { get; } = new AbilityDefinition(
             id: 402, name: "Translocation",

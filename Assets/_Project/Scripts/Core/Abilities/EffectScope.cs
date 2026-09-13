@@ -46,6 +46,31 @@ namespace NonaRoyale.Core.Abilities
         /// the reason it exists is the tension it creates: it pays a squad for
         /// standing where Ace Shards and Dargin Pulse punish them for standing.
         /// </remarks>
-        AlliesAroundPrimaryTarget = 5
+        AlliesAroundPrimaryTarget = 5,
+
+        /// <summary>
+        /// Every enemy on the next <c>Radius</c> cells <b>ahead</b> of the
+        /// caster along the loop, in the caster's own direction of travel. The
+        /// caster's cell is not included. Kian's Inversion Matrix.
+        /// </summary>
+        /// <remarks>
+        /// <b>The first directional scope.</b> Every other one is symmetric —
+        /// "within N" covers N steps each way — and a symmetric line is simply a
+        /// wider version of <see cref="EnemiesAroundCaster"/>. What makes this a
+        /// line rather than an area is that it points somewhere, and pointing it
+        /// costs the caster a decision the other area abilities do not ask for.
+        ///
+        /// <b>It reuses <c>Radius</c> to carry the line's length.</b> The name
+        /// is wrong for a one-directional shape, but adding a field to
+        /// <c>AbilityEffect</c> touches its private constructor and every
+        /// factory on it. Same trade as the shield pool living in a status
+        /// entry's magnitude.
+        ///
+        /// <b>It is pure circuit geometry and wraps.</b> The cells are computed
+        /// from the caster's track index, not from its progress, so a caster
+        /// near the end of its own lap still projects a full-length line onto
+        /// the shared loop rather than running out of board.
+        /// </remarks>
+        EnemiesInLineFromCaster = 6
     }
 }

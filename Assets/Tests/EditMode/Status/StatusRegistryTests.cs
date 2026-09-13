@@ -371,8 +371,8 @@ namespace NonaRoyale.Core.Tests.Status
         [Test]
         public void SecondNormalInstanceInSameRound_IgnoresEvasion()
         {
-            // The per-round cap is load-bearing: uncapped, a coin flip across
-            // the attacks a target sees in a match decides games (§5.5).
+            // The per-round cap is load-bearing: uncapped, a roll across the
+            // attacks a target sees in a match decides games (§5.5).
             _statuses.ApplyPassive(_blue, StatusKind.Evasion);
             var alwaysEvades = new ScriptedRandom(0.0);
 
@@ -417,20 +417,73 @@ namespace NonaRoyale.Core.Tests.Status
         // ── Shield ───────────────────────────────────────────────────────
 
         [Test]
-        public void Shield_AbsorbsOnceThenExpires()
+        public void ShieldPool_TakesWhatItCanAndIsSpentByIt()
         {
+            // The rule the rework exists for: a pool absorbs an amount, not an
+            // instance (§5.6). Under the old rule this shield swallowed all 3.
+            _statuses.Apply(_blue, StatusKind.Shield, duration: 99, magnitude: 2);
+            _clock.BeginTurnFor(PlayerColor.Blue);
+
+            Assert.That(_statuses.AbsorbFrom(_blue, 3), Is.EqualTo(2), "what the pool ate, not the instance");
+            Assert.That(_statuses.AbsorbFrom(_blue, 3), Is.EqualTo(0), "the pool is gone");
+            Assert.That(_statuses.Has(_blue, StatusKind.Shield), Is.False, "and so is the status");
+        }
+
+        [Test]
+        public void ShieldPool_SurvivesAHitSmallerThanItself()
+        {
+            _statuses.Apply(_blue, StatusKind.Shield, duration: 99, magnitude: 2);
+            _clock.BeginTurnFor(PlayerColor.Blue);
+
+            Assert.That(_statuses.AbsorbFrom(_blue, 1), Is.EqualTo(1));
+            Assert.That(_statuses.ShieldPool(_blue), Is.EqualTo(1), "a remnant, not a spent shield");
+            Assert.That(_statuses.Has(_blue, StatusKind.Shield), Is.True);
+        }
+
+        [Test]
+        public void AShieldWithNoStatedPool_TakesTheConfiguredDefault()
+        {
+            // Under the whole-instance rule a shield's magnitude was never read,
+            // so a zero default was harmless. Under a pool it would produce a
+            // shield that draws a badge and stops nothing.
             _statuses.Apply(_blue, StatusKind.Shield, duration: 99);
             _clock.BeginTurnFor(PlayerColor.Blue);
 
-            Assert.That(_statuses.TryAbsorb(_blue), Is.True);
-            Assert.That(_statuses.TryAbsorb(_blue), Is.False, "consumed");
-            Assert.That(_statuses.Has(_blue, StatusKind.Shield), Is.False);
+            Assert.That(_statuses.ShieldPool(_blue), Is.EqualTo(_config.ShieldPoolDefault));
+        }
+
+        [Test]
+        public void ReapplyingAShield_TopsThePoolUpRatherThanAddingToIt()
+        {
+            // Sources do not stack; the strongest applies (§5.2). Two supports
+            // must not be able to build an arbitrarily deep wall.
+            _statuses.Apply(_blue, StatusKind.Shield, duration: 99, magnitude: 2);
+            _clock.BeginTurnFor(PlayerColor.Blue);
+            _statuses.AbsorbFrom(_blue, 1);
+
+            _statuses.Apply(_blue, StatusKind.Shield, duration: 99, magnitude: 2);
+
+            Assert.That(_statuses.ShieldPool(_blue), Is.EqualTo(2), "back to full, not 3");
+        }
+
+        [Test]
+        public void AShieldedOperator_HasNoSpeedModifier()
+        {
+            // The pool lives in the entry's magnitude, and SpeedModifier sums
+            // magnitudes blindly across kinds. Without Shield being skipped in
+            // that sum, a 2-point plate would hand its holder +2 speed — a
+            // support ability silently doubling an ally's movement.
+            _statuses.Apply(_blue, StatusKind.Shield, duration: 99, magnitude: 2);
+            _clock.BeginTurnFor(PlayerColor.Blue);
+
+            Assert.That(_statuses.SpeedModifier(_blue), Is.EqualTo(0.0));
         }
 
         [Test]
         public void AnUnshieldedOperator_AbsorbsNothing()
         {
-            Assert.That(_statuses.TryAbsorb(_blue), Is.False);
+            Assert.That(_statuses.AbsorbFrom(_blue, 3), Is.EqualTo(0));
+            Assert.That(_statuses.ShieldPool(_blue), Is.EqualTo(0));
         }
 
         // ── Mark ─────────────────────────────────────────────────────────
@@ -462,7 +515,7 @@ namespace NonaRoyale.Core.Tests.Status
             _statuses.Apply(_blue, StatusKind.Stun, duration: 3);
             _statuses.Apply(_blue, StatusKind.Slow, duration: 3);
             _statuses.Apply(_blue, StatusKind.Bleed, duration: 3);
-            _statuses.Apply(_blue, StatusKind.Shield, duration: 3);
+            _statuses.Apply(_blue, StatusKind.Shield, duration: 3, magnitude: 2);
             _statuses.Apply(_blue, StatusKind.Mark, duration: 3, sourceOperatorId: _red.Id);
             _clock.BeginTurnFor(PlayerColor.Blue);
 
@@ -471,10 +524,9 @@ namespace NonaRoyale.Core.Tests.Status
             Assert.That(_statuses.IsStunned(_blue), Is.False);
             Assert.That(_statuses.SpeedModifier(_blue), Is.EqualTo(0.0));
             Assert.That(_statuses.BleedStacks(_blue), Is.EqualTo(0));
-            Assert.That(_statuses.TryAbsorb(_blue), Is.False);
+            Assert.That(_statuses.ShieldPool(_blue), Is.EqualTo(0));
             Assert.That(_statuses.MarkedBy(_blue), Is.Null);
         }
-
 
         [Test]
         public void ExpireCompleted_ReportsWhatJustRanOut()

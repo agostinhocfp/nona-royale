@@ -34,6 +34,11 @@ namespace NonaRoyale.Core.Services
     /// return what the tick is worth; the caller feeds it through the pipeline
     /// as Atomic damage. The registry decides <i>what</i> is owed, the pipeline
     /// decides how damage lands, and neither knows the other exists.
+    ///
+    /// <b><see cref="StatusKind.Shield"/> stores its remaining pool in
+    /// <c>Entry.Magnitude</c>.</b> It is already a <c>double</c>, already written
+    /// by <see cref="Apply"/>, and already refreshed on re-application, so the
+    /// pool needed no new storage — only a reader that decrements it.
     /// </remarks>
     public sealed class StatusRegistry : IDamageMitigation
     {
@@ -83,10 +88,17 @@ namespace NonaRoyale.Core.Services
         /// magnitude. Only <see cref="StatusKind.Bleed"/> accumulates stacks
         /// (§5.3).
         ///
+        /// <b>For a shield that means re-casting tops the pool up rather than
+        /// adding to it</b> — a 2-point plate cast on an ally with 1 point left
+        /// goes back to 2, and cast on an ally at full does nothing but refresh
+        /// the duration. That is §5.2's "sources do not stack; the strongest
+        /// applies" holding for a pool the same way it holds for a slow, and it
+        /// is what stops two supports from stacking an arbitrarily deep wall.
+        ///
         /// A magnitude of zero means "use this kind's default", which is how
-        /// Slow and Hastened get their size without <c>AlphaRoster</c> needing a
-        /// dependency on config. An ability that wants a different size states
-        /// one and it is honoured.
+        /// Slow, Hastened and Shield get their size without <c>AlphaRoster</c>
+        /// needing a dependency on config. An ability that wants a different
+        /// size states one and it is honoured.
         /// </remarks>
         public void Apply(
             OperatorState target,
@@ -145,6 +157,11 @@ namespace NonaRoyale.Core.Services
         /// rather than as a constant in movement code, which is what lets one
         /// passive carry both a mitigation effect and a speed effect without a
         /// special case anywhere.
+        ///
+        /// <b>Not a route for shields.</b> <see cref="AbsorbFrom"/> reads only
+        /// applied entries, so a passive shield would present as an
+        /// undepletable pool. If one is ever wanted it needs a decision, not a
+        /// call to this method.
         /// </remarks>
         public void ApplyPassive(OperatorState target, StatusKind kind, double magnitude = 0.0)
         {
@@ -181,6 +198,10 @@ namespace NonaRoyale.Core.Services
         /// An applied status shadows a passive of the same kind — the same
         /// precedence <see cref="ActiveEntry"/> uses — so a temporary override
         /// of a passive never double-counts.
+        ///
+        /// <b>Shield is skipped.</b> Its magnitude is a damage pool, not a speed
+        /// delta. Every other kind either carries a signed speed value or
+        /// carries zero, which is why this could be a blind sum until now.
         /// </remarks>
         public double SpeedModifier(OperatorState op)
         {
@@ -195,13 +216,17 @@ namespace NonaRoyale.Core.Services
             if (applied != null)
             {
                 foreach (var pair in applied)
+                {
+                    if (pair.Key == StatusKind.Shield) continue;
                     if (IsActive(pair.Value, ownerTurn)) total += pair.Value.Magnitude;
+                }
             }
 
             if (passives != null)
             {
                 foreach (var pair in passives)
                 {
+                    if (pair.Key == StatusKind.Shield) continue;
                     if (applied != null && applied.ContainsKey(pair.Key)) continue;
                     total += pair.Value.Magnitude;
                 }
@@ -221,6 +246,25 @@ namespace NonaRoyale.Core.Services
         /// for its bonus damage (§5.3).
         /// </summary>
         public bool IsBleeding(OperatorState op) => BleedStacks(op) > 0;
+
+        /// <summary>
+        /// Damage the target's shield can still absorb, or 0 if unshielded.
+        /// For the view.
+        /// </summary>
+        /// <remarks>
+        /// The badge layer cannot infer this from the event stream: the pool is
+        /// decremented inside <see cref="AbsorbFrom"/> during damage resolution,
+        /// and a partial absorb emits no status event at all. A shield drawn as
+        /// a binary on/off badge would tell a player a 1-point remnant is the
+        /// same protection as a fresh plate.
+        /// </remarks>
+        public int ShieldPool(OperatorState op)
+        {
+            if (op == null) throw new ArgumentNullException(nameof(op));
+
+            var entry = AppliedActiveEntry(op, StatusKind.Shield);
+            return entry == null ? 0 : Math.Max(0, (int)entry.Magnitude);
+        }
 
         /// <summary>
         /// Whether <paramref name="target"/> can be picked as a single target by
@@ -355,6 +399,10 @@ namespace NonaRoyale.Core.Services
         /// status is correctly active <i>during</i> its final turn. Skipping this
         /// call would therefore never change a rule outcome — only what the view
         /// is told, and when.
+        ///
+        /// <b>A shield can leave by either door.</b> Duration expires it here; a
+        /// spent pool removes it in <see cref="AbsorbFrom"/>. Whichever comes
+        /// first, and the other then finds nothing.
         /// </remarks>
         public IReadOnlyList<StatusKind> ExpireCompleted(OperatorState op)
         {
@@ -388,6 +436,11 @@ namespace NonaRoyale.Core.Services
         /// opponent's turn is not active until its target's next one (§5), and a
         /// cleanse that could not remove it would be unable to answer the only
         /// window in which it matters.
+        ///
+        /// <b>It strips a shield along with everything else.</b> A cleanse is
+        /// indiscriminate by design, so Neural Purge on a plated ally destroys
+        /// the plate — a real cost of casting the two in the wrong order, and
+        /// one the player can see coming from the badge.
         /// </remarks>
         public IReadOnlyList<StatusKind> ClearApplied(OperatorState op)
         {
@@ -418,14 +471,20 @@ namespace NonaRoyale.Core.Services
         // ── IDamageMitigation ────────────────────────────────────────────
 
         /// <summary>
-        /// The first Normal instance each round may be negated on a seeded roll.
-        /// Every instance after it that round lands automatically.
+        /// The first Normal instance each round may be negated on a seeded roll
+        /// at <c>CombatConfig.EvasionChance</c>. Every instance after it that
+        /// round lands automatically.
         /// </summary>
         /// <remarks>
-        /// The per-round cap is load-bearing. Uncapped, a coin flip across the
-        /// half-dozen attacks a target sees in a match does not average out — it
-        /// decides games, and it can eat a four-turn ultimate investment on one
-        /// roll (§5.5).
+        /// <b>The charge is spent on the attempt, not the success.</b> If a
+        /// failed roll left it intact the holder would keep rolling against
+        /// every hit until one landed, and the per-round cap — the thing that
+        /// bounds the worst case — would stop binding at all.
+        ///
+        /// The cap is load-bearing. Uncapped, a roll across the half-dozen
+        /// attacks a target sees in a match does not average out; it decides
+        /// games, and it can eat a four-turn ultimate investment in one go
+        /// (§5.5).
         /// </remarks>
         public bool TryEvade(OperatorState target, IRandom random)
         {
@@ -439,14 +498,43 @@ namespace NonaRoyale.Core.Services
             return random.NextDouble() < _config.EvasionChance;
         }
 
-        public bool TryAbsorb(OperatorState target)
+        /// <summary>
+        /// Takes what the shield pool can from <paramref name="amount"/>,
+        /// decrements the pool by what it took, and removes the shield once the
+        /// pool is spent (§5.6).
+        /// </summary>
+        /// <remarks>
+        /// <b>Applied entries only.</b> A passive shield would be read here and
+        /// then not removed, because passives live in a store
+        /// <see cref="EntriesFor"/> cannot reach — leaving an operator carrying
+        /// a permanently exhausted, permanently uncleanable plate. Nothing
+        /// grants one today; this reads narrowly so nothing can start.
+        ///
+        /// A pool found already at or below zero is swept rather than returned
+        /// as a no-op, so a shield can never outlive its own usefulness by
+        /// sitting in the registry drawing a badge.
+        /// </remarks>
+        public int AbsorbFrom(OperatorState target, int amount)
         {
             if (target == null) throw new ArgumentNullException(nameof(target));
+            if (amount <= 0) return 0;
 
-            if (!Has(target, StatusKind.Shield)) return false;
+            var entry = AppliedActiveEntry(target, StatusKind.Shield);
+            if (entry == null) return 0;
 
-            EntriesFor(target.Id).Remove(StatusKind.Shield);
-            return true;
+            int pool = (int)entry.Magnitude;
+            if (pool <= 0)
+            {
+                EntriesFor(target.Id).Remove(StatusKind.Shield);
+                return 0;
+            }
+
+            int absorbed = Math.Min(pool, amount);
+            entry.Magnitude = pool - absorbed;
+
+            if (entry.Magnitude <= 0) EntriesFor(target.Id).Remove(StatusKind.Shield);
+
+            return absorbed;
         }
 
         // ── Internals ────────────────────────────────────────────────────
@@ -503,15 +591,44 @@ namespace NonaRoyale.Core.Services
         }
 
         /// <summary>
-        /// The size a kind takes when an ability does not state one. Signed:
-        /// negative slows, positive hastens.
+        /// The live <i>applied</i> entry for a kind, ignoring passives. For
+        /// callers that mutate the entry in place and must be able to remove it.
         /// </summary>
+        private Entry AppliedActiveEntry(OperatorState op, StatusKind kind)
+        {
+            if (op == null) throw new ArgumentNullException(nameof(op));
+
+            int ownerTurn = _clock.TurnIndexOf(op.Owner);
+
+            if (_byOperator.TryGetValue(op.Id, out var applied)
+                && applied.TryGetValue(kind, out var entry)
+                && IsActive(entry, ownerTurn))
+            {
+                return entry;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// The size a kind takes when an ability does not state one. Signed for
+        /// the speed kinds: negative slows, positive hastens. For
+        /// <see cref="StatusKind.Shield"/> it is a damage pool, always positive.
+        /// </summary>
+        /// <remarks>
+        /// <b>Shield must have a non-zero default.</b> Under the old
+        /// whole-instance absorb its magnitude was never read, so a shield
+        /// applied without one worked fine. Under a pool, a zero default
+        /// produces a shield that exists, draws a badge, absorbs nothing, and
+        /// cannot be distinguished from a real one until the hit lands.
+        /// </remarks>
         private double DefaultMagnitudeFor(StatusKind kind)
         {
             switch (kind)
             {
                 case StatusKind.Slow: return -_config.SlowSpeedPenalty;
                 case StatusKind.Hastened: return _config.HasteSpeedBonus;
+                case StatusKind.Shield: return _config.ShieldPoolDefault;
                 default: return 0.0;
             }
         }

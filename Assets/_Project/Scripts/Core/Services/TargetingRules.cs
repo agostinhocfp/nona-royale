@@ -196,6 +196,71 @@ namespace NonaRoyale.Core.Services
             return hit;
         }
 
+        // ── Lines ────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Every enemy standing on the next <paramref name="length"/> cells
+        /// ahead of the caster along the loop, in the caster's own direction of
+        /// travel. The caster's own cell is excluded. Kian's Inversion Matrix.
+        /// </summary>
+        /// <remarks>
+        /// <b>Directional, unlike every other query here.</b> "Within N" is
+        /// symmetric and covers <c>2N + 1</c> cells; this covers exactly
+        /// <paramref name="length"/>, all on one side. A symmetric version would
+        /// be indistinguishable from <see cref="EnemiesInArea"/> centred on the
+        /// caster, which is what Dargin Pulse and Ace Shards already are.
+        ///
+        /// <b>Direction is the caster's, and it is a rule.</b> Every colour
+        /// travels the loop in the same rotational direction, so "ahead" means
+        /// increasing track index — the same direction the caster's own progress
+        /// carries it. This is the first rule in the game that reads the loop's
+        /// orientation rather than only distances along it.
+        ///
+        /// <b>Computed from track indices, so it wraps and never runs out.</b>
+        /// A caster three cells from completing its own lap still projects a
+        /// full-length line: the line is cast onto the shared circuit, and where
+        /// the caster happens to be in its own journey is irrelevant to where
+        /// the emitters point.
+        ///
+        /// <b>Stealth does not protect against it</b>, for the same reason it
+        /// does not protect against an area: it stops an operator being aimed
+        /// at, not from standing somewhere (§5.4).
+        /// </remarks>
+        public IReadOnlyList<OperatorState> EnemiesInLineAhead(
+            OperatorState caster,
+            int length,
+            IEnumerable<OperatorState> candidates)
+        {
+            if (caster == null) throw new ArgumentNullException(nameof(caster));
+            if (candidates == null) throw new ArgumentNullException(nameof(candidates));
+            if (length < 1) throw new ArgumentOutOfRangeException(nameof(length));
+
+            var hit = new List<OperatorState>();
+            if (!IsInPlay(caster)) return hit;
+
+            int circuit = _map.Profile.CircuitLength;
+            int casterIndex = CellOf(caster).Index;
+
+            foreach (var candidate in candidates)
+            {
+                if (candidate == null) continue;
+                if (ReferenceEquals(candidate, caster)) continue;
+                if (candidate.Owner == caster.Owner) continue;
+                if (!IsInPlay(candidate)) continue;
+
+                int candidateIndex = _map.CellAt(candidate.Owner, candidate.Progress).Index;
+
+                // Steps forward only. Zero is the caster's own cell and is not
+                // in the line — the emitters fire away from the operator
+                // carrying them, not through it.
+                int forward = ((candidateIndex - casterIndex) % circuit + circuit) % circuit;
+
+                if (forward >= 1 && forward <= length) hit.Add(candidate);
+            }
+
+            return hit;
+        }
+
         /// <summary>The cell an operator occupies, for use as an area's origin.</summary>
         public CellRef CellOf(OperatorState op)
         {

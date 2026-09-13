@@ -56,9 +56,17 @@ namespace NonaRoyale.Sim
                 Row(band.Item1, 4, Run(matches, 4, BoardProfile.Standard, band.Item2));
             }
 
+            // Every drawable cross from Sprint up, not only the three named
+            // profiles. 36/4 and 44/5 were unreachable while the constraint was
+            // written as `CircuitLength % 8 == 0`, which ADR-0002 Amendment 6
+            // struck as a false invariant — and 44/5 is the only candidate that
+            // buys pacing back without giving up combat.
             Header("BOARD PROFILE — 4 players, adopted band, opening 2");
-            foreach (var board in new[] { BoardProfile.Sprint, BoardProfile.Standard, BoardProfile.Long })
+            foreach (int arm in new[] { 3, 4, 5, 6, 7 })
+            {
+                var board = BoardProfile.Cross(arm == 6 ? "Standard" : $"Cross-{arm}", arm);
                 Row(board.ToString(), 4, Run(matches, 4, board, RosterSpeeds.Default));
+            }
 
             Header("PLAYER COUNT — Standard board, adopted band, opening 2");
             for (int seats = 2; seats <= 4; seats++)
@@ -70,6 +78,23 @@ namespace NonaRoyale.Sim
                 Row($"CollisionDamage = {damage}", 4,
                     Run(matches, 4, BoardProfile.Standard, RosterSpeeds.Default,
                         new CombatConfig(collisionDamage: damage)));
+            }
+
+            // The kill bounty closes a feedback loop — more energy, more
+            // abilities, more kills, more energy — so it cannot be reasoned
+            // about, only measured. The row at 0 is the control: it reproduces
+            // the configuration every figure in COMBAT_SYSTEMS §12 was taken
+            // under, so the delta is attributable to the bounty and nothing else.
+            //
+            // Watch `burn` as much as `neut`. A bounty pays nothing to a player
+            // already at the cap, so if burn is high the reward is landing on
+            // the players who need it least.
+            Header("KILL BOUNTY — 4 players, Standard board, opening 2");
+            foreach (int bounty in new[] { 0, 3, 6 })
+            {
+                Row($"NeutralizeEnergyBounty = {bounty}", 4,
+                    Run(matches, 4, BoardProfile.Standard, RosterSpeeds.Default,
+                        new CombatConfig(neutralizeEnergyBounty: bounty)));
             }
         }
 

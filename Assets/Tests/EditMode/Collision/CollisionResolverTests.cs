@@ -20,17 +20,35 @@ namespace NonaRoyale.Core.Tests.Collision
         private CollisionResolver _resolver;
         private EvasiveMitigation _mitigation;
 
-        /// <summary>Lets a single test say "this hit is evaded" without chasing a seed.</summary>
+        /// <summary>
+        /// Lets a single test say "this hit is evaded" without chasing a seed.
+        /// </summary>
+        /// <remarks>
+        /// The shield is a pool rather than a switch, matching
+        /// <c>StatusRegistry.AbsorbFrom</c>: it takes what it can and keeps the
+        /// rest. A collision is the largest Normal instance in the game, so a
+        /// partial absorb is the common case here rather than an edge one.
+        /// </remarks>
         private sealed class EvasiveMitigation : IDamageMitigation
         {
             public bool EvadeNext;
+            public int ShieldPool;
+
             public bool TryEvade(OperatorState target, IRandom random)
             {
                 if (!EvadeNext) return false;
                 EvadeNext = false;
                 return true;
             }
-            public bool TryAbsorb(OperatorState target) => false;
+
+            public int AbsorbFrom(OperatorState target, int amount)
+            {
+                if (ShieldPool <= 0 || amount <= 0) return 0;
+
+                int absorbed = Math.Min(ShieldPool, amount);
+                ShieldPool -= absorbed;
+                return absorbed;
+            }
         }
 
         [SetUp]
@@ -221,7 +239,7 @@ namespace NonaRoyale.Core.Tests.Collision
             Assert.That(result.Occurred, Is.False);
         }
 
-        // ── Evasion and placement ────────────────────────────────────────
+        // ── Mitigation and placement ─────────────────────────────────────
 
         [Test]
         public void EvadedCollisionDamage_StillBouncesMoverBack()
@@ -242,6 +260,27 @@ namespace NonaRoyale.Core.Tests.Collision
         }
 
         [Test]
+        public void ShieldedOccupant_AbsorbsPartOfTheCollisionAndStillHoldsTheCell()
+        {
+            // A collision is 3 and a Trauma Plate pool is 2, so the common case
+            // under the pool rule is a partial absorb — the shield blunts the
+            // hit rather than erasing it (§5.6). Before the rework this instance
+            // was swallowed whole regardless of its size.
+            var mover = RedTank(0);
+            var victim = BlueAssassin(8);
+            _mitigation.ShieldPool = 2;
+
+            var result = Move(mover, 20, victim);
+
+            Assert.That(result.FirstDamage.Outcome, Is.EqualTo(DamageOutcome.Dealt));
+            Assert.That(result.FirstDamage.AmountApplied, Is.EqualTo(1));
+            Assert.That(result.FirstDamage.AmountMitigated, Is.EqualTo(2));
+            Assert.That(victim.Health, Is.EqualTo(5));
+            Assert.That(_mitigation.ShieldPool, Is.EqualTo(0), "the pool is spent by what it ate");
+            Assert.That(result.MoverBouncedBack, Is.True);
+        }
+
+        [Test]
         public void BounceBack_DoesNotTriggerSecondCollision()
         {
             // Two Blue operators, on track 19 and track 20. Red lands on 20,
@@ -257,8 +296,6 @@ namespace NonaRoyale.Core.Tests.Collision
             Assert.That(behind.Health, Is.EqualTo(12), "the bounce destination is untouched");
             Assert.That(struck.Health, Is.EqualTo(3), "only the contested cell resolved");
         }
-
-
 
         // ── Invariants ───────────────────────────────────────────────────
 

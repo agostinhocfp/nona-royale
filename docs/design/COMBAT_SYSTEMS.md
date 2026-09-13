@@ -3,8 +3,8 @@
 > Location in repo: `docs/design/COMBAT_SYSTEMS.md`
 > Status: **Accepted (alpha).** Every mechanic the alpha three invoke is defined and built. §10.4 and §10.5 describe two operators who are draftable with an ability each still unbuilt; both carry banners. Open items in §12 are balance dials and post-MVP scope, not gaps.
 > Date: 2026-09-12
-> Related: `docs/design/OPERATORS.md` (roster), ADR-0002 (board size), ADR-0003 (topology), ADR-0004 (pure-C# core), `CONVENTIONS.md`, `docs/GDD.md`
-> Supersedes: `docs/design/_HANDOFF_combat.md` (delete it)
+> Related: `docs/design/OPERATORS.md` (roster), ADR-0002 (board size, incl. Amendment 5), ADR-0003 (topology), ADR-0004 (pure-C# core), `CONVENTIONS.md`, `docs/GDD.md`
+> Supersedes: `docs/design/_HANDOFF_combat.md` and `docs/design/_HANDOFF_split_movement.md` (delete both)
 
 Combat rules are **core logic**. Everything in this document lives in `NonaRoyale.Core`, references zero Unity types, is deterministic under an injected seed, and is reached through commands and reported through events (ADR-0004). Every numeric value here is **named config data in the core**, never an inline literal (`CONVENTIONS.md` → "Config, not literals").
 
@@ -56,7 +56,7 @@ On neutralize:
 A neutralized operator re-enters exactly as it originally deployed (ADR-0003):
 
 - **A roll containing a 6 may deploy one operator**, consuming that die. Deployment is optional.
-- **The other die is that turn's movement roll**, applied (× speed) to any one operator, including the one just deployed.
+- **Every die a deploy does not consume is movement**, spent under §6 — pooled onto one operator or dealt between two.
 - **Each deploy consumes one die.** So a double 6 with only **one** operator waiting deploys that one and leaves the other 6 as the movement roll. Spending both dice to deploy a single operator would make a double 6 strictly worse than a single 6, which cannot be the intent.
 - **Double 6 deploys two** operators and forfeits movement for that turn. It still grants the doubles re-roll (§6).
 - The operator is placed on its colour's **start cell (S)**, which is a safe cell (§4.4) — so a deploy can never trigger a collision.
@@ -130,7 +130,7 @@ A `cooldownTurns: 0` on a 6-cost ability buys little against the drip alone, but
 - Energy is spent from the pool by **any operator the player owns**, in any order, during the action phase.
 - There is **no cap on abilities per turn.** Cooldowns and the 12-energy ceiling are the regulators. Banking to 12 and firing Velvet Rope into All-In Mauling in a single turn is a combo worth having.
 - A stunned operator cannot spend (§5.1). An operator in a home column cannot spend (§4.3).
-- Costs are 3 / 6 / 9 by tier; passives are free. Per-ability costs in §10.
+- Costs are free integers; passives are free. Per-ability costs in §10. **The 3 / 6 / 9 tier was abolished 2026-09-13** — three abilities had been priced off it on their own merits, and a rule overridden every time it binds makes its exceptions look like oversights. A cost is now argued against its peers in the operator file. The only remaining constraint is that a cost above the energy cap is unspendable and therefore invalid.
 
 ---
 
@@ -140,7 +140,7 @@ A `cooldownTurns: 0` on a 6-cost ability buys little against the drip alone, but
 
 Range is counted in **path steps along the circuit, in either direction**. Never Euclidean, never grid-adjacency.
 
-Two cells can sit physically beside each other across the board's centre and be 24 steps apart. Allowing abilities to cross that gap would make the track — the only topology the game has — meaningless.
+Two cells can sit physically beside each other across the board's centre and be 26 steps apart — half the 52-cell circuit, the furthest any two cells can be. Allowing abilities to cross that gap would make the track — the only topology the game has — meaningless.
 
 Counting follows the track around corners exactly as movement does; the arm geometry is invisible to range.
 
@@ -189,6 +189,7 @@ Statuses do not stack unless stated. Re-application refreshes duration and keeps
 - **Passives stay live.** A passive is who an operator is, not what it does.
 - **Forced movement still works.** Velvet Rope pulls a stunned target normally, and Translocation swaps with one — being moved is not the target's action.
 - **Cooldowns still tick.** They are timers, not actions.
+- **A stunned operator is not a legal consumer of a die** (§6). If it is the only operator that could otherwise move, the roll is forfeit and the turn can be ended.
 
 ### 5.2 Slow
 
@@ -216,14 +217,16 @@ The band is 1.0–1.5 (§6), so −0.5 costs a 1.5 operator a third of its movem
 
 ### 5.5 Evasion
 
-- **Effect:** the **first** instance of Normal damage against the holder **each round** is negated on a `EvasionChance = 0.5` seeded roll. Every subsequent instance that round lands automatically.
+- **Effect:** the **first** instance of Normal damage against the holder **each round** is negated on a `EvasionChance = 0.3` seeded roll. Every subsequent instance that round lands automatically.
 - **A failed roll still spends the charge.** The charge is the _attempt_, not the success. If a miss left it intact, the holder would keep rolling against every hit until one landed, and the per-round cap — the thing that bounds the worst case — would stop binding at all.
 - The charge refreshes at the holder's upkeep. "Round" therefore means _since the holder's last turn began_, which is the window during which opponents actually attack it.
 - A cleanse does **not** re-arm it (§5.8).
 - Atomic pierces it (§2.2).
 - **Evasion negates damage, never movement.** If a collision's damage is evaded, the target still survives and the mover still bounces back (§7.2).
 
-The per-round cap is load-bearing. Uncapped, a coin flip in a match with roughly six attacks against a target does not average out — it decides games, and it can eat a four-turn ultimate investment on a single roll.
+The per-round cap is load-bearing. Uncapped, a roll across the half-dozen attacks a target sees in a match does not average out — it decides games, and it can eat a four-turn ultimate investment on a single roll.
+
+**Splitting a roll raises the number of attacks a round has to absorb.** Two landings per roll means up to two collisions where there was one (§6, §7.1), and the cap bites on the first of them only. That makes the second landing of a split strictly more likely to connect than the first, which is a real tactic and an unmeasured one.
 
 ### 5.6 Shield
 
@@ -231,7 +234,7 @@ The per-round cap is load-bearing. Uncapped, a coin flip in a match with roughly
 - Atomic ignores it.
 - Granted by the `Shield` special space (ADR-0003). **Special spaces are deferred and not in the MVP.**
 
-**Absorbing a whole instance regardless of its size is a timing lottery**, and it is tolerable only while the sole source is a rare board space. Javi's Carapace makes the shield castable, which means it has to become a **pool** with a per-ability value — predictable, and priceable. That change reworks the same pipeline branch the deterministic-evasion pass is rewriting, so the two land together. Until then Carapace is unbuilt (§10.5).
+**Absorbing a whole instance regardless of its size is a timing lottery**, and it is tolerable only while the sole source is a rare board space. Javi's Trauma Plate makes the shield castable, which means it has to become a **pool** with a per-ability value — predictable, and priceable. That change reworks the same pipeline branch the deterministic-evasion pass is rewriting, so the two land together. Until then Trauma Plate is unbuilt (§10.5).
 
 ### 5.7 Mark
 
@@ -266,7 +269,7 @@ Not a status — the absence of them. Javi's Neural Purge removes every **applie
 
 ## 6. Turn structure and resolution order
 
-Every die is consumed exactly once, by a deploy or by a move.\*\* Dice spent on movement may be pooled onto one operator or dealt one to each of two — or spent on the same operator in two separate steps. A die is forfeit only when no legal consumer exists for it. Energy may be spent by any owned operator and consumes no dice.
+**Every die is consumed exactly once, by a deploy or by a move.** Dice spent on movement may be pooled onto one operator or dealt one to each of two — or spent on the same operator in two separate steps. A die is forfeit only when no legal consumer exists for it. Energy may be spent by any owned operator and consumes no dice.
 
 | Phase         | What resolves                                                                                                                                                                                                                                                                                                                                  |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -275,23 +278,31 @@ Every die is consumed exactly once, by a deploy or by a move.\*\* Dice spent on 
 | **3. Action** | Deploy (if an unspent 6, §1.3) and move until the roll is spent; spend energy on abilities with any owned operator; any order the player chooses. Deploying no longer has to precede moving. Collisions resolve immediately on landing (§7). Doubles → return to phase 2 **without** an energy grant, and only once the roll in hand is spent. |
 | **4. End**    | Status durations expire. Win check.                                                                                                                                                                                                                                                                                                            |
 
-**Movement is compulsory.** A turn cannot be ended, and a doubles re-roll cannot be taken, while any of the current player's operators could legally move with an unspent die. "Legally" excludes operators in the yard, stunned (§5.1), or already
+### 6.1 Movement is compulsory
 
-> home, and excludes a die whose pips floor to zero cells at that operator's current speed — a die that can only move somebody nowhere has no consumer and is forfeit.
-> Deploying stays optional (§1.3). A declined deploy leaves the 6 available as movement, so no die is stranded by declining.
-> **Knowingly out of scope:** rolling is not compulsory. A player who never rolls forfeits both their energy grant and their movement, which is self-punishing enough that no rule is needed. Revisit if it ever becomes a real tactic.
+A turn cannot be ended, and a doubles re-roll cannot be taken, while any of the current player's operators could legally move with an unspent die. "Legally" excludes operators in the yard, stunned (§5.1), or already home.
 
-                                                                                                                                 |
+It also excludes a roll whose **pooled** pips floor to zero cells for every operator that could move. Pooling is always available and never moves fewer cells than a single die, so if the pool cannot move anybody, nothing can — and a die that can only move somebody nowhere has no consumer and is forfeit. This is the one rule that guarantees a turn is always endable; without it a heavy slow could deadlock the match.
+
+Deploying stays optional (§1.3). A declined deploy leaves the 6 available as movement, so no die is stranded by declining.
+
+**Knowingly out of scope:** rolling is not compulsory. A player who never rolls forfeits both their energy grant and their movement, which is self-punishing enough that no rule is needed. Revisit if it ever becomes a real tactic.
+
+### 6.2 Resolution notes
 
 Bleed resolves before marks purely for determinism; nothing in the alpha roster distinguishes the order, but an unspecified order is a bug waiting for the first operator that cares.
 
 Expiry sits at End and application takes hold at the target's next turn, so a 1-turn stun applied during an opponent's turn correctly blocks the target's action phase before expiring.
 
-`MaxRollsPerTurn = 3` (the initial roll plus two doubles) bounds turn length. Tunable.
+`MaxRollsPerTurn = 3` (the initial roll plus two doubles) bounds turn length. Tunable. Combined with splitting, that is up to **six operator-moves in a turn** against one to three before — see §12.
 
-**Movement:** `cells = floor(Pips × EffectiveSpeed)`, where `Pips` is the sum of the dice being spent on this move — the whole unspent roll, or one die. `EffectiveSpeed` is the moving operator's multiplier after auras and slows, floored at `MinSpeedMultiplier`. **The floor applies per move, which is what splitting costs.** Two dice pooled lose at most one half-cell to it; spent separately they lose one each. The two coincide exactly when both dice are odd — 9 rolls in 36 — and at whole-number
-speeds the loss is zero. **The larger cost is routing a die through a slower operator**, which forfeits that operator's whole speed deficit on those pips: a double six pooled onto a 1.5 operator moves 18, split between a 1.5 and a 1.0
-operator moves 15.
+### 6.3 Movement arithmetic
+
+**Movement:** `cells = floor(Pips × EffectiveSpeed)`, where `Pips` is the sum of the dice being spent on this move — the whole unspent roll, or one die. `EffectiveSpeed` is the moving operator's multiplier after auras and slows, floored at `MinSpeedMultiplier`.
+
+**The floor applies per move, which is what splitting costs.** Two dice pooled lose at most one half-cell to it; spent separately they lose one each. So splitting costs a **whole cell exactly when both dice are odd** — 9 rolls in 36 — and nothing otherwise. At whole-number speeds it costs nothing at all.
+
+**The larger cost is routing a die through a slower operator**, which forfeits that operator's whole speed deficit on those pips: a double six pooled onto a 1.5 operator moves 18; split between a 1.5 and a 1.0 operator it moves 15. That is three cells, not one, and it is why the landing preview must show every option before one is chosen (§9.1).
 
 **Speed band: 1.0 – 1.5**, in half-steps. `SpeedMultiplierMin = 1.0` and `SpeedMultiplierMax = 2.5` are the legal schema bounds; the roster uses 1.0 and 1.5 only. The band was set by simulation, not by feel — see ADR-0002 Amendment 4, which lowered it from the 1.5–2.0 adopted in Amendment 2. Two constraints fix it:
 
@@ -307,6 +318,8 @@ operator moves 15.
 A collision occurs when an operator's movement **ends** on a cell occupied by an enemy operator.
 
 It does **not** occur on: a safe cell (§4.4), a home column (§4.3), a cell occupied only by friendly operators (§4.5), passing _through_ an occupied cell mid-move, or any form of forced movement (§7.4).
+
+**A split roll produces two landings, and therefore up to two collisions** (§6). This is the single largest downstream consequence of split movement, and it is unmeasured — see §12.
 
 ### 7.2 Resolution
 
@@ -401,25 +414,31 @@ Noun-based, per `CONVENTIONS.md`. Each owns one rule family and nothing else.
 | ------------------- | ---------------------------------------------------------------------------- |
 | `TurnStateMachine`  | Phase order (§6), turn rotation, roll budget                                 |
 | `EnergyLedger`      | Generation, cap, spend, refusal on insufficient funds (§3)                   |
-| `MovementResolver`  | Dice → cells, deploy, path advance, home entry (§1.3, §6)                    |
+| `MovementResolver`  | Pips → cells, deploy, path advance, home entry (§1.3, §6)                    |
 | `CollisionResolver` | Landing contest, bounce-back (§7)                                            |
 | `TargetingRules`    | Range along track, AOE windows, legality: stealth, home column, safe (§4)    |
 | `AbilityResolver`   | Cost, cooldown, target validation, placement legality, effect emission (§10) |
 | `DamagePipeline`    | The single choke point of §2.1                                               |
 | `StatusRegistry`    | Apply, query, expire, cleanse; absolute-index timers (§5)                    |
 | `AuraRules`         | Aura effects, evaluated on demand rather than stored (§10.1)                 |
-| `NeutralizeRules`   | The §1.2 consequences, and the mark payout (§10.2)                           |
+| `NeutralizeRules`   | The §1.2 consequences, the mark payout (§10.2), and the kill bounty          |
 | `WinConditions`     | §8                                                                           |
+
+**`MovementResolver` knows nothing about how many dice a move spends.** It takes a pip count, so a pooled two-die move and a single-die move are the same call with different arguments. Which dice are unspent, and whether the roll is owed, is `GameEngine`'s state — that is why splitting needed no change to the resolver at all.
 
 **`StatusRegistry` reports damage, it never applies it.** The pipeline consults the registry for evasion and shields, so a registry that called the pipeline would close a dependency cycle. Bleed and mark ticks are therefore _queried_ — the registry says what the tick owes and the caller pushes it through the pipeline as Atomic. The registry decides what damage is owed, the pipeline decides how damage lands, and neither knows the other exists.
 
 **An ability is a list of effects, and there are seven kinds:** Damage, Heal, ApplyStatus, PullToCaster, Execute, SwapWithCaster, RemoveStatuses. The resolver never branches on which ability is being cast. A new operator that cannot be expressed in those seven gets an amendment to this document and a new kind — never an `if`. Two have been added in earnest: the swap, for Mimi, and the cleanse, for Javi.
+
+**The engine reports every move a roll could make, not just one.** `PreviewLandings` returns, per operator, the pooled landing and one per distinct unspent face. A preview that showed only the pooled option would hide exactly the choice §6.3 prices, and the view must not compute any of it itself (`PRESENTATION.md` §1).
 
 Randomness reaches exactly two places: `MovementResolver` (dice) and `DamagePipeline` (evasion). Both take the injected seedable RNG. Nothing else in combat is random.
 
 ### 9.2 Commands (view → core)
 
 `RollDiceCommand` · `DeployCommand` · `MoveCommand` · `UseAbilityCommand` · `EndTurnCommand`
+
+`MoveCommand` carries an optional die face. Null means pool every unspent die onto this operator; a face means spend that one die. `EndTurnCommand` is rejected while §6.1 is unsatisfied.
 
 ### 9.3 Events (core → view)
 
@@ -479,7 +498,7 @@ The mark's payout credits _any_ neutralize by Syla's side, including a collision
 
 **And it can be answered.** Javi's Neural Purge strips the mark for 6 energy, taking the payout with it (§5.8). A 9-cost ultimate that is cancelled by a 6-cost cleanse is a real counter-pick relationship, not an accident — but it is unmeasured, and it is the sharpest thing a drafted squad can do to her.
 
-Two numbers here have been walked back under measurement. The squad buff was **+3** in the original roster; against literal multipliers that produced a 35-cell turn, three-quarters of the loop from one ability, and it is now +0.5. The mark was **pure bookkeeping** until 2026-09-12 — the ult cost 9 and did nothing whatsoever on the turn it was cast.
+Two numbers here have been walked back under measurement. The squad buff was **+3** in the original roster; against literal multipliers that produced a 35-cell turn, two-thirds of the loop from one ability, and it is now +0.5. The mark was **pure bookkeeping** until 2026-09-12 — the ult cost 9 and did nothing whatsoever on the turn it was cast.
 
 ### 10.3 Kurbyn, DarkGrave — Brawler
 
@@ -515,22 +534,22 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 **Five health is what prices her kit.** She is the only operator below 6, and she moves at the tank's speed, so she cannot run from anything. Ace Shards into a bleeding-bonus From the Hip kills her; so does Dargin Pulse into a collision — two-ability sequences every other operator survives.
 
-**Cryo-Pulse is unmeasured and possibly stronger than its peer.** Against Dargin Pulse it is the same cost, radius and damage, but it originates on a target three cells away rather than on the caster, and applies two statuses rather than one. For a 1.0-speed operator, remote origin is most of the game. It was 4 energy in the first draft, which was off the tier and did more than either 6-cost area ability for two-thirds the price.
+**Cryo-Pulse is unmeasured and possibly stronger than its peer.** Against Dargin Pulse it is the same cost, radius and damage, but it originates on a target three cells away rather than on the caster, and applies two statuses rather than one. For a 1.0-speed operator, remote origin is most of the game. It was 4 energy in the first draft and did more than either 6-cost area ability for two-thirds the price. The tier was a second objection at the time and is now abolished; the peer comparison was always the real one, so the price stands.
 
 **Translocation's range 6 is the longest in the game**, and it is the only compensation a 5-health operator gets for being in a fight. Because progress moves one-for-one with cells, the range also bounds the swing: a swap shifts either operator by at most 6 cells of journey.
 
-**Its cooldown is the whole limiter.** At 3 energy against a 3.5 drip both 3 and 4 gate to roughly every turn, so raising the cost would not have limited it — and 4 is off the tier besides. A cooldown longer than the economy imposes is exactly what §3.1 says a stated cooldown is for. This is also the cheapest denial tool in the design: swapping with an operator near its home mouth sends it backwards while you take its cell, which is a version of the play `_HANDOFF_opt_out_home_entry.md` prices at 3–6 energy as an entire new mechanic.
+**Its cooldown is the whole limiter.** At 3 energy against a 3.5 drip both 3 and 4 gate to roughly every turn, so raising the cost would not have limited it whatever it was set to. A cooldown longer than the economy imposes is exactly what §3.1 says a stated cooldown is for. This is also the cheapest denial tool in the design: swapping with an operator near its home mouth sends it backwards while you take its cell, which is a version of the play `_HANDOFF_opt_out_home_entry.md` prices at 3–6 energy as an entire new mechanic.
 
 ### 10.5 Javi — Support
 
 **HP 6 · Speed 1.5× · Two of three abilities implemented**
 
-> **Incomplete, and in the draft pool.** Carapace is designed and not built: a shield with a per-ability value needs the absorb layer reworked from a whole-instance bool to a pool (§5.6), which is the same pipeline branch the deterministic-evasion pass is rewriting. The two land together.
+> **Incomplete, and in the draft pool.** Trauma Plate is designed and not built: a shield with a per-ability value needs the absorb layer reworked from a whole-instance bool to a pool (§5.6), which is the same pipeline branch the deterministic-evasion pass is rewriting. The two land together.
 
 | #   | Ability             | Type   | Cost | CD  | Range | Effect                                                                                                           |
 | --- | ------------------- | ------ | ---- | --- | ----- | ---------------------------------------------------------------------------------------------------------------- |
 | 1   | **Nanite Infusion** | Active | 3    | 2   | 3     | Ally: **heal 2**. Enemy: **2 Normal**, and **heal 1** to every ally within 2 of the target, the caster included. |
-| 2   | **Carapace**        | Active | 6    | 3   | 3     | _Not implemented._ Shield with a 2-point pool, 2 turns.                                                          |
+| 2   | **Trauma Plate**    | Active | 6    | 3   | 3     | _Not implemented._ Shield with a 2-point pool, 2 turns.                                                          |
 | 3   | **Neural Purge**    | Active | 6    | 3   | 3     | Remove **every applied status** from an ally (§5.8). Passives untouched.                                         |
 
 **He is the first operator who makes a target harder to kill**, which changes what the whole board is doing rather than adding to one side of it. Everything before him moved damage around; he removes it.
@@ -541,7 +560,7 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 **The hostile mode is the interesting one.** Turned on an enemy it damages, and heals every ally within 2 of _that enemy_ — which is precisely where Ace Shards and Dargin Pulse punish a squad for standing. It pays for a commitment the rest of the roster charges for.
 
-**Neural Purge was damage reduction until 2026-09-12**, and that design lost to Carapace on every axis: a flat 2-point shield absorbs more than a 50% cut, at half the cost and three times the range. A percentage also forces fractional health into a pipeline that has none — half of 3 is 1.5, and the rounding rule would have decided more than the design did. The cleanse gives him something no other operator has and no overlap with his own shield.
+**Neural Purge was damage reduction until 2026-09-12**, and that design lost to Trauma Plate on every axis: a flat 2-point pool absorbs more than a 50% cut, and does it predictably.
 
 **He may be the operator that tips the game.** §12 records that neutralizing rewards the attacker with nothing, and suspects that suppresses combat in human play in a way the harness cannot detect, because the scripted player fights unconditionally. A dedicated healer makes kills materially harder to land. His measured strength depends entirely on which way that question goes, so settle it before trusting any figure about him.
 
@@ -549,34 +568,39 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 ## 11. Superseded and removed
 
-| Thing                                                        | Status                                                                                                                          |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| Tiered energy (≤4 → 1, 5–8 → 2, ≥9 → 3)                      | **Dead.** Replaced by §3.1.                                                                                                     |
-| "3 energy points per turn to spend" (GDD)                    | **Dead.** Never closed against 9-cost ultimates.                                                                                |
-| `Energy Efficiency` stat                                     | **Cut.** One value on one operator, blank on two, no rule ever attached.                                                        |
-| `Energy` as a per-operator stat                              | **Cut.** The pool is player-level.                                                                                              |
-| Shield as "2 hits to capture"                                | **Rewritten** as §5.6 — the capture system it described no longer exists.                                                       |
-| Shield absorbing a whole instance whatever its size          | **Superseded in principle** by §5.6's pool, which is unbuilt. The current rule stands until it lands.                           |
-| Mark as bookkeeping-only, applying no modifier               | **Rewritten** as §5.7 — it now deals damage over time.                                                                          |
-| Tagged From Above's "within 3 of Syla's turns" payout window | **Replaced** by the mark's own duration (§5.7, §10.2).                                                                          |
-| "A collision is always exactly 1v1" (§7.2)                   | **False.** Contradicted §4.5. Replaced by §7.5.                                                                                 |
-| §7.4 covering pulls only                                     | **Extended** to swaps, with the cells-versus-progress conversion and the forwards case stated for the first time.               |
-| The pull clamp as "owed a doc amendment"                     | **Discharged.** Stated in §7.4.                                                                                                 |
-| Speed band 1.5–2.0 (Amendment 2)                             | **Lowered** to 1.0–1.5 by Amendment 4. Bouncer 1.5 → 1.0, Syla 2.0 → 1.5, Kurbyn 1.5+0.5 → 1.0+0.5.                             |
-| Bouncer at 12 health                                         | **Lowered** to 9 (§10.1). He absorbed four collisions and shrugged off the sequence that kills everyone else.                   |
-| Velvet Rope as 3 Normal at range 3                           | **Retuned** to 3 **Atomic** at range 4, then **back to range 3** (§10.1). Atomic stayed; the reach did not.                     |
-| All-In Mauling at range 1 with 3 damage and 3 self           | **Retuned** to range 2, 2 damage, 2 self (§10.1).                                                                               |
-| Miracle Pull at range 1                                      | **Widened** to 2 (§10.3). At 1 the ult was often unspendable when it was worth spending.                                        |
-| Intimidating Presence at radius 2                            | **Widened** to 3, matching Velvet Rope's reach (§10.1).                                                                         |
-| From the Hip at 2 base damage                                | **Lowered** to 1 (§10.2). The bleed profile carries the ability; the base does not.                                             |
-| Cryo-Pulse at 4 energy                                       | **Repriced** to 6 (§10.4). Off the tier, and it did more than either 6-cost area ability.                                       |
-| Javi's third ability as 50% damage reduction                 | **Replaced** by Neural Purge (§10.5). It duplicated Carapace, lost on cost, range and absorption, and needed fractional health. |
-| An ability with no player-facing description                 | **Dead.** The constructor requires one and throws on an empty string (§10).                                                     |
-| `CollisionDamage` as "the first dial"                        | **Withdrawn** (§12). Measured at 0.4 turns across a 2→6 range.                                                                  |
-| Ludo capture (land → instant send-home)                      | **Replaced** by collision (§7).                                                                                                 |
-| `[Range(3, 9)]` on `Operator.maxHealth`                      | **Dead**, and still dead — Bouncer at 9 is coincidence, not the rule returning.                                                 |
-| Player elimination ("until one player is left")              | **Not a mechanic** in the MVP (§1.2).                                                                                           |
-| `MeshRenderer` fallback on `Operator`                        | Already dead (ADR-0001).                                                                                                        |
+| Thing                                                        | Status                                                                                                                              |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| "Exactly one operator moves per roll" (§6)                   | **Dead.** Replaced by per-die consumption and compulsory movement (§6, §6.1).                                                       |
+| Deploy having to precede movement in a roll                  | **Dead.** An artifact of computing the movement total up front from the whole roll; a deploy now simply removes a die (§6).         |
+| `cells = floor(DiceTotal × EffectiveSpeed)`                  | **Restated** as `floor(Pips × EffectiveSpeed)`, where Pips is what this move spends (§6.3). The arithmetic is unchanged.            |
+| Tiered energy (≤4 → 1, 5–8 → 2, ≥9 → 3)                      | **Dead.** Replaced by §3.1.                                                                                                         |
+| "3 energy points per turn to spend" (GDD)                    | **Dead.** Never closed against 9-cost ultimates.                                                                                    |
+| `Energy Efficiency` stat                                     | **Cut.** One value on one operator, blank on two, no rule ever attached.                                                            |
+| `Energy` as a per-operator stat                              | **Cut.** The pool is player-level.                                                                                                  |
+| Shield as "2 hits to capture"                                | **Rewritten** as §5.6 — the capture system it described no longer exists.                                                           |
+| Shield absorbing a whole instance whatever its size          | **Superseded in principle** by §5.6's pool, which is unbuilt. The current rule stands until it lands.                               |
+| Mark as bookkeeping-only, applying no modifier               | **Rewritten** as §5.7 — it now deals damage over time.                                                                              |
+| Tagged From Above's "within 3 of Syla's turns" payout window | **Replaced** by the mark's own duration (§5.7, §10.2).                                                                              |
+| "A collision is always exactly 1v1" (§7.2)                   | **False.** Contradicted §4.5. Replaced by §7.5.                                                                                     |
+| §7.4 covering pulls only                                     | **Extended** to swaps, with the cells-versus-progress conversion and the forwards case stated for the first time.                   |
+| The pull clamp as "owed a doc amendment"                     | **Discharged.** Stated in §7.4.                                                                                                     |
+| Speed band 1.5–2.0 (Amendment 2)                             | **Lowered** to 1.0–1.5 by Amendment 4. Bouncer 1.5 → 1.0, Syla 2.0 → 1.5, Kurbyn 1.5+0.5 → 1.0+0.5.                                 |
+| Standard board 48/6                                          | **Replaced** by 52/6 (ADR-0002 Amendment 5). 48 cannot be drawn as a continuous Ludo cross; journey 54 → 58.                        |
+| Bouncer at 12 health                                         | **Lowered** to 9 (§10.1). He absorbed four collisions and shrugged off the sequence that kills everyone else.                       |
+| Velvet Rope as 3 Normal at range 3                           | **Retuned** to 3 **Atomic** at range 4, then **back to range 3** (§10.1). Atomic stayed; the reach did not.                         |
+| All-In Mauling at range 1 with 3 damage and 3 self           | **Retuned** to range 2, 2 damage, 2 self (§10.1).                                                                                   |
+| Miracle Pull at range 1                                      | **Widened** to 2 (§10.3). At 1 the ult was often unspendable when it was worth spending.                                            |
+| Intimidating Presence at radius 2                            | **Widened** to 3, matching Velvet Rope's reach (§10.1).                                                                             |
+| From the Hip at 2 base damage                                | **Lowered** to 1 (§10.2). The bleed profile carries the ability; the base does not.                                                 |
+| Cryo-Pulse at 4 energy                                       | **Repriced** to 6 (§10.4). It did more than either 6-cost area ability for two-thirds the price.                                    |
+| The 3 / 6 / 9 cost tier                                      | **Abolished** 2026-09-13 (§3.2). Three abilities were priced off it deliberately; no price moved when it went.                      |
+| Javi's third ability as 50% damage reduction                 | **Replaced** by Neural Purge (§10.5). It duplicated Trauma Plate, lost on cost, range and absorption, and needed fractional health. |
+| An ability with no player-facing description                 | **Dead.** The constructor requires one and throws on an empty string (§10).                                                         |
+| `CollisionDamage` as "the first dial"                        | **Withdrawn** (§12). Measured at 0.4 turns across a 2→6 range — but see §12 on splitting, which attacks the premise.                |
+| Ludo capture (land → instant send-home)                      | **Replaced** by collision (§7).                                                                                                     |
+| `[Range(3, 9)]` on `Operator.maxHealth`                      | **Dead**, and still dead — Bouncer at 9 is coincidence, not the rule returning.                                                     |
+| Player elimination ("until one player is left")              | **Not a mechanic** in the MVP (§1.2).                                                                                               |
+| `MeshRenderer` fallback on `Operator`                        | Already dead (ADR-0001).                                                                                                            |
 
 ---
 
@@ -584,62 +608,73 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 These are dials and scope, not holes. Nothing here blocks implementation.
 
-> **Every figure below is stale, and by more than it was.** They were measured before the mark gained damage, before Velvet Rope became Atomic, before the reach retunes, before Bouncer was cut on three axes, before Miracle Pull widened, and before two operators entered the draft pool. **Re-run `tools/sim/NonaRoyale.Sim` and replace these numbers before citing them.** Note also that adding an operator shifts the RNG stream, so figures either side of a roster change are not comparable even at the same seed.
+> **Every figure below is stale, and by more than it was.** They were measured before the mark gained damage, before Velvet Rope became Atomic, before the reach retunes, before Bouncer was cut on three axes, before Miracle Pull widened, before two operators entered the draft pool, before the board went to 52/6, and before movement became compulsory and splittable. **Re-run `tools/sim/NonaRoyale.Sim` and replace these numbers before citing them.** Note also that adding an operator shifts the RNG stream, so figures either side of a roster change are not comparable even at the same seed.
 
-**Last measured baseline** — Standard 48×1, band 1.0/1.5/1.5, `openingDeployments = 2`, alpha three, pre-roster-changes:
+**Last measured baseline** — Standard **48×1 (withdrawn board, ADR-0002 Amdt 5)**, band 1.0/1.5/1.5, `openingDeployments = 2`, alpha three, pre-roster-changes, one operator moving per roll:
 
 **19.6 turns, p90 24, 6.7 neutralizes, 43.3 abilities, 33% squad occupancy.**
 
 **Nothing has ever measured a drafted squad.** The harness still fields the alpha three, so not one of Mimi's or Javi's four live abilities has run in a simulated match.
 
-**Balance dials, ranked by effect per turn spent**
+### Consequences of compulsory and split movement — all unmeasured
+
+- **Up to six operator-moves in a turn.** Two per roll against one, and `MaxRollsPerTurn = 3` (§6.2). Expect materially shorter matches.
+- **This pulls against the 52/6 board, which lengthened the journey 54 → 58.** Measure the two **together** against `CreateAlphaMatch`; read separately, each will be contaminated by the other.
+- **Landings per roll roughly double when players split**, and a landing is the collision trigger (§7.1). §12 struck `CollisionDamage` as a dial because collisions fire only ~2.4 times a match — **splitting attacks that premise directly.** If collision frequency rises materially, re-test the dial before trusting the strike.
+- **The harness will not detect any of the splitting effects.** `ScriptedPlayer` pools and never splits, by deliberate policy: any split policy is a tactical judgement the harness would be making on the player's behalf. Current runs therefore measure compulsory movement only.
+- **Kill bounties become easier to farm.** Two collisions per roll is two chances at a bounty where there was one. Neither feature was designed against the other.
+- **Evasion's per-round cap is worth less.** The cap bites on the first Normal instance only, so the second landing of a split is strictly more likely to connect (§5.5).
+
+### Balance dials, ranked by effect per turn spent
 
 1. **Ability reach — the largest lever, and now partly spent and partly refunded.** Adding +1 to every range and radius bought **+47% neutralizes for under 1.5 turns** when measured. Since then Velvet Rope took +1 and gave it back, Intimidating Presence took +1 and kept it, and Miracle Pull took +1. The net is unmeasured.
 
 2. **Opening deployments.** Adopted at 2. The only lever found that improves a problem at no cost elsewhere: occupancy roughly doubles and matches get _shorter_. `openingDeployments = 1` is retained for a more classic Ludo opening.
 
-3. **Journey length.** The only thing that buys occupancy outright, and it costs pacing directly.
+3. **Journey length.** The only thing that buys occupancy outright, and it costs pacing directly. **Now geometrically pinned** — the circuit must satisfy `8L + 4` to be drawable as a cross (ADR-0002 Amdt 5), so the nearest alternatives to 52 are 44 and 60. If pacing needs adjusting, this is no longer a free dial; use opening deployments or the speed band instead.
 
-4. `EvasionChance = 0.5` — the per-round cap bounds the worst case; the rate itself is free to move. **Evasion drove Kurbyn's dominance in the first human sessions**, and the response was a targeted counter (§10.1) rather than touching this number — a counter that has since been shortened. If he is dominant again, restoring Velvet Rope's range comes before this dial.
+4. `EvasionChance = 0.3` — **lowered from 0.5, adopted by reasoning and unmeasured.** Prevents 0.65 per round against the current Normal spread (mean 2.17), where 0.5 prevented 1.08. The per-round cap bounds the worst case; the rate itself is free to move. Note this dial was pulled ahead of restoring Velvet Rope's range, which this item had ranked first — that reordering is unexplained and the range is still shortened.
 
 5. `EnergyCap = 12` against a `floor(total/2)` drip — governs how often ultimates appear. Roughly 24 energy per match was burned at the cap, almost all of it pre-contact in the opening turns.
 
 6. `MarkDamagePerTurn = 2` over a 2-turn duration — **unmeasured.** Set by reasoning: 4 total leaves a 6-HP target at 2, inside collision range and inside Miracle Pull's execute window, while 9 would kill unassisted and make the ult's payout self-fulfilling.
 
-7. `SlowSpeedPenalty = 0.5` against the 1.0–1.5 band takes a 1.0 operator to the `MinSpeedMultiplier` floor (§5.2). Slow is harsher than it was under the earlier band and was not re-measured when the band moved. Intimidating Presence at radius 3, and Cryo-Pulse applying slow to a whole area, both make it land more often.
+7. `SlowSpeedPenalty = 0.5` against the 1.0–1.5 band takes a 1.0 operator to the `MinSpeedMultiplier` floor (§5.2). Slow is harsher than it was under the earlier band and was not re-measured when the band moved. Intimidating Presence at radius 3, and Cryo-Pulse applying slow to a whole area, both make it land more often. Note it now also interacts with §6.1: a heavily slowed squad can reach the state where a roll has no legal consumer at all.
 
 8. `HasteSpeedBonus = 0.5` and `HasteDurationTurns = 2` — **unmeasured.** The bonus was inherited from a cut made against the 1.5–2.0 band, where it was a ~25% bump; against 1.0–1.5 it is +33% to +50%.
 
-**Struck**
+### Struck
 
-- **`CollisionDamage` is not a dial.** Moving it from 2 to 6 changes match length by 0.4 turns and neutralizes by 1.1, because collisions occur only ~2.4 times a match on Standard. This section and ADR-0002 Amendment 2 both named it as the first lever if the race reads as toothless; that advice was wrong and is withdrawn.
+- **`CollisionDamage` is not a dial** — _as measured._ Moving it from 2 to 6 changed match length by 0.4 turns and neutralizes by 1.1, because collisions occurred only ~2.4 times a match on Standard. This section and ADR-0002 Amendment 2 both named it as the first lever if the race reads as toothless; that advice was wrong on the figures available. **The strike rests entirely on collision frequency, and split movement raises it.** Re-measure before relying on this either way.
 - **The yard setback is not the most expensive rule.** The Python model showed it costing 6.4 turns per match at ~8 neutralizes. At the measured 6.7 across four players it fires under twice per player per match, and its contribution is far smaller than claimed.
 - **Occupancy is no longer 10–15%.** It measured that under the old speed band. At the adopted band with opening deployments it is **33%**.
 
-**Open, unresolved rules conflict**
+### Open, unresolved rules conflict
 
 - **Slows and auras stack, and §5.2 says they should not.** `GameEngine` sums two channels when computing effective speed — `StatusRegistry.SpeedModifier` and `AuraRules.SpeedModifierFor` — so From the Hip's slow and Bouncer's Intimidating Presence apply together. Within each channel the rule holds; across the two it does not.
 
-  Both readings are defensible: an aura and a status are arguably different things, and a tank's presence compounding a wound is reasonable. But the doc says one thing and the code does another, which is the state this project exists to avoid. **Decide it.** The stakes rose again with Cryo-Pulse, which slows an entire area.
+  Both readings are defensible: an aura and a status are arguably different things, and a tank's presence compounding a wound is reasonable. But the doc says one thing and the code does another, which is the state this project exists to avoid. **Decide it.** The stakes rose again with Cryo-Pulse, which slows an entire area, and again with §6.1, where a deep enough slow decides whether a turn can be ended at all.
 
-**Open, undecided**
+### Open, undecided
 
-- **The Tech damage type, and the shield source it waits on.** A four-type matrix — Normal, Force, Tech, Atomic, across Evasion and Shield — is the agreed model and is blocked on shields having a real source. Javi's Carapace is that source. Until both land, Mimi's whole identity is unexpressed and Force and Tech are indistinguishable from Atomic and Normal.
+- **The Tech damage type, and the shield source it waits on.** A four-type matrix — Normal, Force, Tech, Atomic, across Evasion and Shield — is the agreed model and is blocked on shields having a real source. Javi's Trauma Plate is that source. Until both land, Mimi's whole identity is unexpressed and Force and Tech are indistinguishable from Atomic and Normal.
 - **A draft has no balance constraint.** Nothing checks that a squad has an answer to Evasion, a way to heal, or reliable damage. With Atomic in two operators (§2.2), a legal draw can produce a squad with no way through Kurbyn.
+- **Whether the same operator may take both dice in two steps.** §6 allows it, and it is Ludo-standard. It is also strictly worse in cells and strictly better in landings, which makes it a deliberate two-collision play rather than a mistake. Undecided whether that is a feature worth keeping or an exploit worth naming.
 
-**Open, unmeasured**
+### Open, unmeasured
 
 - **Neutralizing rewards the attacker with nothing**, which at four players makes killing a public good bought with private resources. Believed to suppress combat in human play in a way no simulation can detect, because the scripted player fights unconditionally. Javi makes this more pressing, not less. See `_HANDOFF_neutralize_rewards.md`.
 - **Two-player matches are close to a pure race.** Pacing barely moves with seat count but combat scales hard: **0.6 neutralizes at two players against 4.0 at four**, measured under the older band. If 1v1 is meant to be a real mode it needs its own configuration, not just fewer seats.
 - **Whether any of this is fun.** The harness reports pacing and throughput. It says nothing about whether the density reads as tension or as thinness. Only a human can.
 
-**Scope**
+### Scope
 
 1. **Special spaces** are deferred (ADR-0003). Shield is defined (§5.6); Teleport, Slippery, Checkpoint, RollAgain, and SharksTable are not. Checkpoint conflicts with §1.2's "return to yard" and needs an explicit exception when it lands.
 2. **"Brawler" is a fifth archetype** (Kurbyn) outside the base four, and the base four are now filled. Add it or re-tag.
 3. **Four of nine operators unwritten**, and two of the five written are incomplete. A new operator needing a new _mechanic_ gets an amendment to this doc, not a special case in its own stat block. Watch the Atomic concentration in §2.2.
-4. **Opt-out of home entry** (ADR-0003, §8) — designed, deferred. Note the overlap with Translocation, which delivers a version of home denial for 3 energy; when opt-out lands, review the two together.
-5. Flavour and world placement across the roster (`OPERATORS.md`).
+4. **Opt-out of home entry** (ADR-0003, §8) — designed, deferred. Note the overlap with Translocation, which delivers a version of home denial for 3 energy; when opt-out lands, review the two together. Note also that opt-out is a per-move decision at the moment of landing, and splitting produces two such moments per roll — the two want one consistent answer to "when is the player asked about a move, and what can they decline".
+5. **Two walks per roll.** `PRESENTATION.md` §3 has pieces walking the track cell by cell. A split produces two walks; on two different pieces they read fine, on the same piece twice they arrive back to back and must be sequenced rather than overlapped.
+6. Flavour and world placement across the roster (`OPERATORS.md`).
 
 ---
 
@@ -669,6 +704,23 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - `TheTank_MovesAtItsBaseSpeed_WithNoPassiveToAdd`
 - `KurbynRetainsEvasiveProtocol_AfterBeingNeutralized`
 
+**Compulsory and split movement — `GameEngine`**
+
+- `EndingATurnWhileADieCanStillBeSpent_IsRejected`
+- `EndingATurnWithNoLegalMove_IsAllowed`
+- `EndingATurnWithEveryOperatorStunned_IsAllowed`
+- `ADoublesReroll_IsRefusedWhileTheRollInHandIsSpendable`
+- `ARollCanBeSplitBetweenTwoOperators`
+- `PoolingSpendsEveryUnspentDie`
+- `TheSameOperatorMaySpendBothDiceInTwoSteps`
+- `DeployingAfterMoving_IsAllowedWhileASixIsUnspent`
+- `TwoOddDiceSpentSeparately_ArriveOneCellShortOfPooling`
+- `TwoEvenDiceSpentSeparately_ArriveWherePoolingWouldHave`
+- `ADieThatFloorsToZeroCells_DoesNotBlockEndTurn`
+- `MovingAnOperatorThatIsAlreadyHome_IsRejected`
+- `PreviewLandings_ReportsThePooledOptionAndOnePerDistinctFace`
+- `PreviewLandings_OnADouble_ReportsOneSplitOptionNotTwo`
+
 **Collision — `CollisionResolver`**
 
 - `LandingOnEnemy_DealsThreeNormalDamage`
@@ -683,6 +735,7 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - `AStackWipedOut_YieldsTheCell`
 - `EvadedCollisionDamage_StillBouncesMoverBack`
 - `PulledOperator_DoesNotCollideOnArrival`
+- `ASplitRoll_CanProduceTwoCollisionsInOneTurn`
 
 **Damage — `DamagePipeline`**
 
@@ -800,18 +853,8 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - 2026-09-12 — Roster corrections after the first human sessions; **code was authoritative and the doc had drifted behind it**. Velvet Rope became 3 Atomic at range 4, a targeted counter to Evasion chosen over weakening Evasion itself. Intimidating Presence 2 → 3. From the Hip 2 → 1 base damage. §2.2 gained a note on Atomic being concentrated in two operators.
 - 2026-09-12 — **Placement extended to swaps.** `EffectKind` gains `SwapWithCaster`, the sixth kind and the first added since the core was written. §7.4 rewritten: placement is computed in cells and applied in progress, and the two ways a destination can leave an operator's own path are now stated — backwards behind the start cell, and forwards into the home column, which nobody had noticed until the swap arithmetic forced it. A pull clamps, a swap refuses. §4.2 gains the inclusive area scope, and §7.5 notes swaps as a third route to a stacked cell.
 - 2026-09-12 — **Bouncer tuned down after human play**, on all three axes at once: 12 → 9 health, Velvet Rope range 4 → 3, All-In Mauling 3 → 2 damage with self-damage 1 → 2. Miracle Pull widened 1 → 2 (§10.3). The rope-into-Mauling one-turn kill is gone by design — six damage killed a 6-health operator from full, five leaves them at 1. §7.3 corrected from four collisions to three. Every change in the pass moved power the same way, and the rope is the only single-cast route through Evasive Protocol; if Kurbyn is dominant again, its range is the first thing to restore.
-- 2026-09-12 — **Mimi and Javi added as §10.4 and §10.5**, both incomplete and both in the draft pool. `EffectKind` gains `RemoveStatuses`, the seventh kind and the first that subtracts from the status registry — §5.8 states its edges, including that a cleansed mark takes its payout with it. §5.9 documents Hastened, which had been granted by the payout without ever being defined. §5.6 records that the whole-instance shield is a timing lottery and becomes a pool when Carapace lands. Every ability now carries a required player-facing description (§10). §10's opening claim that nothing is deferred is retired: two of five operators have an unbuilt ability, and the banners say which.
-
-- Up to two operator-moves per roll, and `MaxRollsPerTurn = 3`, so up to **six
-  moves in a turn** against one to three before. Expect materially shorter
-  matches.
-- Landings per roll roughly double when players split, and a landing is the
-  collision trigger (§7.1). `CollisionDamage` was restored as a dial in §12
-  because that trigger started firing more often; this moves the same lever
-  again, in the same direction.
-- **Unmeasured.** `ScriptedPlayer` pools and never splits, by deliberate policy,
-  so harness runs measure compulsory movement only. Splitting's effect on contact
-  will not appear in any current figure.
-- Measure against `CreateAlphaMatch`, and measure this **together with** the 52/6
-  board (ADR-0002 Amdt 5), which pushed journey the other way. Read separately,
-  each will be contaminated by the other.
+- 2026-09-12 — **Mimi and Javi added as §10.4 and §10.5**, both incomplete and both in the draft pool. `EffectKind` gains `RemoveStatuses`, the seventh kind and the first that subtracts from the status registry — §5.8 states its edges, including that a cleansed mark takes its payout with it. §5.9 documents Hastened, which had been granted by the payout without ever being defined. §5.6 records that the whole-instance shield is a timing lottery and becomes a pool when Trauma Plate lands. Every ability now carries a required player-facing description (§10). §10's opening claim that nothing is deferred is retired: two of five operators have an unbuilt ability, and the banners say which.
+- 2026-09-12 — **Board corrected to 52/6** (ADR-0002 Amendment 5). 48 cannot be drawn as a continuous Ludo cross — the loop must cross each arm tip, which requires `CircuitLength = 8L + 4` — so the track had a two-cell gap at all four tips and every home column stopped one cell short of HOME. Journey 54 → 58, `PlayerStartOffset` 12 → 13. §4.1's maximum track distance corrected 24 → 26. Journey length is no longer a free balance dial (§12).
+- 2026-09-12 — **Mandatory rolls and split movement.** §6's "exactly one operator moves per roll" replaced by per-die consumption, which generalises §1.3's existing one-die-per-deploy rule rather than inventing a second scheme. Movement is now compulsory while a legal consumer exists (§6.1), and a doubles re-roll waits on the roll in hand. Deploy no longer has to precede movement — that rule was an artifact of computing the movement total up front. The movement formula is restated per move (§6.3), which is where splitting's price lives: a whole cell when both dice are odd, and considerably more when a die is routed through a slower operator. `MoveCommand` gains a die selector and `PreviewLandings` reports every option per operator, because a price the player cannot see before choosing is not a decision. **Unmeasured**, and the harness will not measure it: `ScriptedPlayer` pools and never splits by deliberate policy. §12 records the consequences, including that the `CollisionDamage` strike rests on a collision frequency this change attacks.
+- 2026-09-12 — Javi's shield named **Trauma Plate** and its values settled at 6 energy, cooldown 3, range 3, 2-point pool, 2 turns (§10.5). Still unbuilt: it needs the absorb layer reworked from a whole-instance bool to a pool, which is the same interface the deterministic-evasion pass is rewriting. Both are specified together in `_HANDOFF_mitigation.md`, which supersedes `_HANDOFF_evasion.md` — delete that file.
+  **Deterministic evasion was proposed and declined (2026-09-13).** `_HANDOFF_mitigation.md` argued for replacing the roll with a flat reduction of 1 — zero variance, 1.00 prevented per round against 0.65 here. Declined on cost, not on merit: the rate is a one-line config edit, where going deterministic changes `IDamageMitigation`, removes `IRandom` from the pipeline, and rewrites five test fixtures. Lowering the rate does not address the variance the proposal was aimed at; if evasion still reads as arbitrary in human play, that pass is the answer and this number is not.

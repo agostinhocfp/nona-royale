@@ -32,6 +32,12 @@ namespace NonaRoyale.Core.Services
     /// the view can say what happened. Upkeep damage is why: bleed and mark ticks
     /// land in a phase where nothing else moves, so without a cause an operator
     /// simply loses health and vanishes.
+    ///
+    /// <b>The two mitigation layers stop the instance differently.</b> Evasion
+    /// is terminal — it negates and returns. The shield subtracts, so a shielded
+    /// instance usually still reaches step 4, just smaller. That is why
+    /// <see cref="DamageOutcome.Absorbed"/> now means "the pool ate all of it",
+    /// not "a shield was present".
     /// </remarks>
     public sealed class DamagePipeline
     {
@@ -55,17 +61,48 @@ namespace NonaRoyale.Core.Services
         {
             if (target == null) throw new ArgumentNullException(nameof(target));
 
-            // 2. Evasion — Normal only, one charge per round.
-            if (damage.Type == DamageType.Normal && _mitigation.TryEvade(target, _random))
-                return new DamageResult(DamageOutcome.Evaded, 0, target.Health, target.Id, damage.SourceName);
+            // Atomic ignores every mitigation layer (§2.2). Stated once, as an
+            // explicit gate rather than as something each layer remembers to
+            // check: a subtraction is far easier to apply universally by
+            // accident than the old pair of early returns was.
+            bool mitigable = damage.Type == DamageType.Normal;
 
-            // 3. Shield — Normal only, absorbs the whole instance.
-            if (damage.Type == DamageType.Normal && _mitigation.TryAbsorb(target))
-                return new DamageResult(DamageOutcome.Absorbed, 0, target.Health, target.Id, damage.SourceName);
+            // 2. Evasion — Normal only, one charge per round, terminal.
+            if (mitigable && _mitigation.TryEvade(target, _random))
+            {
+                return new DamageResult(
+                    DamageOutcome.Evaded, 0, target.Health, target.Id,
+                    damage.SourceName, damage.Amount);
+            }
+
+            // 3. Shield — Normal only. Subtracts rather than stops (§5.6).
+            int mitigated = mitigable ? _mitigation.AbsorbFrom(target, damage.Amount) : 0;
+
+            // Clamped rather than trusted. An implementation returning more than
+            // it was offered would make `incoming` negative, and step 4 would
+            // quietly *heal* the target — a mitigation bug presenting as a
+            // healing bug, at the one place in the game health is written.
+            if (mitigated < 0) mitigated = 0;
+            if (mitigated > damage.Amount) mitigated = damage.Amount;
+
+            int incoming = damage.Amount - mitigated;
+
+            // `Absorbed` survives for the zero case only. "Reduced to nothing"
+            // and "shrugged off" are the same event to a player, and
+            // GameEngine.EmitDamage plus FeedbackLayer already draw BLOCK off
+            // this outcome — so preserving it means the view needs no change.
+            // The `mitigated > 0` guard keeps a 0-damage instance from
+            // reporting as absorbed when no shield was involved at all.
+            if (mitigated > 0 && incoming == 0)
+            {
+                return new DamageResult(
+                    DamageOutcome.Absorbed, 0, target.Health, target.Id,
+                    damage.SourceName, mitigated);
+            }
 
             // 4. Apply.
             int before = target.Health;
-            target.SetHealth(before - damage.Amount);
+            target.SetHealth(before - incoming);
             int applied = before - target.Health;
 
             // 5. Neutralize check.
@@ -74,7 +111,8 @@ namespace NonaRoyale.Core.Services
                 applied,
                 target.Health,
                 target.Id,
-                damage.SourceName);
+                damage.SourceName,
+                mitigated);
         }
 
         /// <summary>
@@ -89,7 +127,7 @@ namespace NonaRoyale.Core.Services
         ///
         /// There is no <see cref="DamageInstance"/> here to take a cause from —
         /// that is the whole point of the bypass — so the label is supplied
-        /// directly.
+        /// directly, and nothing is ever mitigated.
         /// </remarks>
         public DamageResult ApplyToSelf(OperatorState caster, int amount)
         {
@@ -104,7 +142,8 @@ namespace NonaRoyale.Core.Services
                 before - caster.Health,
                 caster.Health,
                 caster.Id,
-                SelfCause);
+                SelfCause,
+                amountMitigated: 0);
         }
     }
 }

@@ -16,13 +16,14 @@ namespace NonaRoyale.Core.Config
     {
         public CombatConfig(
             int collisionDamage = 3,
-            double evasionChance = 0.5,
+            double evasionChance = 0.3,
             int bleedDamagePerStack = 1,
             double slowSpeedPenalty = 0.5,
             int markDamagePerTurn = 2,
             double hasteSpeedBonus = 0.5,
             int hasteDurationTurns = 2,
-            int neutralizeEnergyBounty = 3)
+            int neutralizeEnergyBounty = 3,
+            int shieldPoolDefault = 2)
         {
             if (slowSpeedPenalty < 0) throw new ArgumentOutOfRangeException(nameof(slowSpeedPenalty));
             if (collisionDamage < 0) throw new ArgumentOutOfRangeException(nameof(collisionDamage));
@@ -35,6 +36,9 @@ namespace NonaRoyale.Core.Config
             if (neutralizeEnergyBounty < 0)
                 throw new ArgumentOutOfRangeException(nameof(neutralizeEnergyBounty),
                     "A bounty cannot take energy away; zero disables it.");
+            if (shieldPoolDefault < 1)
+                throw new ArgumentOutOfRangeException(nameof(shieldPoolDefault),
+                    "A shield that absorbs nothing is worse than no shield — it draws a badge and lies.");
 
             CollisionDamage = collisionDamage;
             EvasionChance = evasionChance;
@@ -44,6 +48,7 @@ namespace NonaRoyale.Core.Config
             HasteSpeedBonus = hasteSpeedBonus;
             HasteDurationTurns = hasteDurationTurns;
             NeutralizeEnergyBounty = neutralizeEnergyBounty;
+            ShieldPoolDefault = shieldPoolDefault;
         }
 
         /// <summary>
@@ -65,7 +70,32 @@ namespace NonaRoyale.Core.Config
         /// </remarks>
         public int CollisionDamage { get; }
 
-        /// <summary>Chance the first Normal instance each round is negated (COMBAT_SYSTEMS §5.5).</summary>
+        /// <summary>
+        /// Chance the first Normal instance each round is negated
+        /// (COMBAT_SYSTEMS §5.5). Prevents a mean of
+        /// <c>EvasionChance × 2.17</c> per round, against the current Normal
+        /// spread of 1, 2, 2, 2, 3 and collision at 3.
+        /// </summary>
+        /// <remarks>
+        /// <b>0.3, not the 0.5 the prose still says in places.</b> §12 named
+        /// this as the next dial if Kurbyn stayed dominant after the targeted
+        /// counter in §10.1, and it was pulled. At 0.3 it prevents 0.65 a round
+        /// where 0.5 prevented 1.08.
+        ///
+        /// <b>Still probabilistic, and that was a choice.</b>
+        /// <c>_HANDOFF_mitigation.md</c> proposed replacing the roll with a flat
+        /// reduction of 1 — zero variance, and 1.00 prevented per round. It was
+        /// <b>not adopted</b>: moving the rate is a one-line config edit that can
+        /// be revisited at any time, where going deterministic changes
+        /// <c>IDamageMitigation</c>, removes <c>IRandom</c> from the pipeline and
+        /// rewrites five test fixtures' construction. The cheap lever first.
+        ///
+        /// <b>What the rate does not fix.</b> Lowering the frequency leaves the
+        /// variance per event untouched — a 30% negation of a 3-damage instance
+        /// is rarer than a 50% one and no more predictable. If evasion still
+        /// reads as arbitrary in human play, the answer is the deterministic
+        /// pass, not a smaller number here. Reasoned, never measured.
+        /// </remarks>
         public double EvasionChance { get; }
 
         public int BleedDamagePerStack { get; }
@@ -158,6 +188,29 @@ namespace NonaRoyale.Core.Config
         /// but a loop, and it has never been run.
         /// </remarks>
         public int NeutralizeEnergyBounty { get; }
+
+        /// <summary>
+        /// Damage a <c>StatusKind.Shield</c> absorbs when whatever granted it
+        /// does not state a pool of its own (COMBAT_SYSTEMS §5.6).
+        /// </summary>
+        /// <remarks>
+        /// <b>It exists to make a silent failure loud.</b> Under the old
+        /// whole-instance absorb, a shield's magnitude was never read; under a
+        /// pool, a zero would produce a shield that draws a badge and stops
+        /// nothing. Every status kind that needs a size now has a default here,
+        /// which is what lets the roster state shields without a dependency on
+        /// this class.
+        ///
+        /// <b>The only caller that will rely on it is the deferred board
+        /// space</b> (ADR-0003, not in the MVP). Trauma Plate states its own
+        /// pool in <c>Javi.cs</c>, where an operator's numbers belong and where
+        /// the history of what they were walked back from is kept.
+        ///
+        /// At 2 against a Normal spread of 1, 2, 2, 2, 3 and collision at 3, it
+        /// eats one small hit whole or takes the edge off a collision — never
+        /// both. Reasoned, not measured.
+        /// </remarks>
+        public int ShieldPoolDefault { get; }
 
         public static CombatConfig Default => new CombatConfig();
     }

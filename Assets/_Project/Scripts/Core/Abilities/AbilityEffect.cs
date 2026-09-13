@@ -42,12 +42,20 @@ namespace NonaRoyale.Core.Abilities
         public EffectScope Scope { get; }
         public EffectAudience Audience { get; }
 
-        /// <summary>Damage or healing amount.</summary>
+        /// <summary>
+        /// Damage or healing amount, and the distance in cells for
+        /// <see cref="EffectKind.PushFromCaster"/>.
+        /// </summary>
         public int Amount { get; }
 
         public DamageType DamageType { get; }
 
-        /// <summary>Radius for the area scopes, in track steps. "Within N" covers 2N+1 cells.</summary>
+        /// <summary>
+        /// Radius for the area scopes, in track steps. "Within N" covers 2N+1
+        /// cells. For <see cref="EffectScope.EnemiesInLineFromCaster"/> it is
+        /// the line's length ahead of the caster, which covers N cells rather
+        /// than 2N+1 — the scope is one-directional and excludes the origin.
+        /// </summary>
         public int Radius { get; }
 
         public StatusKind Status { get; }
@@ -121,6 +129,35 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityEffect Pull(EffectAudience audience = EffectAudience.Any) =>
             new AbilityEffect(EffectKind.PullToCaster, EffectScope.PrimaryTarget, audience,
                 0, default, 0, default, 0, 0, 0, 0, 0, 0);
+
+        /// <summary>
+        /// Push everyone in scope <paramref name="distance"/> cells away from
+        /// the caster along the loop. Placement, not movement (§7.4).
+        /// </summary>
+        /// <remarks>
+        /// <b>Takes a scope, unlike <see cref="Pull"/> and <see cref="Swap"/>.</b>
+        /// Those two act on a chosen target and can hardcode
+        /// <see cref="EffectScope.PrimaryTarget"/>; a shockwave is an area and
+        /// pushes whoever is caught in it.
+        ///
+        /// An operator standing on the caster's own cell has no direction to be
+        /// pushed in — the shortest arc between them is zero. It is pushed
+        /// <i>backwards</i>, by decision rather than by accident: sharing a cell
+        /// with Kian is only possible on a safe cell, which is exactly the free
+        /// parking this ability exists to break up.
+        /// </remarks>
+        public static AbilityEffect Push(
+            EffectScope scope, int distance,
+            EffectAudience audience = EffectAudience.EnemyOnly,
+            int radius = 0)
+        {
+            if (distance < 1)
+                throw new ArgumentOutOfRangeException(nameof(distance),
+                    "A push of zero is not a push; omit the effect instead.");
+
+            return new AbilityEffect(EffectKind.PushFromCaster, scope, audience, distance,
+                default, radius, default, 0, 0, 0, 0, 0, 0);
+        }
 
         /// <summary>
         /// Caster and target exchange board cells. Placement, not movement — it
