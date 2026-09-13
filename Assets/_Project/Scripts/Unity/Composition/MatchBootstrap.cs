@@ -487,6 +487,11 @@ namespace NonaRoyale.Unity.Composition
                 {
                     _selectedCaster = selected ? null : op;
                     _selectedAbility = null;      // an ability belongs to its caster
+
+                    // The new caster may be the operator that was selected as a
+                    // target, and nothing may target itself here.
+                    if (ReferenceEquals(_selectedTarget, _selectedCaster)) _selectedTarget = null;
+
                     RefreshHighlights();
                 }
 
@@ -504,17 +509,20 @@ namespace NonaRoyale.Unity.Composition
             GUILayout.Space(8);
             GUILayout.Label($"<b>{_selectedCaster.Name} — target</b>");
 
-            foreach (var candidate in _match.Operators.Where(o => o.Owner != seat.Color && !o.IsInYard))
-            {
-                bool selected = ReferenceEquals(candidate, _selectedTarget);
+            // Allies are legal targets and always were: Velvet Rope pulls a
+            // friend, All-In Mauling heals one, Translocation swaps with one.
+            // This list showed enemies only, so the roster's single source of
+            // healing had never been castable (COMBAT_SYSTEMS §10).
+            //
+            // The caster is excluded. Targeting yourself resolves as a friendly
+            // cast by §10's rule that the mode is chosen from the target, which
+            // would let the Bouncer heal himself for the price of the ability —
+            // defensible, undecided, and not something the UI should settle.
+            DrawTargets("Enemies", _match.Operators
+                .Where(o => o.Owner != seat.Color && InPlay(o)));
 
-                if (GUILayout.Toggle(selected,
-                        $"{candidate.Owner} {candidate.Name} {candidate.Health}/{candidate.MaxHealth}",
-                        GUI.skin.button) != selected)
-                {
-                    _selectedTarget = selected ? null : candidate;
-                }
-            }
+            DrawTargets("Allies", _match.Operators
+                .Where(o => o.Owner == seat.Color && InPlay(o) && !ReferenceEquals(o, _selectedCaster)));
 
             GUILayout.Space(4);
 
@@ -565,6 +573,37 @@ namespace NonaRoyale.Unity.Composition
                 _selectedAbility = null;
             }
         }
+
+        /// <summary>
+        /// One side's targets, or nothing at all if that side has none standing.
+        /// </summary>
+        private void DrawTargets(string heading, IEnumerable<OperatorState> candidates)
+        {
+            var list = candidates.ToList();
+            if (list.Count == 0) return;
+
+            GUILayout.Label($"<i>{heading}</i>");
+
+            foreach (var candidate in list)
+            {
+                bool selected = ReferenceEquals(candidate, _selectedTarget);
+
+                if (GUILayout.Toggle(selected,
+                        $"{candidate.Owner} {candidate.Name} {candidate.Health}/{candidate.MaxHealth}",
+                        GUI.skin.button) != selected)
+                {
+                    _selectedTarget = selected ? null : candidate;
+                }
+            }
+        }
+
+        /// <summary>
+        /// On the board and reachable. A yarded or finished operator is out of
+        /// the fight entirely (§4.3), so offering it as a target only produces
+        /// a rejection the player has to read.
+        /// </summary>
+        private bool InPlay(OperatorState op) =>
+            !op.IsInYard && op.Progress < _match.Map.Profile.Journey;
 
         private static string Explain(AbilityAvailability availability)
         {

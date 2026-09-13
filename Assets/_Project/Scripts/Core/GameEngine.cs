@@ -140,16 +140,18 @@ namespace NonaRoyale.Core
             }
 
             // Neutralizes from upkeep are applied by TurnStateMachine, so this
-            // reports rather than resolves. It reports the cause and the mark
-            // payout too — both were previously applied to state and never
-            // announced, so the view learned of a payout only when badges
-            // appeared on a later refresh.
+            // reports rather than resolves. It reports the cause, the mark
+            // payout and the bounty too — all three were previously applied to
+            // state and never announced, so the view learned of a payout only
+            // when badges appeared on a later refresh.
             foreach (var down in upkeep.Neutralized)
             {
                 events.Add(new OperatorNeutralized(down.Operator, down.Cause));
 
                 foreach (var ally in down.Hastened)
                     events.Add(new StatusApplied(ally, StatusKind.Hastened, _config.HasteDurationTurns));
+
+                EmitBounty(down.Outcome, events);
             }
 
             ResetRollState();
@@ -299,7 +301,7 @@ namespace NonaRoyale.Core
                     events.Add(new CollisionResolved(op, occupant, collision.MoverBouncedBack));
 
                     if (result.Outcome == DamageOutcome.Neutralized)
-                        Neutralize(occupant, result.Cause, events);
+                        Neutralize(occupant, result.Cause, op.Id, events);
                 }
             }
 
@@ -344,24 +346,38 @@ namespace NonaRoyale.Core
                 _turns.CurrentPlayer.Color, energyBefore - _turns.CurrentPlayer.Energy, _turns.CurrentPlayer.Energy));
 
             foreach (var outcome in resolution.Outcomes)
-                EmitOutcome(outcome, events);
+                EmitOutcome(outcome, caster, events);
         }
 
         // ── Event translation ────────────────────────────────────────────
 
-        private void EmitOutcome(EffectOutcome outcome, List<IGameEvent> events)
+        /// <summary>
+        /// Turns one effect outcome into the events the view needs.
+        /// </summary>
+        /// <remarks>
+        /// <b>Every kind must be handled.</b> A missing case is silent: the
+        /// effect still resolved, the state is still correct, and the board goes
+        /// on showing it — the badge is drawn from
+        /// <see cref="ActiveStatusesOn"/>, the piece is repositioned from its
+        /// progress. Only the explanation disappears. That is the same class of
+        /// fault as the upkeep mark payout, and it is worse here because it
+        /// would cover every ability in the game at once.
+        ///
+        /// If <c>EffectOutcomeKind</c> gains a member, it gains a case here.
+        /// </remarks>
+        private void EmitOutcome(EffectOutcome outcome, OperatorState caster, List<IGameEvent> events)
         {
             switch (outcome.Kind)
             {
                 case EffectOutcomeKind.Damaged:
                     EmitDamage(outcome.Recipient, outcome.Damage, events);
                     if (outcome.Damage.Outcome == DamageOutcome.Neutralized)
-                        Neutralize(outcome.Recipient, outcome.Damage.Cause, events);
+                        Neutralize(outcome.Recipient, outcome.Damage.Cause, caster.Id, events);
                     break;
 
                 case EffectOutcomeKind.Executed:
                     events.Add(new DamageDealt(outcome.Recipient, 0, 0, ExecuteCause));
-                    Neutralize(outcome.Recipient, ExecuteCause, events);
+                    Neutralize(outcome.Recipient, ExecuteCause, caster.Id, events);
                     break;
 
                 case EffectOutcomeKind.Healed:
@@ -373,6 +389,9 @@ namespace NonaRoyale.Core
                     break;
 
                 case EffectOutcomeKind.Pulled:
+                    // Reported as a move from a progress to itself: the piece
+                    // has already been placed, and placement is not movement
+                    // (§7.4), so the view settles it rather than walking it.
                     events.Add(new OperatorMoved(outcome.Recipient, outcome.Progress, outcome.Progress,
                         _map.CellAt(outcome.Recipient.Owner, outcome.Progress)));
                     break;
@@ -380,27 +399,53 @@ namespace NonaRoyale.Core
         }
 
         /// <summary>
-        /// Yards a neutralized operator and reports everything that followed,
-        /// including a mark payout (COMBAT_SYSTEMS §10.2).
+        /// Yards a neutralized operator and reports everything that followed —
+        /// the mark payout (COMBAT_SYSTEMS §10.2) and the attacker's bounty
+        /// (§1.2).
         /// </summary>
         /// <remarks>
         /// Centralised so no call site can neutralize without announcing what it
         /// triggered. Three paths reach here — a collision, an ability's damage,
-        /// and Miracle Pull's execute — and before the payout existed each
-        /// carried its own copy of the two lines this replaces.
+        /// and Miracle Pull's execute.
         ///
-        /// <b>The cause is passed in rather than inferred.</b> Two of the three
-        /// paths have a <c>DamageResult</c> to read it from; the execute does
-        /// not, because it never goes through the pipeline.
+        /// <b>Both the cause and the killer are passed in rather than
+        /// inferred.</b> Two of the three paths have a <c>DamageResult</c> to
+        /// read a cause from and the execute does not; and no path has the
+        /// killer on the result at all, because <c>DamageResult</c> does not
+        /// carry its source. Each call site knows both without being told —
+        /// a collision has its mover, an ability has its caster.
         /// </remarks>
-        private void Neutralize(OperatorState op, string cause, List<IGameEvent> events)
+        private void Neutralize(OperatorState op, string cause, int? killerId, List<IGameEvent> events)
         {
-            var hastened = _neutralize.Apply(op);
+            var outcome = _neutralize.Apply(op, killerId);
 
             events.Add(new OperatorNeutralized(op, cause));
 
-            foreach (var ally in hastened)
+            foreach (var ally in outcome.Hastened)
                 events.Add(new StatusApplied(ally, StatusKind.Hastened, _config.HasteDurationTurns));
+
+            EmitBounty(outcome, events);
+        }
+
+        /// <summary>
+        /// Reports a kill bounty that actually credited something.
+        /// </summary>
+        /// <remarks>
+        /// A player at the energy cap collects nothing and nothing is destroyed
+        /// — the bounty pays what the pool can hold (§3.1). There is no event
+        /// for that, because there is no change: holding a full pool is a
+        /// strategy, and a line saying a reward paid zero would read as a
+        /// malfunction rather than as the cost of the bank.
+        /// </remarks>
+        private static void EmitBounty(NeutralizeOutcome outcome, List<IGameEvent> events)
+        {
+            if (!outcome.PaidABounty || outcome.Bounty.Stored <= 0) return;
+
+            events.Add(new EnergyGranted(
+                outcome.BountyPaidTo.Value,
+                outcome.Bounty.Stored,
+                outcome.Bounty.Burned,
+                outcome.Bounty.Total));
         }
 
         private static void EmitDamage(OperatorState target, DamageResult result, List<IGameEvent> events)

@@ -152,7 +152,12 @@ namespace NonaRoyale.Core
             // NeutralizeRules needs the full roster to pay out Tagged From
             // Above's mark to the marker's squad (§10.2), which is why it is
             // built after the seat loop rather than inside it.
-            var neutralize = new NeutralizeRules(statuses, abilities, operators, combatConfig);
+            // The ledger and the player list are here for the kill bounty: it credits
+            // the attacker's pool, which is player-level, so neither the victim nor
+            // the operator that landed the hit is enough on its own.
+            var neutralize = new NeutralizeRules(
+                statuses, abilities, energy, operators, players, combatConfig);
+
             var win = new WinConditions(map);
 
             // Permanent passives are granted once here rather than resolved as

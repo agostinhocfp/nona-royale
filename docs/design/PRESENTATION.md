@@ -36,33 +36,39 @@ Same reasoning for status badges. The view receives `StatusApplied` and `StatusE
 
 **Always, without asking:**
 
-|                               | Why                                                               |
-| ----------------------------- | ----------------------------------------------------------------- |
-| Health, per operator          | Every combat decision is a threshold question                     |
-| Active statuses, per operator | Six statuses exist; one that cannot be seen may as well not apply |
-| Whose turn, and their energy  | The pool is shared, so it is a squad-level decision               |
-| Which operators are deployed  | Occupancy is the number the design keeps fighting for             |
-| Safe cells                    | The only cells carrying a rule a player must see without asking   |
+|                               | Why                                                                                                                            |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Health, per operator          | Every combat decision is a threshold question                                                                                  |
+| Active statuses, per operator | A status that cannot be seen may as well not apply                                                                             |
+| Why health changed            | Upkeep damage lands in a phase where nothing else moves; a bar dropping with no cause is the board declining to explain itself |
+| Whose turn, and their energy  | The pool is shared, so it is a squad-level decision                                                                            |
+| Which operators are deployed  | Occupancy is the number the design keeps fighting for                                                                          |
+| Safe cells                    | The only cells carrying a rule a player must see without asking                                                                |
 
 **On demand, because showing it always would be noise:**
 
-|                                | Trigger                                     |
-| ------------------------------ | ------------------------------------------- |
-| Where a move would land        | After rolling                               |
-| Which cells an ability reaches | When an ability is selected                 |
-| What just happened, in words   | The event log, always present but scannable |
+|                                | Trigger                                                        |
+| ------------------------------ | -------------------------------------------------------------- |
+| Where a move would land        | After rolling                                                  |
+| Which cells an ability reaches | When an ability is selected                                    |
+| Whether an ability can be cast | Always in the tray, from the engine, with the reason it cannot |
+| What just happened, in words   | The event log, always present but scannable                    |
 
 **Never shown:** the outcome of an action before it is committed. Landings are shown; whether a landing is contested is not. Showing a player the result of a fight before they choose it removes the choice.
+
+**The hardest case is the one with no visible agent.** A bleed or mark tick resolves at upkeep, when nothing moves and nobody acted — so an operator loses health, and sometimes vanishes to its yard, with nothing on screen accounting for it. Every damage and neutralize event therefore carries its cause, and over-time damage is drawn differently from a hit. A collision or a cast needs no such label: the player watched it happen.
 
 ---
 
 ## 3. Placement is not animated as movement
 
-Pieces walk the track cell by cell. **Pulls and bounce-backs do not.**
+Pieces walk the track cell by cell. **Pulls, swaps and bounce-backs do not.**
 
-Both arrive as `OperatorMoved`, and both are _placement_ rather than movement (COMBAT_SYSTEMS §7.4, §7.2) — neither triggers anything along the way. Animating them as a walk would show a journey the rules say never happened, and would teach a player to expect collisions that cannot occur.
+All three arrive as `OperatorMoved`, and all three are _placement_ rather than movement (COMBAT_SYSTEMS §7.4, §7.2) — none triggers anything along the way. Animating them as a walk would show a journey the rules say never happened, and would teach a player to expect collisions that cannot occur.
 
 The implementation test is simple: a move reporting equal or lower progress is settled directly; only forward travel is walked.
+
+**Walking one cell at a time is load-bearing, not decorative.** It is the only code anywhere that enumerates the cells between two progress values, which makes it the only thing that can expose a discontinuous layout — and it is how the arm-tip gap in the old 48-cell board was caught, after four amendments of simulation had missed it (ADR-0002 Amendment 6). Do not optimise it into a lerp.
 
 **Open.** A bounce-back settles to the bounce cell without showing the contested landing first, because the event carries the final progress rather than the attempted one. The collision is legible in the log; the motion is not. Fixing it means the event carrying both.
 
@@ -74,7 +80,9 @@ Actions that spend a scarce resource get a **select, then commit** pattern rathe
 
 Abilities: selecting highlights the cells the ability reaches; a second action casts. Reach turned out to be the binding constraint on the entire combat layer (ADR-0002 Amendment 4), so committing energy without seeing range was asking players to estimate the number the game is most sensitive to.
 
-The cost is one extra click per ability use, in a match already running ~19.6 turns. **Watch whether it drags.**
+The tray also greys out what cannot be cast, with the reason — cooling down, not enough energy, stunned. That readiness comes from the engine, per §1; before it existed, a player learned an ability was on cooldown by pressing it and reading the rejection.
+
+The cost is one extra click per ability use, in a match already running past its length budget. **Watch whether it drags.**
 
 Deploy and move fire on one click. Neither spends energy, and both are already previewed.
 
@@ -88,6 +96,8 @@ The status palette gives an unrecognised `StatusKind` a grey badge. A status kin
 
 **A silently omitted status is a bug that looks like a working board.** An unfamiliar grey mark is a question a player asks out loud.
 
+The same applies to operators. A silhouette is chosen by name with a fallback shape, so an operator added to the roster is drawn rather than dropped — but a fallback is not an identity, and any operator that reaches the pool wants its own shape before it reaches a player.
+
 ---
 
 ## 6. Prototype conventions
@@ -96,15 +106,16 @@ The current build exists to answer whether the game is fun, and everything in it
 
 - **No art assets, no prefabs.** Sprites are generated at runtime; the board, pieces and controls are built in code. One script on one empty GameObject.
 - **`OnGUI` for controls.** Ugly and immediate. Replaced by a real UI when there is something worth dressing.
-- **Silhouette carries identity.** Colour is taken by the seat, so operators are told apart by shape and size — the same constraint `ART_DIRECTION` §5 sets for the real art, arrived at early and crudely. A shape that is hard to read here is information for the art pass.
+- **Silhouette carries identity.** Colour is taken by the seat, so operators are told apart by shape and size — the same constraint `ART_DIRECTION` §5 sets for the real art, arrived at early and crudely. A shape that is hard to read here is information for the art pass. Size tracks health against the frailest operator on the roster, not a round number, or the smallest piece stops reading as small.
 - **The board is drawn from `PathMap`, never hard-coded.** `BoardLayout` is the only place that knows where a cell is; the core knows only that cell 14 follows cell 13. That separation is what let the board change from a ring to a cross without touching a rule or a test.
+- **Drawability is enforced here, not in the core.** `BoardLayout` refuses a profile it cannot render as a continuous cross. The core tolerates any circuit divisible by four, because the rules do not care about arm geometry and nothing in the core should start caring — and the harness legitimately measures boards that will never be drawn. The cost of that separation is that an undrawable board can survive a long time in simulation, which is exactly what happened.
 
 ---
 
 ## 7. Open items
 
 - **Bounce-back motion** (§3) — the attempted landing is not shown.
-- **A mark payout resolved at upkeep changes state without announcing it.** `TurnStateMachine` applies the neutralize itself, so `GameEngine.BeginTurn` reports rather than resolves, and the hastened allies are never emitted as `StatusApplied`. The badges appear on the next refresh with no event explaining them. _(Formerly decision-log D-010, which is abandoned.)_
 - **No lap indicator.** Not needed while only single-lap boards ship, but `BoardProfile.Laps` is implemented and any lapped board makes two operators on the same cell visually identical and positionally unrelated.
 - **No indication of whose operator is whose beyond colour** at a glance across the table — fine for hot-seat, untested for anything else.
-- **`OnGUI` does not scale with resolution.** Fine on one machine, not a build.
+- **`OnGUI` does not scale with resolution.** The controls panel is a fixed pixel width, so the camera has to size and offset around it; that is handled, but the panel itself does not reflow. Fine on one machine, not a build.
+- **Mimi draws as a fallback-adjacent shape with no art brief behind it** (§5). She is in the pool; the silhouette was chosen to be distinct, not to be right.

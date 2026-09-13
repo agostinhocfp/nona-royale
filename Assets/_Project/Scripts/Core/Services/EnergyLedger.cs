@@ -47,18 +47,59 @@ namespace NonaRoyale.Core.Services
                 return EnergyGrant.AlreadyGranted(player.Energy);
 
             int earned = roll.Total / _config.DiceDivisor;   // integer division floors
-            int before = player.Energy;
-            int uncapped = before + earned;
-            int after = Math.Min(uncapped, _config.EnergyCap);
+            var grant = Credit(player, earned);
 
-            player.SetEnergy(after);
+            // Marked here and nowhere else: the bounty must not consume the
+            // turn's grant, and the turn's grant must not be repeatable.
             player.MarkEnergyGranted();
 
+            return grant;
+        }
+
+        /// <summary>
+        /// Grants energy outside the turn cycle — the bounty a neutralize pays
+        /// its attacker (§1.2). Pays what the pool can hold and no more.
+        /// </summary>
+        /// <remarks>
+        /// <b>Deliberately not <see cref="GrantForTurn"/>.</b> It does not set
+        /// the once-per-turn flag and does not consult it, because a kill is not
+        /// the turn's income and a player may earn more than one in a turn.
+        ///
+        /// <b>It never burns.</b> A player sitting at the cap collects nothing
+        /// from a kill, and nothing is destroyed either — the bounty simply pays
+        /// what fits. Two reasons, and the second is the load-bearing one:
+        ///
+        /// Holding energy is a strategy. Several operators want a full pool at a
+        /// chosen moment, and a bounty that punished the bank would tax the
+        /// choice rather than reward the kill. If hoarding is the wrong play in
+        /// a given match, the cost is already the abilities not cast; the system
+        /// does not need to add one.
+        ///
+        /// And <c>burned</c> is a measurement, not bookkeeping. It answers "how
+        /// much energy did the economy generate that a player could not hold",
+        /// which is a fact about the drip and the cap (§3.1) and is tracked as
+        /// such in the harness. Charging a bounty's overflow to it would make
+        /// that figure mean two different things at once.
+        /// </remarks>
+        public EnergyGrant GrantBounty(PlayerState player, int amount)
+        {
+            if (player == null) throw new ArgumentNullException(nameof(player));
+            if (amount < 0)
+                throw new ArgumentOutOfRangeException(nameof(amount),
+                    "A bounty cannot take energy away; zero disables it.");
+
+            int before = player.Energy;
+            int credited = Math.Max(0, Math.Min(amount, _config.EnergyCap - before));
+
+            player.SetEnergy(before + credited);
+
+            // earned == stored, burned == 0: the unpaid remainder was never
+            // earned rather than destroyed.
             return new EnergyGrant(
-                earned: earned,
-                stored: after - before,
-                burned: uncapped - after,
-                total: after);
+                earned: credited,
+                stored: credited,
+                burned: 0,
+                total: player.Energy);
         }
 
         /// <summary>Whether the pool can cover a cost. Passives are free and never ask.</summary>
@@ -87,6 +128,28 @@ namespace NonaRoyale.Core.Services
 
             player.SetEnergy(player.Energy - cost);
             return SpendResult.Paid(cost, player.Energy);
+        }
+
+        /// <summary>
+        /// Adds this turn's income and reports what the cap destroyed.
+        /// </summary>
+        /// <remarks>
+        /// Only the turn grant burns. See <see cref="GrantBounty"/> for why the
+        /// bounty does not, and why the distinction is worth keeping.
+        /// </remarks>
+        private EnergyGrant Credit(PlayerState player, int earned)
+        {
+            int before = player.Energy;
+            int uncapped = before + earned;
+            int after = Math.Min(uncapped, _config.EnergyCap);
+
+            player.SetEnergy(after);
+
+            return new EnergyGrant(
+                earned: earned,
+                stored: after - before,
+                burned: uncapped - after,
+                total: after);
         }
     }
 }

@@ -220,9 +220,14 @@ namespace NonaRoyale.Core.Services
 
             if (result.Outcome != DamageOutcome.Neutralized) return true;
 
-            var hastened = _neutralize.Apply(op);
-            neutralized.Add(new UpkeepNeutralize(op, label, hastened));
+            // The source is already in hand — it is what the damage instance was
+            // built with. A bleed credits the bleeding operator itself, so it
+            // pays no bounty; a mark credits whoever applied it, and can pay one
+            // on a turn that is not even theirs.
+            var outcome = _neutralize.Apply(op, sourceOperatorId);
+            neutralized.Add(new UpkeepNeutralize(op, label, outcome));
             return false;
+
         }
 
         private void RequirePhase(TurnPhase expected, string action)
