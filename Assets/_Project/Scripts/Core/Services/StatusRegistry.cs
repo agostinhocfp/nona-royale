@@ -240,6 +240,49 @@ namespace NonaRoyale.Core.Services
             return target.Owner == by;
         }
 
+        /// <summary>
+        /// Every status currently active on an operator, applied and passive
+        /// alike. For the view to draw badges.
+        /// </summary>
+        /// <remarks>
+        /// <b>The view cannot infer this from the event stream.</b> Passives are
+        /// granted at match start without an event, and bleed stacks are
+        /// consumed at upkeep without a <c>StatusExpired</c>. A badge layer built
+        /// from events drifts from the truth, and a board that lies about status
+        /// is worse than one that shows none.
+        ///
+        /// An applied status shadows a passive of the same kind, matching
+        /// <see cref="ActiveEntry"/> and <see cref="SpeedModifier"/>, so a kind
+        /// is never reported twice.
+        /// </remarks>
+        public IReadOnlyList<StatusKind> ActiveKinds(OperatorState op)
+        {
+            if (op == null) throw new ArgumentNullException(nameof(op));
+
+            int ownerTurn = _clock.TurnIndexOf(op.Owner);
+            var kinds = new List<StatusKind>();
+
+            Dictionary<StatusKind, Entry> applied;
+            Dictionary<StatusKind, Entry> passives;
+
+            _byOperator.TryGetValue(op.Id, out applied);
+            _passives.TryGetValue(op.Id, out passives);
+
+            if (applied != null)
+            {
+                foreach (var pair in applied)
+                    if (IsActive(pair.Value, ownerTurn)) kinds.Add(pair.Key);
+            }
+
+            if (passives != null)
+            {
+                foreach (var pair in passives)
+                    if (applied == null || !applied.ContainsKey(pair.Key)) kinds.Add(pair.Key);
+            }
+
+            return kinds;
+        }
+
         /// <summary>Who marked this operator, or null if unmarked (§5.7).</summary>
         public int? MarkedBy(OperatorState op) => ActiveEntry(op, StatusKind.Mark)?.SourceOperatorId;
 
