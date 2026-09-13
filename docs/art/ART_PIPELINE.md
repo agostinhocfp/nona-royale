@@ -1,8 +1,8 @@
 # Nona Royale — Art Pipeline
 
 > Location in repo: `docs/art/ART_PIPELINE.md`
-> Status: **Reconstructed skeleton, 2026-09-11.** The original was cited by `ART_DIRECTION.md`, ADR-0001 and the project tooling notes, but no copy survives in project knowledge. What follows is everything recoverable from those references plus proposals for the gaps. **Sections marked NEEDS DECISION are not settled** — confirm or overwrite them before generating art at volume.
-> Related: `docs/art/ART_DIRECTION.md` (what it should look like — wins on aesthetics), ADR-0001 (2D locked), ADR-0003 (board geometry the art must match)
+> Status: **Reconstructed skeleton, 2026-09-11.** Amended 2026-09-12 (board geometry corrected). The original was cited by `ART_DIRECTION.md`, ADR-0001 and the project tooling notes, but no copy survives in project knowledge. What follows is everything recoverable from those references plus proposals for the gaps. **Sections marked NEEDS DECISION are not settled** — confirm or overwrite them before generating art at volume.
+> Related: `docs/art/ART_DIRECTION.md` (what it should look like — wins on aesthetics), ADR-0001 (2D locked), ADR-0003 (board geometry the art must match), `docs/design/PRESENTATION.md` (what the view must show)
 
 Division of labour: **ART_DIRECTION says what it should look like. This says how it gets made.** Where they conflict, ART_DIRECTION wins on aesthetics and this doc wins on process.
 
@@ -47,12 +47,29 @@ The complete brief for any artist or tool is: `ART_DIRECTION.md` + the three con
 Non-negotiable, from ADR-0002 / ADR-0003. Art that contradicts this is wrong regardless of how good it looks:
 
 - Four-arm cross, **three lanes per arm** — two outer travel lanes flanking a coloured centre home column.
-- **48-cell outer loop**, **6-cell home column** per colour, **72 total path positions**.
+- **52-cell outer loop**, **6-cell home column** per colour, **76 total path positions**.
 - Four corner **yards**, rendered as round felt gaming tables (`ART_DIRECTION.md` §6.1).
 - A single lit **HOME vault** at the centre where the four home columns meet.
-- **15×15 grid family.**
+- **15×15 grid.**
+- The four **inner corners are never track.** They belong to the central HOME area.
 
-The board must also survive a **profile swap** — Sprint is 24 cells, Standard is 48, on identical topology. Build board art as **modular, tileable cells plus corner and arm pieces**, never as one painted 48-cell image. A single baked board image breaks the moment `CircuitLength` changes, and ADR-0002 treats that as a config edit.
+### The board is a family, not a size
+
+A cross's loop threads each arm as two flanking lanes of length L plus the tip cell of the centre lane it crosses, so the only drawable boards are:
+
+> `CircuitLength = 8L + 4` · `HomeColumnLength = L` · `GridSize = 2L + 3`
+
+| L   | Circuit | Home | Grid  | Profile                           |
+| --- | ------- | ---- | ----- | --------------------------------- |
+| 3   | 28      | 3    | 9×9   | Sprint                            |
+| 4   | 36      | 4    | 11×11 | —                                 |
+| 5   | 44      | 5    | 13×13 | fallback if sessions run long     |
+| 6   | 52      | 6    | 15×15 | **Standard — the shipping board** |
+| 7   | 60      | 7    | 17×17 | Long, measurement only            |
+
+**This changes what "modular" has to mean.** It was already true that board art must be tileable cells plus corner and arm pieces rather than one painted image. It is now stronger: **the grid itself changes size between profiles**, so an arm piece has to work at three, five, six or seven cells of lane without redrawing. Build the arm as a repeatable lane cell plus a distinct tip piece; do not bake an arm.
+
+> **This section said 48 cells and 72 positions until 2026-09-12.** 48 is not a circuit a four-arm cross can have — it implies an arm of 5.5 — and the layout code had been hiding the mismatch by letting the loop hop over each arm tip. Any board art, schematic or reference produced against 48 is wrong by four cells and should be re-checked before use. See ADR-0002 Amendment 6.
 
 ---
 
@@ -77,7 +94,7 @@ These numbers are proposals, not decisions. Settle them before batch generation,
 
 ```
 Assets/_Project/Art/
-  Board/       cell_normal_01 · cell_safe_start · cell_home_red · corner_ne · yard_blue
+  Board/       cell_normal_01 · cell_safe_start · cell_home_red · corner_ne · arm_tip · yard_blue
   Operators/   bouncer_idle · bouncer_seated · bouncer_rise_01 · syla_idle …
   UI/          frame_deco_corner · icon_ability_velvetrope · hud_energy_pip
   FX/          fx_powered_glow · fx_stun_ring · fx_bleed_tick
@@ -98,11 +115,18 @@ Each operator needs more than two static sprites. From `ART_DIRECTION.md` §6.1,
 
 That is a real content requirement per operator, across nine operators eventually. It is the single largest art cost in the project and should be budgeted as such.
 
-## 7. Tile states
+**Four operators exist so far** — three complete and one playable but unfinished (`OPERATORS.md`). None has any art. The prototype distinguishes them by procedural silhouette and by size taken from health, which is the same constraint `ART_DIRECTION.md` §5 sets for the real thing, arrived at crudely. **A shape that is hard to read in the prototype is information for this pass**, not a placeholder to ignore.
+
+## 7. Tile and status states
 
 States are **overlay layers, not redraws** (`ART_DIRECTION.md` §7). Base tile art stays static and reusable; an overlay sprite renders above it for idle / powered / objective states. Powered and active states use the cool cyan register.
 
 Every animated tile needs a defined **idle** state so the board is calm at rest. Per §6.1, the board is atmospheric at rest and legible on demand — never light the whole grid.
+
+**Status badges are a separate, growing set.** `PRESENTATION.md` §2 requires every active status to be visible on its operator at all times, and the roster has been adding statuses as operators land — stun, slow, bleed, stealth, evasion, shield, mark, haste, with more implied by unbuilt operators. Two production consequences:
+
+- **Design the badge set as a system**, not as individual icons. A new status must be addable without a redraw of the others.
+- **Damage over time reads differently from a hit.** Bleed and mark ticks resolve at upkeep, where nothing moves and nobody acted, so their feedback carries the cause and a distinct register (`PRESENTATION.md` §2). That is a real FX requirement, not a nicety.
 
 ## 8. Licensing — NEEDS DECISION
 
@@ -128,5 +152,8 @@ The original doc covered this and the content is lost. Settle and record before 
 
 - [ ] Confirm or replace every **NEEDS DECISION** above — §2 raster editor, §4 asset specs, §8 licensing.
 - [ ] Lock the `ART_DIRECTION.md` §3 hex palette, especially the holo-cyan tech accent. Still the one item needing a designer's eye.
+- [ ] **Re-check any existing board schematic or reference against 52 cells** (§3). Anything drawn to the old 48 is wrong by four cells, and the arm-tip cell it was missing is structural rather than decorative.
+- [ ] Decide whether art targets **one grid size or the family** (§3). If Standard is the only board that ever ships, arm pieces can be sized for L=6; if Sprint or the 44-cell fallback might, they cannot.
 - [ ] Fill the tile-type catalog (`ART_DIRECTION.md` §11) once special-space design is decided. The 2024 fire/ice/arcane brainstorm is off-canon and must not be used.
+- [ ] Design the **status badge set as a system** (§7), given the list is still growing.
 - [ ] Confirm whether the original ART_PIPELINE.md exists anywhere locally. If it does, reconcile it against this and keep whichever is more specific.
