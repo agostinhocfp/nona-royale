@@ -97,16 +97,34 @@ namespace NonaRoyale.Core.Events
             $"{Mover.Name} hits {Occupant.Name}" + (MoverBouncedBack ? " and bounces" : " and takes the cell");
     }
 
+    /// <summary>Health was lost. Carries what took it.</summary>
+    /// <remarks>
+    /// <b>The cause is presentation, never a rule.</b> Nothing in the core reads
+    /// it. It exists because upkeep damage resolves in a phase where nothing else
+    /// moves: a bleed or mark tick drops an operator's health with no visible
+    /// agent on the board, so without a stated cause the player is left to infer
+    /// one (<c>PRESENTATION.md</c> §2).
+    ///
+    /// It is optional so a caller with nothing useful to say can omit it rather
+    /// than invent a label.
+    /// </remarks>
     public sealed class DamageDealt : IGameEvent
     {
-        public DamageDealt(OperatorState target, int amount, int remainingHealth)
+        public DamageDealt(OperatorState target, int amount, int remainingHealth, string cause = null)
         {
-            Target = target; Amount = amount; RemainingHealth = remainingHealth;
+            Target = target; Amount = amount; RemainingHealth = remainingHealth; Cause = cause;
         }
         public OperatorState Target { get; }
         public int Amount { get; }
         public int RemainingHealth { get; }
-        public override string ToString() => $"{Target.Name} takes {Amount} ({RemainingHealth} left)";
+
+        /// <summary>"bleed", "mark", "collision", "ability", "execute", "self", or null.</summary>
+        public string Cause { get; }
+
+        public override string ToString() =>
+            Cause == null
+                ? $"{Target.Name} takes {Amount} ({RemainingHealth} left)"
+                : $"{Target.Name} takes {Amount} from {Cause} ({RemainingHealth} left)";
     }
 
     public sealed class DamageEvaded : IGameEvent
@@ -151,11 +169,27 @@ namespace NonaRoyale.Core.Events
         public override string ToString() => $"{Status} expires on {Target.Name}";
     }
 
+    /// <summary>An operator reached zero health and went to its yard (§1.2). Carries what finished it.</summary>
+    /// <remarks>
+    /// The most consequential event in the game, and until now it did not say why
+    /// it happened. A kill at upkeep is the case that forced this: the piece
+    /// simply disappears from the track, and nothing on screen accounts for it.
+    /// </remarks>
     public sealed class OperatorNeutralized : IGameEvent
     {
-        public OperatorNeutralized(OperatorState op) { Operator = op; }
+        public OperatorNeutralized(OperatorState op, string cause = null)
+        {
+            Operator = op; Cause = cause;
+        }
         public OperatorState Operator { get; }
-        public override string ToString() => $"{Operator.Name} is neutralized";
+
+        /// <summary>"bleed", "mark", "collision", "ability", "execute", "self", or null.</summary>
+        public string Cause { get; }
+
+        public override string ToString() =>
+            Cause == null
+                ? $"{Operator.Name} is neutralized"
+                : $"{Operator.Name} is neutralized by {Cause}";
     }
 
     public sealed class OperatorReachedHome : IGameEvent

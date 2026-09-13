@@ -21,13 +21,47 @@ namespace NonaRoyale.Core.Services
         public override string ToString() => $"{Kind} expired on {Operator?.Name}";
     }
 
-    /// <summary>What upkeep resolved: bleed ticks, and anyone they finished off.</summary>
+    /// <summary>An operator that fell at upkeep, what finished it, and what that paid out.</summary>
+    /// <remarks>
+    /// <b>A bare operator was not enough.</b> Upkeep resolves in a phase where
+    /// nothing else moves, so an operator that loses its last health there simply
+    /// vanishes to its yard. Carrying the cause is what lets the view say
+    /// <i>bleed</i> rather than leaving the player to infer it.
+    ///
+    /// <b>The hastened allies are carried for a different reason.</b>
+    /// <c>TurnStateMachine</c> applies an upkeep neutralize itself, so
+    /// <c>GameEngine.BeginTurn</c> reports rather than resolves — and a mark
+    /// payout triggered there was applied to state and never announced. Badges
+    /// appeared on a later refresh with no event explaining them
+    /// (<c>PRESENTATION.md</c> §7).
+    /// </remarks>
+    public readonly struct UpkeepNeutralize
+    {
+        public UpkeepNeutralize(OperatorState op, string cause, IReadOnlyList<OperatorState> hastened)
+        {
+            Operator = op;
+            Cause = cause;
+            Hastened = hastened ?? Array.Empty<OperatorState>();
+        }
+
+        public OperatorState Operator { get; }
+
+        /// <summary>What finished it — "bleed" or "mark" (§5.3, §5.7).</summary>
+        public string Cause { get; }
+
+        /// <summary>Allies hastened by a mark payout this kill triggered (§10.2). Never null.</summary>
+        public IReadOnlyList<OperatorState> Hastened { get; }
+
+        public override string ToString() => $"{Operator?.Name} neutralized by {Cause}";
+    }
+
+    /// <summary>What upkeep resolved: over-time ticks, and anyone they finished off.</summary>
     public sealed class UpkeepReport
     {
         public UpkeepReport(
             PlayerColor player,
             IReadOnlyList<DamageResult> bleedTicks,
-            IReadOnlyList<OperatorState> neutralized)
+            IReadOnlyList<UpkeepNeutralize> neutralized)
         {
             Player = player;
             BleedTicks = bleedTicks ?? throw new ArgumentNullException(nameof(bleedTicks));
@@ -36,13 +70,17 @@ namespace NonaRoyale.Core.Services
 
         public PlayerColor Player { get; }
 
+        /// <summary>
+        /// Every over-time tick this upkeep, bleed and mark alike. Each result
+        /// carries its own cause, so the name is now narrower than the contents.
+        /// </summary>
         public IReadOnlyList<DamageResult> BleedTicks { get; }
 
         /// <summary>Operators that died at upkeep. They never get this turn (§5.3).</summary>
-        public IReadOnlyList<OperatorState> Neutralized { get; }
+        public IReadOnlyList<UpkeepNeutralize> Neutralized { get; }
 
         public override string ToString() =>
-            $"{Player} upkeep: {BleedTicks.Count} bleed ticks, {Neutralized.Count} neutralized";
+            $"{Player} upkeep: {BleedTicks.Count} ticks, {Neutralized.Count} neutralized";
     }
 
     /// <summary>The dice, what they paid, and whether another roll is coming.</summary>

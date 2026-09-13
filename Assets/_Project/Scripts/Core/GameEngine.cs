@@ -32,6 +32,14 @@ namespace NonaRoyale.Core
     /// </remarks>
     public sealed class GameEngine
     {
+        /// <summary>
+        /// The cause recorded for a kill by Miracle Pull's execute. It never
+        /// passes through the damage pipeline — the operator's health is set to
+        /// zero outright — so there is no <c>DamageResult</c> to take a label
+        /// from (§10.3).
+        /// </summary>
+        private const string ExecuteCause = "execute";
+
         private readonly IReadOnlyList<OperatorState> _operators;
         private readonly IReadOnlyDictionary<int, AbilityDefinition> _abilityBook;
 
@@ -128,15 +136,21 @@ namespace NonaRoyale.Core
             foreach (var tick in upkeep.BleedTicks)
             {
                 var bleeding = FindOperator(tick.TargetOperatorId);
-                events.Add(new DamageDealt(bleeding, tick.AmountApplied, tick.RemainingHealth));
+                events.Add(new DamageDealt(bleeding, tick.AmountApplied, tick.RemainingHealth, tick.Cause));
             }
 
-            // Neutralizes from upkeep are already applied by TurnStateMachine,
-            // so this reports rather than resolves. A mark payout triggered at
-            // upkeep is therefore applied to state but not announced — see
-            // decision log D-010.
-            foreach (var op in upkeep.Neutralized)
-                events.Add(new OperatorNeutralized(op));
+            // Neutralizes from upkeep are applied by TurnStateMachine, so this
+            // reports rather than resolves. It reports the cause and the mark
+            // payout too — both were previously applied to state and never
+            // announced, so the view learned of a payout only when badges
+            // appeared on a later refresh.
+            foreach (var down in upkeep.Neutralized)
+            {
+                events.Add(new OperatorNeutralized(down.Operator, down.Cause));
+
+                foreach (var ally in down.Hastened)
+                    events.Add(new StatusApplied(ally, StatusKind.Hastened, _config.HasteDurationTurns));
+            }
 
             ResetRollState();
         }
@@ -259,7 +273,7 @@ namespace NonaRoyale.Core
             //
             // The two channels are summed, which means a slow and an enemy aura
             // stack even though COMBAT_SYSTEMS §5.2 says slow sources do not.
-            // Pre-existing and unresolved — decision log D-007.
+            // Pre-existing and unresolved — COMBAT_SYSTEMS §12.
             double speed = _movement.EffectiveSpeed(
                 op.BaseSpeedMultiplier,
                 _statuses.SpeedModifier(op) + _auras.SpeedModifierFor(op, _operators));
@@ -285,7 +299,7 @@ namespace NonaRoyale.Core
                     events.Add(new CollisionResolved(op, occupant, collision.MoverBouncedBack));
 
                     if (result.Outcome == DamageOutcome.Neutralized)
-                        Neutralize(occupant, events);
+                        Neutralize(occupant, result.Cause, events);
                 }
             }
 
@@ -342,12 +356,12 @@ namespace NonaRoyale.Core
                 case EffectOutcomeKind.Damaged:
                     EmitDamage(outcome.Recipient, outcome.Damage, events);
                     if (outcome.Damage.Outcome == DamageOutcome.Neutralized)
-                        Neutralize(outcome.Recipient, events);
+                        Neutralize(outcome.Recipient, outcome.Damage.Cause, events);
                     break;
 
                 case EffectOutcomeKind.Executed:
-                    events.Add(new DamageDealt(outcome.Recipient, 0, 0));
-                    Neutralize(outcome.Recipient, events);
+                    events.Add(new DamageDealt(outcome.Recipient, 0, 0, ExecuteCause));
+                    Neutralize(outcome.Recipient, ExecuteCause, events);
                     break;
 
                 case EffectOutcomeKind.Healed:
@@ -374,12 +388,16 @@ namespace NonaRoyale.Core
         /// triggered. Three paths reach here — a collision, an ability's damage,
         /// and Miracle Pull's execute — and before the payout existed each
         /// carried its own copy of the two lines this replaces.
+        ///
+        /// <b>The cause is passed in rather than inferred.</b> Two of the three
+        /// paths have a <c>DamageResult</c> to read it from; the execute does
+        /// not, because it never goes through the pipeline.
         /// </remarks>
-        private void Neutralize(OperatorState op, List<IGameEvent> events)
+        private void Neutralize(OperatorState op, string cause, List<IGameEvent> events)
         {
             var hastened = _neutralize.Apply(op);
 
-            events.Add(new OperatorNeutralized(op));
+            events.Add(new OperatorNeutralized(op, cause));
 
             foreach (var ally in hastened)
                 events.Add(new StatusApplied(ally, StatusKind.Hastened, _config.HasteDurationTurns));
@@ -394,7 +412,8 @@ namespace NonaRoyale.Core
                 case DamageOutcome.Evaded: events.Add(new DamageEvaded(target)); break;
                 case DamageOutcome.Absorbed: events.Add(new DamageAbsorbed(target)); break;
                 default:
-                    events.Add(new DamageDealt(target, result.AmountApplied, result.RemainingHealth));
+                    events.Add(new DamageDealt(
+                        target, result.AmountApplied, result.RemainingHealth, result.Cause));
                     break;
             }
         }
@@ -437,60 +456,6 @@ namespace NonaRoyale.Core
                 return AbilityAvailability.InsufficientEnergy;
 
             return AbilityAvailability.Ready;
-        }
-
-
-        private bool RequireAction(List<IGameEvent> events)
-        {
-            if (_turns.Phase == TurnPhase.Action) return true;
-
-            events.Add(new CommandRejected("roll first"));
-            return false;
-        }
-
-        private void ResetRollState()
-        {
-            _hasRolled = false;
-            _hasMovedThisRoll = false;
-            _deploysThisRoll = 0;
-            _movementValue = 0;
-            _deployOption = DeployOption.Unavailable(0);
-        }
-
-        private int CountInYard(PlayerState player)
-        {
-            int count = 0;
-            foreach (var op in player.Operators)
-                if (op.IsInYard) count++;
-
-            return count;
-        }
-
-        private OperatorState FindOperator(int id)
-        {
-            foreach (var op in _operators)
-                if (op.Id == id) return op;
-
-            return null;
-        }
-
-        private OperatorState FindOwnedOperator(int id, List<IGameEvent> events)
-        {
-            var op = FindOperator(id);
-
-            if (op == null)
-            {
-                events.Add(new CommandRejected($"no operator with id {id}"));
-                return null;
-            }
-
-            if (op.Owner != _turns.CurrentPlayer.Color)
-            {
-                events.Add(new CommandRejected($"{op.Name} is not yours to command"));
-                return null;
-            }
-
-            return op;
         }
 
         /// <summary>
@@ -550,7 +515,57 @@ namespace NonaRoyale.Core
             return _statuses.ActiveKinds(op);
         }
 
+        private bool RequireAction(List<IGameEvent> events)
+        {
+            if (_turns.Phase == TurnPhase.Action) return true;
+
+            events.Add(new CommandRejected("roll first"));
+            return false;
+        }
+
+        private void ResetRollState()
+        {
+            _hasRolled = false;
+            _hasMovedThisRoll = false;
+            _deploysThisRoll = 0;
+            _movementValue = 0;
+            _deployOption = DeployOption.Unavailable(0);
+        }
+
+        private int CountInYard(PlayerState player)
+        {
+            int count = 0;
+            foreach (var op in player.Operators)
+                if (op.IsInYard) count++;
+
+            return count;
+        }
+
+        private OperatorState FindOperator(int id)
+        {
+            foreach (var op in _operators)
+                if (op.Id == id) return op;
+
+            return null;
+        }
+
+        private OperatorState FindOwnedOperator(int id, List<IGameEvent> events)
+        {
+            var op = FindOperator(id);
+
+            if (op == null)
+            {
+                events.Add(new CommandRejected($"no operator with id {id}"));
+                return null;
+            }
+
+            if (op.Owner != _turns.CurrentPlayer.Color)
+            {
+                events.Add(new CommandRejected($"{op.Name} is not yours to command"));
+                return null;
+            }
+
+            return op;
+        }
     }
-
-
 }

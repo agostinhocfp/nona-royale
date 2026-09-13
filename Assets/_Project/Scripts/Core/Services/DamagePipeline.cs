@@ -26,9 +26,18 @@ namespace NonaRoyale.Core.Services
     /// <see cref="DamageOutcome.Neutralized"/>; the consequences of neutralizing
     /// — yard, full heal, statuses cleared, progress lost (§1.2) — belong to the
     /// caller that owns the whole game state.
+    ///
+    /// <b>Every result carries its cause.</b> The label comes straight off the
+    /// incoming <see cref="DamageInstance"/> and no rule reads it — it exists so
+    /// the view can say what happened. Upkeep damage is why: bleed and mark ticks
+    /// land in a phase where nothing else moves, so without a cause an operator
+    /// simply loses health and vanishes.
     /// </remarks>
     public sealed class DamagePipeline
     {
+        /// <summary>The cause recorded for damage an operator inflicts on itself (§2.3).</summary>
+        private const string SelfCause = "self";
+
         private readonly IDamageMitigation _mitigation;
         private readonly IRandom _random;
 
@@ -48,11 +57,11 @@ namespace NonaRoyale.Core.Services
 
             // 2. Evasion — Normal only, one charge per round.
             if (damage.Type == DamageType.Normal && _mitigation.TryEvade(target, _random))
-                return new DamageResult(DamageOutcome.Evaded, 0, target.Health, target.Id);
+                return new DamageResult(DamageOutcome.Evaded, 0, target.Health, target.Id, damage.SourceName);
 
             // 3. Shield — Normal only, absorbs the whole instance.
             if (damage.Type == DamageType.Normal && _mitigation.TryAbsorb(target))
-                return new DamageResult(DamageOutcome.Absorbed, 0, target.Health, target.Id);
+                return new DamageResult(DamageOutcome.Absorbed, 0, target.Health, target.Id, damage.SourceName);
 
             // 4. Apply.
             int before = target.Health;
@@ -64,7 +73,8 @@ namespace NonaRoyale.Core.Services
                 target.Health <= 0 ? DamageOutcome.Neutralized : DamageOutcome.Dealt,
                 applied,
                 target.Health,
-                target.Id);
+                target.Id,
+                damage.SourceName);
         }
 
         /// <summary>
@@ -76,6 +86,10 @@ namespace NonaRoyale.Core.Services
         /// caster. Exposed as its own method rather than as a flag on
         /// <see cref="Apply"/> so the bypass is visible at every call site
         /// instead of hiding behind a boolean argument.
+        ///
+        /// There is no <see cref="DamageInstance"/> here to take a cause from —
+        /// that is the whole point of the bypass — so the label is supplied
+        /// directly.
         /// </remarks>
         public DamageResult ApplyToSelf(OperatorState caster, int amount)
         {
@@ -89,7 +103,8 @@ namespace NonaRoyale.Core.Services
                 caster.Health <= 0 ? DamageOutcome.Neutralized : DamageOutcome.Dealt,
                 before - caster.Health,
                 caster.Health,
-                caster.Id);
+                caster.Id,
+                SelfCause);
         }
     }
 }

@@ -99,7 +99,7 @@ namespace NonaRoyale.Core.Services
             _lastRollWasDouble = false;
 
             var ticks = new List<DamageResult>();
-            var neutralized = new List<OperatorState>();
+            var neutralized = new List<UpkeepNeutralize>();
 
             foreach (var op in CurrentPlayer.Operators)
             {
@@ -196,6 +196,12 @@ namespace NonaRoyale.Core.Services
         /// what they owe and who is credited for it, and two copies of the
         /// neutralize handling is exactly the shape of duplication ADR-0004 was
         /// written about.
+        ///
+        /// <b>The label is the cause the view will show</b>, and the payout is
+        /// captured rather than discarded. Both travel out on
+        /// <see cref="UpkeepNeutralize"/> because this method applies the
+        /// neutralize itself — <c>GameEngine</c> only reports what happened here,
+        /// so anything not carried out is lost.
         /// </remarks>
         private bool TickUpkeepDamage(
             OperatorState op,
@@ -203,7 +209,7 @@ namespace NonaRoyale.Core.Services
             int sourceOperatorId,
             string label,
             List<DamageResult> ticks,
-            List<OperatorState> neutralized)
+            List<UpkeepNeutralize> neutralized)
         {
             if (amount <= 0) return true;
 
@@ -214,8 +220,8 @@ namespace NonaRoyale.Core.Services
 
             if (result.Outcome != DamageOutcome.Neutralized) return true;
 
-            _neutralize.Apply(op);
-            neutralized.Add(op);
+            var hastened = _neutralize.Apply(op);
+            neutralized.Add(new UpkeepNeutralize(op, label, hastened));
             return false;
         }
 

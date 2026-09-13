@@ -736,7 +736,7 @@ namespace NonaRoyale.Unity.Composition
                     var piece = PieceFor(damaged.Target);
                     if (piece == null) continue;
 
-                    _feedback.Damage(piece.transform.position, damaged.Amount);
+                    _feedback.Damage(piece.transform.position, damaged.Amount, damaged.Cause);
                     piece.Flash();
                     continue;
                 }
@@ -770,7 +770,7 @@ namespace NonaRoyale.Unity.Composition
                 {
                     var piece = PieceFor(down.Operator);
                     if (piece != null)
-                        _feedback.Neutralized(piece.transform.position, BoardLayout.ColourOf(down.Operator.Owner));
+                        _feedback.Neutralized(piece.transform.position, BoardLayout.ColourOf(down.Operator.Owner), down.Cause);
                 }
             }
         }
