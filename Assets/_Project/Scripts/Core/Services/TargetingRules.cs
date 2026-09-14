@@ -17,10 +17,17 @@ namespace NonaRoyale.Core.Services
     /// never reaches something this type refuses to target. <i>Atomic can't be
     /// blocked, but it can't reach what it can't touch.</i>
     ///
-    /// <b>Safe cells do not appear here at all.</b> Safe means safe from
-    /// collision and nothing more — an operator standing on a start cell can be
-    /// shot, pulled, stunned and bled. If safe cells blocked abilities they would
-    /// become free parking and the combat layer would stall on them (§4.4).
+    /// <b>Safe cells appear here twice, and both rules are §4.4 as amended.</b>
+    /// Incoming: a safe cell refuses enemy single-targeting (first amendment,
+    /// 2026-09-13). Outgoing: its occupant may not <i>aim</i> behind itself —
+    /// at an enemy, at a cell, or a placement at an ally (second amendment,
+    /// 2026-09-14, the camping rule). §4.4 as originally written held that safe
+    /// meant safe from collision and nothing more, precisely so the cell could
+    /// not become free parking; the first amendment accepted that risk, and the
+    /// camping rule is its counterweight — shelter there all you like, but you
+    /// may not shoot backwards out of it. Effects that merely radiate from
+    /// where the caster stands (self-origin areas, lines) still reach in every
+    /// direction they always did.
     /// </remarks>
     public sealed class TargetingRules
     {
@@ -85,12 +92,85 @@ namespace NonaRoyale.Core.Services
             if (distance == null || distance > range)
                 return TargetingResult.Illegal(TargetingVerdict.OutOfRange, distance);
 
+            // The camping rule (§4.4, second amendment): a caster standing on a
+            // safe cell may not aim behind itself at an enemy. The first
+            // amendment made the cell single-target-proof; this is its
+            // counterweight — shelter is legal, sniping backwards out of it is
+            // not. Checked caster-side before the target-side rule below
+            // because it is the one the player can fix this turn, by stepping
+            // off their own cell.
+            //
+            // Allies are deliberately not blocked here: a camper healing or
+            // plating the squad behind it is support, not the aggression this
+            // rule exists to stop. The one allied thing a camper may not do —
+            // relocate them — depends on what the ability contains, so that
+            // half lives in AbilityResolver beside SwapWouldBeLegal.
+            if (caster.Owner != target.Owner && IsAimedBehindFromSafeCell(caster, CellOf(target)))
+                return TargetingResult.Illegal(TargetingVerdict.AimedBehindFromSafeCell, distance);
+
+            // Safe cells refuse enemy single-targeting (§4.4, first amendment).
+            // Scoped to enemies exactly as stealth is, so an ally can still be
+            // healed, plated or repositioned while standing on one.
+            //
+            // Single-target only, and that is the whole of it: EnemiesInArea does
+            // not consult safety, so Ace Shards and Dargin Pulse still sweep a
+            // start cell — the same asymmetry stealth already has (§5.4). A safe
+            // cell stops somebody picking you out; it does not stop a blast.
+            //
+            // Checked before stealth because a player can see the cell and cannot
+            // see the status, so it is the more useful of the two to be told.
+            if (caster.Owner != target.Owner && _map.IsSafe(CellOf(target)))
+                return TargetingResult.Illegal(TargetingVerdict.OnASafeCell, distance);
+
             // Checked last so "out of range" wins over "stealthed" — a player
             // who cannot reach a target does not need to learn it was hidden.
             if (!_statuses.CanBeSingleTargetedBy(target, caster.Owner))
                 return TargetingResult.Illegal(TargetingVerdict.Stealthed, distance);
 
             return TargetingResult.Legal(distance.Value);
+        }
+
+        // ── Safe-cell camping ────────────────────────────────────────────
+
+        /// <summary>
+        /// Whether <paramref name="caster"/> stands on a safe cell and
+        /// <paramref name="target"/> lies behind it along the direction of
+        /// travel (§4.4, second amendment). The outgoing half of the safe-cell
+        /// rules: aims backwards out of the shelter are refused.
+        /// </summary>
+        /// <remarks>
+        /// <b>"Behind" is the direction of travel, never progress.</b> Progress
+        /// is per-colour — Red at 40 and Blue at 5 can share adjacent cells —
+        /// so comparing it across seats is meaningless, and worse than
+        /// meaningless on a lapped board. The loop has one rotational
+        /// direction and every colour travels it the same way (see
+        /// <see cref="EnemiesInLineAhead"/>, whose arithmetic this inverts):
+        /// ahead is a forward track offset of at most half the circuit, behind
+        /// is everything past it.
+        ///
+        /// <b>The exact-opposite cell counts as ahead.</b> On an even circuit
+        /// one cell sits at precisely half distance either way; it is assigned
+        /// to the targetable side so the rule never blocks more than what is
+        /// strictly behind. A forward offset of zero is the caster's own cell,
+        /// which is likewise never behind — this predicate takes no position on
+        /// self-targeting, which remains an open question elsewhere.
+        ///
+        /// <b>Only aims consult this.</b> Single-target casts and cell aims
+        /// (beacons, zones) are deliberate backwards acts; a self-origin area
+        /// is presence, not aggression, and still radiates backwards
+        /// unconsulted. Lines cannot point backwards by construction.
+        /// </remarks>
+        public bool IsAimedBehindFromSafeCell(OperatorState caster, CellRef target)
+        {
+            if (caster == null) throw new ArgumentNullException(nameof(caster));
+            if (!IsInPlay(caster)) return false;
+            if (!target.IsOnTrack) return false;
+            if (!_map.IsSafe(CellOf(caster))) return false;
+
+            int circuit = _map.Profile.CircuitLength;
+            int forward = ((target.Index - CellOf(caster).Index) % circuit + circuit) % circuit;
+
+            return forward > circuit / 2;
         }
 
         // ── Area of effect ───────────────────────────────────────────────
@@ -121,6 +201,10 @@ namespace NonaRoyale.Core.Services
         /// <b>Stealth does not protect against this.</b> Stealth stops an
         /// operator being <i>aimed at</i>, not from being in the room (§5.4), so
         /// Ace Shards and Dargin Pulse sweep it up like anyone else.
+        ///
+        /// <b>Neither does the camping rule</b>, for the same reason in the
+        /// other direction: an area is not an aim, so a camper's own pulse
+        /// still reaches backwards (§4.4, second amendment).
         ///
         /// <paramref name="exclude"/> exists for Miracle Pull, whose splash
         /// originates on the primary target and leaves that target out — it has
@@ -229,6 +313,13 @@ namespace NonaRoyale.Core.Services
             int? distance = _map.TrackDistance(CellOf(caster), cell);
             if (distance == null || distance > range)
                 return TargetingResult.Illegal(TargetingVerdict.OutOfRange, distance);
+
+            // The camping rule applies to cell aims unconditionally — a cell
+            // has no side, and a camper lobbing unlimited-range beacons
+            // backwards is free-parking artillery, the exact stall §4.4
+            // originally feared (§4.4, second amendment).
+            if (IsAimedBehindFromSafeCell(caster, cell))
+                return TargetingResult.Illegal(TargetingVerdict.AimedBehindFromSafeCell, distance);
 
             return TargetingResult.Legal(distance.Value);
         }

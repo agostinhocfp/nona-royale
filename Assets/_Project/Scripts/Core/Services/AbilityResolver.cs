@@ -119,6 +119,7 @@ namespace NonaRoyale.Core.Services
                 if (!_targeting.CanSingleTarget(caster, candidate, ability.Range).IsLegal) continue;
                 if (!AnyEffectApplies(ability, CastMode(caster, candidate))) continue;
                 if (!SwapWouldBeLegal(ability, caster, candidate)) continue;
+                if (!AllyPlacementWouldBeLegal(ability, caster, candidate)) continue;
 
                 legal.Add(candidate);
             }
@@ -208,6 +209,17 @@ namespace NonaRoyale.Core.Services
             {
                 return AbilityResolution.Refused(
                     AbilityRefusal.IllegalTarget, TargetingVerdict.SwapWouldLeaveTheTrack);
+            }
+
+            // The ally half of the camping rule (§4.4, second amendment). The
+            // enemy and cell halves live in TargetingRules and were checked
+            // above; this one depends on what the ability contains, so it is
+            // checked here, on the same terms as the swap rule — before
+            // payment, so a refusal costs nothing.
+            if (!AllyPlacementWouldBeLegal(ability, caster, primaryTarget))
+            {
+                return AbilityResolution.Refused(
+                    AbilityRefusal.IllegalTarget, TargetingVerdict.AimedBehindFromSafeCell);
             }
 
             // Energy last, so a refusal names the problem the player can fix and
@@ -609,6 +621,34 @@ namespace NonaRoyale.Core.Services
             if (targetProgress < 0 || targetProgress >= track) return false;
 
             return true;
+        }
+
+        /// <summary>
+        /// Whether this cast survives the ally half of the safe-cell camping
+        /// rule: an ability containing a placement effect may not be aimed at
+        /// an ally behind a caster standing on a safe cell (§4.4, second
+        /// amendment).
+        /// </summary>
+        /// <remarks>
+        /// What it closes is the safe-cell taxi — Translocation handing the
+        /// shelter to a teammate, Velvet Rope cycling allies through the camp.
+        /// Heals, plates and cleanses still pass backwards: a camper
+        /// supporting the squad behind it is not the aggression the rule
+        /// exists to stop. Enemy aims need no ability knowledge and are
+        /// refused in <see cref="TargetingRules"/>; this half lives here,
+        /// beside <see cref="SwapWouldBeLegal"/>, the existing precedent for
+        /// legality that depends on what the ability contains rather than on
+        /// whether the target can be aimed at.
+        /// </remarks>
+        private bool AllyPlacementWouldBeLegal(
+            AbilityDefinition ability, OperatorState caster, OperatorState primaryTarget)
+        {
+            if (primaryTarget == null) return true;
+            if (caster.Owner != primaryTarget.Owner) return true;
+            if (!ability.ContainsPlacement) return true;
+
+            return !_targeting.IsAimedBehindFromSafeCell(
+                caster, _targeting.CellOf(primaryTarget));
         }
 
         /// <summary>

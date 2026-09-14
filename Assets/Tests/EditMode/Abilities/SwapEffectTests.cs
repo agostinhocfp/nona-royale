@@ -177,7 +177,7 @@ namespace NonaRoyale.Core.Tests.Abilities
             // Clamping the way a pull does would send it to its start instead of
             // Mimi's cell, which is a total progress wipe rather than a swap.
             _mimi.MoveTo(10);            // track 10
-            _enemy.MoveTo(0);            // track 12, its start
+            _enemy.MoveTo(1);            // track 12, its start
 
             var result = Use(Mimi.Translocation, _enemy);
 
@@ -210,7 +210,7 @@ namespace NonaRoyale.Core.Tests.Abilities
             // The legality check runs before payment, and that ordering is the
             // only reason a refused swap is free. Nothing else proves it.
             _mimi.MoveTo(10);
-            _enemy.MoveTo(0);
+            _enemy.MoveTo(1);
             int before = _red.Energy;
 
             var result = Use(Mimi.Translocation, _enemy);

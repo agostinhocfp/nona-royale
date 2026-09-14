@@ -488,6 +488,7 @@ namespace NonaRoyale.Core.Tests.Engine
             var syla = Of(match, PlayerColor.Red, "Syla");
             var enemy = Of(match, PlayerColor.Blue, "Bouncer");
 
+            enemy.MoveTo(1);
             syla.MoveTo(11);                        // track 11, two cells from Blue's start at 13
 
             var events = match.Engine.Execute(
@@ -534,7 +535,8 @@ namespace NonaRoyale.Core.Tests.Engine
             var bouncer = Of(match, PlayerColor.Red, "Bouncer");
             var enemy = Of(match, PlayerColor.Blue, "Syla");
 
-            bouncer.MoveTo(10);
+            enemy.MoveTo(1);
+            bouncer.MoveTo(11);
 
             var events = match.Engine.Execute(
                 new UseAbilityCommand(bouncer.Id, Bouncer.VelvetRope.Id, enemy.Id));
@@ -572,9 +574,19 @@ namespace NonaRoyale.Core.Tests.Engine
             engine.Execute(new RollDiceCommand());
             foreach (var op in match.Operators) op.MoveTo(0);
 
+
             var mimi = Of(match, PlayerColor.Red, "Mimi");
             var enemy = Of(match, PlayerColor.Blue, "Syla");
-            mimi.MoveTo(11);                        // track 11, two from Blue's start
+            // Both past Blue's start (track 13), and neither on a safe cell —
+            // safe cells are the four colour starts, at multiples of 13.
+            //
+            // The positions are not arbitrary. A swap exchanges cells and
+            // converts that into a signed shift on each operator's own progress,
+            // so the target needs progress at least equal to the shift or it
+            // lands behind its own start and is refused (§7.4). Mimi on track 16
+            // and the enemy on track 18 is a shift of 2 against a progress of 5.
+            mimi.MoveTo(16);                        // track 16
+            enemy.MoveTo(5);                        // track 18
 
             var events = engine.Execute(
                 new UseAbilityCommand(mimi.Id, Mimi.Translocation.Id, enemy.Id));
@@ -585,6 +597,8 @@ namespace NonaRoyale.Core.Tests.Engine
             Assert.That(moves.Any(m => ReferenceEquals(m.Operator, enemy)), Is.True,
                 "two pieces moved, so two have to be announced");
         }
+
+
 
         [Test]
         public void AnUpkeepMarkPayout_IsAnnouncedNotJustApplied()
@@ -597,6 +611,7 @@ namespace NonaRoyale.Core.Tests.Engine
             var syla = Of(match, PlayerColor.Red, "Syla");
             var victim = Of(match, PlayerColor.Blue, "Syla");
 
+            victim.MoveTo(1);
             syla.MoveTo(11);
             victim.SetHealth(2);                    // one mark tick finishes it
 
@@ -630,6 +645,7 @@ namespace NonaRoyale.Core.Tests.Engine
             var syla = Of(match, PlayerColor.Red, "Syla");
             var victim = Of(match, PlayerColor.Blue, "Syla");
 
+            victim.MoveTo(1);
             syla.MoveTo(11);
             victim.SetHealth(2);
 
@@ -747,5 +763,7 @@ namespace NonaRoyale.Core.Tests.Engine
 
             Assert.That(moved.To - moved.From, Is.EqualTo((int)(total * Bouncer.Speed)));
         }
+
+
     }
 }

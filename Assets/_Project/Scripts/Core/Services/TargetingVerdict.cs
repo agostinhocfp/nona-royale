@@ -58,6 +58,38 @@ namespace NonaRoyale.Core.Services
         /// home column unreachable in both directions, and a beacon painted
         /// inside one would be a way to strike into a place no ability may reach.
         /// </remarks>
-        CellOutOfPlay = 7
+        CellOutOfPlay = 7,
+
+        /// <summary>
+        /// The target stands on a safe cell, and the caster is an enemy (§4.4,
+        /// amended 2026-09-13).
+        /// </summary>
+        /// <remarks>
+        /// <b>This reverses §4.4 as originally written</b>, which held that safe
+        /// meant safe from collision and nothing more, on the grounds that an
+        /// ability-proof cell becomes free parking. The counterweight it did not
+        /// weigh: winning needs all three operators home, so an operator parked on
+        /// a start cell is an operator not winning.
+        ///
+        /// Scoped to enemies exactly as <see cref="Stealthed"/> is, so an ally can
+        /// still be healed, plated, cleansed or repositioned while standing on
+        /// one — a Javi can plate a Bouncer the turn it deploys.
+        /// </remarks>
+        OnASafeCell = 8,
+
+        /// <summary>
+        /// The caster stands on a safe cell and aimed behind itself — at an
+        /// enemy, at a cell, or a placement at an ally (§4.4, second
+        /// amendment, 2026-09-14).
+        /// </summary>
+        /// <remarks>
+        /// The camping rule: shelter on a safe cell is legal, aiming backwards
+        /// out of it is not. "Behind" is the direction of travel — a forward
+        /// track offset greater than half the circuit — never a progress
+        /// comparison, which is per-colour and meaningless across seats. Only
+        /// aims are refused: Dargin Pulse and Ace Shards still radiate
+        /// backwards, because a self-origin area is presence, not aggression.
+        /// </remarks>
+        AimedBehindFromSafeCell = 9
     }
 }

@@ -108,6 +108,8 @@ namespace NonaRoyale.Core.Tests.Abilities
 
         // ── Cost and cooldown ────────────────────────────────────────────
 
+
+
         [Test]
         public void AnAbility_SpendsFromTheSharedPool()
         {
@@ -232,6 +234,33 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
+        public void AnEnemyOnASafeCell_CannotBeSingleTargeted_ButAnAllyCanBe()
+        {
+            // §4.4, amended: safe now refuses enemy single-targeting. Scoped to
+            // enemies, so Javi can plate a Bouncer the turn it deploys — which is
+            // the case the amendment exists for.
+            var onStart = AtTrack(12, "OnStart", PlayerColor.Blue, 6,
+                _map.StartTrackIndex(PlayerColor.Blue));
+            _board.Add(onStart);
+
+            var refused = Use(_syla, Syla.FromTheHip, onStart);
+
+            Assert.That(refused.TargetingVerdict, Is.EqualTo(TargetingVerdict.OnASafeCell));
+            Assert.That(_red.Energy, Is.EqualTo(12), "a refusal costs nothing");
+
+            // The same cell, an allied caster: All-In Mauling's heal mode, so a
+            // WrongSide refusal cannot stand in for the thing being tested.
+            _syla.MoveTo(0);                          // Red's own start, also safe
+            _syla.SetHealth(2);
+            _bouncer.MoveTo(1);
+
+            var allowed = Use(_bouncer, Bouncer.AllInMauling, _syla);
+
+            Assert.That(allowed.Approved, Is.True);
+            Assert.That(_syla.Health, Is.EqualTo(5), "healed on a safe cell");
+        }
+
+        [Test]
         public void ATargetedAbilityWithNoTarget_IsRejected()
         {
             var result = Use(_syla, Syla.FromTheHip);
@@ -269,11 +298,15 @@ namespace NonaRoyale.Core.Tests.Abilities
             // An operator's path does not extend behind its own start cell, so
             // there is nowhere further back to place it. The start cell is safe,
             // which makes the clamp harmless (§7.4).
+            // One cell past its own start, not on it: a start cell now refuses
+            // enemy single-targeting (§4.4, amended), and this test is about the
+            // placement clamp rather than about targeting. A pull of three cells
+            // backwards from progress 1 still goes negative, which is the case.
             var atStart = AtTrack(10, "AtStart", PlayerColor.Blue, 6,
-                _map.StartTrackIndex(PlayerColor.Blue));
+                _map.StartTrackIndex(PlayerColor.Blue) + 1);
             _board.Add(atStart);
 
-            Assert.That(atStart.Progress, Is.EqualTo(0), "precondition: it stands on its own start");
+            Assert.That(atStart.Progress, Is.EqualTo(1), "precondition: just past its own start");
 
             Use(_bouncer, Bouncer.VelvetRope, atStart);
 
@@ -560,7 +593,7 @@ namespace NonaRoyale.Core.Tests.Abilities
 
             var atStart = AtTrack(11, "AtStart", PlayerColor.Blue, 6,
                 _map.StartTrackIndex(PlayerColor.Blue));
-            atStart.MoveTo(0);
+            atStart.MoveTo(1);
             _board.Add(atStart);
             mimi.MoveTo(ProgressAtTrack(PlayerColor.Red,
                 (_map.StartTrackIndex(PlayerColor.Blue) + 3) % _map.Profile.CircuitLength));
@@ -571,7 +604,7 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(result.Approved, Is.False);
             Assert.That(result.TargetingVerdict, Is.EqualTo(TargetingVerdict.SwapWouldLeaveTheTrack));
             Assert.That(_red.Energy, Is.EqualTo(before), "a refusal costs nothing");
-            Assert.That(atStart.Progress, Is.EqualTo(0), "and moves nobody");
+            Assert.That(atStart.Progress, Is.EqualTo(1), "and moves nobody");
         }
 
         // ── Kian ─────────────────────────────────────────────────────────

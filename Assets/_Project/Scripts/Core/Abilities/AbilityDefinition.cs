@@ -127,6 +127,35 @@ namespace NonaRoyale.Core.Abilities
         /// </summary>
         public bool HasUnlimitedRange => Range == UnlimitedRange;
 
+        /// <summary>
+        /// True when any effect relocates its recipient — a pull, a swap, or a
+        /// push.
+        /// </summary>
+        /// <remarks>
+        /// Exists for the safe-cell camping rule (§4.4, second amendment),
+        /// which forbids aiming a placement at an ally behind a caster
+        /// standing on a safe cell — the safe-cell taxi. Expressed as a
+        /// question about effect kinds rather than a list of ability ids
+        /// because content must never branch into logic (<see cref="Roster"/>):
+        /// today this is exactly Velvet Rope and Translocation, and any future
+        /// ally-mover inherits the rule without anyone remembering to add it.
+        /// </remarks>
+        public bool ContainsPlacement
+        {
+            get
+            {
+                foreach (var effect in Effects)
+                {
+                    if (effect.Kind == EffectKind.PullToCaster ||
+                        effect.Kind == EffectKind.SwapWithCaster ||
+                        effect.Kind == EffectKind.PushFromCaster)
+                        return true;
+                }
+
+                return false;
+            }
+        }
+
         public IReadOnlyList<AbilityEffect> Effects { get; }
 
         public override string ToString()
