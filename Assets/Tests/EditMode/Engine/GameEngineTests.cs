@@ -340,6 +340,21 @@ namespace NonaRoyale.Core.Tests.Engine
         }
 
         [Test]
+        public void ATurnCannotBeEndedWithoutRolling()
+        {
+            // Rolling is compulsory. Before this, HasLegalMove's phase check made
+            // the turn endable at AwaitingRoll, so a player could pass — taking no
+            // energy, exposing nobody to a landing, and giving the board nothing.
+            Assert.That(_engine.Phase, Is.EqualTo(TurnPhase.AwaitingRoll));
+            Assert.That(_engine.MustSpendRoll, Is.True, "the end-turn button greys out before the roll too");
+
+            var events = _engine.Execute(new EndTurnCommand());
+
+            Assert.That(First<CommandRejected>(events).Reason, Does.Contain("roll first"));
+            Assert.That(_engine.CurrentPlayer.Color, Is.EqualTo(PlayerColor.Red), "the turn did not hand over");
+        }
+
+        [Test]
         public void AWonMatch_RefusesFurtherCommands()
         {
             foreach (var op in _match.Players[0].Operators)

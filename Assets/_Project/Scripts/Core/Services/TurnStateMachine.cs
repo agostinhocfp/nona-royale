@@ -195,6 +195,15 @@ namespace NonaRoyale.Core.Services
         /// <remarks>
         /// Expiry sits here rather than at upkeep so a 1-turn stun applied during
         /// an opponent's turn blocks a real action phase before it lapses (§6).
+        ///
+        /// <b>It accepts <see cref="TurnPhase.AwaitingRoll"/>, and that is not a
+        /// missing rule.</b> Rolling is compulsory, but that is enforced once, in
+        /// <c>GameEngine.EndTurn</c>, because its twin — compulsory movement —
+        /// depends on the unspent dice, which only the engine tracks. Splitting
+        /// "you must play your turn" across two files, half throwing and half
+        /// refusing, would cost more than it bought. This method stays permissive
+        /// so fixtures can drive the machine directly; no production path reaches
+        /// it without a roll. <b>Do not add a second check here.</b>
         /// </remarks>
         public EndTurnReport EndTurn()
         {

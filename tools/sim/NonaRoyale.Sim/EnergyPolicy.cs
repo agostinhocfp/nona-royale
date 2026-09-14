@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NonaRoyale.Core;
+using NonaRoyale.Core.Abilities;
+using NonaRoyale.Core.Board;
 using NonaRoyale.Core.Commands;
 using NonaRoyale.Core.Events;
 using NonaRoyale.Core.Model;
@@ -16,16 +18,13 @@ namespace NonaRoyale.Sim
     /// <remarks>
     /// <b>Only spending is a policy.</b> Deploying and moving are not: movement
     /// is compulsory (§6), so a player that declined to move would hang its turn
-    /// rather than play differently, and a player that declined to deploy would
-    /// be measuring the deploy rule rather than a decision. Holding everything
-    /// else fixed is what makes a difference between two runs attributable to the
-    /// thing that differed.
+    /// rather than play differently. Holding everything else fixed is what makes
+    /// a difference between two runs attributable to the thing that differed.
     ///
-    /// <b>Every figure in COMBAT_SYSTEMS §12 was measured under exactly one of
-    /// these</b> — <see cref="Spendthrift"/>, which has been the only policy the
-    /// harness has ever had. Those numbers are not wrong, but they are
-    /// conditional on a player that never banks and picks targets by nothing,
-    /// and nobody has ever checked how much of the pacing came from that.
+    /// <b>Every figure in COMBAT_SYSTEMS §12 was measured under
+    /// <see cref="SpendthriftPolicy"/></b>, which was the only policy the harness
+    /// had until 2026-09-13 — and under a version of it that could not target an
+    /// ally or name a cell.
     /// </remarks>
     public interface IEnergyPolicy
     {
@@ -44,14 +43,118 @@ namespace NonaRoyale.Sim
     }
 
     /// <summary>
+    /// Attempting one cast, in every targeting mode the game has.
+    /// </summary>
+    /// <remarks>
+    /// <b>Extracted after the usage table read 0.00 against four abilities.</b>
+    /// Trauma Plate, Neural Purge, Drone Strike and Killzone had never been cast
+    /// in a simulated match — not because they are poor, but because both
+    /// policies iterated enemies only and never supplied a cell. Javi had
+    /// therefore never played at all, no shield had ever absorbed anything, and
+    /// the whole ADR-0006/0007 cell layer had run nowhere but unit tests.
+    ///
+    /// <b>It still does not check legality itself.</b> It sends a command and
+    /// reads whether the engine rejected it, which keeps the harness free of a
+    /// second copy of the rules — the thing that would make its numbers
+    /// meaningless. Out of range, wrong side, no cell: all of it comes back as a
+    /// refusal rather than being predicted here.
+    /// </remarks>
+    internal static class Casting
+    {
+        /// <summary>
+        /// Tries one ability every way it could legally be aimed, and reports
+        /// whether any of them was paid for.
+        /// </summary>
+        /// <remarks>
+        /// <b>Enemies before allies</b>, so an ability with both modes takes its
+        /// hostile one. All-In Mauling heals an ally and damages an enemy from one
+        /// effect list; trying allies first would turn the Bouncer into a medic.
+        ///
+        /// <b>The caster is excluded from the ally list.</b> §10's mode rule makes
+        /// self-targeting legal and <c>MatchBootstrap</c> filters it out anyway —
+        /// undecided in both directions. But a bot that did not filter finds the
+        /// hole immediately: Velvet Rope aimed at yourself resolves to a placement
+        /// one cell <i>forward</i> of your own, which is a 6-energy free move. It
+        /// would cast nothing else. That is a real rules question and not one the
+        /// harness should answer by exploiting it.
+        ///
+        /// <b>A cell-targeted ability is aimed at an enemy's current cell.</b>
+        /// Deliberately the naive bet, and a poor one: a beacon fires a full round
+        /// later (ADR-0006), so painting where somebody stands now catches them
+        /// only if they choose not to move. Predicting where they will be is
+        /// exactly the judgement the harness must not make on a player's behalf,
+        /// so it makes the dumbest honest choice and its usage figures should be
+        /// read as a floor.
+        /// </remarks>
+        public static bool TryCast(
+            MatchFactory.Match match,
+            PlayerState seat,
+            OperatorState caster,
+            AbilityDefinition ability,
+            MatchStats stats,
+            Func<ICommand, IReadOnlyList<IGameEvent>> send)
+        {
+            switch (ability.Targeting)
+            {
+                case AbilityTargeting.None:
+                    return Fire(new UseAbilityCommand(caster.Id, ability.Id), ability, stats, send);
+
+                case AbilityTargeting.Cell:
+                    foreach (var enemy in Enemies(match, seat))
+                    {
+                        if (enemy.IsInYard) continue;
+
+                        var cell = match.Map.CellAt(enemy.Owner, enemy.Progress);
+                        if (!cell.IsOnTrack) continue;
+
+                        if (Fire(new UseAbilityCommand(caster.Id, ability.Id, null, cell), ability, stats, send))
+                            return true;
+                    }
+
+                    return false;
+
+                default:
+                    foreach (var enemy in Enemies(match, seat))
+                        if (Fire(new UseAbilityCommand(caster.Id, ability.Id, enemy.Id), ability, stats, send))
+                            return true;
+
+                    foreach (var ally in Allies(match, seat, caster))
+                        if (Fire(new UseAbilityCommand(caster.Id, ability.Id, ally.Id), ability, stats, send))
+                            return true;
+
+                    return false;
+            }
+        }
+
+        private static bool Fire(
+            UseAbilityCommand command,
+            AbilityDefinition ability,
+            MatchStats stats,
+            Func<ICommand, IReadOnlyList<IGameEvent>> send)
+        {
+            if (!send(command).Any(e => e is EnergySpent)) return false;
+
+            stats.RecordCast(ability.Id);
+            return true;
+        }
+
+        private static IEnumerable<OperatorState> Enemies(MatchFactory.Match match, PlayerState seat) =>
+            match.Operators.Where(o => o.Owner != seat.Color);
+
+        private static IEnumerable<OperatorState> Allies(
+            MatchFactory.Match match, PlayerState seat, OperatorState caster) =>
+            match.Operators.Where(o => o.Owner == seat.Color && !ReferenceEquals(o, caster));
+    }
+
+    /// <summary>
     /// Never casts. The control, and the floor the other two have to beat.
     /// </summary>
     /// <remarks>
-    /// <b>It is the measurement the design has never taken.</b> The GDD's stated
+    /// <b>It is the measurement the design had never taken.</b> The GDD's stated
     /// priority is 70% combat to 30% race. If a seat that never spends a point of
     /// energy wins as often as one that spends all of it, the combat layer is
-    /// decoration — and no figure the harness has produced so far could have told
-    /// you, because every seat played the same way.
+    /// decoration — and no figure produced before 2026-09-13 could have told you,
+    /// because every seat played the same way.
     /// </remarks>
     public sealed class RacerPolicy : IEnergyPolicy
     {
@@ -68,16 +171,19 @@ namespace NonaRoyale.Sim
 
     /// <summary>
     /// Fires whatever is affordable at whatever it can reach, until nothing more
-    /// is accepted. The harness's original and only player.
+    /// is accepted. The harness's original player.
     /// </summary>
     /// <remarks>
-    /// <b>Lifted verbatim from <c>ScriptedPlayer.SpendEnergy</c>, deliberately.</b>
-    /// It is the status quo in the comparison, so any change to it would
-    /// invalidate every figure it is being compared against.
+    /// <b>Its target selection is nil, and that is the point.</b> It takes the
+    /// first legal aim it finds, so its figures are a floor rather than an
+    /// estimate — a human chooses, and choosing can only do better.
     ///
-    /// It does not check legality itself — it sends a command and reads whether
-    /// the engine rejected it. That keeps the harness free of a second copy of
-    /// the rules, which is the thing that would make its numbers meaningless.
+    /// <b>It now reaches allies and cells, which it never did.</b> Every figure
+    /// taken before 2026-09-13 came from a version that could not cast a heal, a
+    /// plate, a cleanse, a beacon or a zone. Runs either side of that change are
+    /// not comparable, on alpha squads as well as drafted ones: an ally cast is
+    /// tried whenever no enemy is in reach, which changes the command stream even
+    /// for a squad that owns no ally-only ability.
     /// </remarks>
     public sealed class SpendthriftPolicy : IEnergyPolicy
     {
@@ -101,26 +207,11 @@ namespace NonaRoyale.Sim
 
                     foreach (var ability in abilities)
                     {
-                        if (ability.RequiresTarget)
+                        if (Casting.TryCast(match, seat, caster, ability, stats, send))
                         {
-                            foreach (var target in match.Operators.Where(o => o.Owner != seat.Color))
-                            {
-                                if (send(new UseAbilityCommand(caster.Id, ability.Id, target.Id))
-                                    .Any(e => e is EnergySpent))
-                                {
-                                    stats.RecordCast(ability.Id);
-                                    fired = true;
-                                    break;
-                                }
-                            }
-                        }
-                        else if (send(new UseAbilityCommand(caster.Id, ability.Id)).Any(e => e is EnergySpent))
-                        {
-                            stats.RecordCast(ability.Id);
                             fired = true;
+                            break;
                         }
-
-                        if (fired) break;
                     }
 
                     if (fired) break;
@@ -134,16 +225,16 @@ namespace NonaRoyale.Sim
     /// owns, then spends on that, most expensive first.
     /// </summary>
     /// <remarks>
-    /// <b>The threshold is the squad's own ceiling, not a literal 9.</b> A
-    /// drafted squad may hold nothing above 6 — Bouncer and Javi between them
-    /// top out there — and a policy hard-coded to 9 would simply never cast for
-    /// that squad, turning the Banker into a Racer without saying so.
+    /// <b>The threshold is the squad's own ceiling, not a literal 9.</b> A drafted
+    /// squad may hold nothing above 6, and a policy hard-coded to 9 would simply
+    /// never cast for that squad — turning the Banker into a Racer without saying
+    /// so.
     ///
-    /// <b>Why it is worth running at all.</b> §3.1 says the drip is the real
-    /// cooldown on anything costing 6 or more, and that banking to 12 to fire two
-    /// abilities in one turn is a combo worth having. Nothing has tested either
-    /// claim: the only player the harness has had spends the moment it can, so
-    /// every figure describes a game in which nobody ever saves.
+    /// <b>What it measured, once the usage table existed.</b> Doubling Tagged
+    /// From Above's cooldown moved every Banker row and no Spendthrift row. That
+    /// is the first empirical support for §3.1's claim that the energy drip is the
+    /// real cooldown on anything costing 6 or more: a player gated by energy never
+    /// notices a cooldown change, and a player gated by the cooldown does.
     ///
     /// It stops after one cast per call rather than looping. Having paid for its
     /// big ability it is usually below the threshold again, and looping would
@@ -176,25 +267,7 @@ namespace NonaRoyale.Sim
                 if (!match.AbilitiesByOperator.TryGetValue(caster.Id, out var abilities)) continue;
 
                 foreach (var ability in abilities.OrderByDescending(a => a.EnergyCost))
-                {
-                    if (ability.RequiresTarget)
-                    {
-                        foreach (var target in match.Operators.Where(o => o.Owner != seat.Color))
-                        {
-                            if (send(new UseAbilityCommand(caster.Id, ability.Id, target.Id))
-                                .Any(e => e is EnergySpent))
-                            {
-                                stats.RecordCast(ability.Id);
-                                return;
-                            }
-                        }
-                    }
-                    else if (send(new UseAbilityCommand(caster.Id, ability.Id)).Any(e => e is EnergySpent))
-                    {
-                        stats.RecordCast(ability.Id);
-                        return;
-                    }
-                }
+                    if (Casting.TryCast(match, seat, caster, ability, stats, send)) return;
             }
         }
     }

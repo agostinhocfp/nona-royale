@@ -138,7 +138,7 @@ namespace NonaRoyale.Core
         /// it and read a refusal — the same reasoning that put
         /// <see cref="CheckAbility"/> here.
         /// </remarks>
-        public bool MustSpendRoll => HasLegalMove();
+        public bool MustSpendRoll => Phase == TurnPhase.AwaitingRoll || HasLegalMove();
 
         /// <summary>Opens the match. Runs the first upkeep and reports it.</summary>
         public IReadOnlyList<IGameEvent> Start()
@@ -276,6 +276,18 @@ namespace NonaRoyale.Core
 
         private void EndTurn(List<IGameEvent> events)
         {
+            // Rolling is compulsory, and it was not enforced. HasLegalMove tests
+            // the phase first and returns false before a roll, so a turn could be
+            // ended without ever rolling — skipping that turn's energy grant
+            // (§3.1), every landing that could be contested, and every upkeep the
+            // opponents were owed. Passing is not a legal way to play round a bad
+            // board position.
+            if (Phase == TurnPhase.AwaitingRoll)
+            {
+                events.Add(new CommandRejected("roll first: a turn cannot be skipped"));
+                return;
+            }
+
             // Movement is compulsory (§6). The check is "does a legal consumer
             // exist", not "are the dice gone" — a die nobody can spend is
             // forfeit, and a turn must always be endable or the match deadlocks.
