@@ -43,6 +43,14 @@ namespace NonaRoyale.Sim
             if (args.Length > 1 && args[1] == "opening") { Opening.Run(matches); return; }
             if (args.Length > 1 && args[1] == "reach") { Reach.Run(matches); return; }
             if (args.Length > 1 && args[1] == "dynamic") { Dynamic.Run(matches); return; }
+            if (args.Length > 1 && args[1] == "policy") { Policies.Run(matches); return; }
+            if (args.Length > 1 && args[1] == "usage") { Usage.Run(matches); return; }
+
+            if (args.Length > 1)
+            {
+                Console.WriteLine($"Unknown sweep '{args[1]}'. Try: laps, opening, reach, dynamic, policy, usage.");
+                return;
+            }
 
             Header("SPEED BAND — 4 players, Standard board, opening 2");
             foreach (var band in new[]

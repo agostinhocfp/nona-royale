@@ -1,7 +1,9 @@
 // tools/sim/NonaRoyale.Sim/ScriptedPlayer.cs
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NonaRoyale.Core;
+using NonaRoyale.Core.Board;
 using NonaRoyale.Core.Commands;
 using NonaRoyale.Core.Events;
 using NonaRoyale.Core.Model;
@@ -9,9 +11,9 @@ using NonaRoyale.Core.Model;
 namespace NonaRoyale.Sim
 {
     /// <summary>
-    /// A deliberately simple automated player: deploy whenever possible, fire
-    /// whatever is affordable and legal, then advance the operator closest to
-    /// home.
+    /// A deliberately simple automated player: deploy whenever possible, advance
+    /// the operator closest to home, and spend energy according to whatever
+    /// policy the seat was given.
     /// </summary>
     /// <remarks>
     /// <b>It does not check legality itself.</b> It sends a command and reads
@@ -21,20 +23,42 @@ namespace NonaRoyale.Sim
     ///
     /// A real player is better than this, so the turn counts it produces are a
     /// mild over-estimate. What the harness measures reliably is the
-    /// <i>relative</i> effect of a config change, not an absolute figure.
+    /// <i>relative</i> effect of a change, not an absolute figure.
     ///
-    /// <b>It never splits a roll.</b> See <see cref="Move"/> — this is a
-    /// deliberate choice, and it bounds what the current figures mean.
+    /// <b>It never splits a roll.</b> See <see cref="Move"/> — a deliberate
+    /// choice, and it bounds what the current figures mean.
+    ///
+    /// <b>Spending is the only thing a policy decides.</b> Deploying and moving
+    /// are fixed for every seat: movement is compulsory (§6), so a policy that
+    /// declined to move would hang its turn rather than play differently. Holding
+    /// everything else constant is what makes a difference between two seats
+    /// attributable to the one thing that differed — see
+    /// <see cref="IEnergyPolicy"/>.
+    ///
+    /// The two-argument constructor gives every seat <see cref="SpendthriftPolicy"/>,
+    /// which is what this class always did, so every existing sweep is unchanged.
     /// </remarks>
     public sealed class ScriptedPlayer
     {
+        private static readonly IEnergyPolicy Default = new SpendthriftPolicy();
+
         private readonly MatchFactory.Match _match;
         private readonly MatchStats _stats;
+        private readonly IReadOnlyDictionary<PlayerColor, IEnergyPolicy> _policies;
 
         public ScriptedPlayer(MatchFactory.Match match, MatchStats stats)
+            : this(match, stats, null)
+        {
+        }
+
+        public ScriptedPlayer(
+            MatchFactory.Match match,
+            MatchStats stats,
+            IReadOnlyDictionary<PlayerColor, IEnergyPolicy> policies)
         {
             _match = match;
             _stats = stats;
+            _policies = policies;
         }
 
         /// <summary>Plays one full turn for whichever seat is active.</summary>
@@ -55,11 +79,21 @@ namespace NonaRoyale.Sim
 
                 Deploy(seat);
                 Move(seat);
-                SpendEnergy(seat);
+                PolicyFor(seat.Color).Spend(_match, seat, _stats, Send);
             }
 
             Send(new EndTurnCommand());
             _stats.Turns++;
+        }
+
+        private IEnergyPolicy PolicyFor(PlayerColor seat)
+        {
+            IEnergyPolicy policy;
+
+            if (_policies != null && _policies.TryGetValue(seat, out policy) && policy != null)
+                return policy;
+
+            return Default;
         }
 
         private void Record(PlayerState seat)
@@ -127,50 +161,6 @@ namespace NonaRoyale.Sim
                 }
 
                 if (!spent) break;
-            }
-        }
-
-        /// <summary>
-        /// Tries every ability of every owned operator against every enemy until
-        /// nothing more is accepted. Crude, but it means energy actually gets
-        /// spent — which is the throughput the harness exists to measure.
-        /// </summary>
-        private void SpendEnergy(PlayerState seat)
-        {
-            bool fired = true;
-
-            while (fired)
-            {
-                fired = false;
-
-                foreach (var caster in seat.Operators)
-                {
-                    if (!_match.AbilitiesByOperator.TryGetValue(caster.Id, out var abilities)) continue;
-
-                    foreach (var ability in abilities)
-                    {
-                        if (ability.RequiresTarget)
-                        {
-                            foreach (var target in _match.Operators.Where(o => o.Owner != seat.Color))
-                            {
-                                if (Send(new UseAbilityCommand(caster.Id, ability.Id, target.Id))
-                                    .Any(e => e is EnergySpent))
-                                {
-                                    fired = true;
-                                    break;
-                                }
-                            }
-                        }
-                        else if (Send(new UseAbilityCommand(caster.Id, ability.Id)).Any(e => e is EnergySpent))
-                        {
-                            fired = true;
-                        }
-
-                        if (fired) break;
-                    }
-
-                    if (fired) break;
-                }
             }
         }
 

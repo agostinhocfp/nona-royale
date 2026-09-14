@@ -612,6 +612,10 @@ These are dials and scope, not holes. Nothing here blocks implementation.
 
 All figures below are measured against the live core by `tools/sim/NonaRoyale.Sim`, **800 matches per row**, four players, `openingDeployments = 2`, alpha three via `CreateAlphaMatch`. They supersede every earlier figure in this document and in ADR-0002 Amendments 2 through 6.
 
+Spending wins at roughly 66/34 under a naive spender, on both alpha and drafted squads, 2000 matches.
+
+14/09/2026 New and open: the cost-tier signal. Three comparisons suggest large abilities convert energy better than small ones, and nothing in the design intends that.
+
 **Baseline — Standard 52/6, band 1.0/1.5/1.5, `NeutralizeEnergyBounty = 3`:**
 
 **22.6 turns · p90 29 · 9.3 neutralizes · 53.5 abilities · 5.1 collisions · 12.1 energy burned · 33% squad occupancy.**

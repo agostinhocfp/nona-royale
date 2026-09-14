@@ -87,11 +87,45 @@ namespace NonaRoyale.Core.Abilities
         /// mark was pure bookkeeping until 2026-09-12 — a 9-energy ultimate that
         /// did nothing on the turn it was cast.
         /// </remarks>
+        /// 
+        ///  ///
+        /// <b>Cooldown 2 → 4 on 2026-09-13, after human play read the ability as
+        /// too strong.</b> At 9 energy against a 3.5-per-turn drip (§3.1) it
+        /// takes about 2.6 turns to afford, and a cooldown of 2 makes it ready on
+        /// the 3rd — so the cooldown sat at roughly the same cadence as the
+        /// economy and was barely doing anything. At 4 it is ready on the 5th
+        /// turn, which puts the cooldown clearly in front of the drip. That is
+        /// the lever §3.1 nominates: a stated cooldown only bites when it is
+        /// longer than what the economy already imposes.
+        ///
+        /// <b>Frequency, and deliberately nothing else.</b> Two other axes were
+        /// proposed and walked back before they landed, so that nobody re-tries
+        /// them blind:
+        ///
+        /// <list type="bullet">
+        /// <item><b>The mark's damage, 2 → 1.</b> It would have totalled 2 over
+        /// the mark rather than 4, leaving a 6-health target at 4 — outside
+        /// collision range, outside Miracle Pull's execute window, and outside a
+        /// bleeding From the Hip. The mark would have stopped setting up the kill
+        /// that its own payout requires, which breaks the design rather than
+        /// pricing it. It is also the mark's global dial, not this ability's, so
+        /// any future mark source would inherit a decision taken about Syla.</item>
+        /// <item><b>The payout's haste, 2 turns → 1.</b> A status applied on its
+        /// target's own turn takes hold immediately (§5), so a payout fired by
+        /// the marker's own kill would expire with that turn's movement already
+        /// spent — worth nothing — while one fired at an opponent's upkeep would
+        /// work normally. The ability would pay out more for a kill it did not
+        /// land than for one it did.</item>
+        /// </list>
+        ///
+        /// <b>Reasoned from play, and now measurable.</b> The harness gained
+        /// per-seat win counting on 2026-09-13; a per-operator table is the
+        /// instrument this change should be judged against.
         public static AbilityDefinition TaggedFromAbove { get; } = new AbilityDefinition(
             id: 203, name: "Tagged From Above",
             description:
                 "Paints an enemy for the squad and slips you out of sight. If your side finishes them while the mark holds, everyone moves faster.",
-            energyCost: 9, cooldownTurns: 2, range: 3,
+            energyCost: 9, cooldownTurns: 4, range: 3,
             effects: new[]
             {
                 AbilityEffect.Status_(EffectScope.PrimaryTarget, StatusKind.Mark, duration: 2),

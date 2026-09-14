@@ -465,7 +465,7 @@ namespace NonaRoyale.Core.Tests.Turn
 
         // ── Upkeep: beacons (ADR-0006) ───────────────────────────────────
 
-        /// <summary>Blue's cell for a given progress. Blue starts at track 12.</summary>
+        /// <summary>Blue's cell for a given progress. Blue starts at track 13.</summary>
         private CellRef BlueCell(int progress) => _map.CellAt(PlayerColor.Blue, progress);
 
         /// <summary>

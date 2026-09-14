@@ -22,7 +22,8 @@ The `--` separates `dotnet`'s own arguments from the program's. Without it the m
 | _(none)_  | Speed band, board profile, player count, collision damage |
 | `laps`    | Loop size against lap count                               |
 | `opening` | Operators pre-deployed, and ability reach                 |
-| `reach`   | Ability reach on the adopted configuration, both profiles |
+| `reach`   | Ability reach on Standard and Sprint                      |
+| `policy`  | Energy-spending policy, 2v2 — does spending win matches?  |
 
 Roughly a minute per sweep at 800 matches per row.
 
@@ -50,7 +51,7 @@ To set a new one, from the repository root:
 dotnet run --project tools\sim\NonaRoyale.Sim -- 800
 ```
 
-Take the `Standard 48/6` row of the standard table and record `turns`, `neut` and `3-up` here. Re-record it whenever a rule changes deliberately — a tripwire that is expected to be wrong teaches people to ignore it.
+Take the `Standard` row of the standard table and record `turns`, `neut` and `3-up` here. Re-record it whenever a rule changes deliberately — a tripwire that is expected to be wrong teaches people to ignore it.
 
 Three things to settle before that row is worth trusting, in order:
 
@@ -64,7 +65,11 @@ Three things to settle before that row is worth trusting, in order:
 
 **It cannot catch a rule that is wired to nothing.** The Kurbyn fault ran undetected through every sweep in three amendments, because a passive that is never applied throws no exception and produces a perfectly plausible number. The harness proves the rules do not contradict each other; it does not prove they are all connected.
 
-**It is not a balance oracle.** `ScriptedPlayer` deploys whatever it can, fires whatever is affordable at whatever is nearest, and advances its leader. A competent human plays better, so turn counts are a mild over-estimate. What the harness measures reliably is the _relative_ effect of a configuration change, not an absolute figure.
+**It is not a balance oracle.** `ScriptedPlayer` deploys whatever it can, advances its leader, and spends energy according to an `IEnergyPolicy`. A competent human plays better, so turn counts are a mild over-estimate. What the harness measures reliably is the _relative_ effect of a configuration change, not an absolute figure.
+
+**Every sweep except `policy` runs `SpendthriftPolicy` on all four seats** — fires whatever is affordable at whatever it can reach, banks nothing. That was the only player the harness had until 2026-09-13, so every figure in ADR-0002 Amendment 3 and `COMBAT_SYSTEMS` §12 is conditional on it. Those numbers are not wrong; they describe a game in which nobody ever saves energy and nobody ever chooses a target, and nothing has checked how much of the pacing came from that.
+
+**`policy` is the sweep that questions it.** Two seats spend, two do not, and it counts wins. If the racer holds its own, the abilities as scripted are not worth their energy — which is an instruction to build a better spender, not to retune the roster. A policy is not a player.
 
 **It says nothing about whether the game is fun.** Pacing and throughput only.
 
