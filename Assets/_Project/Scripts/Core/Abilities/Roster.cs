@@ -52,7 +52,8 @@ namespace NonaRoyale.Core.Abilities
             Kurbyn.Definition,
             Mimi.Definition,
             Javi.Definition,
-            Kian.Definition
+            Kian.Definition,
+            Nuetu.Definition
         };
 
         /// <summary>The alpha three, in order. What every sweep and test measured.</summary>
@@ -83,7 +84,7 @@ namespace NonaRoyale.Core.Abilities
         /// <b>Distinct within a seat, duplicated freely across seats.</b> Three
         /// Bouncers on one side is a legitimate configuration to measure but a
         /// poor one to play against while the roster is this small, and with
-        /// six operators and four seats no rule could give every seat a unique
+        /// seven operators and four seats no rule could give every seat a unique
         /// squad anyway. The GDD's draft rules are open (§2.2); this is the
         /// simplest thing that produces varied matches.
         ///
@@ -100,11 +101,11 @@ namespace NonaRoyale.Core.Abilities
         /// produce a squad with no way through Kurbyn. That is a real drafting
         /// question and it is open.
         ///
-        /// <b>Two of the six are incomplete.</b> Mimi is missing Cryo Field and
-        /// Kian is missing Drone Strike, so a third of the pool draws with two
-        /// abilities where the rest have two or three. The draft does not know
-        /// or care, which is correct — but any sweep run now is measuring a pool
-        /// that is deliberately uneven.
+        /// <b>Two of the seven are incomplete.</b> Mimi is missing Cryo Field
+        /// and Nuetu is missing Killzone, so part of the pool draws with two
+        /// abilities where the rest have three. The draft does not know or care,
+        /// which is correct — but any sweep run now is measuring a pool that is
+        /// deliberately uneven.
         /// </remarks>
         public static IReadOnlyList<OperatorDefinition> DraftRandom(IRandom random)
         {

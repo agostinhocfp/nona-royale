@@ -21,7 +21,8 @@ namespace NonaRoyale.Core.Abilities
             EffectKind kind, EffectScope scope, EffectAudience audience,
             int amount, DamageType damageType, int radius,
             StatusKind status, int duration, int stacks, double magnitude,
-            int bonusIfBleeding, int executeNumerator, int executeDenominator)
+            int bonusIfBleeding, int executeNumerator, int executeDenominator,
+            int bonusInOwnZone = 0)
         {
             Kind = kind;
             Scope = scope;
@@ -36,6 +37,7 @@ namespace NonaRoyale.Core.Abilities
             BonusIfBleeding = bonusIfBleeding;
             ExecuteNumerator = executeNumerator;
             ExecuteDenominator = executeDenominator;
+            BonusInOwnZone = bonusInOwnZone;
         }
 
         public EffectKind Kind { get; }
@@ -66,6 +68,20 @@ namespace NonaRoyale.Core.Abilities
         /// <summary>Extra damage when the target already carries a bleed stack. Syla's From the Hip.</summary>
         public int BonusIfBleeding { get; }
 
+        /// <summary>
+        /// Extra healing while the caster's side has a lingering zone in play
+        /// (ADR-0007). Killzone's rider on Bio-Link Rage.
+        /// </summary>
+        /// <remarks>
+        /// <b>The first number in the game that one ability changes on
+        /// another.</b> <see cref="BonusIfBleeding"/> is the nearest precedent
+        /// and it is not the same thing: that reads a status on the effect's own
+        /// recipient, where this reads the board. It is a field rather than a
+        /// second conditional effect because nothing exists that could express
+        /// "this effect, but only sometimes".
+        /// </remarks>
+        public int BonusInOwnZone { get; }
+
         /// <summary>Execute threshold as a fraction — 1/2 for "below 50%".</summary>
         public int ExecuteNumerator { get; }
         public int ExecuteDenominator { get; }
@@ -74,7 +90,7 @@ namespace NonaRoyale.Core.Abilities
         public AbilityEffect WithRadius(int radius) =>
             new AbilityEffect(Kind, Scope, Audience, Amount, DamageType, radius,
                 Status, Duration, Stacks, Magnitude, BonusIfBleeding,
-                ExecuteNumerator, ExecuteDenominator);
+                ExecuteNumerator, ExecuteDenominator, BonusInOwnZone);
 
         public static AbilityEffect Damage(
             EffectScope scope, int amount, DamageType type,
@@ -100,12 +116,14 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityEffect Heal(
             EffectScope scope, int amount,
             EffectAudience audience = EffectAudience.AllyOnly,
-            int radius = 0)
+            int radius = 0,
+            int bonusInOwnZone = 0)
         {
             if (amount < 0) throw new ArgumentOutOfRangeException(nameof(amount));
+            if (bonusInOwnZone < 0) throw new ArgumentOutOfRangeException(nameof(bonusInOwnZone));
 
             return new AbilityEffect(EffectKind.Heal, scope, audience, amount, default, radius,
-                default, 0, 0, 0, 0, 0, 0);
+                default, 0, 0, 0, 0, 0, 0, bonusInOwnZone);
         }
 
         /// <summary>
@@ -183,6 +201,47 @@ namespace NonaRoyale.Core.Abilities
 
             return new AbilityEffect(EffectKind.PaintCell, EffectScope.PrimaryTarget, audience,
                 totalDamage, damageType, radius, default, 0, 0, 0, 0, 0, 0);
+        }
+
+        /// <summary>
+        /// Deploys a lingering zone on the targeted cell. It detonates at the
+        /// caster's next upkeep for <paramref name="detonationDamage"/> and a
+        /// status, then bills <paramref name="lingerDamage"/> for
+        /// <paramref name="lingerTicks"/> further turns of the caster's
+        /// (ADR-0007).
+        /// </summary>
+        /// <remarks>
+        /// <b>Damage is per target, not split.</b> A beacon is one beam of fixed
+        /// energy divided among whoever it catches; a zone is ground that grinds
+        /// each of them in full. That opposition is the whole reason the roster
+        /// can carry two cell abilities.
+        ///
+        /// <b>The status lands on the detonation only.</b> Stun blocks movement,
+        /// so re-applying it each tick would trap an operator inside the zone
+        /// until it expired. See <see cref="EffectKind.DeployZone"/>.
+        ///
+        /// Scope is recorded as <see cref="EffectScope.PrimaryTarget"/> and
+        /// ignored, exactly as <see cref="PaintCell"/> does — this effect names a
+        /// place, and scopes resolve to operators.
+        /// </remarks>
+        public static AbilityEffect DeployZone(
+            int detonationDamage, int lingerDamage, int lingerTicks, int radius,
+            DamageType damageType, StatusKind detonationStatus, int statusDuration,
+            EffectAudience audience = EffectAudience.Any)
+        {
+            if (detonationDamage < 0) throw new ArgumentOutOfRangeException(nameof(detonationDamage));
+            if (lingerDamage < 0) throw new ArgumentOutOfRangeException(nameof(lingerDamage));
+            if (lingerTicks < 0) throw new ArgumentOutOfRangeException(nameof(lingerTicks));
+            if (radius < 0) throw new ArgumentOutOfRangeException(nameof(radius));
+            if (statusDuration < 1) throw new ArgumentOutOfRangeException(nameof(statusDuration));
+
+            // Amount carries the detonation, Magnitude the lingering tick, Stacks
+            // the number of those ticks. Reused fields rather than three more on
+            // a struct every factory already has to fill — the same trade as the
+            // shield pool living in a status entry's magnitude.
+            return new AbilityEffect(EffectKind.DeployZone, EffectScope.PrimaryTarget, audience,
+                detonationDamage, damageType, radius, detonationStatus, statusDuration,
+                lingerTicks, lingerDamage, 0, 0, 0);
         }
 
         /// <summary>

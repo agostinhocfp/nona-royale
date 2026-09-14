@@ -234,6 +234,12 @@ namespace NonaRoyale.Core.Services
                     continue;
                 }
 
+                if (effect.Kind == EffectKind.DeployZone)
+                {
+                    RunDeployZone(effect, caster, targetCell, outcomes);
+                    continue;
+                }
+
                 RunEffect(effect, caster, primaryTarget, allOperators, outcomes);
             }
 
@@ -258,8 +264,24 @@ namespace NonaRoyale.Core.Services
                         break;
 
                     case EffectKind.Heal:
-                        recipient.Heal(effect.Amount);
-                        outcomes.Add(EffectOutcome.Healed(recipient, effect.Amount));
+                        // Killzone's rider on Bio-Link Rage: the first number in
+                        // the game that one ability changes on another
+                        // (ADR-0007). Read here rather than baked into the
+                        // effect, because whether a zone is live is a fact about
+                        // the board at cast time.
+                        //
+                        // HasActiveZoneFor asks only whether a zone exists.
+                        // ZoneCoversOperator asks whether the caster is standing
+                        // in one — the same cost to call, and a stronger design,
+                        // since it would give him a reason to walk into his own
+                        // grenade. Swapping them is a one-word change.
+                        int healed = effect.Amount;
+
+                        if (effect.BonusInOwnZone > 0 && _cellEffects.HasActiveZoneFor(caster.Owner))
+                            healed += effect.BonusInOwnZone;
+
+                        recipient.Heal(healed);
+                        outcomes.Add(EffectOutcome.Healed(recipient, healed));
                         break;
 
                     case EffectKind.ApplyStatus:
@@ -323,6 +345,34 @@ namespace NonaRoyale.Core.Services
                 effect.Amount, effect.Radius, effect.DamageType);
 
             outcomes.Add(EffectOutcome.BeaconPlaced(caster, cell.Value, effect.Amount));
+        }
+
+        /// <summary>
+        /// Deploys a lingering zone. Nothing resolves now — it detonates at the
+        /// caster's next upkeep and bills again after that (ADR-0007).
+        /// </summary>
+        /// <remarks>
+        /// Reads the payload out of the reused fields the factory packed it into:
+        /// <c>Amount</c> is the detonation, <c>Magnitude</c> the lingering tick,
+        /// <c>Stacks</c> how many of those. The null guard is the same one
+        /// <see cref="RunPaintCell"/> carries, for the same reason.
+        /// </remarks>
+        private void RunDeployZone(
+            AbilityEffect effect, OperatorState caster, CellRef? cell, List<EffectOutcome> outcomes)
+        {
+            if (cell == null) return;
+
+            _cellEffects.Deploy(
+                cell.Value, caster.Owner, caster.Id,
+                detonationDamage: effect.Amount,
+                lingerDamage: (int)effect.Magnitude,
+                lingerTicks: effect.Stacks,
+                radius: effect.Radius,
+                damageType: effect.DamageType,
+                detonationStatus: effect.Status,
+                statusDuration: effect.Duration);
+
+            outcomes.Add(EffectOutcome.ZoneDeployed(caster, cell.Value, effect.Amount));
         }
 
         private EffectOutcome ApplyDamage(AbilityEffect effect, OperatorState caster, OperatorState recipient)

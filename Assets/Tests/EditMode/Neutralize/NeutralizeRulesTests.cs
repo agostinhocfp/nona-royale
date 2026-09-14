@@ -58,7 +58,7 @@ namespace NonaRoyale.Core.Tests.Neutralize
 
             var targeting = new TargetingRules(_map, _statuses);
             var damage = new DamagePipeline(_statuses, new SeededRandom(1));
-            var cellEffects = new DeferredCellEffects(_clock, targeting, damage);
+            var cellEffects = new DeferredCellEffects(_clock, targeting, damage, _statuses);
             var abilities = new AbilityResolver(_map, _clock, _energy, _statuses, targeting, damage, cellEffects);
 
             _killer = new OperatorState(1, "Syla", PlayerColor.Red, 6, 1.5);
@@ -191,7 +191,7 @@ namespace NonaRoyale.Core.Tests.Neutralize
             var combat = new CombatConfig(neutralizeEnergyBounty: 0);
             var targeting = new TargetingRules(_map, _statuses);
             var damage = new DamagePipeline(_statuses, new SeededRandom(1));
-            var cellEffects = new DeferredCellEffects(_clock, targeting, damage);
+            var cellEffects = new DeferredCellEffects(_clock, targeting, damage, _statuses);
             var abilities = new AbilityResolver(_map, _clock, _energy, _statuses, targeting, damage, cellEffects);
 
             var unrewarded = new NeutralizeRules(

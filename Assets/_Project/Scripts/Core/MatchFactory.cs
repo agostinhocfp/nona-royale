@@ -149,8 +149,7 @@ namespace NonaRoyale.Core
             // Deferred cell effects (ADR-0006). Built before the resolver, which
             // writes beacons into it, and before the turn machine, which fires
             // them at upkeep — one registry, two callers, no second copy.
-            var cellEffects = new DeferredCellEffects(clock, targeting, damage);
-
+            var cellEffects = new DeferredCellEffects(clock, targeting, damage, statuses);
             var abilities = new AbilityResolver(map, clock, energy, statuses, targeting, damage, cellEffects);
             var auraRules = new AuraRules(targeting, auras);
 

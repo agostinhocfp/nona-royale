@@ -94,7 +94,7 @@ namespace NonaRoyale.Core.Tests.Turn
             _energy = new EnergyLedger(EnergyConfig.Default);
             _damage = new DamagePipeline(_statuses, new SeededRandom(1));
             _targeting = new TargetingRules(_map, _statuses);
-            _cellEffects = new DeferredCellEffects(_clock, _targeting, _damage);
+            _cellEffects = new DeferredCellEffects(_clock, _targeting, _damage, _statuses);
             _abilities = new AbilityResolver(_map, _clock, _energy, _statuses, _targeting, _damage, _cellEffects);
 
             _neutralize = new NeutralizeRules(_statuses, _abilities, _energy, _operators, _players, _combat);
@@ -814,7 +814,7 @@ namespace NonaRoyale.Core.Tests.Turn
             var targeting = new TargetingRules(_map, _statuses);
             var energy = new EnergyLedger(EnergyConfig.Default);
             var damage = new DamagePipeline(_statuses, new SeededRandom(1));
-            var cellEffects = new DeferredCellEffects(_clock, targeting, damage);
+            var cellEffects = new DeferredCellEffects(_clock, targeting, damage, _statuses);
             _abilities = new AbilityResolver(_map, _clock, energy, _statuses, targeting, damage, cellEffects);
             _neutralize = new NeutralizeRules(_statuses, _abilities, energy, _operators, new[] { _red, _blue }, _combat);
 

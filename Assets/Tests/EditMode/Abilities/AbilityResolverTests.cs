@@ -53,7 +53,7 @@ namespace NonaRoyale.Core.Tests.Abilities
             _targeting = new TargetingRules(_map, _statuses);
             _energy = new EnergyLedger(EnergyConfig.Default);
             _damage = new DamagePipeline(_statuses, new SeededRandom(1));
-            _cellEffects = new DeferredCellEffects(_clock, _targeting, _damage);
+            _cellEffects = new DeferredCellEffects(_clock, _targeting, _damage, _statuses);
             _abilities = new AbilityResolver(_map, _clock, _energy, _statuses, _targeting, _damage, _cellEffects);
 
             // Positions are stated as TRACK cells, not progress, and converted

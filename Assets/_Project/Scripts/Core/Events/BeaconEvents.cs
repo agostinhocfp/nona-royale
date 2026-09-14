@@ -71,4 +71,69 @@ namespace NonaRoyale.Core.Events
                 ? $"{Owner}'s beacon fires on {Cell} and hits nothing"
                 : $"{Owner}'s beacon fires on {Cell}, {Caught} caught for {DamagePerTarget} each";
     }
+
+    /// <summary>
+    /// A lingering zone was deployed on a cell. It detonates at its owner's next
+    /// upkeep and holds the ground afterwards (ADR-0007).
+    /// </summary>
+    public sealed class ZoneDeployed : IGameEvent
+    {
+        public ZoneDeployed(OperatorState caster, CellRef cell, int detonationDamage)
+        {
+            Caster = caster;
+            Cell = cell;
+            DetonationDamage = detonationDamage;
+        }
+
+        public OperatorState Caster { get; }
+        public CellRef Cell { get; }
+
+        /// <summary>What each enemy caught by the detonation takes. Not divided.</summary>
+        public int DetonationDamage { get; }
+
+        public override string ToString() => $"{Caster.Name} deploys a killzone on {Cell}";
+    }
+
+    /// <summary>
+    /// A zone resolved — either its detonation or one of its lingering ticks.
+    /// </summary>
+    /// <remarks>
+    /// <b>The two read differently and the view has to tell them apart.</b> A
+    /// detonation is a blast that stuns; a lingering tick is ground doing its
+    /// work, and it stuns nobody. Reporting both as one event would make the
+    /// second look like a bug the first time a player was not stunned again.
+    /// </remarks>
+    public sealed class ZoneTicked : IGameEvent
+    {
+        public ZoneTicked(
+            PlayerColor owner, CellRef cell, bool isDetonation, int caught, int damagePerTarget)
+        {
+            Owner = owner;
+            Cell = cell;
+            IsDetonation = isDetonation;
+            Caught = caught;
+            DamagePerTarget = damagePerTarget;
+        }
+
+        public PlayerColor Owner { get; }
+        public CellRef Cell { get; }
+
+        /// <summary>True for the blast, false for the ground afterwards.</summary>
+        public bool IsDetonation { get; }
+
+        /// <summary>How many the zone reached. Zero is a real outcome.</summary>
+        public int Caught { get; }
+
+        /// <summary>What each of them took before mitigation.</summary>
+        public int DamagePerTarget { get; }
+
+        public override string ToString()
+        {
+            string what = IsDetonation ? "detonates" : "lingers";
+
+            return Caught == 0
+                ? $"{Owner}'s killzone {what} on {Cell} and catches nobody"
+                : $"{Owner}'s killzone {what} on {Cell}, {Caught} caught for {DamagePerTarget} each";
+        }
+    }
 }

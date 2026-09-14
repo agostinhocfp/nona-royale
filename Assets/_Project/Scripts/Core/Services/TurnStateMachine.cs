@@ -247,7 +247,7 @@ namespace NonaRoyale.Core.Services
                     var victim = resolution.Caught[i];
                     var outcome = _neutralize.Apply(victim, resolution.SourceOperatorId);
 
-                    neutralized.Add(new UpkeepNeutralize(victim, "beacon", outcome));
+                    neutralized.Add(new UpkeepNeutralize(victim, resolution.Cause, outcome));
                 }
             }
 

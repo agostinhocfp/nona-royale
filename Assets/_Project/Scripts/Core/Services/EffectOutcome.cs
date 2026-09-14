@@ -55,7 +55,18 @@ namespace NonaRoyale.Core.Services
         /// view must draw it: an unannounced delayed strike is a trap, and the
         /// ability is designed around opponents seeing it and choosing.
         /// </remarks>
-        BeaconPlaced = 8
+        BeaconPlaced = 8,
+
+        /// <summary>
+        /// A lingering zone was deployed on a cell (ADR-0007). Like
+        /// <see cref="BeaconPlaced"/>, nothing has happened to anybody yet.
+        /// </summary>
+        /// <remarks>
+        /// Distinct from a beacon because the view has to draw it differently and
+        /// for longer: a beacon is a crosshair that resolves once, a zone is
+        /// ground that stays dangerous for several rounds.
+        /// </remarks>
+        ZoneDeployed = 9
     }
 
     /// <summary>
@@ -131,11 +142,16 @@ namespace NonaRoyale.Core.Services
             new EffectOutcome(EffectOutcomeKind.BeaconPlaced, caster, default, totalDamage,
                 default, 0, 0, cell);
 
+        /// <summary>A zone deployed by <paramref name="caster"/> on <paramref name="cell"/>.</summary>
+        public static EffectOutcome ZoneDeployed(OperatorState caster, CellRef cell, int detonationDamage) =>
+            new EffectOutcome(EffectOutcomeKind.ZoneDeployed, caster, default, detonationDamage,
+                default, 0, 0, cell);
+
         public static EffectOutcome Executed(OperatorState recipient) =>
             new EffectOutcome(EffectOutcomeKind.Executed, recipient, default, 0, default, 0, 0);
 
         public override string ToString() =>
-            Kind == EffectOutcomeKind.BeaconPlaced
+            Kind == EffectOutcomeKind.BeaconPlaced || Kind == EffectOutcomeKind.ZoneDeployed
                 ? $"{Kind} -> {Cell}"
                 : $"{Kind} -> {Recipient?.Name}";
     }

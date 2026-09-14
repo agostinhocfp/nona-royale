@@ -99,6 +99,26 @@ namespace NonaRoyale.Core.Abilities
         /// <c>Amount</c> carries the beam's total damage, divided among everyone
         /// it catches; <c>Radius</c> its spread around the painted cell.
         /// </remarks>
-        PaintCell = 8
+        PaintCell = 8,
+
+        /// <summary>
+        /// Deploys a lingering zone on a cell. It detonates at the caster's next
+        /// upkeep and then bills again for a set number of that caster's turns
+        /// (ADR-0007). Nuetu's Killzone.
+        /// </summary>
+        /// <remarks>
+        /// <b>The sibling of <see cref="PaintCell"/>, and deliberately its
+        /// opposite on two axes.</b> A beacon is one moment and splits its damage
+        /// among everyone caught, so it is strongest against a lone target; a
+        /// zone is a duration and bills each victim in full, so it is strongest
+        /// against a crowd. Two cell abilities that felt the same would not have
+        /// been worth two.
+        ///
+        /// <b>Only the detonation applies its status.</b> Stun blocks movement
+        /// (§5.1), so a zone that stunned on every tick would hold an operator
+        /// inside itself until it expired — nine energy to remove somebody from
+        /// the game. The grenade crushes once; what lingers only grinds.
+        /// </remarks>
+        DeployZone = 9
     }
 }

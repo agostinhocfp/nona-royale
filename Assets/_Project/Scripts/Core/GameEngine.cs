@@ -192,14 +192,33 @@ namespace NonaRoyale.Core
             // Each hit goes through EmitDamage rather than being written as a
             // plain DamageDealt: the beam is Normal, so it can be evaded or
             // absorbed, and those are three visibly different things (§9.3).
-            foreach (var beacon in upkeep.CellEffects)
+            foreach (var resolved in upkeep.CellEffects)
             {
-                events.Add(new BeaconFired(
-                    beacon.Owner, beacon.Cell, beacon.Caught.Count, beacon.DamagePerTarget));
+                // A beacon and a zone tick are different events because they read
+                // differently: one beam resolving once, against ground doing its
+                // work for the third round running (ADR-0006, ADR-0007).
+                if (resolved.Cause == "beacon")
+                {
+                    events.Add(new BeaconFired(
+                        resolved.Owner, resolved.Cell, resolved.Caught.Count, resolved.DamagePerTarget));
+                }
+                else
+                {
+                    events.Add(new ZoneTicked(
+                        resolved.Owner, resolved.Cell, resolved.IsDetonation,
+                        resolved.Caught.Count, resolved.DamagePerTarget));
 
-                for (int i = 0; i < beacon.Damage.Count; i++)
-                    EmitDamage(beacon.Caught[i], beacon.Damage[i], events);
+                    // Only the detonation stuns, so only it has statuses to
+                    // announce. A lingering tick that emitted nothing here is
+                    // correct, not a missing case.
+                    foreach (var stunned in resolved.Stunned)
+                        events.Add(new StatusApplied(stunned, StatusKind.Stun, 2));
+                }
+
+                for (int i = 0; i < resolved.Damage.Count; i++)
+                    EmitDamage(resolved.Caught[i], resolved.Damage[i], events);
             }
+
 
             // Neutralizes from upkeep are applied by TurnStateMachine, so this
             // reports rather than resolves. It reports the cause, the mark
@@ -517,6 +536,11 @@ namespace NonaRoyale.Core
                     events.Add(new BeaconPlaced(outcome.Recipient, outcome.Cell, outcome.Amount));
                     break;
 
+                case EffectOutcomeKind.ZoneDeployed:
+                    events.Add(new ZoneDeployed(outcome.Recipient, outcome.Cell, outcome.Amount));
+                    break;
+
+
             }
         }
 
@@ -743,6 +767,8 @@ namespace NonaRoyale.Core
         /// it and choosing.
         /// </remarks>
         public IReadOnlyList<CellRef> ActiveBeacons() => _cellEffects.ActiveBeacons();
+        /// <summary>Cells holding a lingering zone right now (ADR-0007).</summary>
+        public IReadOnlyList<CellRef> ActiveZones() => _cellEffects.ActiveZones();
 
 
         /// <summary>
