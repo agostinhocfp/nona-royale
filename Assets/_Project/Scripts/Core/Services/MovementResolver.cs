@@ -45,6 +45,9 @@ namespace NonaRoyale.Core.Services
         /// </summary>
         public int DeployFace => _config.DeployRequirement;
 
+        /// <summary>Straight eligible turns without <see cref="DeployFace"/> before the pity deploy fires. Zero disables.</summary>
+        public int PityDeployAfterTurns => _config.PityDeployAfterTurns;
+
         /// <summary>
         /// Effective speed after auras and slows, floored at
         /// <see cref="GameConfig.MinSpeedMultiplier"/>.
@@ -59,7 +62,8 @@ namespace NonaRoyale.Core.Services
 
         /// <summary>
         /// Cells moved for a dice value at a given speed:
-        /// <c>floor(dice × speed)</c> (COMBAT_SYSTEMS §6).
+        /// <c>max(1, floor(dice × speed))</c> for any spent die
+        /// (COMBAT_SYSTEMS §6, amended 2026-09-14).
         /// </summary>
         /// <remarks>
         /// Floored rather than rounded so a half-step multiplier never gifts a
@@ -72,6 +76,18 @@ namespace NonaRoyale.Core.Services
         /// spent separately they can lose one each. The two losses coincide
         /// exactly when both dice are odd — 9 rolls in 36 — and at whole-number
         /// speeds they never happen at all.
+        ///
+        /// <b>A spent die always moves at least one cell (2026-09-14).</b>
+        /// Before the clamp, exactly one case computed zero: a die of 1 under
+        /// any slow that takes effective speed below 1.0. Rolling a die and
+        /// watching the piece not move reads as the game breaking, not as a
+        /// slow biting — so slows may shrink a move but never erase one.
+        /// Standing still remains stun's job alone, applied on purpose (§5.2).
+        /// The clamp is a rule, not a dial: "a move moves" is in the same
+        /// family as "an area includes its origin", and
+        /// <see cref="GameConfig.MinSpeedMultiplier"/> stays the tuning knob
+        /// for how hard slows bite everywhere else. A dice value of zero still
+        /// moves zero — no die was spent, so there is nothing to guarantee.
         /// </remarks>
         public int CellsFor(int diceValue, double effectiveSpeed)
         {
@@ -80,7 +96,9 @@ namespace NonaRoyale.Core.Services
             if (effectiveSpeed <= 0)
                 throw new ArgumentOutOfRangeException(nameof(effectiveSpeed));
 
-            return (int)Math.Floor(diceValue * effectiveSpeed);
+            if (diceValue == 0) return 0;
+
+            return Math.Max(1, (int)Math.Floor(diceValue * effectiveSpeed));
         }
 
         /// <summary>

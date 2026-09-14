@@ -127,6 +127,38 @@ namespace NonaRoyale.Core.Services
             return legal;
         }
 
+        /// <summary>
+        /// Every board cell this ability could legally be aimed at right now
+        /// (ADR-0006). Empty for an ability that does not take a cell.
+        /// </summary>
+        /// <remarks>
+        /// The cell-targeted twin of <see cref="LegalTargets"/>, and it exists
+        /// for the same reason: the view must not evaluate rules
+        /// (PRESENTATION §1), so the picker highlights exactly what a cast
+        /// would accept — range measured along the track, home columns
+        /// excluded, and the camping rule (§4.4, second amendment) already
+        /// applied, so a sheltered caster is offered nothing behind itself.
+        /// </remarks>
+        public IReadOnlyList<CellRef> LegalCells(OperatorState caster, AbilityDefinition ability)
+        {
+            if (caster == null) throw new ArgumentNullException(nameof(caster));
+            if (ability == null) throw new ArgumentNullException(nameof(ability));
+
+            var cells = new List<CellRef>();
+            if (!ability.RequiresCell) return cells;
+
+            int circuit = _map.Profile.CircuitLength;
+
+            for (int index = 0; index < circuit; index++)
+            {
+                var cell = CellRef.Track(index);
+                if (_targeting.CanTargetCell(caster, cell, ability.Range).IsLegal)
+                    cells.Add(cell);
+            }
+
+            return cells;
+        }
+
         /// <summary>Clears every cooldown for an operator. Called on neutralize (§1.2).</summary>
         public void ResetCooldowns(OperatorState op)
         {

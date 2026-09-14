@@ -60,6 +60,8 @@ namespace NonaRoyale.Unity.Composition
 
         private OperatorState _selectedCaster;
         private OperatorState _selectedTarget;
+        private CellRef? _selectedCell;
+        private IReadOnlyList<CellRef> _legalCells = new List<CellRef>();
         private AbilityDefinition _selectedAbility;
         private HighlightLayer _highlights;
         private FeedbackLayer _feedback;
@@ -77,6 +79,7 @@ namespace NonaRoyale.Unity.Composition
             _selectedCaster = null;
             _selectedTarget = null;
             _selectedAbility = null;
+            _selectedCell = null;
 
             // Both profiles must be drawable crosses: BoardLayout rejects a
             // circuit outside the 8L+4 family rather than drawing a track with a
@@ -197,6 +200,54 @@ namespace NonaRoyale.Unity.Composition
             {
                 FrameCamera();
             }
+
+            if (Input.GetMouseButtonDown(0)) HandleBoardClick();
+        }
+
+        /// <summary>
+        /// Turns a board click into the selected cell for a cell-targeted cast.
+        /// </summary>
+        /// <remarks>
+        /// Only legal cells are clickable, and the engine decided which those
+        /// are (PRESENTATION §1) — this just snaps the click to the nearest
+        /// highlighted cell. A click anywhere else clears the choice rather
+        /// than guessing, so a miss never silently re-aims a strike.
+        /// </remarks>
+        private void HandleBoardClick()
+        {
+            if (_match == null || _selectedAbility == null || !_selectedAbility.RequiresCell) return;
+            if (_selectedCaster == null || _selectedCaster.IsInYard) return;
+
+            if (showPanel)
+            {
+                var gui = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
+                if (new Rect(10, 10, PanelWidth - 20f, Screen.height - 20).Contains(gui)) return;
+            }
+
+            var camera = Camera.main;
+            if (camera == null) return;
+
+            Vector3 world = camera.ScreenToWorldPoint(Input.mousePosition);
+
+            CellRef? nearest = null;
+            float best = cellSpacing * cellSpacing * 0.3f;   // snap radius ≈ 0.55 of a cell
+
+            foreach (var cell in _legalCells)
+            {
+                Vector3 position = _layout.PositionOf(cell);
+                float dx = position.x - world.x;
+                float dy = position.y - world.y;
+                float sq = dx * dx + dy * dy;
+
+                if (sq < best)
+                {
+                    best = sq;
+                    nearest = cell;
+                }
+            }
+
+            _selectedCell = nearest;
+            RefreshHighlights();
         }
 
         // ── Driving the engine ───────────────────────────────────────────
@@ -373,10 +424,33 @@ namespace NonaRoyale.Unity.Composition
 
             _highlights.ShowLandings(pooled, perDie);
 
+            _legalCells = new List<CellRef>();
+
+            if (_selectedCaster == null || _selectedAbility == null || _selectedCaster.IsInYard)
+                return;
+
+            // A cell-targeted ability shows the cells a cast would actually
+            // accept instead of a bare range ring — range, home columns and
+            // the camping rule (§4.4) come pre-applied from the engine, and
+            // the chosen cell is drawn bold so the aim is visible before the
+            // energy is spent.
+            if (_selectedAbility.RequiresCell)
+            {
+                _legalCells = _match.Engine.LegalCellsFor(_selectedCaster, _selectedAbility);
+
+                // A choice can stop being legal under the player's feet — the
+                // caster stepped onto a safe cell, say — so a stale cell is
+                // dropped rather than cast.
+                if (_selectedCell != null && !_legalCells.Contains(_selectedCell.Value))
+                    _selectedCell = null;
+
+                _highlights.ShowCellTargets(_legalCells, _selectedCell);
+                return;
+            }
+
             // An unlimited range has no ring to draw, and handing int.MaxValue to
             // a routine that iterates it is not a large highlight — it is a hang.
-            if (_selectedCaster != null && _selectedAbility != null &&
-                !_selectedCaster.IsInYard && !_selectedAbility.HasUnlimitedRange)
+            if (!_selectedAbility.HasUnlimitedRange)
             {
                 _highlights.ShowRange(
                     _match.Map,
@@ -490,10 +564,12 @@ namespace NonaRoyale.Unity.Composition
 
             GUILayout.Space(6);
 
-            // Movement is compulsory (§6.1), so the engine refuses both of these
-            // while a die is still spendable. Greying them out says so before
-            // the click rather than after — the same reasoning that put
-            // CheckAbility behind the ability tray.
+            // Movement is compulsory (§6.1), so the engine refuses End Turn
+            // while a die is still spendable. Greying it out says so before the
+            // click rather than after — the same reasoning that put
+            // CheckAbility behind the ability tray. Roll stays enabled: it is
+            // the one legal action at AwaitingRoll, and an illegal re-roll is
+            // answered with a rejection in the log.
             bool owesMovement = engine.MustSpendRoll;
             var dice = engine.UnspentDice;
 
@@ -501,8 +577,9 @@ namespace NonaRoyale.Unity.Composition
                 ? "<i>no dice in hand</i>"
                 : $"unspent: <b>{Faces(dice)}</b>");
 
-            GUI.enabled = !owesMovement;
             if (GUILayout.Button("Roll")) Send(new RollDiceCommand());
+
+            GUI.enabled = !owesMovement;
             if (GUILayout.Button(owesMovement ? "End turn — spend your roll first" : "End turn"))
                 Send(new EndTurnCommand());
             GUI.enabled = true;
@@ -531,6 +608,7 @@ namespace NonaRoyale.Unity.Composition
                     _selectedCaster = selected ? null : op;
                     _selectedAbility = null;      // an ability belongs to its caster
                     _selectedTarget = null;       // and a target belongs to its ability
+                    _selectedCell = null;         // as does a cell
 
                     RefreshHighlights();
                 }
@@ -652,6 +730,7 @@ namespace NonaRoyale.Unity.Composition
                 {
                     _selectedAbility = chosen ? null : ability;
                     _selectedTarget = null;     // a target belongs to its ability
+                    _selectedCell = null;
                     RefreshHighlights();
                 }
 
@@ -662,31 +741,36 @@ namespace NonaRoyale.Unity.Composition
 
             if (_selectedAbility.RequiresTarget) DrawTargetList(seat);
             else if (_selectedAbility.RequiresCell)
-                GUILayout.Label("<i>needs a board cell — no picker yet (ADR-0006)</i>");
+            {
+                GUILayout.Label(_selectedCell == null
+                    ? "<i>click a highlighted cell on the board</i>"
+                    : $"<i>target cell: <b>{_selectedCell.Value}</b> — click another to change</i>");
+            }
             else GUILayout.Label("<i>no target — it fires around the caster</i>");
 
             GUILayout.Space(2);
 
-            // A cell-targeted ability cannot be cast from this panel at all: the
-            // command carries a CellRef and nothing here can produce one. Offering
-            // the button would send a cast the engine refuses for NoCell.
-            bool ready = !_selectedAbility.RequiresCell &&
+            bool ready = (!_selectedAbility.RequiresCell || _selectedCell != null) &&
                          (!_selectedAbility.RequiresTarget || _selectedTarget != null);
+
+            string missing = _selectedAbility.RequiresCell ? "click a cell" : "pick a target";
 
             GUI.enabled = ready;
 
             if (GUILayout.Button(ready
                     ? $"CAST {_selectedAbility.Name}"
-                    : $"CAST {_selectedAbility.Name} — pick a target"))
+                    : $"CAST {_selectedAbility.Name} — {missing}"))
             {
                 Send(new UseAbilityCommand(
                     _selectedCaster.Id, _selectedAbility.Id,
                     _selectedAbility.RequiresTarget && _selectedTarget != null
                         ? _selectedTarget.Id
-                        : (int?)null));
+                        : (int?)null,
+                    _selectedAbility.RequiresCell ? _selectedCell : null));
 
                 _selectedAbility = null;
                 _selectedTarget = null;
+                _selectedCell = null;
             }
 
             GUI.enabled = true;

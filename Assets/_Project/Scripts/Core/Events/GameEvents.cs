@@ -71,6 +71,30 @@ namespace NonaRoyale.Core.Events
         public override string ToString() => $"{Operator.Name} deploys to {Cell}";
     }
 
+    /// <summary>
+    /// Bad-luck deploy protection fired: the turn ended as its player's
+    /// <see cref="DroughtTurns"/>-th straight eligible turn without the deploy
+    /// face, so a yard operator walks on free.
+    /// </summary>
+    public sealed class OperatorPityDeployed : IGameEvent
+    {
+        public OperatorPityDeployed(OperatorState op, CellRef cell, int droughtTurns)
+        {
+            Operator = op;
+            Cell = cell;
+            DroughtTurns = droughtTurns;
+        }
+
+        public OperatorState Operator { get; }
+        public CellRef Cell { get; }
+
+        /// <summary>Consecutive eligible turns without the deploy face that triggered this.</summary>
+        public int DroughtTurns { get; }
+
+        public override string ToString() =>
+            $"{Operator.Name} deploys to {Cell} after {DroughtTurns} turns without a deploy face";
+    }
+
     public sealed class OperatorMoved : IGameEvent
     {
         public OperatorMoved(OperatorState op, int from, int to, CellRef cell)

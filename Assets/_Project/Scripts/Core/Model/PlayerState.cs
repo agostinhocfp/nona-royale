@@ -58,9 +58,28 @@ namespace NonaRoyale.Core.Model
         /// <summary>How many turns this player has taken. Status and cooldown timers are indexed on it.</summary>
         public int TurnIndex { get; private set; }
 
+        /// <summary>
+        /// Consecutive turns this player ended without the deploy face while
+        /// holding at least one operator in the yard. Bad-luck deploy
+        /// protection reads it; only <c>GameEngine</c> writes it.
+        /// </summary>
+        /// <remarks>
+        /// <b>It survives <see cref="BeginTurn"/></b>, unlike the energy flag —
+        /// a drought is a streak across turns, and resetting it here would make
+        /// the mechanic unreachable. It resets on three things only: the deploy
+        /// face appearing in any roll, a turn with an empty yard (a turn that
+        /// could not have used the deploy was not spent waiting for one), and
+        /// the pity deploy itself firing.
+        /// </remarks>
+        public int DeployDroughtTurns { get; private set; }
+
         internal void SetEnergy(int energy) => Energy = Math.Max(0, energy);
 
         internal void MarkEnergyGranted() => HasBeenGrantedEnergyThisTurn = true;
+
+        internal void RecordDeployDroughtTurn() => DeployDroughtTurns++;
+
+        internal void ResetDeployDrought() => DeployDroughtTurns = 0;
 
         /// <summary>Advances to this player's next turn and re-arms the energy grant.</summary>
         public void BeginTurn()

@@ -24,7 +24,8 @@ namespace NonaRoyale.Core.Config
             double speedMultiplierMin = 1.0,
             double speedMultiplierMax = 2.5,
             int diceSides = 6,
-            int dicePerRoll = 2)
+            int dicePerRoll = 2,
+            int pityDeployAfterTurns = 3)
         {
             if (diceSides < 2)
                 throw new ArgumentOutOfRangeException(nameof(diceSides));
@@ -40,6 +41,9 @@ namespace NonaRoyale.Core.Config
                     "A floor of zero would be a permanent stun, not a slow.");
             if (speedMultiplierMax < speedMultiplierMin)
                 throw new ArgumentException("Speed band maximum is below its minimum.", nameof(speedMultiplierMax));
+            if (pityDeployAfterTurns < 0)
+                throw new ArgumentOutOfRangeException(nameof(pityDeployAfterTurns),
+                    "Negative makes no sense; zero disables the mechanic.");
 
             DeployRequirement = deployRequirement;
             MaxRollsPerTurn = maxRollsPerTurn;
@@ -48,6 +52,7 @@ namespace NonaRoyale.Core.Config
             SpeedMultiplierMax = speedMultiplierMax;
             DiceSides = diceSides;
             DicePerRoll = dicePerRoll;
+            PityDeployAfterTurns = pityDeployAfterTurns;
         }
 
         /// <summary>A die must show this face to deploy an operator (ADR-0003).</summary>
@@ -79,6 +84,23 @@ namespace NonaRoyale.Core.Config
 
         /// <summary>Highest total the dice can show. Used to bound movement sanity checks.</summary>
         public int MaxDiceTotal => DiceSides * DicePerRoll;
+
+        /// <summary>
+        /// Bad-luck deploy protection: a turn ending as this player's Nth
+        /// straight eligible turn without the deploy face deploys a random yard
+        /// operator, free. Zero disables it.
+        /// </summary>
+        /// <remarks>
+        /// <b>At 3 this is a pacing mechanic wearing a protection costume, and
+        /// that is the design.</b> P(no deploy face) ≈ 0.69 per roll, so
+        /// three-turn droughts are routine — most matches will see this fire.
+        /// The consequence is deliberate: full squads within a handful of
+        /// turns, and the combat-first priority the sims support (67/33,
+        /// 2026-09-14) gets its combatants. It also bounds kill-snowballing,
+        /// since it covers re-deployment after neutralize uniformly. Raise to
+        /// 4 (~23% per window) if it should feel like rare mercy instead.
+        /// </remarks>
+        public int PityDeployAfterTurns { get; }
 
         /// <summary>The shipping values.</summary>
         public static GameConfig Default => new GameConfig();

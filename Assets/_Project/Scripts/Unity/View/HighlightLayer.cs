@@ -6,14 +6,15 @@ using UnityEngine;
 namespace NonaRoyale.Unity.View
 {
     /// <summary>
-    /// Draws the two things a player needs to see before committing: where a
-    /// move would land, and which cells an ability reaches.
+    /// Draws the things a player needs to see before committing: where a move
+    /// would land, which cells an ability reaches, and which cells a
+    /// cell-targeted cast would accept.
     /// </summary>
     /// <remarks>
-    /// Both are rebuilt from scratch each time they change. The marker count is
-    /// small — at most a squad's landings plus a range window — so pooling would
-    /// be complexity without benefit, and a rebuild cannot drift out of sync
-    /// with the state it is drawn from.
+    /// All are rebuilt from scratch each time they change. The marker count is
+    /// small — at most a squad's landings plus a range window or one track's
+    /// worth of targets — so pooling would be complexity without benefit, and a
+    /// rebuild cannot drift out of sync with the state it is drawn from.
     /// </remarks>
     public sealed class HighlightLayer : MonoBehaviour
     {
@@ -75,6 +76,29 @@ namespace NonaRoyale.Unity.View
                 Spawn(CellRef.Track(((origin.Index - step) % circuit + circuit) % circuit),
                     _layout.CellSize * 0.55f, new Color(0.45f, 0.75f, 0.95f, 0.55f), 1);
             }
+        }
+
+        /// <summary>
+        /// The cells a cell-targeted cast would accept, with the chosen one
+        /// drawn bold (ADR-0006).
+        /// </summary>
+        /// <remarks>
+        /// Legality arrives from the engine already decided — range, home
+        /// columns and the camping rule included — so this draws exactly the
+        /// clickable set and nothing a cast would refuse. Amber rather than
+        /// the range blue: these are not "cells in reach", they are "cells a
+        /// strike will land on", and a player mid-aim should not have to
+        /// remember which meaning the colour carries this time.
+        /// </remarks>
+        public void ShowCellTargets(IEnumerable<CellRef> legal, CellRef? chosen)
+        {
+            if (legal == null) return;
+
+            foreach (var cell in legal)
+                Spawn(cell, _layout.CellSize * 0.66f, new Color(0.95f, 0.66f, 0.30f, 0.50f), 1);
+
+            if (chosen != null)
+                Spawn(chosen.Value, _layout.CellSize * 0.98f, new Color(0.98f, 0.72f, 0.28f, 0.95f), 2);
         }
 
         private void Spawn(CellRef cell, float size, Color colour, int order)

@@ -8,7 +8,9 @@ using NonaRoyale.Core.Commands;
 using NonaRoyale.Core.Config;
 using NonaRoyale.Core.Events;
 using NonaRoyale.Core.Model;
+using NonaRoyale.Core.Rng;
 using NonaRoyale.Core.Services;
+
 
 namespace NonaRoyale.Core
 {
@@ -56,6 +58,17 @@ namespace NonaRoyale.Core
         private readonly CombatConfig _config;
         private readonly DeferredCellEffects _cellEffects;
 
+        /// <summary>
+        /// The match's one shared random stream. Only the pity deploy's yard
+        /// pick draws from it here; the dice themselves roll inside
+        /// <c>TurnStateMachine</c>. Sharing the stream is what keeps a seed
+        /// reproducing the whole match (IRandom's remarks).
+        /// </summary>
+        private readonly IRandom _random;
+
+        /// <summary>Whether any roll this turn showed the deploy face. Reset in <see cref="ResetRollState"/>.</summary>
+        private bool _sawDeployFace;
+
 
         /// <summary>
         /// The dice from this roll that have not been spent yet.
@@ -93,7 +106,8 @@ namespace NonaRoyale.Core
             NeutralizeRules neutralize,
                         WinConditions win,
             CombatConfig config,
-            DeferredCellEffects cellEffects)
+            DeferredCellEffects cellEffects,
+            IRandom random)
         {
 
             _operators = operators ?? throw new ArgumentNullException(nameof(operators));
@@ -109,6 +123,7 @@ namespace NonaRoyale.Core
             _win = win ?? throw new ArgumentNullException(nameof(win));
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _cellEffects = cellEffects ?? throw new ArgumentNullException(nameof(cellEffects));
+            _random = random ?? throw new ArgumentNullException(nameof(random));
 
             _unspentView = new ReadOnlyCollection<int>(_unspentDice);
 
@@ -265,6 +280,8 @@ namespace NonaRoyale.Core
             _unspentDice.Add(report.Roll.Second);
             _hasRolled = true;
 
+            if (report.Roll.CountOf(_movement.DeployFace) > 0) _sawDeployFace = true;
+
             events.Add(new DiceRolled(report.Roll, report.GrantsAnotherRoll));
 
             if (report.Grant.WasGranted)
@@ -298,6 +315,13 @@ namespace NonaRoyale.Core
                 return;
             }
 
+            // Evaluated before _turns.EndTurn() because that call nulls
+            // CurrentPlayer — the drought belongs to the player whose turn is
+            // closing, and after the handoff there is no way to know who that
+            // was. Placing the piece cannot change the winner, so running it
+            // ahead of the win check is safe.
+            EvaluatePityDeploy(events);
+
             var report = _turns.EndTurn();
 
             foreach (var expired in report.Expired)
@@ -312,6 +336,70 @@ namespace NonaRoyale.Core
             }
 
             BeginTurn(events);
+        }
+
+        /// <summary>
+        /// Bad-luck deploy protection (§6): a turn ending as its player's Nth
+        /// straight eligible turn without the deploy face deploys a random
+        /// yard operator, free.
+        /// </summary>
+        /// <remarks>
+        /// <b>Evaluated here for the same reason compulsory rolling is:</b>
+        /// "did the deploy face appear this turn" is only decidable once
+        /// rolling has definitively concluded, and with optional doubles
+        /// re-rolls that point is the end of the turn — a mid-roll check would
+        /// either fire while a re-roll could still produce the face, or need a
+        /// second evaluation at EndTurn anyway. The consequence is accepted:
+        /// the piece walks on as the turn closes and acts on its owner's next
+        /// turn, never inheriting forfeit dice.
+        ///
+        /// <b>An empty yard resets rather than pauses</b> — a turn that could
+        /// not have used the deploy was not spent waiting for one, and a
+        /// paused streak would leak stale history: a two-turn drought from the
+        /// opening would let an operator neutralized ten turns later walk back
+        /// after one bad roll.
+        ///
+        /// <b>The pick consumes the shared stream only when it is a pick.</b>
+        /// With one yard operator — the common case under two opening
+        /// deployments — no RNG is drawn, so the dice sequence of most matches
+        /// is untouched by the mechanic existing.
+        ///
+        /// <b>Free is the design, not an oversight.</b> An ordinary deploy
+        /// consumes the 6 that paid for it; this one's price was already paid
+        /// in turns spent an operator down.
+        /// </remarks>
+        private void EvaluatePityDeploy(List<IGameEvent> events)
+        {
+            int threshold = _movement.PityDeployAfterTurns;
+            if (threshold <= 0) return;
+
+            var player = _turns.CurrentPlayer;
+
+            if (_sawDeployFace)
+            {
+                player.ResetDeployDrought();
+                return;
+            }
+
+            var yard = new List<OperatorState>();
+            foreach (var op in player.Operators)
+                if (op.IsInYard) yard.Add(op);
+
+            if (yard.Count == 0)
+            {
+                player.ResetDeployDrought();
+                return;
+            }
+
+            player.RecordDeployDroughtTurn();
+            if (player.DeployDroughtTurns < threshold) return;
+
+            var chosen = yard.Count == 1 ? yard[0] : yard[_random.NextInt(0, yard.Count)];
+            chosen.MoveTo(_movement.DeployProgress);
+            player.ResetDeployDrought();
+
+            events.Add(new OperatorPityDeployed(
+                chosen, _map.CellAt(chosen.Owner, chosen.Progress), threshold));
         }
 
         // ── Actions ──────────────────────────────────────────────────────
@@ -678,6 +766,14 @@ namespace NonaRoyale.Core
             OperatorState caster, AbilityDefinition ability) =>
             _abilities.LegalTargets(caster, ability, _operators);
 
+        /// <summary>
+        /// Every cell the given ability could be aimed at right now
+        /// (ADR-0006). The cell-targeted twin of <see cref="LegalTargetsFor"/>,
+        /// for the picker to highlight — the view must not evaluate rules.
+        /// </summary>
+        public IReadOnlyList<CellRef> LegalCellsFor(OperatorState caster, AbilityDefinition ability) =>
+            _abilities.LegalCells(caster, ability);
+
 
         /// <summary>
         /// Every move the current player could make with the dice still in hand:
@@ -855,6 +951,7 @@ namespace NonaRoyale.Core
         private void ResetRollState()
         {
             _hasRolled = false;
+            _sawDeployFace = false;
             _unspentDice.Clear();
         }
 

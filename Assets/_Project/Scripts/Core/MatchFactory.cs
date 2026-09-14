@@ -183,7 +183,7 @@ namespace NonaRoyale.Core
 
             var engine = new GameEngine(
     operators, abilityBook, map, turns, movement, collisions,
-    abilities, statuses, auraRules, neutralize, win, combatConfig, cellEffects);
+    abilities, statuses, auraRules, neutralize, win, combatConfig, cellEffects, random);
 
 
             return new Match(engine, players, operators, map, abilitiesByOperator);
