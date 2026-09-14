@@ -3,6 +3,8 @@
 > Location in repo: `docs/decisions/0002-board-size.md`
 > Status: **Accepted** — 52/6, the classic Ludo cross. 48 was adopted for four amendments and could not be drawn (Amendment 6).
 
+- 2026-09-13 — Amendment 6 revisited. The whole drawable family measured: combat density is nearly flat across it (0.41–0.46 kills per turn from 28 cells to 60), so board size is a pacing dial and almost nothing else. **44/5 confirmed as the in-budget candidate** — 20.8 turns against Standard's 22.6, four off the p90, fractionally denser, and landing Amendment 4's readability target at 21% of the loop. Not adopted: a smaller-than-Ludo board is a felt property and wants a session. Amendment 6's own re-baseline superseded — the roster changed under it, chiefly `EvasionChance` 0.5 → 0.3.
+
 - 2026-09-12 — Amended. 48 shown to be undrawable as a four-arm cross: the loop needs `8L + 4` cells and 48 implies an arm of 5.5, which `BoardLayout` had been absorbing with four two-cell gaps in the track and home columns one cell short. Board corrected to **52/6, journey 58** — classic Ludo, which ADR-0003 always said this board was. `% 8 == 0` struck as a false invariant. Every absolute figure re-baselined; the match now runs 21.3 turns against a 15–20 minute budget, and 44/5 recorded as the in-budget fallback the old constraint had hidden.
 
 > Date: 2026-07-10 · Amended 2026-07-10 (home-column length + constants) · Amended 2026-09-11 (pacing model corrected, speed band, board profiles) · Amended 2026-09-12 (laps and shipping profiles; Compact withdrawn and band lowered; mark damage, haste payout, and a measurement fault)
@@ -396,9 +398,37 @@ Amendment 4 already stated the cost plainly and named the levers if it ran long:
 
 Not adopted. It is a smaller board than classic Ludo and the readability constraint from Amendment 4 has to be re-checked against it — a mean move covers 21% of a 44-cell loop against 18% of 52, still inside the "roughly a fifth" target but worth measuring rather than asserting. **Recorded as the first thing to try if 21.3 turns reads long in a human session.**
 
+### Revisit — 44/5 measured, and it holds up
+
+The trigger was "measure 44/5 before touching any combat dial." Done, across the whole drawable family at 800 matches per row, four players, `openingDeployments = 2`, alpha three.
+
+| Board         | Journey | Turns    | p90    | Neutralizes | Kills/turn | Mean move, share of loop |
+| ------------- | ------- | -------- | ------ | ----------- | ---------- | ------------------------ |
+| 28/3          | 31      | 15.3     | 17     | 6.6         | 0.43       | **33%**                  |
+| 36/4          | 40      | 17.3     | 22     | 7.9         | **0.46**   | 26%                      |
+| **44/5**      | 49      | **20.8** | **25** | 8.7         | 0.42       | **21%**                  |
+| Standard 52/6 | 58      | 22.6     | 29     | 9.3         | 0.41       | 18%                      |
+| 60/7          | 67      | 26.4     | 32     | 9.5         | 0.36       | 16%                      |
+
+**Combat density is nearly flat across a board that doubles in journey** — 0.41 to 0.46 kills per turn end to end. Board size buys and sells pacing almost purely. That is a stronger version of Amendment 3's finding that journey length is the blunt instrument, and it is why the table above is a pacing decision rather than a balance one.
+
+**44/5 costs 0.6 neutralizes and saves 1.8 turns and four off the p90**, and is fractionally denser than Standard by kills per turn. It also lands the Amendment 4 readability constraint exactly: a mean move covers **21%** of a 44-cell loop against the stated target of roughly a fifth. Standard is under at 18%; 36/4 is over at 26%; 28/3 sits on the 33% hard limit.
+
+**Not adopted here.** Amendment 4 exists because a human noticed pieces jumping when a harness said the board was fine, and the same standard applies in reverse: 44/5 is a smaller board than classic Ludo, which this project has copied 1:1 since ADR-0003, and that is a felt property rather than a measured one. The measurement removes every reason not to try it; a session decides.
+
+**If the budget is what gives instead**, say so explicitly rather than letting the board drift. The 15–20 minute target was set in this ADR's Context before anyone had played the game, and every board except the two smallest now exceeds it. It is a candidate for being wrong.
+
+### The re-baseline in this amendment is already superseded
+
+The table above this section records **21.3 turns, 6.8 neutralizes** for Standard. The current figure is **22.6 and 9.3**, on the same board and the same band.
+
+The difference is not noise and not a fault — **the roster changed underneath it**. `EvasionChance` fell 0.5 → 0.3, Bouncer lost three health, Miracle Pull's range widened, and movement became compulsory. Every one of those makes a kill easier to land.
+
+Recorded because the gap looked alarming before it was traced: **a figure is only comparable to another taken on the same rules**, and in this project the rules move faster than the measurements. `COMBAT_SYSTEMS` §12 now carries the current numbers and the configuration they were taken under; treat the table above as historical.
+
 ### Revisit trigger
 
-A human session on Standard 52/6. If it reads long, measure 44/5 before touching any combat dial — it is the only lever that buys pacing without giving up combat, and it exists solely because this amendment widened the family.
+A human session on Standard 52/6, with one question: does it run long? If yes, 44/5 is measured, drawable, and ready. If it does not feel long, amend the budget in Context rather than leaving a target nothing meets.
 
 ## Alternatives considered
 

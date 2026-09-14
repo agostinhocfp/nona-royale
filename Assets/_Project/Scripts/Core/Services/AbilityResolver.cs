@@ -66,6 +66,60 @@ namespace NonaRoyale.Core.Services
             return _clock.TurnIndexOf(caster.Owner) >= readyTurn;
         }
 
+        /// <summary>
+        /// Every operator this ability could legally be aimed at right now.
+        /// Empty for an ability that takes no target.
+        /// </summary>
+        /// <remarks>
+        /// <b>For drawing a target list that is short and true.</b> The view was
+        /// offering every operator on the board — eleven buttons at four seats —
+        /// and most were never legal for the cast that followed. Range, stealth
+        /// and home columns are rules (§4), so the view must not decide them
+        /// (<c>PRESENTATION.md</c> §1).
+        ///
+        /// <b>It runs exactly the target-dependent checks <see cref="Use"/>
+        /// runs</b>, in the same order and through the same code: single-target
+        /// legality, then whether any effect survives the cast mode, then swap
+        /// placement. Anything that answers here is a cast that will be
+        /// approved. What it deliberately omits is everything about the
+        /// <i>caster</i> — stun, cooldown, energy — because those do not vary by
+        /// target and <c>GameEngine.CheckAbility</c> already reports them.
+        ///
+        /// <b>The caster is included when it is a legal target of its own
+        /// ability.</b> Aiming at yourself resolves as a friendly cast by §10's
+        /// mode rule, which is a real question the rules have not settled — so
+        /// this reports it rather than quietly deciding it. A view that does not
+        /// want to offer it can filter one entry.
+        /// </remarks>
+        public IReadOnlyList<OperatorState> LegalTargets(
+            OperatorState caster,
+            AbilityDefinition ability,
+            IReadOnlyList<OperatorState> allOperators)
+        {
+            if (caster == null) throw new ArgumentNullException(nameof(caster));
+            if (ability == null) throw new ArgumentNullException(nameof(ability));
+            if (allOperators == null) throw new ArgumentNullException(nameof(allOperators));
+
+            var legal = new List<OperatorState>();
+
+            if (!ability.RequiresTarget) return legal;
+            if (!_targeting.IsInPlay(caster)) return legal;
+
+            foreach (var candidate in allOperators)
+            {
+                if (candidate == null) continue;
+
+                if (!_targeting.CanSingleTarget(caster, candidate, ability.Range).IsLegal) continue;
+                if (!AnyEffectApplies(ability, CastMode(caster, candidate))) continue;
+                if (!SwapWouldBeLegal(ability, caster, candidate)) continue;
+
+                legal.Add(candidate);
+            }
+
+            return legal;
+        }
+
+
         /// <summary>Clears every cooldown for an operator. Called on neutralize (§1.2).</summary>
         public void ResetCooldowns(OperatorState op)
         {

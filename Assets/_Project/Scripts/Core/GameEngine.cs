@@ -582,6 +582,24 @@ namespace NonaRoyale.Core
             return AbilityAvailability.Ready;
         }
 
+
+        /// <summary>
+        /// Who this ability could legally be aimed at right now. Empty for an
+        /// ability that takes no target.
+        /// </summary>
+        /// <remarks>
+        /// Delegated rather than computed here, for the reason
+        /// <see cref="CheckAbility"/>'s own remarks give about the energy
+        /// comparison: <c>AbilityResolver</c> owns target validation (§9.1) and
+        /// already runs every one of these checks for <c>Use</c>. A second copy
+        /// here would be a second set of rules, and the two would disagree the
+        /// first time either moved.
+        /// </remarks>
+        public IReadOnlyList<OperatorState> LegalTargetsFor(
+            OperatorState caster, AbilityDefinition ability) =>
+            _abilities.LegalTargets(caster, ability, _operators);
+
+
         /// <summary>
         /// Every move the current player could make with the dice still in hand:
         /// per operator, the pooled move and one per distinct unspent face.

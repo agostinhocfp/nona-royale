@@ -606,24 +606,101 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 ## 12. Open items
 
+## 12. Open items
+
 These are dials and scope, not holes. Nothing here blocks implementation.
 
-> **Every figure below is stale, and by more than it was.** They were measured before the mark gained damage, before Velvet Rope became Atomic, before the reach retunes, before Bouncer was cut on three axes, before Miracle Pull widened, before two operators entered the draft pool, before the board went to 52/6, and before movement became compulsory and splittable. **Re-run `tools/sim/NonaRoyale.Sim` and replace these numbers before citing them.** Note also that adding an operator shifts the RNG stream, so figures either side of a roster change are not comparable even at the same seed.
+All figures below are measured against the live core by `tools/sim/NonaRoyale.Sim`, **800 matches per row**, four players, `openingDeployments = 2`, alpha three via `CreateAlphaMatch`. They supersede every earlier figure in this document and in ADR-0002 Amendments 2 through 6.
 
-**Last measured baseline** — Standard **48×1 (withdrawn board, ADR-0002 Amdt 5)**, band 1.0/1.5/1.5, `openingDeployments = 2`, alpha three, pre-roster-changes, one operator moving per roll:
+**Baseline — Standard 52/6, band 1.0/1.5/1.5, `NeutralizeEnergyBounty = 3`:**
 
-**19.6 turns, p90 24, 6.7 neutralizes, 43.3 abilities, 33% squad occupancy.**
+**22.6 turns · p90 29 · 9.3 neutralizes · 53.5 abilities · 5.1 collisions · 12.1 energy burned · 33% squad occupancy.**
 
-**Nothing has ever measured a drafted squad.** The harness still fields the alpha three, so not one of Mimi's or Javi's four live abilities has run in a simulated match.
+### Why this is not the 21.3 / 6.8 that ADR-0002 Amendment 6 records
 
-### Consequences of compulsory and split movement — all unmeasured
+It is the same board and the same band, and the neutralize count is 37% higher. That is not noise and it is not a fault: **the roster changed underneath it.** `EvasionChance` fell 0.5 → 0.3, Bouncer lost three health, Miracle Pull's range widened, and movement became compulsory (§6.1). Every one of those makes a kill easier to land, and evasion alone accounts for most of it.
 
-- **Up to six operator-moves in a turn.** Two per roll against one, and `MaxRollsPerTurn = 3` (§6.2). Expect materially shorter matches.
-- **This pulls against the 52/6 board, which lengthened the journey 54 → 58.** Measure the two **together** against `CreateAlphaMatch`; read separately, each will be contaminated by the other.
-- **Landings per roll roughly double when players split**, and a landing is the collision trigger (§7.1). §12 struck `CollisionDamage` as a dial because collisions fire only ~2.4 times a match — **splitting attacks that premise directly.** If collision frequency rises materially, re-test the dial before trusting the strike.
-- **The harness will not detect any of the splitting effects.** `ScriptedPlayer` pools and never splits, by deliberate policy: any split policy is a tactical judgement the harness would be making on the player's behalf. Current runs therefore measure compulsory movement only.
-- **Kill bounties become easier to farm.** Two collisions per roll is two chances at a bounty where there was one. Neither feature was designed against the other.
-- **Evasion's per-round cap is worth less.** The cap bites on the first Normal instance only, so the second landing of a split is strictly more likely to connect (§5.5).
+Recorded because the comparison looked alarming for an hour: **a figure is only comparable to another figure taken on the same rules**, and the rules here move faster than the measurements do. Quote the configuration, not just the number.
+
+### Nothing has measured a drafted squad, or a split roll
+
+- **The harness fields the alpha three.** Not one of Mimi's or Javi's four live abilities has run in a simulated match, and §2.2's concentration question — a legal draw with no answer to Evasion — has never been exercised.
+- **`ScriptedPlayer` pools every roll and never splits**, by deliberate policy: a split policy is a tactical judgement the harness would be making on the player's behalf. So these figures measure compulsory movement and nothing about splitting. Everything under "Consequences of split movement" below remains unmeasured.
+
+### The match is over its budget, and the board is why
+
+**22.6 turns, p90 29**, against ADR-0002's stated 15–20 minutes. Only two boards in the drawable family come in under it, and both are smaller than classic Ludo.
+
+| Board    | Journey | Turns    | p90    | Neutralizes | Kills/turn | Mean move, share of loop |
+| -------- | ------- | -------- | ------ | ----------- | ---------- | ------------------------ |
+| 28/3     | 31      | 15.3     | 17     | 6.6         | 0.43       | **33%**                  |
+| 36/4     | 40      | 17.3     | 22     | 7.9         | **0.46**   | 26%                      |
+| **44/5** | 49      | **20.8** | **25** | 8.7         | 0.42       | **21%**                  |
+| 52/6     | 58      | 22.6     | 29     | 9.3         | 0.41       | 18%                      |
+| 60/7     | 67      | 26.4     | 32     | 9.5         | 0.36       | 16%                      |
+
+**Combat density barely moves with board size; pacing moves a lot.** Kills per turn sit between 0.41 and 0.46 across a board that doubles in journey — so a shorter board is very nearly free combat, and a longer one is very nearly free waiting.
+
+**44/5 costs 0.6 neutralizes and saves 1.8 turns and four off the p90**, and is fractionally _denser_ than Standard. It also hits ADR-0002 Amendment 4's readability target — a mean move covering roughly a fifth of the loop — exactly, where Standard is under it at 18% and 36/4 is over it at 26%. 28/3 sits at the 33% hard limit and is a development board regardless.
+
+That makes 44/5 the only lever measured that buys pacing without giving up combat. **It is a board decision, not a dial**, and ADR-0002 owns it.
+
+### Balance dials, ranked by neutralizes gained per turn of match length spent
+
+| Lever                          | Neutralizes | Turns | Kills per turn |
+| ------------------------------ | ----------- | ----- | -------------- |
+| `NeutralizeEnergyBounty` 0 → 3 | +1.3        | +0.9  | **1.44**       |
+| `NeutralizeEnergyBounty` 3 → 6 | +1.6        | +2.1  | 0.76           |
+| Speed band 1.25/1.75 → 1.0/1.5 | +3.8        | +5.2  | 0.73           |
+| `CollisionDamage` 2 → 6        | +2.4        | +4.8  | 0.50           |
+| Board 44/5 → 52/6              | +0.6        | +1.8  | 0.33           |
+| Board 52/6 → 60/7              | +0.2        | +3.8  | 0.05           |
+
+1. **`NeutralizeEnergyBounty = 3` is the best-value dial measured, and 6 is not.** The first three energy buy nearly twice the combat per turn that the second three do. **Keep 3.**
+   The reason is in the burn column: **8.0 → 12.1 → 18.7.** The bounty itself never burns (§1.2), but the energy it adds raises the pool, so the _turn grant_ spills more often. At 6 the economy is simply overflowing, and the marginal reward is being destroyed by a rule it does not touch. **Burn is the tell for a bounty that has gone too far**, not the neutralize count.
+2. **Ability reach — historically the largest lever, and currently unmeasurable as one.** +1 to every range and radius bought +47% neutralizes for under 1.5 turns when last swept globally. Since then Velvet Rope took +1 and gave it back, Intimidating Presence took +1 and kept it, and Miracle Pull took +1. **The net has never been measured and the sweep no longer exists in the default run.**
+3. **`CollisionDamage` — struck, restored, and now demoted.** It has changed status three times. At 2 → 6 it now costs **4.8 turns** for 2.4 neutralizes, which makes it the worst combat lever except board length. It was struck when collisions fired 2.4 times a match; they now fire 5.1.
+   The general rule, which matters more than the dial: **a dial's potency is a function of how often its trigger fires.** Anything struck here must be re-measured after a structural change rather than trusted. Note also that at 6 it is the only configuration measured that fails to finish every match — 99% completion against 100% everywhere else.
+4. **Opening deployments.** Adopted at 2, and still the only lever that ever improved a problem at no cost elsewhere.
+5. `EvasionChance = 0.3` — **lowered from 0.5 by reasoning, and this run is its first measurement.** It is inside the 9.3 baseline and cannot be separated from the rest of the tuning pass without its own sweep.
+6. `MarkDamagePerTurn = 2`, `HasteSpeedBonus = 0.5`, `HasteDurationTurns = 2`, `SlowSpeedPenalty = 0.5` — all still set by reasoning and unmeasured in isolation.
+7. `EnergyCap = 12` against a `floor(total/2)` drip. **Burn is 12.1 per match at the shipping configuration**, up from 8.0 without the bounty. That is the economy's headroom, and it is the figure to watch if the bounty ever moves.
+
+### Consequences of compulsory and split movement — split still unmeasured
+
+- **Compulsory movement is in these numbers.** Split movement is not: `ScriptedPlayer` pools.
+- **Up to six operator-moves in a turn** once players split — two per roll against one, and `MaxRollsPerTurn = 3`.
+- **Landings per roll roughly double when players split**, and a landing is the collision trigger (§7.1). Collisions already rose to 5.1 from 2.4 under compulsory movement alone; splitting attacks the same number again.
+- **Kill bounties become easier to farm.** Two collisions per roll is two chances at a bounty where there was one, and the bounty is now the sharpest dial in the table. Neither feature was designed against the other.
+- **Evasion's per-round cap is worth less.** The cap bites on the first Normal instance only, so the second landing of a split is strictly more likely to connect (§5.5) — and at `EvasionChance = 0.3` the first one is likelier to connect too.
+
+### Open, unresolved rules conflict
+
+- **Slows and auras stack, and §5.2 says they should not.** `GameEngine` sums two channels when computing effective speed — `StatusRegistry.SpeedModifier` and `AuraRules.SpeedModifierFor` — so From the Hip's slow and Bouncer's Intimidating Presence apply together. Within each channel the rule holds; across the two it does not.
+  Both readings are defensible: an aura and a status are arguably different things, and a tank's presence compounding a wound is reasonable. But the doc says one thing and the code does another, which is the state this project exists to avoid. **Decide it.** The stakes rose again with Cryo-Pulse, which slows an entire area, and again with §6.1, where a deep enough slow decides whether a turn can be ended at all.
+- **The kill bounty is implemented and this document never states it as a rule.** §9.1 records that `NeutralizeRules` owns it and §12 ranks it first among dials, but no section of §1 or §3 says what it does. A reader could work through the whole document and not learn that killing pays.
+
+### Open, undecided
+
+- **Whether the 15–20 minute budget still stands.** It was set in ADR-0002 before anyone had played the game, and every board except the two smallest now exceeds it. It may be the budget that is wrong rather than the board — but that is a decision somebody has to take, not a number to tune toward silently.
+- **The Tech damage type, and the shield source it waits on.** Blocked on Trauma Plate. Until both land, Mimi's identity is unexpressed.
+- **A draft has no balance constraint.** Nothing checks that a squad has an answer to Evasion, a way to heal, or reliable damage. With Atomic in two operators (§2.2), a legal draw can produce a squad with no way through Kurbyn.
+- **Whether the same operator may take both dice in two steps.** §6 allows it, and it is Ludo-standard. It is also strictly worse in cells and strictly better in landings, which makes it a deliberate two-collision play rather than a mistake.
+
+### Open, unmeasured
+
+- **Two-player is a different game, not a smaller one.** 1.0 neutralizes against four-player's 9.3 — a ratio near 1:9, and it has held through every rules change. Combat scales with the number of _pairs_ of players, so it is an emergent property of crowding rather than of any rule. **Nothing in this table will fix 1v1.**
+- **Javi may move the free-rider question.** Neutralizing now pays the attacker energy, which was the answer to killing being a public good — but a dedicated healer makes kills materially harder to land, and no measurement has ever included one.
+- **Whether any of this is fun.** The harness reports pacing and throughput and says nothing about whether the density reads as tension or as thinness. Only a human can.
+
+### Scope
+
+1. **Special spaces** are deferred (ADR-0003). Shield is defined (§5.6); Teleport, Slippery, Checkpoint, RollAgain and SharksTable are not. Checkpoint conflicts with §1.2's "return to yard" and needs an explicit exception when it lands.
+2. **"Brawler" is a fifth archetype** (Kurbyn) outside the base four, and the base four are now filled. Add it or re-tag.
+3. **Four of nine operators unwritten**, and two of the five written are incomplete.
+4. **Opt-out of home entry** (ADR-0003, §8) — designed, deferred. Note the overlap with Translocation, which delivers a version of home denial for 3 energy, and that splitting produces two landing decisions per roll where opt-out assumes one.
+5. **Two walks per roll.** `PRESENTATION.md` §3 has pieces walking the track cell by cell; a split produces two, and on the same piece they must be sequenced rather than overlapped.
+6. Flavour and world placement across the roster (`OPERATORS.md`).
 
 ### Balance dials, ranked by effect per turn spent
 
