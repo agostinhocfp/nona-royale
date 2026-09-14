@@ -54,6 +54,8 @@ namespace NonaRoyale.Core
         private readonly NeutralizeRules _neutralize;
         private readonly WinConditions _win;
         private readonly CombatConfig _config;
+        private readonly DeferredCellEffects _cellEffects;
+
 
         /// <summary>
         /// The dice from this roll that have not been spent yet.
@@ -89,9 +91,11 @@ namespace NonaRoyale.Core
             StatusRegistry statuses,
             AuraRules auras,
             NeutralizeRules neutralize,
-            WinConditions win,
-            CombatConfig config)
+                        WinConditions win,
+            CombatConfig config,
+            DeferredCellEffects cellEffects)
         {
+
             _operators = operators ?? throw new ArgumentNullException(nameof(operators));
             _abilityBook = abilityBook ?? throw new ArgumentNullException(nameof(abilityBook));
             _map = map ?? throw new ArgumentNullException(nameof(map));
@@ -104,8 +108,10 @@ namespace NonaRoyale.Core
             _neutralize = neutralize ?? throw new ArgumentNullException(nameof(neutralize));
             _win = win ?? throw new ArgumentNullException(nameof(win));
             _config = config ?? throw new ArgumentNullException(nameof(config));
+            _cellEffects = cellEffects ?? throw new ArgumentNullException(nameof(cellEffects));
 
             _unspentView = new ReadOnlyCollection<int>(_unspentDice);
+
         }
 
         public TurnPhase Phase => _turns.Phase;
@@ -179,8 +185,25 @@ namespace NonaRoyale.Core
                 events.Add(new DamageDealt(bleeding, tick.AmountApplied, tick.RemainingHealth, tick.Cause));
             }
 
+            // Beacons fire at upkeep and can kill, so they are reported before
+            // the neutralize loop below — the beam has to land on screen before
+            // the piece it finished disappears (ADR-0006).
+            //
+            // Each hit goes through EmitDamage rather than being written as a
+            // plain DamageDealt: the beam is Normal, so it can be evaded or
+            // absorbed, and those are three visibly different things (§9.3).
+            foreach (var beacon in upkeep.CellEffects)
+            {
+                events.Add(new BeaconFired(
+                    beacon.Owner, beacon.Cell, beacon.Caught.Count, beacon.DamagePerTarget));
+
+                for (int i = 0; i < beacon.Damage.Count; i++)
+                    EmitDamage(beacon.Caught[i], beacon.Damage[i], events);
+            }
+
             // Neutralizes from upkeep are applied by TurnStateMachine, so this
             // reports rather than resolves. It reports the cause, the mark
+
             // payout and the bounty too — all three were previously applied to
             // state and never announced, so the view learned of a payout only
             // when badges appeared on a later refresh.
@@ -413,7 +436,9 @@ namespace NonaRoyale.Core
             }
 
             int energyBefore = _turns.CurrentPlayer.Energy;
-            var resolution = _abilities.Use(caster, ability, target, _turns.CurrentPlayer, _operators);
+            var resolution = _abilities.Use(
+    caster, ability, target, _turns.CurrentPlayer, _operators, command.TargetCell);
+
 
             if (!resolution.Approved)
             {
@@ -468,12 +493,30 @@ namespace NonaRoyale.Core
                     break;
 
                 case EffectOutcomeKind.Pulled:
-                    // Reported as a move from a progress to itself: the piece
-                    // has already been placed, and placement is not movement
-                    // (§7.4), so the view settles it rather than walking it.
+                // Placement, all three of them. Reported as a move from a
+
+                // progress to itself: the piece has already been placed, and
+                // placement is not movement (§7.4), so the view settles it rather
+                // than walking it.
+                //
+                // Swapped and StatusRemoved had no case here at all until now,
+                // which is exactly the silent failure this method's remarks warn
+                // about: Translocation moved two pieces and Neural Purge stripped
+                // statuses, and neither said a word.
+                case EffectOutcomeKind.Pushed:
+                case EffectOutcomeKind.Swapped:
                     events.Add(new OperatorMoved(outcome.Recipient, outcome.Progress, outcome.Progress,
                         _map.CellAt(outcome.Recipient.Owner, outcome.Progress)));
                     break;
+
+                case EffectOutcomeKind.StatusRemoved:
+                    events.Add(new StatusExpired(outcome.Recipient, outcome.Status));
+                    break;
+
+                case EffectOutcomeKind.BeaconPlaced:
+                    events.Add(new BeaconPlaced(outcome.Recipient, outcome.Cell, outcome.Amount));
+                    break;
+
             }
         }
 
@@ -687,6 +730,20 @@ namespace NonaRoyale.Core
             if (op == null) throw new ArgumentNullException(nameof(op));
             return _statuses.ActiveKinds(op);
         }
+
+        /// <summary>
+        /// Cells with a beacon on them right now, for the view to mark
+        /// (ADR-0006).
+        /// </summary>
+        /// <remarks>
+        /// Same reason <see cref="ActiveStatusesOn"/> exists: the placement event
+        /// announces a beacon once, and the board has to keep showing it for the
+        /// round it is live. A beacon nobody can see is a trap rather than a
+        /// prediction, and the whole ability is designed around opponents seeing
+        /// it and choosing.
+        /// </remarks>
+        public IReadOnlyList<CellRef> ActiveBeacons() => _cellEffects.ActiveBeacons();
+
 
         /// <summary>
         /// Whether any operator could still legally move with an unspent die.

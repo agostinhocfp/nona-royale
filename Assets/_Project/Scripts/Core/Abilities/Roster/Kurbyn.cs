@@ -42,8 +42,9 @@ namespace NonaRoyale.Core.Abilities
             id: 301, name: "Dargin Pulse",
             description:
                 "A burst that scrambles motor function, leaving every enemy nearby unable to act.",
-            energyCost: 6, cooldownTurns: 3, range: 2,
-            requiresTarget: false,
+                       energyCost: 6, cooldownTurns: 3, range: 2,
+            targeting: AbilityTargeting.None,
+
             effects: new[]
             {
                 AbilityEffect.Damage(EffectScope.EnemiesAroundCaster, 2, DamageType.Normal,

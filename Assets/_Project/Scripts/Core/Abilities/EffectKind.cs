@@ -82,6 +82,23 @@ namespace NonaRoyale.Core.Abilities
         /// outcome no amount of swinginess justifies. Backwards clamps at
         /// progress 0, matching <see cref="PullToCaster"/>.
         /// </remarks>
-        PushFromCaster = 7
+        PushFromCaster = 7,
+
+        /// <summary>
+        /// Paints a board cell. Nothing happens now; the effect resolves at the
+        /// caster's next upkeep, striking whoever is standing there then
+        /// (ADR-0006). Kian's Drone Strike.
+        /// </summary>
+        /// <remarks>
+        /// <b>The first kind that names a place rather than an operator, and the
+        /// first that does not resolve when it is cast.</b> Every other kind acts
+        /// on a recipient the resolver already has in hand; this one has no
+        /// recipient at all at cast time, which is the point — a beacon is a bet
+        /// on where somebody will be, not a delayed hit on somebody chosen now.
+        ///
+        /// <c>Amount</c> carries the beam's total damage, divided among everyone
+        /// it catches; <c>Radius</c> its spread around the painted cell.
+        /// </remarks>
+        PaintCell = 8
     }
 }

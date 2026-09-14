@@ -50,6 +50,7 @@ namespace NonaRoyale.Core.Tests.Turn
         private AbilityResolver _abilities;
         private NeutralizeRules _neutralize;
         private WinConditions _win;
+        private DeferredCellEffects _cellEffects;
 
         private PlayerState _red;
         private PlayerState _blue;
@@ -59,7 +60,7 @@ namespace NonaRoyale.Core.Tests.Turn
         private TurnStateMachine Machine(IRandom dice)
         {
             return new TurnStateMachine(
-                _players, _clock, _config, dice, _energy, _statuses, _damage, _neutralize, _win);
+                _players, _clock, _config, dice, _energy, _statuses, _damage, _neutralize, _win, _cellEffects);
         }
 
         [SetUp]
@@ -93,7 +94,8 @@ namespace NonaRoyale.Core.Tests.Turn
             _energy = new EnergyLedger(EnergyConfig.Default);
             _damage = new DamagePipeline(_statuses, new SeededRandom(1));
             _targeting = new TargetingRules(_map, _statuses);
-            _abilities = new AbilityResolver(_map, _clock, _energy, _statuses, _targeting, _damage);
+            _cellEffects = new DeferredCellEffects(_clock, _targeting, _damage);
+            _abilities = new AbilityResolver(_map, _clock, _energy, _statuses, _targeting, _damage, _cellEffects);
 
             _neutralize = new NeutralizeRules(_statuses, _abilities, _energy, _operators, _players, _combat);
             _win = new WinConditions(_map);
@@ -461,6 +463,146 @@ namespace NonaRoyale.Core.Tests.Turn
             Assert.That(_statuses.TryEvade(syla, new FixedRandom(0.0)), Is.True);
         }
 
+        // ── Upkeep: beacons (ADR-0006) ───────────────────────────────────
+
+        /// <summary>Blue's cell for a given progress. Blue starts at track 12.</summary>
+        private CellRef BlueCell(int progress) => _map.CellAt(PlayerColor.Blue, progress);
+
+        /// <summary>
+        /// Paints a beacon for Red directly on the registry, skipping the ability.
+        /// </summary>
+        /// <remarks>
+        /// This fixture owns the <i>ordering</i> — when a beacon resolves relative
+        /// to bleed, marks and the turn boundary. Whether an ability can legally
+        /// place one is <c>AbilityResolver</c>'s question, and routing through it
+        /// here would make these tests fail for reasons that have nothing to do
+        /// with what they assert.
+        /// </remarks>
+        private void PaintForRed(CellRef cell, int totalDamage, int radius = 0)
+        {
+            _cellEffects.Paint(
+                cell, PlayerColor.Red, _red.Operators.First().Id,
+                totalDamage, radius, DamageType.Normal);
+        }
+
+        [Test]
+        public void ABeacon_FiresAtItsOwnersNextUpkeep_AndNotAtAnybodyElses()
+        {
+            // The whole counterplay window: one full round, so every opponent
+            // moves once before it lands. Firing on the next seat's upkeep
+            // instead would strike a victim three seats away before they had a
+            // turn at all.
+            var kurbyn = _blue.Operators.First();
+            kurbyn.MoveTo(5);
+
+            var machine = Machine(new SeededRandom(1));
+            machine.BeginTurn();                          // Red turn 1
+            PaintForRed(BlueCell(5), totalDamage: 2);
+            machine.Roll();
+            machine.EndTurn();
+
+            var blueUpkeep = machine.BeginTurn();         // Blue — not its beacon
+            Assert.That(blueUpkeep.CellEffects, Is.Empty);
+            Assert.That(kurbyn.Health, Is.EqualTo(6), "still standing on it, untouched");
+            machine.Roll();
+            machine.EndTurn();
+
+            var redUpkeep = machine.BeginTurn();          // Red turn 2 — it fires
+            Assert.That(redUpkeep.CellEffects.Count, Is.EqualTo(1));
+            Assert.That(kurbyn.Health, Is.EqualTo(4));
+        }
+
+        [Test]
+        public void ABeacon_IsSpentByFiring()
+        {
+            var kurbyn = _blue.Operators.First();
+            kurbyn.MoveTo(5);
+
+            var machine = Machine(new SeededRandom(1));
+            machine.BeginTurn();
+            PaintForRed(BlueCell(5), totalDamage: 2);
+
+            machine.Roll(); machine.EndTurn();
+            machine.BeginTurn(); machine.Roll(); machine.EndTurn();
+            machine.BeginTurn();                          // fires here
+            machine.Roll(); machine.EndTurn();
+            machine.BeginTurn(); machine.Roll(); machine.EndTurn();
+
+            var later = machine.BeginTurn();              // Red again
+
+            Assert.That(later.CellEffects, Is.Empty, "one beacon, one beam");
+            Assert.That(kurbyn.Health, Is.EqualTo(4), "and no second helping of damage");
+        }
+
+        [Test]
+        public void AnOperatorThatWalksOffThePaintedCell_IsMissed()
+        {
+            // The bet. Nobody is standing there when the beam lands, so it hits
+            // nothing — and says so, because silence would be indistinguishable
+            // from a beacon that was never placed.
+            var machine = Machine(new SeededRandom(1));
+            machine.BeginTurn();
+            PaintForRed(BlueCell(30), totalDamage: 6);    // empty ground
+
+            machine.Roll(); machine.EndTurn();
+            machine.BeginTurn(); machine.Roll(); machine.EndTurn();
+
+            var redUpkeep = machine.BeginTurn();
+
+            Assert.That(redUpkeep.CellEffects.Count, Is.EqualTo(1), "a miss is still reported");
+            Assert.That(redUpkeep.CellEffects[0].Caught, Is.Empty);
+            Assert.That(redUpkeep.CellEffects[0].DamagePerTarget, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void ABeacon_OutlivesTheOperatorThatPlacedIt_AndStillPaysItsOwner()
+        {
+            // A deployed device is not its operator (ADR-0006). Letting a kill
+            // refund the energy already spent would make the ability worse than
+            // it reads.
+            var bouncer = _red.Operators.First();
+            var kurbyn = _blue.Operators.First();
+            kurbyn.MoveTo(5);
+
+            var machine = Machine(new SeededRandom(1));
+            machine.BeginTurn();
+            PaintForRed(BlueCell(5), totalDamage: 6);     // enough to finish a 6-health operator
+
+            _neutralize.Apply(bouncer);                   // the caster goes to its yard
+            Assert.That(bouncer.IsInYard, Is.True, "precondition");
+
+            machine.Roll(); machine.EndTurn();
+            machine.BeginTurn(); machine.Roll(); machine.EndTurn();
+
+            var redUpkeep = machine.BeginTurn();
+
+            Assert.That(kurbyn.IsInYard, Is.True, "the beam still fired and still killed");
+            Assert.That(redUpkeep.Neutralized.Count, Is.EqualTo(1));
+            Assert.That(redUpkeep.Neutralized[0].Cause, Is.EqualTo("beacon"));
+            Assert.That(redUpkeep.Neutralized[0].Outcome.BountyPaidTo, Is.EqualTo(PlayerColor.Red),
+                "a killer sitting in its own yard still collects");
+        }
+
+        [Test]
+        public void RepaintingYourOwnCell_ToppedUpRatherThanStacked()
+        {
+            var kurbyn = _blue.Operators.First();
+            kurbyn.MoveTo(5);
+
+            var machine = Machine(new SeededRandom(1));
+            machine.BeginTurn();
+            PaintForRed(BlueCell(5), totalDamage: 2);
+            PaintForRed(BlueCell(5), totalDamage: 2);     // same cell, same owner
+
+            machine.Roll(); machine.EndTurn();
+            machine.BeginTurn(); machine.Roll(); machine.EndTurn();
+
+            var redUpkeep = machine.BeginTurn();
+
+            Assert.That(redUpkeep.CellEffects.Count, Is.EqualTo(1), "one beacon, not two");
+            Assert.That(kurbyn.Health, Is.EqualTo(4), "and one beam's worth of damage");
+        }
+
         // ── End of turn ──────────────────────────────────────────────────
 
         [Test]
@@ -672,7 +814,8 @@ namespace NonaRoyale.Core.Tests.Turn
             var targeting = new TargetingRules(_map, _statuses);
             var energy = new EnergyLedger(EnergyConfig.Default);
             var damage = new DamagePipeline(_statuses, new SeededRandom(1));
-            _abilities = new AbilityResolver(_map, _clock, energy, _statuses, targeting, damage);
+            var cellEffects = new DeferredCellEffects(_clock, targeting, damage);
+            _abilities = new AbilityResolver(_map, _clock, energy, _statuses, targeting, damage, cellEffects);
             _neutralize = new NeutralizeRules(_statuses, _abilities, energy, _operators, new[] { _red, _blue }, _combat);
 
             _clock.BeginTurnFor(_red);

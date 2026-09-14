@@ -146,8 +146,14 @@ namespace NonaRoyale.Core
             var targeting = new TargetingRules(map, statuses);
             var movement = new MovementResolver(map, gameConfig);
             var collisions = new CollisionResolver(map, combatConfig, damage, movement);
-            var abilities = new AbilityResolver(map, clock, energy, statuses, targeting, damage);
+            // Deferred cell effects (ADR-0006). Built before the resolver, which
+            // writes beacons into it, and before the turn machine, which fires
+            // them at upkeep — one registry, two callers, no second copy.
+            var cellEffects = new DeferredCellEffects(clock, targeting, damage);
+
+            var abilities = new AbilityResolver(map, clock, energy, statuses, targeting, damage, cellEffects);
             var auraRules = new AuraRules(targeting, auras);
+
 
             // NeutralizeRules needs the full roster to pay out Tagged From
             // Above's mark to the marker's squad (§10.2), which is why it is
@@ -169,15 +175,17 @@ namespace NonaRoyale.Core
                 statuses.ApplyPassive(pair.Key, pair.Value.Passive.Value, pair.Value.PassiveMagnitude);
 
             var turns = new TurnStateMachine(
-                players, clock, gameConfig, random, energy, statuses, damage, neutralize, win);
+     players, clock, gameConfig, random, energy, statuses, damage, neutralize, win, cellEffects);
+
 
             var abilityBook = new Dictionary<int, AbilityDefinition>();
             foreach (var list in abilitiesByOperator.Values)
                 foreach (var ability in list) abilityBook[ability.Id] = ability;
 
             var engine = new GameEngine(
-                operators, abilityBook, map, turns, movement, collisions,
-                abilities, statuses, auraRules, neutralize, win, combatConfig);
+    operators, abilityBook, map, turns, movement, collisions,
+    abilities, statuses, auraRules, neutralize, win, combatConfig, cellEffects);
+
 
             return new Match(engine, players, operators, map, abilitiesByOperator);
         }
@@ -281,10 +289,19 @@ namespace NonaRoyale.Core
                 foreach (var effect in ability.Effects)
                     effects.Add(effect.WithRadius(effect.Radius > 0 ? effect.Radius + rangeBonus : 0));
 
+                // An unlimited range must not take the bonus: int.MaxValue plus
+                // anything overflows to a negative, which the constructor rejects
+                // — and if it did not, the ability would validate as illegal and
+                // be silently uncastable in every swept match.
+                int range = ability.Range == AbilityDefinition.UnlimitedRange
+                    ? AbilityDefinition.UnlimitedRange
+                    : ability.Range + rangeBonus;
+
                 tuned.Add(new AbilityDefinition(
                     ability.Id, ability.Name, ability.Description,
                     ability.EnergyCost, ability.CooldownTurns,
-                    ability.Range + rangeBonus, effects, ability.RequiresTarget));
+                    range, effects, ability.Targeting));
+
             }
 
             return tuned;

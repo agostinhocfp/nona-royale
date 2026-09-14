@@ -34,6 +34,7 @@ namespace NonaRoyale.Core.Tests.Abilities
         private TargetingRules _targeting;
         private EnergyLedger _energy;
         private DamagePipeline _damage;
+        private DeferredCellEffects _cellEffects;
         private AbilityResolver _abilities;
 
         private OperatorState _bouncer;
@@ -52,7 +53,8 @@ namespace NonaRoyale.Core.Tests.Abilities
             _targeting = new TargetingRules(_map, _statuses);
             _energy = new EnergyLedger(EnergyConfig.Default);
             _damage = new DamagePipeline(_statuses, new SeededRandom(1));
-            _abilities = new AbilityResolver(_map, _clock, _energy, _statuses, _targeting, _damage);
+            _cellEffects = new DeferredCellEffects(_clock, _targeting, _damage);
+            _abilities = new AbilityResolver(_map, _clock, _energy, _statuses, _targeting, _damage, _cellEffects);
 
             // Positions are stated as TRACK cells, not progress, and converted
             // per owner. Progress is relative to a colour's own start, so a
@@ -99,6 +101,10 @@ namespace NonaRoyale.Core.Tests.Abilities
 
         private AbilityResolution Use(OperatorState caster, AbilityDefinition ability, OperatorState target = null) =>
             _abilities.Use(caster, ability, target, _red, _board);
+
+        /// <summary>Casts a cell-targeted ability at a chosen square (ADR-0006).</summary>
+        private AbilityResolution UseOn(OperatorState caster, AbilityDefinition ability, CellRef? cell) =>
+            _abilities.Use(caster, ability, null, _red, _board, cell);
 
         // ── Cost and cooldown ────────────────────────────────────────────
 
@@ -323,14 +329,18 @@ namespace NonaRoyale.Core.Tests.Abilities
         [Test]
         public void AllInMauling_WoundsTheTargetAndTheBouncer()
         {
+            // 2 out and 2 back, per the 2026-09-12 retune. Rope into Mauling was
+            // 3 Atomic plus 3, which killed either 6-health operator from full;
+            // it is now a setup rather than an execution. The self-damage rose
+            // from 1 as health fell from 12, so it costs four casts rather than
+            // twelve.
             _bouncer.MoveTo(ProgressAtTrack(PlayerColor.Red, 11));   // range 2 to track 12
 
             var result = Use(_bouncer, Bouncer.AllInMauling, _enemy);
 
             Assert.That(result.Approved, Is.True);
-            Assert.That(_enemy.Health, Is.EqualTo(3));
-            Assert.That(_bouncer.Health, Is.EqualTo(Bouncer.MaxHealth - 1),
-                "self-damage was retuned 3 → 1 (ADR-0002 Amendment 5)");
+            Assert.That(_enemy.Health, Is.EqualTo(4));
+            Assert.That(_bouncer.Health, Is.EqualTo(Bouncer.MaxHealth - 2));
         }
 
         [Test]
@@ -563,27 +573,168 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(_red.Energy, Is.EqualTo(before), "a refusal costs nothing");
             Assert.That(atStart.Progress, Is.EqualTo(0), "and moves nobody");
         }
+
+        // ── Kian ─────────────────────────────────────────────────────────
+
+        /// <summary>A Kian on a named track cell, added to the board.</summary>
+        private OperatorState KianAt(int track)
+        {
+            var op = AtTrack(7, "Kian", PlayerColor.Red, Kian.MaxHealth, track);
+            _board.Add(op);
+            return op;
+        }
+
+        [Test]
+        public void InversionMatrix_HitsEnemiesAheadAndNotBehind()
+        {
+            // The first directional scope. "Within N" is symmetric and would be
+            // Dargin Pulse with a longer reach; what makes this a line is that
+            // it points somewhere, and pointing it is a decision no other area
+            // ability asks for.
+            var kian = KianAt(10);
+            var behind = AtTrack(12, "Behind", PlayerColor.Blue, 6, 8);
+            _board.Add(behind);
+
+            var result = Use(kian, Kian.InversionMatrix);
+
+            Assert.That(result.Approved, Is.True);
+            Assert.That(_enemy.Health, Is.EqualTo(5), "two cells ahead");
+            Assert.That(_enemyTwo.Health, Is.EqualTo(5), "three cells ahead");
+            Assert.That(behind.Health, Is.EqualTo(6), "two cells behind — the line does not reach backwards");
+
+            _clock.BeginTurnFor(PlayerColor.Blue);
+            Assert.That(_statuses.IsStunned(_enemy), Is.True);
+            Assert.That(_statuses.IsStunned(behind), Is.False);
+        }
+
+        [Test]
+        public void InversionMatrix_DoesNotHitTheCastersOwnCell()
+        {
+            // The emitters fire away from the operator carrying them.
+            var kian = KianAt(10);
+            var sharing = AtTrack(12, "Sharing", PlayerColor.Blue, 6, 10);
+            _board.Add(sharing);
+
+            Use(kian, Kian.InversionMatrix);
+
+            Assert.That(sharing.Health, Is.EqualTo(6));
+        }
+
+        [Test]
+        public void SonicDisrupter_ShovesEnemiesAwayAlongTheirOwnPath()
+        {
+            // Push is placement: two cells directly away from the caster, and it
+            // clamps rather than refusing (§7.4, amended).
+            var kian = KianAt(19);
+            var victim = AtTrack(12, "Victim", PlayerColor.Blue, 6, 20);
+            _board.Add(victim);
+
+            int before = victim.Progress;
+
+            var result = Use(kian, Kian.SonicDisrupter);
+
+            Assert.That(result.Approved, Is.True);
+            Assert.That(victim.Progress, Is.EqualTo(before + 2), "one cell ahead of the caster, pushed on");
+            Assert.That(victim.Health, Is.EqualTo(4));
+        }
+
+        [Test]
+        public void SonicDisrupter_SlowsEveryoneItPushes()
+        {
+            // The effect order is the rule: damage, slow, then push. Pushing
+            // first would carry them from inside radius 2 to as far as 4, and
+            // the slow would then find nobody.
+            var kian = KianAt(19);
+            var victim = AtTrack(12, "Victim", PlayerColor.Blue, 6, 20);
+            _board.Add(victim);
+
+            Use(kian, Kian.SonicDisrupter);
+
+            _clock.BeginTurnFor(PlayerColor.Blue);
+            Assert.That(_statuses.SpeedModifier(victim), Is.EqualTo(-0.5));
+        }
+
+        [Test]
+        public void DroneStrike_PaintsTheCell_AndNothingResolvesYet()
+        {
+            // The delay is the mechanic. At cast time it touches nobody — the
+            // beam comes down at Kian's next upkeep (ADR-0006).
+            var kian = KianAt(10);
+            var cell = CellRef.Track(20);
+
+            var result = UseOn(kian, Kian.DroneStrike, cell);
+
+            Assert.That(result.Approved, Is.True);
+            Assert.That(_cellEffects.HasBeaconOn(cell, PlayerColor.Red), Is.True);
+            Assert.That(result.Outcomes.Any(o => o.Kind == EffectOutcomeKind.BeaconPlaced), Is.True);
+            Assert.That(_enemy.Health, Is.EqualTo(6), "nobody is struck by the placement");
+        }
+
+        [Test]
+        public void DroneStrike_ReachesAnywhereOnTheBoard()
+        {
+            // Unlimited range is his one free axis; he pays in fragility and
+            // speed instead. The far side of the loop is the case that would
+            // fail under any finite range.
+            var kian = KianAt(0);
+            var across = CellRef.Track(_map.Profile.CircuitLength / 2);
+
+            Assert.That(UseOn(kian, Kian.DroneStrike, across).Approved, Is.True);
+        }
+
+        [Test]
+        public void DroneStrikeWithNoCell_IsRejected()
+        {
+            var kian = KianAt(10);
+
+            var result = UseOn(kian, Kian.DroneStrike, null);
+
+            Assert.That(result.Refusal, Is.EqualTo(AbilityRefusal.NoCell),
+                "a missing square is a different problem from a missing piece");
+        }
+
+        [Test]
+        public void DroneStrikeAimedIntoAHomeColumn_IsRefusedBeforePayment()
+        {
+            // A home column is out of the fight in both directions (§4.3), and a
+            // beacon inside one would reach into a place no ability may reach.
+            var kian = KianAt(10);
+            int before = _red.Energy;
+
+            var result = UseOn(kian, Kian.DroneStrike, CellRef.HomeColumn(PlayerColor.Red, 0));
+
+            Assert.That(result.Approved, Is.False);
+            Assert.That(result.TargetingVerdict, Is.EqualTo(TargetingVerdict.CellOutOfPlay));
+            Assert.That(_red.Energy, Is.EqualTo(before), "a refusal costs nothing");
+        }
+
+        [Test]
+        public void ACellTargetedAbility_OffersNoOperatorTargets()
+        {
+            // The view picks a square instead, so the target list is empty the
+            // same way it is for a self-origin area.
+            var kian = KianAt(10);
+
+            Assert.That(_abilities.LegalTargets(kian, Kian.DroneStrike, _board), Is.Empty);
+        }
     }
 
     [TestFixture]
     public class RosterTests
     {
         [Test]
-        public void EveryAbility_MatchesItsCostTier()
-        {
-            // Costs are 3 / 6 / 9 by tier (COMBAT_SYSTEMS §3.2). A value outside
-            // that set means either the roster or the doc drifted.
-            foreach (var ability in Roster.AllAbilities)
-            {
-                bool onTier = ability.EnergyCost == 3 || ability.EnergyCost == 6 || ability.EnergyCost == 9;
-                Assert.That(onTier, Is.True, $"{ability.Name} costs {ability.EnergyCost}");
-            }
-        }
-
-        [Test]
         public void NoAbilityCostsMoreThanTheEnergyCap()
         {
-            // An ability that cannot be afforded at a full pool is uncastable.
+            // An ability that cannot be afforded at a full pool is uncastable in
+            // any match, and nothing else would catch it.
+            //
+            // This replaced the 3/6/9 tier assertion, abolished 2026-09-13. The
+            // tier had become a rule three abilities ignored — Trauma Plate and
+            // both of Kian's, each priced at 4 on its own merits — and a
+            // constraint overridden every time it binds makes its exceptions look
+            // like oversights. A bound still catches the one cost error that is
+            // unrecoverable; a tier was also making a balance claim, and that
+            // claim is now argued one ability at a time in the operator file.
             foreach (var ability in Roster.AllAbilities)
                 Assert.That(ability.EnergyCost, Is.LessThanOrEqualTo(EnergyConfig.Default.EnergyCap),
                     ability.Name);

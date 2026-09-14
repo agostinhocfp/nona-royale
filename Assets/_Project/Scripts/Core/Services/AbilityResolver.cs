@@ -33,6 +33,7 @@ namespace NonaRoyale.Core.Services
         private readonly StatusRegistry _statuses;
         private readonly TargetingRules _targeting;
         private readonly DamagePipeline _damage;
+        private readonly DeferredCellEffects _cellEffects;
 
         /// <summary>operator id → ability id → the owner-turn on which it becomes usable again.</summary>
         private readonly Dictionary<int, Dictionary<int, int>> _readyOn =
@@ -44,7 +45,8 @@ namespace NonaRoyale.Core.Services
             EnergyLedger energy,
             StatusRegistry statuses,
             TargetingRules targeting,
-            DamagePipeline damage)
+            DamagePipeline damage,
+            DeferredCellEffects cellEffects)
         {
             _map = map ?? throw new ArgumentNullException(nameof(map));
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
@@ -52,6 +54,7 @@ namespace NonaRoyale.Core.Services
             _statuses = statuses ?? throw new ArgumentNullException(nameof(statuses));
             _targeting = targeting ?? throw new ArgumentNullException(nameof(targeting));
             _damage = damage ?? throw new ArgumentNullException(nameof(damage));
+            _cellEffects = cellEffects ?? throw new ArgumentNullException(nameof(cellEffects));
         }
 
         /// <summary>Whether an ability is off cooldown for this operator.</summary>
@@ -90,6 +93,10 @@ namespace NonaRoyale.Core.Services
         /// mode rule, which is a real question the rules have not settled — so
         /// this reports it rather than quietly deciding it. A view that does not
         /// want to offer it can filter one entry.
+        ///
+        /// <b>A cell-targeted ability answers empty</b>, the same as one that
+        /// takes no target: there is no operator to list, and the view picks a
+        /// square instead (ADR-0006).
         /// </remarks>
         public IReadOnlyList<OperatorState> LegalTargets(
             OperatorState caster,
@@ -119,7 +126,6 @@ namespace NonaRoyale.Core.Services
             return legal;
         }
 
-
         /// <summary>Clears every cooldown for an operator. Called on neutralize (§1.2).</summary>
         public void ResetCooldowns(OperatorState op)
         {
@@ -137,7 +143,8 @@ namespace NonaRoyale.Core.Services
             AbilityDefinition ability,
             OperatorState primaryTarget,
             PlayerState casterPlayer,
-            IReadOnlyList<OperatorState> allOperators)
+            IReadOnlyList<OperatorState> allOperators,
+            CellRef? targetCell = null)
         {
             if (caster == null) throw new ArgumentNullException(nameof(caster));
             if (ability == null) throw new ArgumentNullException(nameof(ability));
@@ -161,6 +168,20 @@ namespace NonaRoyale.Core.Services
                 var verdict = _targeting.CanSingleTarget(caster, primaryTarget, ability.Range);
                 if (!verdict.IsLegal)
                     return AbilityResolution.Refused(AbilityRefusal.IllegalTarget, verdict.Verdict);
+            }
+
+            // A cell-targeted ability is checked on the same terms and in the
+            // same place as an operator-targeted one, so a refusal still costs
+            // nothing (ADR-0006). Occupancy is deliberately not checked: an empty
+            // cell is a legal target, and betting on one is the ability.
+            if (ability.RequiresCell)
+            {
+                if (targetCell == null)
+                    return AbilityResolution.Refused(AbilityRefusal.NoCell);
+
+                var cellVerdict = _targeting.CanTargetCell(caster, targetCell.Value, ability.Range);
+                if (!cellVerdict.IsLegal)
+                    return AbilityResolution.Refused(AbilityRefusal.IllegalTarget, cellVerdict.Verdict);
             }
 
             // An ability with both a hostile and a friendly mode picks its mode
@@ -201,6 +222,18 @@ namespace NonaRoyale.Core.Services
             foreach (var effect in ability.Effects)
             {
                 if (!AudienceAllows(effect.Audience, castMode)) continue;
+
+                // PaintCell is the one kind with no recipients at cast time, so
+                // it cannot go through RunEffect — every scope resolves to a list
+                // of operators, and this effect names a place instead. Routed
+                // here rather than given a fake scope, which would have made it
+                // silently do nothing.
+                if (effect.Kind == EffectKind.PaintCell)
+                {
+                    RunPaintCell(effect, caster, targetCell, outcomes);
+                    continue;
+                }
+
                 RunEffect(effect, caster, primaryTarget, allOperators, outcomes);
             }
 
@@ -266,6 +299,30 @@ namespace NonaRoyale.Core.Services
                         break;
                 }
             }
+        }
+
+        /// <summary>
+        /// Paints a cell. Nothing resolves now — the beam fires at the caster's
+        /// next upkeep (ADR-0006).
+        /// </summary>
+        /// <remarks>
+        /// <b>The null check cannot fire for a cell-targeted ability</b>, which
+        /// <see cref="Use"/> has already refused without a cell. It guards the
+        /// other case: an ability that is not declared cell-targeted but lists a
+        /// paint effect anyway. That is a content bug, and doing nothing quietly
+        /// is the mildest thing to do about it — the alternative is throwing at a
+        /// player mid-turn for a mistake in a stat block.
+        /// </remarks>
+        private void RunPaintCell(
+            AbilityEffect effect, OperatorState caster, CellRef? cell, List<EffectOutcome> outcomes)
+        {
+            if (cell == null) return;
+
+            _cellEffects.Paint(
+                cell.Value, caster.Owner, caster.Id,
+                effect.Amount, effect.Radius, effect.DamageType);
+
+            outcomes.Add(EffectOutcome.BeaconPlaced(caster, cell.Value, effect.Amount));
         }
 
         private EffectOutcome ApplyDamage(AbilityEffect effect, OperatorState caster, OperatorState recipient)

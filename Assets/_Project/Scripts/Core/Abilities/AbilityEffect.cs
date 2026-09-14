@@ -160,6 +160,32 @@ namespace NonaRoyale.Core.Abilities
         }
 
         /// <summary>
+        /// Paints the targeted cell. It fires at the caster's next upkeep,
+        /// dealing <paramref name="totalDamage"/> split between every enemy
+        /// within <paramref name="radius"/> of it (ADR-0006).
+        /// </summary>
+        /// <remarks>
+        /// <b>It has no scope</b>, unlike every other factory here. Scopes
+        /// resolve to operators, and this effect has no recipients when it is
+        /// cast — only a place. <see cref="EffectScope.PrimaryTarget"/> is
+        /// recorded so the field is never garbage, and the resolver ignores it.
+        ///
+        /// The split is what makes it an assassination tool rather than an area
+        /// attack: six damage on one target kills most of the roster outright,
+        /// and the same six divided three ways is less than a collision each.
+        /// </remarks>
+        public static AbilityEffect PaintCell(
+            int totalDamage, int radius, DamageType damageType,
+            EffectAudience audience = EffectAudience.Any)
+        {
+            if (totalDamage < 0) throw new ArgumentOutOfRangeException(nameof(totalDamage));
+            if (radius < 0) throw new ArgumentOutOfRangeException(nameof(radius));
+
+            return new AbilityEffect(EffectKind.PaintCell, EffectScope.PrimaryTarget, audience,
+                totalDamage, damageType, radius, default, 0, 0, 0, 0, 0, 0);
+        }
+
+        /// <summary>
         /// Caster and target exchange board cells. Placement, not movement — it
         /// collides with nothing and triggers nothing (§7.4).
         /// </summary>

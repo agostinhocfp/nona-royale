@@ -47,6 +47,17 @@ namespace NonaRoyale.Core.Services
         /// mode is decided once from who was targeted (§10), so an ability with
         /// no applicable effect in that mode was never a legal cast.
         /// </remarks>
-        WrongSide = 6
+        WrongSide = 6,
+
+        /// <summary>
+        /// The chosen cell is not on the shared outer track — a home column, a
+        /// yard, or HOME (ADR-0006).
+        /// </summary>
+        /// <remarks>
+        /// The cell-targeted twin of <see cref="TargetOutOfPlay"/>. §4.3 makes a
+        /// home column unreachable in both directions, and a beacon painted
+        /// inside one would be a way to strike into a place no ability may reach.
+        /// </remarks>
+        CellOutOfPlay = 7
     }
 }

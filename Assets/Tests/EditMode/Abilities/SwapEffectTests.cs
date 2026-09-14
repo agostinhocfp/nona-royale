@@ -19,11 +19,23 @@ namespace NonaRoyale.Core.Tests.Abilities
     /// roster's tests want.
     /// </summary>
     /// <remarks>
-    /// <b>Cell arithmetic, stated once.</b> Red enters the circuit at track 0
-    /// and Blue at track 12, so a Red operator's progress equals its cell and a
-    /// Blue operator's cell is its progress plus 12. Every fixture below is
-    /// built from that, and the comments give the cell rather than making the
-    /// reader recompute it.
+    /// <b>⚠ The cell arithmetic below is stale, and these tests are red.</b>
+    /// It was written against the 48-cell circuit, where the start offset was 12
+    /// and a Blue operator's cell was its progress plus 12. The board is 52 as of
+    /// ADR-0002 Amendment 6 and the offset is <b>13</b>, so every hardcoded
+    /// progress here lands one cell further round than its comment claims.
+    ///
+    /// Concretely, in <see cref="ASwap_ExchangesBothOperatorsCells"/>: Mimi at
+    /// progress 18 is track 18, but the enemy at progress 10 is track <i>23</i>,
+    /// not 22. The swap shift is therefore 5 rather than 4, Mimi lands on 23, and
+    /// the assertion expects 22. The same error runs through every case that
+    /// names a cell.
+    ///
+    /// <b>The fix is not new numbers.</b> <c>AbilityResolverTests</c> hit this
+    /// exact drift and answered it with a <c>ProgressAtTrack(owner, track)</c>
+    /// helper, so its fixtures are stated in <i>track cells</i> and converted per
+    /// owner — which survives the next board change. This fixture should be
+    /// rewritten the same way rather than re-tuned against 52.
     ///
     /// Reuses <c>FakeClock</c> from <c>AbilityResolverTests</c>, which lives in
     /// this namespace.
@@ -37,6 +49,7 @@ namespace NonaRoyale.Core.Tests.Abilities
         private TargetingRules _targeting;
         private EnergyLedger _energy;
         private DamagePipeline _damage;
+        private DeferredCellEffects _cellEffects;
         private AbilityResolver _abilities;
 
         private OperatorState _mimi;
@@ -54,7 +67,8 @@ namespace NonaRoyale.Core.Tests.Abilities
             _targeting = new TargetingRules(_map, _statuses);
             _energy = new EnergyLedger(EnergyConfig.Default);
             _damage = new DamagePipeline(_statuses, new SeededRandom(1));
-            _abilities = new AbilityResolver(_map, _clock, _energy, _statuses, _targeting, _damage);
+            _cellEffects = new DeferredCellEffects(_clock, _targeting, _damage);
+            _abilities = new AbilityResolver(_map, _clock, _energy, _statuses, _targeting, _damage, _cellEffects);
 
             _mimi = Deployed(1, "Mimi", PlayerColor.Red, Mimi.MaxHealth, 18);    // track 18
             _ally = Deployed(2, "Syla", PlayerColor.Red, 6, 22);                 // track 22

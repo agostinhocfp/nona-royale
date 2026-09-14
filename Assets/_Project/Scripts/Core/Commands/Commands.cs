@@ -1,4 +1,6 @@
 // Assets/_Project/Scripts/Core/Commands/Commands.cs
+using NonaRoyale.Core.Board;
+
 namespace NonaRoyale.Core.Commands
 {
     /// <summary>Roll the dice. The first roll of a turn also grants energy.</summary>
@@ -57,21 +59,43 @@ namespace NonaRoyale.Core.Commands
     }
 
     /// <summary>
-    /// Spend energy on an ability. <see cref="TargetOperatorId"/> is null for
-    /// self-origin area abilities, which need no chosen target.
+    /// Spend energy on an ability, naming whatever it is aimed at.
     /// </summary>
+    /// <remarks>
+    /// <b>Three targeting modes, two nullable fields, and only one may be
+    /// set.</b> An ability aimed at an operator fills
+    /// <see cref="TargetOperatorId"/>; one aimed at a board cell fills
+    /// <see cref="TargetCell"/>; a self-origin area fills neither. The engine
+    /// reads whichever the ability's <c>Targeting</c> calls for and ignores the
+    /// other, rather than trusting the caller to have set the right one — a
+    /// command arrives from a click today and from a socket later, and neither
+    /// is trusted input.
+    ///
+    /// Both are optional so the three-argument form every existing caller uses
+    /// still compiles and still means what it meant.
+    /// </remarks>
     public sealed class UseAbilityCommand : ICommand
     {
-        public UseAbilityCommand(int casterOperatorId, int abilityId, int? targetOperatorId = null)
+        public UseAbilityCommand(
+            int casterOperatorId,
+            int abilityId,
+            int? targetOperatorId = null,
+            CellRef? targetCell = null)
         {
             CasterOperatorId = casterOperatorId;
             AbilityId = abilityId;
             TargetOperatorId = targetOperatorId;
+            TargetCell = targetCell;
         }
 
         public int CasterOperatorId { get; }
         public int AbilityId { get; }
+
+        /// <summary>The chosen operator, for an operator-targeted ability.</summary>
         public int? TargetOperatorId { get; }
+
+        /// <summary>The chosen board cell, for a cell-targeted ability (ADR-0006).</summary>
+        public CellRef? TargetCell { get; }
     }
 
     /// <summary>

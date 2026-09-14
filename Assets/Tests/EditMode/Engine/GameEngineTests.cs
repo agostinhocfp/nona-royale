@@ -37,7 +37,33 @@ namespace NonaRoyale.Core.Tests.Engine
         private OperatorState Op(PlayerColor seat, string name) =>
             _match.Operators.First(o => o.Owner == seat && o.Name == name);
 
+        /// <summary>
+        /// Spends whatever is in hand and closes the turn.
+        /// </summary>
+        /// <remarks>
+        /// <b>Movement is compulsory (§6), so a bare <c>EndTurnCommand</c> is
+        /// refused while any operator could still move.</b> Every helper here
+        /// that advances the turn has to move first — a test that simply ended
+        /// the turn would loop or stall rather than fail, which is the worst way
+        /// for a fixture to be wrong.
+        ///
+        /// The pooled form is used deliberately: it clears every unspent die in
+        /// one command, so nothing is left that could refuse the handover.
+        /// </remarks>
+        private static void SpendRollAndEndTurn(GameEngine engine)
+        {
+            var mover = engine.CurrentPlayer.Operators.FirstOrDefault(o => !o.IsInYard);
+            if (mover != null) engine.Execute(new MoveCommand(mover.Id));
+
+            engine.Execute(new EndTurnCommand());
+        }
+
         /// <summary>Rolls until the dice hand us what a test needs, ending turns in between.</summary>
+        /// <remarks>
+        /// <b>It does not care whose turn it stops on.</b> Every caller below
+        /// happens to land on Red at the seeds used; a caller that needs a
+        /// particular seat has to check for itself.
+        /// </remarks>
         private IReadOnlyList<IGameEvent> RollUntil(Func<DiceRoll, bool> wanted, int maxTurns = 200)
         {
             for (int i = 0; i < maxTurns; i++)
@@ -47,7 +73,7 @@ namespace NonaRoyale.Core.Tests.Engine
 
                 if (rolled != null && wanted(rolled.Roll)) return events;
 
-                _engine.Execute(new EndTurnCommand());
+                SpendRollAndEndTurn(_engine);
             }
 
             throw new InvalidOperationException("The dice never produced the roll this test needs.");
@@ -128,6 +154,10 @@ namespace NonaRoyale.Core.Tests.Engine
         {
             RollUntil(r => r.IsDouble);
 
+            // Doubles buy a fresh roll, not an escape from the one in hand: the
+            // engine refuses a re-roll while the dice could still be spent (§6).
+            // Every operator is in the yard here, so nothing can spend them and
+            // the re-roll is allowed.
             var second = _engine.Execute(new RollDiceCommand());
 
             Assert.That(Has<DiceRolled>(second), Is.True);
@@ -171,16 +201,58 @@ namespace NonaRoyale.Core.Tests.Engine
         }
 
         [Test]
-        public void ExactlyOneOperatorMovesPerRoll()
+        public void APooledMove_SpendsEveryDieAtOnce()
         {
+            // Replaces ExactlyOneOperatorMovesPerRoll, which asserted a rule §6
+            // deleted. A second move is now refused because the dice are gone,
+            // not because one operator has already had its go.
             RollUntil(r => r.Contains(6) && !r.IsDouble);
             var syla = Op(PlayerColor.Red, "Syla");
             _engine.Execute(new DeployCommand(syla.Id));
             _engine.Execute(new MoveCommand(syla.Id));
 
+            Assert.That(_engine.UnspentDice, Is.Empty);
+
             var second = _engine.Execute(new MoveCommand(syla.Id));
 
-            Assert.That(First<CommandRejected>(second).Reason, Does.Contain("one operator"));
+            Assert.That(First<CommandRejected>(second).Reason, Does.Contain("no dice left"));
+        }
+
+        [Test]
+        public void ARollCanBeSplitBetweenTwoOperators()
+        {
+            // The rule that replaced "exactly one operator moves per roll" (§6).
+            // Movement is compulsory per die; what is optional is whether the two
+            // dice go to one operator or two. Each die spent is its own landing,
+            // which is what makes a split two chances to collide rather than one.
+            var match = MatchFactory.CreateAlphaMatch(
+                new[] { PlayerColor.Red, PlayerColor.Blue }, seed: 5, openingDeployments: 2);
+
+            var engine = match.Engine;
+            engine.Start();
+
+            var roll = First<DiceRolled>(engine.Execute(new RollDiceCommand())).Roll;
+            var first = match.Players[0].Operators[0];
+            var second = match.Players[0].Operators[1];
+
+            int firstBefore = first.Progress;
+            int secondBefore = second.Progress;
+
+            var firstEvents = engine.Execute(new MoveCommand(first.Id, roll.First));
+
+            Assert.That(Has<OperatorMoved>(firstEvents), Is.True);
+            Assert.That(engine.UnspentDice.Count, Is.EqualTo(1), "one die spent, one still in hand");
+
+            var secondEvents = engine.Execute(new MoveCommand(second.Id, roll.Second));
+
+            Assert.That(Has<OperatorMoved>(secondEvents), Is.True);
+            Assert.That(engine.UnspentDice, Is.Empty);
+
+            Assert.That(first.Progress, Is.GreaterThan(firstBefore));
+            Assert.That(second.Progress, Is.GreaterThan(secondBefore));
+
+            Assert.That(Has<CommandRejected>(engine.Execute(new EndTurnCommand())), Is.False,
+                "both dice are spent, so the turn can close");
         }
 
         [Test]
@@ -198,21 +270,12 @@ namespace NonaRoyale.Core.Tests.Engine
             Assert.That(moved.From, Is.EqualTo(0));
         }
 
-        [Test]
-        public void DeployingAfterMoving_IsRejected()
-        {
-            // A deploy consumes a die, so it must be declared before the
-            // movement value is spent.
-            RollUntil(r => r.Contains(6) && !r.IsDouble);
-            var syla = Op(PlayerColor.Red, "Syla");
-            var kurbyn = Op(PlayerColor.Red, "Kurbyn");
-            _engine.Execute(new DeployCommand(syla.Id));
-            _engine.Execute(new MoveCommand(syla.Id));
-
-            var events = _engine.Execute(new DeployCommand(kurbyn.Id));
-
-            Assert.That(Has<CommandRejected>(events), Is.True);
-        }
+        // DeployingAfterMoving_IsRejected was deleted. It asserted that a deploy
+        // must precede movement, a rule §6 removed deliberately — GameEngine.Deploy
+        // now says in as many words that "deploy no longer has to precede
+        // movement." The test still passed, because a pooled move had cleared the
+        // dice and left no unspent 6 for the deploy to take. A test that is green
+        // for a reason unrelated to its name is worse than a red one.
 
         // ── Abilities ────────────────────────────────────────────────────
 
@@ -252,6 +315,28 @@ namespace NonaRoyale.Core.Tests.Engine
             Assert.That(Has<TurnEnded>(events), Is.True);
             Assert.That(Has<TurnBegan>(events), Is.True);
             Assert.That(_engine.CurrentPlayer.Color, Is.EqualTo(PlayerColor.Blue));
+        }
+
+        [Test]
+        public void ATurnCannotBeEndedWhileADieCanStillBeSpent()
+        {
+            // Movement is compulsory (§6). The check is "does a legal consumer
+            // exist", not "are the dice gone" — which is why the same predicate
+            // greys out the end-turn button rather than letting a player press it
+            // and read a refusal.
+            var match = MatchFactory.CreateAlphaMatch(
+                new[] { PlayerColor.Red, PlayerColor.Blue }, seed: 5, openingDeployments: 3);
+
+            var engine = match.Engine;
+            engine.Start();
+            engine.Execute(new RollDiceCommand());
+
+            Assert.That(engine.MustSpendRoll, Is.True);
+            Assert.That(Has<CommandRejected>(engine.Execute(new EndTurnCommand())), Is.True);
+
+            SpendRollAndEndTurn(engine);
+
+            Assert.That(engine.CurrentPlayer.Color, Is.EqualTo(PlayerColor.Blue));
         }
 
         [Test]
@@ -326,22 +411,31 @@ namespace NonaRoyale.Core.Tests.Engine
 
         // ── The engine says what it did ──────────────────────────────────
         //
-        // Three separate faults this session have had the same shape: the state
-        // changed correctly and nothing announced it. The board kept working,
-        // so nothing screamed — badges draw from ActiveStatusesOn, pieces
-        // reposition from their progress, and only the explanation went missing.
-        // These tests exist to make that class of failure loud.
+        // Three separate faults have had the same shape: the state changed
+        // correctly and nothing announced it. The board kept working, so nothing
+        // screamed — badges draw from ActiveStatusesOn, pieces reposition from
+        // their progress, and only the explanation went missing. These tests
+        // exist to make that class of failure loud.
 
         /// <summary>
-        /// A match with everything deployed, Red banked and on its turn, having
-        /// already rolled.
+        /// A match with everything deployed on its start cell at full health,
+        /// Red banked and on its turn, having already rolled.
         /// </summary>
         /// <remarks>
-        /// The pool is filled by taking turns rather than set directly.
+        /// <b>The pool is filled by taking turns rather than set directly.</b>
         /// <c>PlayerState.SetEnergy</c> is not visible from the test assembly,
         /// and that is right — the ledger owns the pool (§3), and a test that
         /// reached past it would be asserting against a state no match can
         /// actually reach.
+        ///
+        /// <b>Those turns move pieces, which is why the board is reset
+        /// afterwards.</b> Energy arrives only on the first roll of a turn (§3.1),
+        /// and movement is compulsory (§6) — so a turn cannot be closed without
+        /// spending the roll, and several turns of spending walks operators an
+        /// arbitrary distance apart and can resolve collisions on the way. The
+        /// old version of this helper claimed "nothing moves in them"; that
+        /// stopped being true when movement became compulsory, and the claim is
+        /// now made good rather than merely stated.
         /// </remarks>
         private static MatchFactory.Match Armed(int minimumEnergy = 12, int seed = 3)
         {
@@ -351,17 +445,21 @@ namespace NonaRoyale.Core.Tests.Engine
             var engine = match.Engine;
             engine.Start();
 
-            // Energy arrives only on the first roll of a turn (§3.1), so a full
-            // pool costs several turns. Nothing moves in them: no MoveCommand is
-            // issued, so every operator stays on its start cell.
             while (match.Players[0].Energy < minimumEnergy ||
                    engine.CurrentPlayer.Color != PlayerColor.Red)
             {
                 engine.Execute(new RollDiceCommand());
-                engine.Execute(new EndTurnCommand());
+                SpendRollAndEndTurn(engine);
             }
 
             engine.Execute(new RollDiceCommand());
+
+            foreach (var op in match.Operators)
+            {
+                op.MoveTo(0);
+                op.SetHealth(op.MaxHealth);
+            }
+
             return match;
         }
 
@@ -375,7 +473,7 @@ namespace NonaRoyale.Core.Tests.Engine
             var syla = Of(match, PlayerColor.Red, "Syla");
             var enemy = Of(match, PlayerColor.Blue, "Bouncer");
 
-            syla.MoveTo(11);                        // two cells from Blue's start
+            syla.MoveTo(11);                        // track 11, two cells from Blue's start at 13
 
             var events = match.Engine.Execute(
                 new UseAbilityCommand(syla.Id, Syla.FromTheHip.Id, enemy.Id));
@@ -431,6 +529,49 @@ namespace NonaRoyale.Core.Tests.Engine
         }
 
         [Test]
+        public void ASwapIsAnnounced()
+        {
+            // Swapped had no case in EmitOutcome at all until 2026-09-13:
+            // Translocation moved two pieces and the engine said nothing. Both
+            // ends have to be reported, or the view draws a board that is wrong.
+            var match = MatchFactory.Create(
+                new[] { PlayerColor.Red, PlayerColor.Blue },
+                seed: 3,
+                squads: new Dictionary<PlayerColor, IReadOnlyList<OperatorDefinition>>
+                {
+                    { PlayerColor.Red, new[] { Mimi.Definition, Syla.Definition, Bouncer.Definition } },
+                    { PlayerColor.Blue, Roster.Alpha }
+                },
+                openingDeployments: 3);
+
+            var engine = match.Engine;
+            engine.Start();
+
+            while (match.Players[0].Energy < Mimi.Translocation.EnergyCost ||
+                   engine.CurrentPlayer.Color != PlayerColor.Red)
+            {
+                engine.Execute(new RollDiceCommand());
+                SpendRollAndEndTurn(engine);
+            }
+
+            engine.Execute(new RollDiceCommand());
+            foreach (var op in match.Operators) op.MoveTo(0);
+
+            var mimi = Of(match, PlayerColor.Red, "Mimi");
+            var enemy = Of(match, PlayerColor.Blue, "Syla");
+            mimi.MoveTo(11);                        // track 11, two from Blue's start
+
+            var events = engine.Execute(
+                new UseAbilityCommand(mimi.Id, Mimi.Translocation.Id, enemy.Id));
+
+            var moves = events.OfType<OperatorMoved>().ToList();
+
+            Assert.That(moves.Any(m => ReferenceEquals(m.Operator, mimi)), Is.True);
+            Assert.That(moves.Any(m => ReferenceEquals(m.Operator, enemy)), Is.True,
+                "two pieces moved, so two have to be announced");
+        }
+
+        [Test]
         public void AnUpkeepMarkPayout_IsAnnouncedNotJustApplied()
         {
             // The fault this is named for: TurnStateMachine applies an upkeep
@@ -446,7 +587,10 @@ namespace NonaRoyale.Core.Tests.Engine
 
             match.Engine.Execute(new UseAbilityCommand(syla.Id, Syla.TaggedFromAbove.Id, victim.Id));
 
-            // Handing over runs Blue's upkeep, where the mark bills.
+            // Handing over runs Blue's upkeep, where the mark bills. The roll has
+            // to be spent first — movement is compulsory (§6).
+            var mover = Of(match, PlayerColor.Red, "Bouncer");
+            match.Engine.Execute(new MoveCommand(mover.Id));
             var events = match.Engine.Execute(new EndTurnCommand());
 
             var down = events.OfType<OperatorNeutralized>().FirstOrDefault();
@@ -477,6 +621,8 @@ namespace NonaRoyale.Core.Tests.Engine
             match.Engine.Execute(new UseAbilityCommand(syla.Id, Syla.TaggedFromAbove.Id, victim.Id));
             int redEnergy = match.Players[0].Energy;
 
+            var mover = Of(match, PlayerColor.Red, "Bouncer");
+            match.Engine.Execute(new MoveCommand(mover.Id));
             var events = match.Engine.Execute(new EndTurnCommand());
 
             var bounty = events.OfType<EnergyGranted>()

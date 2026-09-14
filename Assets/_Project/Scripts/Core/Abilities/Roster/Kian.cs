@@ -23,12 +23,11 @@ namespace NonaRoyale.Core.Abilities
     /// closes on him has him. That is the entire cost of a kit that otherwise
     /// never needs to be near anything.
     ///
-    /// <b>Two of three abilities.</b> Drone Strike is absent: it paints a
-    /// <i>cell</i> and fires a round later, which needs cell targeting and a
-    /// deferred-effect registry that do not exist. Both are specified in
-    /// ADR-0006 and adopted as a system rather than as this ability's
-    /// machinery — more cell-targeted abilities are expected. A drafted Kian is
-    /// playable but thin until it lands.
+    /// <b>Complete.</b> Drone Strike brought cell targeting and the deferred
+    /// cell-effect registry with it, adopted as a system rather than as this
+    /// ability's machinery (ADR-0006) on the expectation that mines, zones and
+    /// timed hazards follow. He is the only operator whose third ability
+    /// required new engine capability rather than new content.
     ///
     /// <b>Every number here is reasoned and none is measured.</b> He entered the
     /// pool after the §12 baseline was withdrawn, and adding an operator shifts
@@ -88,7 +87,7 @@ namespace NonaRoyale.Core.Abilities
             description:
                 "Fires a line of graviton emitters down the track ahead of you, lifting every enemy in their path off the ground.",
             energyCost: 4, cooldownTurns: 3, range: 6,
-            requiresTarget: false,
+            targeting: AbilityTargeting.None,
             effects: new[]
             {
                 AbilityEffect.Damage(EffectScope.EnemiesInLineFromCaster, 1, DamageType.Normal,
@@ -138,7 +137,7 @@ namespace NonaRoyale.Core.Abilities
             description:
                 "Vents a compressed charge in every direction, hurling nearby enemies clear of you and leaving them struggling to recover.",
             energyCost: 4, cooldownTurns: 3, range: 2,
-            requiresTarget: false,
+            targeting: AbilityTargeting.None,
             effects: new[]
             {
                 AbilityEffect.Damage(EffectScope.EnemiesAroundCaster, 2, DamageType.Normal,
@@ -149,16 +148,63 @@ namespace NonaRoyale.Core.Abilities
                     EffectAudience.EnemyOnly, radius: 2)
             });
 
-        // id 603 is reserved for Drone Strike, so his ids stay in cast order
-        // when it lands rather than being renumbered around it.
-        //
-        // 6 energy, cooldown 2, unlimited range, 6 Normal damage split between
-        // everyone caught. It paints a cell and fires at Kian's next upkeep —
-        // one full round, so every opponent moves once before it lands. It
-        // survives his neutralize and still credits him. ADR-0006 has the rest.
+        /// <summary>
+        /// A beacon paints a square of the track. One round later a particle beam
+        /// comes down on it, and on the ground either side.
+        /// </summary>
+        /// <remarks>
+        /// <b>The delay is the mechanic, not a cost.</b> Every other ability in
+        /// the game resolves the instant it is paid for, which makes positioning
+        /// something a player reacts to. This makes it something both players
+        /// commit to a round ahead: he bets on where somebody will be, and they
+        /// decide whether moving off it is worth what moving costs them.
+        ///
+        /// <b>It is at its best against one target and its worst against a
+        /// crowd.</b> Six on a lone operator kills Mimi, Syla, Javi and Kian
+        /// outright and takes Bouncer to 3; six split three ways is 2 each, less
+        /// than a collision. So its counterplay is to <i>bunch up</i> — which
+        /// works against everything else on the board, since Ace Shards, Dargin
+        /// Pulse and Cryo-Pulse all punish standing together. That tension is the
+        /// reason it earns a place rather than being a second area attack.
+        ///
+        /// <b>Radius 1, three cells.</b> At radius 0 it is one square out of 52
+        /// painted a full round ahead, which is a bet thin enough that nobody
+        /// would take it; the splash gives the prediction a margin without making
+        /// it forgiving.
+        ///
+        /// <b>Unlimited range, which is his only free axis.</b> He pays in
+        /// fragility and speed, not distance — 6 health at 1.0 with no escape
+        /// tool. It also means the beacon is his contribution to a fight he is
+        /// nowhere near, which is what an artillery operator should be doing.
+        ///
+        /// <b>Normal damage, so the plate and the charge both blunt it.</b>
+        /// Atomic is deliberately concentrated (§2.2), and a 6-damage strike that
+        /// ignored every defence would make Javi pointless against him.
+        ///
+        /// <b>Cost 6, cooldown 2 — and the cooldown is doing the limiting.</b>
+        /// It paints on one turn, fires on the next, and can be painted again the
+        /// turn after that: one idle turn between strikes. With range gone as a
+        /// price this is the only dial left on him, which is where to look first
+        /// if he reads as oppressive.
+        ///
+        /// <b>It survives his death and still credits him</b> (ADR-0006). A
+        /// deployed device is not its operator, and letting a kill refund six
+        /// spent energy would make the ability worse than it reads.
+        /// </remarks>
+        public static AbilityDefinition DroneStrike { get; } = new AbilityDefinition(
+            id: 603, name: "Drone Strike",
+            description:
+                "Paints a square anywhere on the board. A beam comes down on it next round, splitting its force between everyone caught underneath.",
+            energyCost: 6, cooldownTurns: 2,
+            range: AbilityDefinition.UnlimitedRange,
+            targeting: AbilityTargeting.Cell,
+            effects: new[]
+            {
+                AbilityEffect.PaintCell(totalDamage: 6, radius: 1, DamageType.Normal)
+            });
 
         public static IReadOnlyList<AbilityDefinition> All { get; } =
-            new[] { InversionMatrix, SonicDisrupter };
+            new[] { InversionMatrix, SonicDisrupter, DroneStrike };
 
         /// <summary>
         /// His uniform shape, for drafting. No aura, no passive, and no

@@ -11,6 +11,24 @@ namespace NonaRoyale.Core.Abilities
     /// </summary>
     public sealed class AbilityDefinition
     {
+        /// <summary>
+        /// A <see cref="Range"/> that reaches anywhere on the board. Kian's Drone
+        /// Strike.
+        /// </summary>
+        /// <remarks>
+        /// <b>It needs no special case in targeting.</b> The largest possible
+        /// track distance is half the circuit, so a comparison against this value
+        /// is simply never exceeded — no branch, no sentinel check.
+        ///
+        /// <b>It does need one in arithmetic.</b> <c>MatchFactory.Retune</c> adds
+        /// a bonus to every range for the harness; adding to this overflows to a
+        /// negative range, which validates as illegal and silently makes the
+        /// ability uncastable in every swept match. That guard is in Retune.
+        ///
+        /// The view should print it as a symbol rather than the number.
+        /// </remarks>
+        public const int UnlimitedRange = int.MaxValue;
+
         public AbilityDefinition(
             int id,
             string name,
@@ -19,7 +37,7 @@ namespace NonaRoyale.Core.Abilities
             int cooldownTurns,
             int range,
             IEnumerable<AbilityEffect> effects,
-            bool requiresTarget = true)
+            AbilityTargeting targeting = AbilityTargeting.Operator)
         {
             if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("An ability needs a name.", nameof(name));
             if (string.IsNullOrWhiteSpace(description))
@@ -37,7 +55,7 @@ namespace NonaRoyale.Core.Abilities
             EnergyCost = energyCost;
             CooldownTurns = cooldownTurns;
             Range = range;
-            RequiresTarget = requiresTarget;
+            Targeting = targeting;
             Effects = new List<AbilityEffect>(effects);
 
             if (Effects.Count == 0)
@@ -77,14 +95,36 @@ namespace NonaRoyale.Core.Abilities
         /// <summary>Turns of the caster's owner during which it is unusable after being used.</summary>
         public int CooldownTurns { get; }
 
-        /// <summary>Range in track steps, either direction.</summary>
+        /// <summary>
+        /// Range in track steps, either direction, or
+        /// <see cref="UnlimitedRange"/>.
+        /// </summary>
         public int Range { get; }
 
-        /// <summary>False for self-origin area abilities, which need no chosen target.</summary>
-        public bool RequiresTarget { get; }
+        /// <summary>What the player must pick before this can be cast.</summary>
+        public AbilityTargeting Targeting { get; }
+
+        /// <summary>
+        /// True only for abilities aimed at one operator.
+        /// </summary>
+        /// <remarks>
+        /// Kept as a computed property rather than replaced everywhere: every
+        /// caller that asks this is asking exactly the question it still answers,
+        /// and a cell-targeted ability is correctly not an operator-targeted one.
+        /// A caller that needs to tell <i>cell</i> from <i>nothing</i> reads
+        /// <see cref="Targeting"/>.
+        /// </remarks>
+        public bool RequiresTarget => Targeting == AbilityTargeting.Operator;
+
+        /// <summary>True for an ability the player aims at a board cell.</summary>
+        public bool RequiresCell => Targeting == AbilityTargeting.Cell;
 
         public IReadOnlyList<AbilityEffect> Effects { get; }
 
-        public override string ToString() => $"{Name} ({EnergyCost}e, cd {CooldownTurns}, range {Range})";
+        public override string ToString()
+        {
+            string range = Range == UnlimitedRange ? "any" : Range.ToString();
+            return $"{Name} ({EnergyCost}e, cd {CooldownTurns}, range {range})";
+        }
     }
 }

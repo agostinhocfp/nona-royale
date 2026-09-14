@@ -14,6 +14,17 @@ namespace NonaRoyale.Core.Services
         CasterStunned = 5,
 
         /// <summary>In a home column, a yard, or home — out of the fight (§4.3).</summary>
-        CasterOutOfPlay = 6
+        CasterOutOfPlay = 6,
+
+        /// <summary>
+        /// A cell-targeted ability was cast without a cell (ADR-0006).
+        /// </summary>
+        /// <remarks>
+        /// Distinct from <see cref="NoTarget"/> so the view can say which kind of
+        /// pick is missing. They are different gestures — clicking a piece and
+        /// clicking a square — and a message naming the wrong one sends the
+        /// player looking in the wrong place.
+        /// </remarks>
+        NoCell = 7
     }
 }

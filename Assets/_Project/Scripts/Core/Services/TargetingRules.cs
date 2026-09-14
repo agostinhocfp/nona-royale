@@ -196,6 +196,43 @@ namespace NonaRoyale.Core.Services
             return hit;
         }
 
+        // ── Cells ────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Whether <paramref name="caster"/> may aim an effect at a board cell
+        /// (ADR-0006). Occupancy is irrelevant — an empty cell is a legal
+        /// target, which is the whole of what a beacon bets on.
+        /// </summary>
+        /// <remarks>
+        /// <b>The cell must be on the shared outer track.</b> A home column is
+        /// out of the fight in both directions (§4.3), and a beacon inside one
+        /// would reach into a place no ability may reach; a yard is not on the
+        /// board at all.
+        ///
+        /// <b>Unlimited range needs no special case.</b> The largest possible
+        /// track distance is half the circuit, so a comparison against
+        /// <c>AbilityDefinition.UnlimitedRange</c> is simply never exceeded. The
+        /// distance is still measured and reported, so the view can say how far
+        /// a beacon was thrown even when nothing was stopping it.
+        /// </remarks>
+        public TargetingResult CanTargetCell(OperatorState caster, CellRef cell, int range)
+        {
+            if (caster == null) throw new ArgumentNullException(nameof(caster));
+            if (range < 0) throw new ArgumentOutOfRangeException(nameof(range));
+
+            if (!IsInPlay(caster))
+                return TargetingResult.Illegal(TargetingVerdict.CasterOutOfPlay);
+
+            if (!cell.IsOnTrack)
+                return TargetingResult.Illegal(TargetingVerdict.CellOutOfPlay);
+
+            int? distance = _map.TrackDistance(CellOf(caster), cell);
+            if (distance == null || distance > range)
+                return TargetingResult.Illegal(TargetingVerdict.OutOfRange, distance);
+
+            return TargetingResult.Legal(distance.Value);
+        }
+
         // ── Lines ────────────────────────────────────────────────────────
 
         /// <summary>

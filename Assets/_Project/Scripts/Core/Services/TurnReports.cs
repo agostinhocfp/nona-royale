@@ -46,7 +46,7 @@ namespace NonaRoyale.Core.Services
 
         public OperatorState Operator { get; }
 
-        /// <summary>What finished it — "bleed" or "mark" (§5.3, §5.7).</summary>
+        /// <summary>What finished it — "bleed", "mark" or "beacon" (§5.3, §5.7, ADR-0006).</summary>
         public string Cause { get; }
 
         /// <summary>The mark payout and the bounty this death produced.</summary>
@@ -54,20 +54,23 @@ namespace NonaRoyale.Core.Services
 
         /// <summary>Allies hastened by a mark payout this kill triggered (§10.2). Never null.</summary>
         public IReadOnlyList<OperatorState> Hastened => Outcome.Hastened;
-
     }
 
-    /// <summary>What upkeep resolved: over-time ticks, and anyone they finished off.</summary>
+    /// <summary>What upkeep resolved: over-time ticks, beacons, and anyone they finished off.</summary>
     public sealed class UpkeepReport
     {
+        private static readonly CellEffectResolution[] NoCellEffects = new CellEffectResolution[0];
+
         public UpkeepReport(
             PlayerColor player,
             IReadOnlyList<DamageResult> bleedTicks,
-            IReadOnlyList<UpkeepNeutralize> neutralized)
+            IReadOnlyList<UpkeepNeutralize> neutralized,
+            IReadOnlyList<CellEffectResolution> cellEffects = null)
         {
             Player = player;
             BleedTicks = bleedTicks ?? throw new ArgumentNullException(nameof(bleedTicks));
             Neutralized = neutralized ?? throw new ArgumentNullException(nameof(neutralized));
+            CellEffects = cellEffects ?? NoCellEffects;
         }
 
         public PlayerColor Player { get; }
@@ -78,11 +81,26 @@ namespace NonaRoyale.Core.Services
         /// </summary>
         public IReadOnlyList<DamageResult> BleedTicks { get; }
 
+        /// <summary>
+        /// Beacons that fired this upkeep, in the order they were painted
+        /// (ADR-0006). Empty on most turns.
+        /// </summary>
+        /// <remarks>
+        /// <b>Deliberately not folded into <see cref="BleedTicks"/>.</b> That
+        /// would have needed no new field and no new reporting — but bleed and
+        /// mark damage is Atomic and can only ever be <c>Dealt</c>, so the loop
+        /// that reads it emits a plain damage event without checking the outcome.
+        /// A beam is <i>Normal</i>: it can be evaded or absorbed, and folding it
+        /// in would have reported a dodged beam as zero damage dealt rather than
+        /// as a dodge.
+        /// </remarks>
+        public IReadOnlyList<CellEffectResolution> CellEffects { get; }
+
         /// <summary>Operators that died at upkeep. They never get this turn (§5.3).</summary>
         public IReadOnlyList<UpkeepNeutralize> Neutralized { get; }
 
         public override string ToString() =>
-            $"{Player} upkeep: {BleedTicks.Count} ticks, {Neutralized.Count} neutralized";
+            $"{Player} upkeep: {BleedTicks.Count} ticks, {CellEffects.Count} beacons, {Neutralized.Count} neutralized";
     }
 
     /// <summary>The dice, what they paid, and whether another roll is coming.</summary>

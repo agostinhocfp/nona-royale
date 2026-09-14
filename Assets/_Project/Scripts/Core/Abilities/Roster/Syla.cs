@@ -57,8 +57,9 @@ namespace NonaRoyale.Core.Abilities
             id: 202, name: "Ace Shards",
             description:
                 "Scatters shrapnel around you, opening wounds on every enemy close enough to catch it.",
-            energyCost: 6, cooldownTurns: 3, range: 3,
-            requiresTarget: false,
+                       energyCost: 6, cooldownTurns: 3, range: 3,
+            targeting: AbilityTargeting.None,
+
             effects: new[]
             {
                 AbilityEffect.Damage(EffectScope.EnemiesAroundCaster, 3, DamageType.Normal,

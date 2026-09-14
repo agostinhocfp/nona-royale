@@ -22,6 +22,11 @@ namespace NonaRoyale.Core.Tests.Neutralize
     /// specific killer through the dice is far more work than it is worth. The
     /// engine's job — that it reports what happened — is tested where it
     /// belongs, in <c>GameEngineTests</c>.
+    ///
+    /// <b>The cell-effect registry is here only to satisfy the resolver.</b>
+    /// Nothing in this fixture paints a beacon; a beacon <i>kill</i> is an
+    /// ordinary neutralize with a different cause label, and where that matters
+    /// is the turn machine's upkeep ordering, which is where it is tested.
     /// </remarks>
     [TestFixture]
     public class NeutralizeRulesTests
@@ -53,7 +58,8 @@ namespace NonaRoyale.Core.Tests.Neutralize
 
             var targeting = new TargetingRules(_map, _statuses);
             var damage = new DamagePipeline(_statuses, new SeededRandom(1));
-            var abilities = new AbilityResolver(_map, _clock, _energy, _statuses, targeting, damage);
+            var cellEffects = new DeferredCellEffects(_clock, targeting, damage);
+            var abilities = new AbilityResolver(_map, _clock, _energy, _statuses, targeting, damage, cellEffects);
 
             _killer = new OperatorState(1, "Syla", PlayerColor.Red, 6, 1.5);
             _ally = new OperatorState(2, "Bouncer", PlayerColor.Red, 12, 1.0);
@@ -185,7 +191,8 @@ namespace NonaRoyale.Core.Tests.Neutralize
             var combat = new CombatConfig(neutralizeEnergyBounty: 0);
             var targeting = new TargetingRules(_map, _statuses);
             var damage = new DamagePipeline(_statuses, new SeededRandom(1));
-            var abilities = new AbilityResolver(_map, _clock, _energy, _statuses, targeting, damage);
+            var cellEffects = new DeferredCellEffects(_clock, targeting, damage);
+            var abilities = new AbilityResolver(_map, _clock, _energy, _statuses, targeting, damage, cellEffects);
 
             var unrewarded = new NeutralizeRules(
                 _statuses, abilities, _energy, _operators, new[] { _red, _blue }, combat);

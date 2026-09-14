@@ -1,4 +1,5 @@
 // Assets/_Project/Scripts/Core/Services/EffectOutcome.cs
+using NonaRoyale.Core.Board;
 using NonaRoyale.Core.Model;
 
 namespace NonaRoyale.Core.Services
@@ -41,7 +42,20 @@ namespace NonaRoyale.Core.Services
         /// move still appears in the list — the blast reached it, and a view
         /// that silently omitted it would imply it was outside the radius.
         /// </remarks>
-        Pushed = 7
+        Pushed = 7,
+
+        /// <summary>
+        /// A beacon was placed on a cell. Nothing has happened to anybody yet
+        /// (ADR-0006).
+        /// </summary>
+        /// <remarks>
+        /// The only outcome whose subject is a place rather than an operator, so
+        /// <see cref="EffectOutcome.Recipient"/> is the caster and
+        /// <see cref="EffectOutcome.Cell"/> carries what actually matters. The
+        /// view must draw it: an unannounced delayed strike is a trap, and the
+        /// ability is designed around opponents seeing it and choosing.
+        /// </remarks>
+        BeaconPlaced = 8
     }
 
     /// <summary>
@@ -53,7 +67,8 @@ namespace NonaRoyale.Core.Services
     {
         private EffectOutcome(
             EffectOutcomeKind kind, OperatorState recipient, DamageResult damage,
-            int amount, StatusKind status, int duration, int progress)
+            int amount, StatusKind status, int duration, int progress,
+            CellRef cell = default(CellRef))
         {
             Kind = kind;
             Recipient = recipient;
@@ -62,6 +77,7 @@ namespace NonaRoyale.Core.Services
             Status = status;
             Duration = duration;
             Progress = progress;
+            Cell = cell;
         }
 
         public EffectOutcomeKind Kind { get; }
@@ -78,6 +94,12 @@ namespace NonaRoyale.Core.Services
 
         /// <summary>Where a pulled, swapped or pushed operator was placed.</summary>
         public int Progress { get; }
+
+        /// <summary>
+        /// The painted cell, for <see cref="EffectOutcomeKind.BeaconPlaced"/>.
+        /// Default for every other kind.
+        /// </summary>
+        public CellRef Cell { get; }
 
         public static EffectOutcome Damaged(OperatorState recipient, DamageResult damage) =>
             new EffectOutcome(EffectOutcomeKind.Damaged, recipient, damage, damage.AmountApplied, default, 0, 0);
@@ -100,9 +122,21 @@ namespace NonaRoyale.Core.Services
         public static EffectOutcome Swapped(OperatorState recipient, int progress) =>
             new EffectOutcome(EffectOutcomeKind.Swapped, recipient, default, 0, default, 0, progress);
 
+        /// <summary>
+        /// A beacon placed by <paramref name="caster"/> on <paramref name="cell"/>.
+        /// <paramref name="totalDamage"/> is what it will divide among whoever it
+        /// catches.
+        /// </summary>
+        public static EffectOutcome BeaconPlaced(OperatorState caster, CellRef cell, int totalDamage) =>
+            new EffectOutcome(EffectOutcomeKind.BeaconPlaced, caster, default, totalDamage,
+                default, 0, 0, cell);
+
         public static EffectOutcome Executed(OperatorState recipient) =>
             new EffectOutcome(EffectOutcomeKind.Executed, recipient, default, 0, default, 0, 0);
 
-        public override string ToString() => $"{Kind} -> {Recipient?.Name}";
+        public override string ToString() =>
+            Kind == EffectOutcomeKind.BeaconPlaced
+                ? $"{Kind} -> {Cell}"
+                : $"{Kind} -> {Recipient?.Name}";
     }
 }

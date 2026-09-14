@@ -13,10 +13,10 @@ namespace NonaRoyale.Core.Services
     /// </summary>
     /// <remarks>
     /// <b>It orchestrates, it does not decide.</b> Upkeep damage goes through the
-    /// pipeline, energy through the ledger, expiry through the registry. Nothing
-    /// here re-implements a rule that lives elsewhere — this type owns only the
-    /// order things happen in, which is itself a rule and the one no other
-    /// service can own.
+    /// pipeline, energy through the ledger, expiry through the registry, beacons
+    /// through <see cref="DeferredCellEffects"/>. Nothing here re-implements a
+    /// rule that lives elsewhere — this type owns only the order things happen
+    /// in, which is itself a rule and the one no other service can own.
     ///
     /// <b>The phases are enforced.</b> Rolling before upkeep, or twice without
     /// doubles, throws rather than silently misbehaving. An illegal sequence is a
@@ -37,6 +37,20 @@ namespace NonaRoyale.Core.Services
         private readonly DamagePipeline _damage;
         private readonly NeutralizeRules _neutralize;
         private readonly WinConditions _win;
+        private readonly DeferredCellEffects _cellEffects;
+
+        /// <summary>
+        /// Every operator in the match, flattened once at construction.
+        /// </summary>
+        /// <remarks>
+        /// A beacon strikes the current player's <i>enemies</i>, who are not in
+        /// the loop over <c>CurrentPlayer.Operators</c> that bleed and marks use.
+        /// Built here rather than taken as a constructor argument because squads
+        /// are fixed for the life of a match and the machine already holds the
+        /// players they came from — a second list to keep in step would be a
+        /// second thing that can disagree.
+        /// </remarks>
+        private readonly List<OperatorState> _allOperators = new List<OperatorState>();
 
         private int _seatIndex = -1;
         private int _rollsThisTurn;
@@ -51,7 +65,8 @@ namespace NonaRoyale.Core.Services
             StatusRegistry statuses,
             DamagePipeline damage,
             NeutralizeRules neutralize,
-            WinConditions win)
+            WinConditions win,
+            DeferredCellEffects cellEffects)
         {
             _players = players ?? throw new ArgumentNullException(nameof(players));
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
@@ -62,9 +77,12 @@ namespace NonaRoyale.Core.Services
             _damage = damage ?? throw new ArgumentNullException(nameof(damage));
             _neutralize = neutralize ?? throw new ArgumentNullException(nameof(neutralize));
             _win = win ?? throw new ArgumentNullException(nameof(win));
+            _cellEffects = cellEffects ?? throw new ArgumentNullException(nameof(cellEffects));
 
             if (_players.Count == 0)
                 throw new ArgumentException("A match needs at least one player.", nameof(players));
+
+            foreach (var player in _players) _allOperators.AddRange(player.Operators);
         }
 
         public TurnPhase Phase { get; private set; } = TurnPhase.BetweenTurns;
@@ -84,9 +102,21 @@ namespace NonaRoyale.Core.Services
 
         /// <summary>
         /// Starts the next seat's turn and runs upkeep: bleed ticks, then mark
-        /// ticks, then evasion charges re-arm. Cooldowns need no work — they are
-        /// absolute turn indices, so advancing the turn advances them.
+        /// ticks, then due beacons, then evasion charges re-arm. Cooldowns need
+        /// no work — they are absolute turn indices, so advancing the turn
+        /// advances them.
         /// </summary>
+        /// <remarks>
+        /// <b>Beacons fire last, and as a separate pass.</b> The bleed and mark
+        /// loop walks the current player's own operators, because that is who
+        /// carries those statuses; a beacon belongs to the current player and
+        /// strikes everybody else, so it cannot ride in that loop at all. Placing
+        /// it after leaves the two tested orders untouched (ADR-0006).
+        ///
+        /// <b>An operator killed by a beam still never gets its turn</b>, the same
+        /// as one killed by bleed — but the operator that dies is an opponent, so
+        /// what it loses is the rest of its lap rather than the turn now starting.
+        /// </remarks>
         public UpkeepReport BeginTurn()
         {
             RequirePhase(TurnPhase.BetweenTurns, nameof(BeginTurn));
@@ -125,8 +155,10 @@ namespace NonaRoyale.Core.Services
                 TickUpkeepDamage(op, markDamage, markSource, "mark", ticks, neutralized);
             }
 
+            var beacons = FireBeacons(neutralized);
+
             Phase = TurnPhase.AwaitingRoll;
-            return new UpkeepReport(CurrentPlayer.Color, ticks, neutralized);
+            return new UpkeepReport(CurrentPlayer.Color, ticks, neutralized, beacons);
         }
 
         /// <summary>
@@ -187,6 +219,42 @@ namespace NonaRoyale.Core.Services
         }
 
         /// <summary>
+        /// Resolves every beacon of the current seat that has come due, and folds
+        /// any kills into the upkeep's neutralize list (ADR-0006).
+        /// </summary>
+        /// <remarks>
+        /// <b>The damage is already applied</b> by the time this sees it —
+        /// <see cref="DeferredCellEffects"/> owns the split and the pipeline call,
+        /// the same division of labour <c>CollisionResolver</c> has. What is left
+        /// here is the one thing the registry deliberately does not know about:
+        /// the consequences of reaching zero.
+        ///
+        /// <b>Kills are reported through the existing channel</b> rather than a
+        /// new one. A beacon kill yards its victim, pays the mark payout and pays
+        /// the bounty exactly as any other kill does, so it belongs in the list
+        /// <c>GameEngine</c> already walks — only the cause label is new.
+        /// </remarks>
+        private IReadOnlyList<CellEffectResolution> FireBeacons(List<UpkeepNeutralize> neutralized)
+        {
+            var resolutions = _cellEffects.Fire(CurrentPlayer.Color, _allOperators);
+
+            foreach (var resolution in resolutions)
+            {
+                for (int i = 0; i < resolution.Damage.Count; i++)
+                {
+                    if (resolution.Damage[i].Outcome != DamageOutcome.Neutralized) continue;
+
+                    var victim = resolution.Caught[i];
+                    var outcome = _neutralize.Apply(victim, resolution.SourceOperatorId);
+
+                    neutralized.Add(new UpkeepNeutralize(victim, "beacon", outcome));
+                }
+            }
+
+            return resolutions;
+        }
+
+        /// <summary>
         /// Runs one source of upkeep damage. Returns <c>false</c> if the operator
         /// was neutralized, so the caller stops billing a piece that is already
         /// back in its yard.
@@ -227,7 +295,6 @@ namespace NonaRoyale.Core.Services
             var outcome = _neutralize.Apply(op, sourceOperatorId);
             neutralized.Add(new UpkeepNeutralize(op, label, outcome));
             return false;
-
         }
 
         private void RequirePhase(TurnPhase expected, string action)
