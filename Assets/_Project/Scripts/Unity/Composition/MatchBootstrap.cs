@@ -373,7 +373,10 @@ namespace NonaRoyale.Unity.Composition
 
             _highlights.ShowLandings(pooled, perDie);
 
-            if (_selectedCaster != null && _selectedAbility != null && !_selectedCaster.IsInYard)
+            // An unlimited range has no ring to draw, and handing int.MaxValue to
+            // a routine that iterates it is not a large highlight — it is a hang.
+            if (_selectedCaster != null && _selectedAbility != null &&
+                !_selectedCaster.IsInYard && !_selectedAbility.HasUnlimitedRange)
             {
                 _highlights.ShowRange(
                     _match.Map,
@@ -637,10 +640,11 @@ namespace NonaRoyale.Unity.Composition
                 var availability = _match.Engine.CheckAbility(_selectedCaster, ability);
                 bool usable = availability == AbilityAvailability.Ready;
 
-                string label = usable
-                    ? $"{ability.Name}  ({ability.EnergyCost}e, r{ability.Range})"
-                    : $"{ability.Name}  — {Explain(availability)}";
+                string reach = ability.HasUnlimitedRange ? "any" : $"r{ability.Range}";
 
+                string label = usable
+                    ? $"{ability.Name}  ({ability.EnergyCost}e, {reach})"
+                    : $"{ability.Name}  — {Explain(availability)}";
                 var previous = GUI.color;
                 if (!usable) GUI.color = new Color(0.6f, 0.6f, 0.62f);
 
@@ -657,11 +661,17 @@ namespace NonaRoyale.Unity.Composition
             if (_selectedAbility == null) return;
 
             if (_selectedAbility.RequiresTarget) DrawTargetList(seat);
+            else if (_selectedAbility.RequiresCell)
+                GUILayout.Label("<i>needs a board cell — no picker yet (ADR-0006)</i>");
             else GUILayout.Label("<i>no target — it fires around the caster</i>");
 
             GUILayout.Space(2);
 
-            bool ready = !_selectedAbility.RequiresTarget || _selectedTarget != null;
+            // A cell-targeted ability cannot be cast from this panel at all: the
+            // command carries a CellRef and nothing here can produce one. Offering
+            // the button would send a cast the engine refuses for NoCell.
+            bool ready = !_selectedAbility.RequiresCell &&
+                         (!_selectedAbility.RequiresTarget || _selectedTarget != null);
 
             GUI.enabled = ready;
 

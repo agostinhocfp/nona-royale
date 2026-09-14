@@ -119,6 +119,14 @@ namespace NonaRoyale.Core.Abilities
         /// <summary>True for an ability the player aims at a board cell.</summary>
         public bool RequiresCell => Targeting == AbilityTargeting.Cell;
 
+        /// <summary>
+        /// True when this reaches anywhere on the board. Callers that iterate or
+        /// do arithmetic with <see cref="Range"/> must check this first —
+        /// <see cref="UnlimitedRange"/> is <c>int.MaxValue</c>, so a range ring
+        /// drawn from it is not large, it is fatal.
+        /// </summary>
+        public bool HasUnlimitedRange => Range == UnlimitedRange;
+
         public IReadOnlyList<AbilityEffect> Effects { get; }
 
         public override string ToString()
