@@ -70,7 +70,7 @@ The implementation test is simple: a move reporting equal or lower progress is s
 
 **Walking one cell at a time is load-bearing, not decorative.** It is the only code anywhere that enumerates the cells between two progress values, which makes it the only thing that can expose a discontinuous layout — and it is how the arm-tip gap in the old 48-cell board was caught, after four amendments of simulation had missed it (ADR-0002 Amendment 6). Do not optimise it into a lerp.
 
-**Open.** A bounce-back settles to the bounce cell without showing the contested landing first, because the event carries the final progress rather than the attempted one. The collision is legible in the log; the motion is not. Fixing it means the event carrying both.
+**A bounced move shows the cell it contested.** `OperatorMoved` carries the attempted landing beside the final one (`AttemptedTo`, `Bounced`). The piece walks to the contested cell, rests there briefly, and then settles back to the bounce cell. The walk is movement; the step back is placement, so it settles like a pull rather than walking. _Closed 2026-09-15; until then the event carried only the final progress, and the collision was legible in the log but not on the board._
 
 ---
 
@@ -114,7 +114,6 @@ The current build exists to answer whether the game is fun, and everything in it
 
 ## 7. Open items
 
-- **Bounce-back motion** (§3) — the attempted landing is not shown.
 - **No lap indicator.** Not needed while only single-lap boards ship, but `BoardProfile.Laps` is implemented and any lapped board makes two operators on the same cell visually identical and positionally unrelated.
 - **No indication of whose operator is whose beyond colour** at a glance across the table — fine for hot-seat, untested for anything else.
 - **`OnGUI` does not scale with resolution.** The controls panel is a fixed pixel width, so the camera has to size and offset around it; that is handled, but the panel itself does not reflow. Fine on one machine, not a build. _Partly closed 2026-09-15 (ADR-0008):_ the uGUI HUD canvas scales (1920×1080 reference, match 0.5), and per-piece health labels are drawn on it. The `OnGUI` panel keeps fixed pixels until it is deleted after the stranger test; this item closes with that commit.
