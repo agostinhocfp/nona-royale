@@ -99,7 +99,7 @@ namespace NonaRoyale.Core.Services
         /// close enough (§6.5).
         /// </summary>
         /// <remarks>
-        /// The <see cref="ChargeAttached"/> telegraph for Luka's L, and its own
+        /// The <see cref="ChargeAttached"/> telegraph for Luka's Blind Spot, and its own
         /// kind for the same reason the two are separate events: a grenade
         /// that will go off wherever the target runs and a strike the target
         /// can outrun ask different things of the player who sees them.

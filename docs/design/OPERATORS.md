@@ -18,7 +18,7 @@ That divergence is the same failure that caused the project restart, one layer u
 
 ## Roster scope
 
-The pool is **nine operators**; each player fields **three per match**, distinct within a squad (`GDD.md` §2.2). Three are complete. **Two are playable but unfinished.** The remaining four are unwritten.
+The pool is **nine operators**; each player fields **three per match**, distinct within a squad (`GDD.md` §2.2). **The pool is full:** eight operators are complete and Mimi is playable but unfinished (`COMBAT_SYSTEMS.md` §10). **Kian and Nuetu have no entry in this file yet**; their kits are in §10.6 and §10.7, and their identities are unwritten.
 
 A new operator must be expressible in the existing combat rules. One that needs a genuinely new _mechanic_ gets an amendment to `COMBAT_SYSTEMS.md` — never a special case inside its own stat block. That rule is what stops the roster from becoming nine sets of bespoke exceptions, and it has now fired twice in earnest: Mimi's coordinate swap forced a sixth effect kind and a rewrite of §7.4, and Javi's cleanse forced a seventh — the first that removes from the status registry rather than adding to it.
 
@@ -40,7 +40,7 @@ All four are now filled: Bouncer, Syla, Mimi and Javi. Kurbyn is tagged **Brawle
 
 ## The house and the rest
 
-Three of the five written operators work for the house: Bouncer on the door, Kurbyn sent after whoever gets past it, and Javi keeping both of them upright. Syla and Mimi are outside contractors.
+Four operators work for the house: Bouncer on the door, Kurbyn sent after whoever gets past it, Javi keeping both of them upright, and Sanity keeping the building running. Syla and Mimi are outside contractors. **Luka is neither**: nobody pays him and nobody sent him. He is the first operator with a grudge against the house, a third camp chosen on purpose (2026-09-15).
 
 That split emerged rather than being designed, and it is worth ratifying or breaking on purpose. It currently gives the house a visual language — charcoal, oxblood and brass livery, worn differently by each — and leaves the contractors free to look like anything, which is real work being done at board scale. Four unwritten operators will tip it either way.
 
@@ -136,17 +136,37 @@ Read at the table: _the one the fight has to come to._
 
 ### Luka — Duelist _(archetype label provisional)_
 
-The one who picks a single person and does not stop. He closes the distance without crossing it — one moment across the room, the next beside his target — strikes, and stays close enough to strike again. When it turns personal he becomes enraged with unrelenting focus and simply keeps hitting, and every so often a blow lands far harder than it should, harder still against the big ones.
+Born in the Caucasus, and built like someone who was fighting before anyone taught him how: medium frame, athletic, a clean buzzcut, nothing on him that is there for show. He dresses for the room without dressing like it. He wears a dark open-collar shirt under an unstructured jacket, with the sleeves pushed to the forearm and good shoes he can move in. No livery, no crest. The only thing on him that lights up is a heavy signet ring on his right hand.
 
-His ring is his defence, and a narrow one: it turns aside tech, and nothing else.
+**Where he comes from.** He came up in the fight nights the house runs under the floor: bare-knuckle bouts for high rollers who like to watch. He was the best earner that room ever had, which made him the house's to spend. On the night the book was heavy against him, he was told to lose, and he refused. He lost anyway. Something guided came down out of the rafters mid-round, and nobody in the room saw it but him.
+
+He came back with two things: the ring, taken off the man who worked the rafters that night, and the names that were on the book. He is working through them one at a time. The house calls it a vendetta. To him it is a list.
+
+**The device: one ring, two directions.** Everyone in the casino wears optics, whether lenses, implants or the house's own sensor web, and the ring is a signal spoofer tuned to all of them.
+
+- **Turned outward (Blind Spot),** it edits him out of every lens in the room for the second it takes to cross the floor. Nobody sees him move. That is why the move plays as a teleport, and why it touches nobody on the way. He surfaces beside the target and stays in its blind spot, which is the second strike: get clear, or take another one.
+- **Turned inward (Hermes' Ring),** it jams anything guided or remote-operated that is aimed at him. That is the Tech rule (`COMBAT_SYSTEMS.md` §2.2), and it is exactly what beat him. He wears the answer to the thing that took his fight.
+
+The name is the house technicians': Hermes, patron of thieves, for a ring that lets its wearer walk through a room unseen.
+
+**The ring is his whole tech tell.** Everything else is his hands. Vendetta is not a device. It is a fighter who has stopped holding back, and he knows where big men break, which is where the heavier crits against heavy targets come from.
+
+**The world fact this commits to:** people in the casino wear optics. That sits comfortably beside Kurbyn's neural-prediction rig and well below Mimi's singularity core, and it adds a data point to the tech-level question below.
 
 Read at the table: _the one you have to outrun, not outlast._
 
-The whole kit is a duel. The teleport puts him next to his target, and the threat of a second strike next turn forces the target to spend its own move getting clear — or pay for staying. He is the third operator with unblockable damage, and the first with a random swing.
+The whole kit is a duel. Blind Spot puts him next to his target, and the threat of a second strike next turn forces the target to spend its own move getting clear, or pay for staying. He is the third operator with unblockable damage, and the first with a random swing.
 
-**Silhouette:** a four-pointed star turned to an X — a thrown blade. Distinct from Kian's five points and Javi's upright cross.
+**Silhouette:** a four-pointed star turned to an X, like a thrown blade: a piece aimed at one person. It is distinct from Kian's five points and Javi's upright cross. The weapon it suggests is figurative; his are his fists.
 
-**Complete and in the pool.** His live kit is in `COMBAT_SYSTEMS.md` §10.9. Open, and not his to settle alone: the **Duelist** tag is a seventh archetype, beside Brawler and Engineer; his look and fiction are unwritten; and **the teleport and Hermes' Ring need a device behind them** (a named ring and a blink are the closest thing on the roster to magic, and the constraint below is locked).
+**Art notes** (`ART_PIPELINE.md` §6):
+
+- **Seated:** at the yard table, taping his hands.
+- **Rise:** the jacket comes off the chair.
+- **Ability tell:** the ring flares in the cool cyan register, and his figure drops out in horizontal scanlines before resolving beside the target. The ward is the same flare held steady, a faint ring of interference around him.
+- **Neutralized:** the scanline dropout played in reverse, back to the table.
+
+**Complete and in the pool.** His live kit is in `COMBAT_SYSTEMS.md` §10.9. Look, fiction, device and the Blind Spot name were settled 2026-09-15. Still open, and not his to settle alone: the **Duelist** tag is a seventh archetype, beside Brawler and Engineer.
 
 ---
 
@@ -167,7 +187,10 @@ The whole kit is a duel. The teleport puts him next to his target, and the threa
 
 - [ ] Resolve **Brawler**: define it as a fifth archetype, or re-tag Kurbyn. More pressing now the base four are filled.
 - [ ] **Finish Mimi** — an area-damage-over-time status for Cryo Field. (Tech landed 2026-09-15.)
-- [ ] **Write Luka** — look, fiction, the device behind the teleport and the ring, and whether "Duelist" is an archetype. The ability name "L" is a placeholder until the designer names it.
+- [x] ~~**Write Luka**~~: look, fiction, device and the Blind Spot name are done (2026-09-15). Whether "Duelist" is an archetype is still open, together with Brawler and Engineer.
+- [ ] **Write Kian and Nuetu.** Both are complete in `COMBAT_SYSTEMS.md` §10.6 and §10.7 and have no entry here.
+- [ ] **Javi's entry is stale.** It still says Trauma Plate is unbuilt; §10.5 has him complete.
+- [ ] **`ART_DIRECTION.md` does not exist.** This file, `PROJECT_IDENTITY.md`, `PRESENTATION.md`, `ART_PIPELINE.md` and ADR-0001 all cite it, including the locked tech-not-magic rule (§0) and the silhouette rule (§5). The tech-not-magic rule survives in `PROJECT_IDENTITY.md` and in the constraints above. The rest of what those citations point to has no source.
 - [ ] **Finish Javi** — a shield with a per-ability value, which lands with the mitigation pass.
 - [ ] **Measure both.** They are in the pool and nothing has ever dealt them: the harness still fields the alpha three, so not one of their four live abilities has run in a simulated match. Three questions wait on it — whether Cryo-Pulse outclasses its peer at the same cost, whether Translocation is as strong a denial tool as it looks, and whether a healer turns a combat game into a race.
 - [ ] **Ratify or break the house split.** Three of five work for the house. It emerged rather than being designed, and four unwritten operators will tip it either way.

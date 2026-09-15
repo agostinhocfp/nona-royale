@@ -168,7 +168,7 @@ namespace NonaRoyale.Core.Abilities
         /// next upkeep, if the caster is still within <c>Radius</c> of the
         /// target, the target takes <c>Amount</c> — plus
         /// <c>HeavyBonus</c> against a heavy target. Otherwise nothing
-        /// happens (§6.5). Luka's L.
+        /// happens (§6.5). Luka's Blind Spot.
         /// </summary>
         /// <remarks>
         /// <b>The sibling of <see cref="AttachCharge"/> with the blast taken

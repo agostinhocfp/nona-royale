@@ -12,7 +12,7 @@ using NUnit.Framework;
 namespace NonaRoyale.Core.Tests.Abilities
 {
     /// <summary>
-    /// Luka's kit: L's teleport and conditional follow-up (§6.5), Hermes'
+    /// Luka's kit: Blind Spot's teleport and conditional follow-up (§6.5), Hermes'
     /// Ring against the Tech damage type (§2.2, §5.12), and Vendetta's
     /// critical blows (§2.4).
     /// </summary>
@@ -122,8 +122,8 @@ namespace NonaRoyale.Core.Tests.Abilities
                 _map, _clock, _energy, _statuses, _targeting, _damage,
                 _cellEffects, _operatorEffects, new FixedRoll(roll));
 
-        private AbilityResolution CastL(OperatorState target) =>
-            _abilities.Use(_luka, Luka.L, target, _red, _board);
+        private AbilityResolution CastBlindSpot(OperatorState target) =>
+            _abilities.Use(_luka, Luka.BlindSpot, target, _red, _board);
 
         /// <summary>Past the target's turn to Red's next upkeep, when a follow-up comes due.</summary>
         private void AdvanceToCasterUpkeep()
@@ -135,12 +135,12 @@ namespace NonaRoyale.Core.Tests.Abilities
         private IReadOnlyList<OperatorEffectResolution> Fire() =>
             _operatorEffects.Fire(PlayerColor.Red, _board);
 
-        // ── L: the teleport and the first strike ─────────────────────────
+        // ── Blind Spot: the teleport and the first strike ─────────────────────────
 
         [Test]
-        public void L_TeleportsOneCellPastTheTarget_AndStrikesItForTwo()
+        public void BlindSpot_TeleportsOneCellPastTheTarget_AndStrikesItForTwo()
         {
-            var result = CastL(_target);
+            var result = CastBlindSpot(_target);
 
             Assert.That(result.Approved, Is.True);
             Assert.That(TrackOf(_luka), Is.EqualTo(18), "Collision's landing, reused (§7.6)");
@@ -148,11 +148,11 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
-        public void L_StrikesNobodyOnTheWay()
+        public void BlindSpot_StrikesNobodyOnTheWay()
         {
             // A teleport with no path damage must not report a zero hit on
             // every enemy it passes.
-            var result = CastL(_target);
+            var result = CastBlindSpot(_target);
 
             Assert.That(_bystander.Health, Is.EqualTo(6));
             Assert.That(result.Outcomes.Any(o =>
@@ -160,17 +160,17 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
-        public void L_TeleportsBackwards_ToATargetBehindHim()
+        public void BlindSpot_TeleportsBackwards_ToATargetBehindHim()
         {
-            CastL(_heavy);
+            CastBlindSpot(_heavy);
 
             Assert.That(TrackOf(_luka), Is.EqualTo(11), "one past the target in the dash direction");
         }
 
         [Test]
-        public void L_MarksTheTarget_AndNothingElseResolvesYet()
+        public void BlindSpot_MarksTheTarget_AndNothingElseResolvesYet()
         {
-            var result = CastL(_target);
+            var result = CastBlindSpot(_target);
 
             Assert.That(result.Outcomes.Any(o => o.Kind == EffectOutcomeKind.FollowUpMarked), Is.True,
                 "the telegraph the counterplay depends on");
@@ -184,11 +184,11 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
-        public void L_AimedAtAnAlly_IsRefusedAsWrongSide()
+        public void BlindSpot_AimedAtAnAlly_IsRefusedAsWrongSide()
         {
             int before = _red.Energy;
 
-            var result = CastL(_ally);
+            var result = CastBlindSpot(_ally);
 
             Assert.That(result.Approved, Is.False);
             Assert.That(result.TargetingVerdict, Is.EqualTo(TargetingVerdict.WrongSide));
@@ -196,12 +196,12 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(TrackOf(_luka), Is.EqualTo(15), "and moves nobody");
         }
 
-        // ── L: the follow-up ─────────────────────────────────────────────
+        // ── Blind Spot: the follow-up ─────────────────────────────────────────────
 
         [Test]
         public void FollowUp_LandsForOne_WhenTheTargetStaysClose()
         {
-            CastL(_target);
+            CastBlindSpot(_target);
 
             AdvanceToCasterUpkeep();
             var fired = Fire();
@@ -218,7 +218,7 @@ namespace NonaRoyale.Core.Tests.Abilities
         public void FollowUp_DealsTwo_ToAHeavyTarget()
         {
             // Heavy is maximum health above 6 — the Bouncer and Sanity today.
-            CastL(_heavy);
+            CastBlindSpot(_heavy);
             Assert.That(_heavy.Health, Is.EqualTo(7), "precondition: the cast's two");
 
             AdvanceToCasterUpkeep();
@@ -231,7 +231,7 @@ namespace NonaRoyale.Core.Tests.Abilities
         [Test]
         public void FollowUp_ReachesTwoCellsAway_InEitherDirection()
         {
-            CastL(_target);                                      // Luka lands on 18
+            CastBlindSpot(_target);                                      // Luka lands on 18
             _target.MoveTo(ProgressAtTrack(PlayerColor.Blue, 20)); // two ahead of him
 
             AdvanceToCasterUpkeep();
@@ -246,7 +246,7 @@ namespace NonaRoyale.Core.Tests.Abilities
         {
             // The counterplay: three cells from Luka is out of reach. A miss
             // still reports, so the escape is visible.
-            CastL(_target);                                      // Luka lands on 18
+            CastBlindSpot(_target);                                      // Luka lands on 18
             _target.MoveTo(ProgressAtTrack(PlayerColor.Blue, 21));
 
             AdvanceToCasterUpkeep();
@@ -265,7 +265,7 @@ namespace NonaRoyale.Core.Tests.Abilities
         {
             // Unlike a charge, the strike is Luka's own blow: measured from
             // him, so a yarded Luka cannot land it.
-            CastL(_target);
+            CastBlindSpot(_target);
 
             _damage.Apply(_luka, new DamageInstance(Luka.MaxHealth, DamageType.Atomic, _target.Id, "ability"));
             _neutralize.Apply(_luka, _target.Id);
@@ -282,7 +282,7 @@ namespace NonaRoyale.Core.Tests.Abilities
         [Test]
         public void FollowUp_CleanseCancelsIt()
         {
-            CastL(_target);
+            CastBlindSpot(_target);
 
             _clock.BeginTurnFor(PlayerColor.Blue);
             Assert.That(_statuses.Has(_target, StatusKind.Hunted), Is.True, "precondition");
@@ -302,7 +302,7 @@ namespace NonaRoyale.Core.Tests.Abilities
         {
             // Different markers, different entries: neither reads the other's
             // resolution as a cleanse.
-            CastL(_target);                                      // 6 → 4, Luka on 18
+            CastBlindSpot(_target);                                      // 6 → 4, Luka on 18
             var zeroDay = _abilities.Use(_sanity, Sanity.ZeroDay, _target, _red, _board);
             Assert.That(zeroDay.Approved, Is.True, "precondition");
 
@@ -530,9 +530,9 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(luka.MaxHealth, Is.EqualTo(6));
             Assert.That(luka.BaseSpeed, Is.EqualTo(1.0));
 
-            Assert.That(Luka.L.EnergyCost, Is.EqualTo(5));
-            Assert.That(Luka.L.CooldownTurns, Is.EqualTo(3));
-            Assert.That(Luka.L.Range, Is.EqualTo(3));
+            Assert.That(Luka.BlindSpot.EnergyCost, Is.EqualTo(5));
+            Assert.That(Luka.BlindSpot.CooldownTurns, Is.EqualTo(3));
+            Assert.That(Luka.BlindSpot.Range, Is.EqualTo(3));
 
             Assert.That(Luka.HermesRing.EnergyCost, Is.EqualTo(3));
             Assert.That(Luka.HermesRing.CooldownTurns, Is.EqualTo(4));

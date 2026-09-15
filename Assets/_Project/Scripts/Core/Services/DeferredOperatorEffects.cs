@@ -104,7 +104,7 @@ namespace NonaRoyale.Core.Services
     /// <list type="bullet">
     /// <item>a <b>charge</b> (§6.4, Zero-Day) follows the target and detonates
     /// on whatever cell it then occupies, catching everyone near it;</item>
-    /// <item>a <b>follow-up</b> (§6.5, Luka's L) strikes the target alone, and
+    /// <item>a <b>follow-up</b> (§6.5, Luka's Blind Spot) strikes the target alone, and
     /// only if the caster is still close enough to it.</item>
     /// </list>
     /// </summary>

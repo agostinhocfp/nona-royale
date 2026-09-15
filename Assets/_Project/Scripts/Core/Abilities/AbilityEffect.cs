@@ -123,7 +123,7 @@ namespace NonaRoyale.Core.Abilities
 
         /// <summary>
         /// Extra damage a follow-up strike deals to a heavy target (§6.5).
-        /// L's "+2 instead of +1".
+        /// Blind Spot's "+2 instead of +1".
         /// </summary>
         public int HeavyBonus { get; }
 
@@ -416,7 +416,7 @@ namespace NonaRoyale.Core.Abilities
         /// upkeep: <paramref name="damage"/>, plus <paramref name="heavyBonus"/>
         /// if the target's maximum health is above
         /// <paramref name="heavyAboveMaxHealth"/> — but only if the caster is
-        /// then within <paramref name="withinRange"/> of it (§6.5). Luka's L.
+        /// then within <paramref name="withinRange"/> of it (§6.5). Luka's Blind Spot.
         /// </summary>
         /// <remarks>
         /// Telegraphed the way a Zero-Day charge is: an event at cast time and

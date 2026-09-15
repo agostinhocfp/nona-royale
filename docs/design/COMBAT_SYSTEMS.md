@@ -400,14 +400,14 @@ A beacon is anchored to a **cell** (§9.1, `DeferredCellEffects`): it fires at t
 
 ### 6.5 Follow-up strikes
 
-_(Added 2026-09-15 with Luka's L.)_
+_(Added 2026-09-15 with Luka's Blind Spot, then called L.)_
 
 A follow-up is the charge's conditional sibling: the same registry (`DeferredOperatorEffects`), the same timing, the same marker-and-cleanse counterplay — but a single blow the target can **outrun**.
 
 - **Timing is the caster's owner's next upkeep**, in the same window as charges and beacons, before the caster moves.
-- **It lands only if the caster is within its reach of the target** (L: 2), measured along the track in either direction (§4.1), between the two as they stand at that upkeep. Otherwise it is spent and reported as a miss.
+- **It lands only if the caster is within its reach of the target** (Blind Spot: 2), measured along the track in either direction (§4.1), between the two as they stand at that upkeep. Otherwise it is spent and reported as a miss.
 - **The target alone.** No splash, no status.
-- **Heavy targets take a bonus** (L: +1 on top of 1 when maximum health is above 6). Settled at cast time — maximum health never changes.
+- **Heavy targets take a bonus** (Blind Spot: +1 on top of 1 when maximum health is above 6). Settled at cast time — maximum health never changes.
 - **Safe cells and stealth do not stop it.** Both are rules about aiming, and the aim was legal when the strike was set; what the target can do about it now is move.
 - **Unlike a charge, it does not outlive its caster.** Reach is measured from the caster, and a yarded operator has no distance to anyone — the strike misses. A target already neutralized is never in reach either.
 - **Telegraphed and cleansable.** Setting it applies the Hunted marker (§5.13) and emits `FollowUpMarked`; a cleanse strips the marker and cancels it silently.
@@ -759,17 +759,17 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 > **He arrived with three amendments:** the Tech type (§2.2), critical hits (§2.4) and the follow-up strike (§6.5), plus two statuses (§5.12, §5.13). The teleport is Collision's landing (§7.6) with no path damage, not a new mechanic.
 >
-> **"L" is the ability's name as dropped** and reads as a placeholder. **Hermes' Ring was dropped as a passive** and is built as a self-cast, because a passive with a cost, a duration and a cooldown is something the player triggers.
+> **Blind Spot was dropped as "L"** and named 2026-09-15. The teleport's device is Hermes' Ring turned outward: a signal spoofer that edits him out of every lens in the room (`OPERATORS.md`). **Hermes' Ring was dropped as a passive** and is built as a self-cast, because a passive with a cost, a duration and a cooldown is something the player triggers.
 
 | #   | Ability          | Type         | Cost | CD  | Range | Effect                                                                                                                                                                                                                              |
 | --- | ---------------- | ------------ | ---- | --- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **L**            | Active       | 5    | 3   | 3     | **Teleport** to the enemy (§7.6 landing, no path damage); **2 Normal**. **Follow-up** (§6.5): at Luka's next upkeep, if he is within **2** of the target, **1 Normal** — **2** if its max HP is above 6. Hunted marker; cleansable. |
+| 1   | **Blind Spot**   | Active       | 5    | 3   | 3     | **Teleport** to the enemy (§7.6 landing, no path damage); **2 Normal**. **Follow-up** (§6.5): at Luka's next upkeep, if he is within **2** of the target, **1 Normal** — **2** if its max HP is above 6. Hunted marker; cleansable. |
 | 2   | **Hermes' Ring** | Active, self | 3    | 4   | —     | **TechWard 3 turns** on Luka (§5.12): Tech damage blocked outright.                                                                                                                                                                 |
 | 3   | **Vendetta**     | Active (Ult) | 6    | 3   | 3     | **3 × 1 Atomic** to the target; each blow rolls a **10% critical** (§2.4): ×2, or **×3** if the target's max HP is above 6.                                                                                                         |
 
 **"Heavy" is maximum health above 6** — today the Bouncer and Sanity. Both of his damage riders read it.
 
-**L costs 5, one above Zero-Day, because it does more to one target** (dropped at 4, raised by the designer 2026-09-15). Same cooldown; two damage now where Zero-Day deals two a round later, up to two more if the target stays, and up to four cells of free mobility. Zero-Day pays for its certainty with a cleanse and a blast that reaches others; L pays with the escape — the teleport leaves Luka adjacent, so the target has to spend its move getting more than two cells clear — and the extra point. Both hits are Normal; no type was specified.
+**Blind Spot costs 5, one above Zero-Day, because it does more to one target** (dropped at 4, raised by the designer 2026-09-15). Same cooldown; two damage now where Zero-Day deals two a round later, up to two more if the target stays, and up to four cells of free mobility. Zero-Day pays for its certainty with a cleanse and a blast that reaches others; L pays with the escape — the teleport leaves Luka adjacent, so the target has to spend its move getting more than two cells clear — and the extra point. Both hits are Normal; no type was specified.
 
 **Hermes' Ring counters three abilities, one per operator** (§2.2, §5.12): Cryo-Pulse, Zero-Day and Drone Strike, at Ablative Plating's price. It fully shuts out only Mimi, whose one built damaging ability is Tech. Three turns on a self-cast covers two full rounds of opponents' turns.
 
@@ -909,7 +909,7 @@ That makes 44/5 the only lever measured that buys pacing without giving up comba
 - **Whether the 15–20 minute budget still stands.** It was set in ADR-0002 before anyone had played the game, and every board except the two smallest now exceeds it. It may be the budget that is wrong rather than the board — but that is a decision somebody has to take, not a number to tune toward silently.
 - **The Force damage type, and what amplifies Tech.** A four-type matrix — Normal, Force, Tech, Atomic, across Evasion and Shield — was the agreed model. **Tech landed on 2026-09-15** (§2.2) as Normal plus a ward counter, with "can be amplified by specific abilities" as the stated direction and no amplifier yet. Force is unbuilt. Which operators deal Tech was settled 2026-09-15 (§2.2): Cryo-Pulse, Zero-Day, Drone Strike. **Unmeasured:** a warded Luka against a Mimi squad, and the split-soak on Drone Strike (§5.12).
 - **A draft has no balance constraint.** Nothing checks that a squad has an answer to Evasion, a way to heal, or reliable damage. With Atomic in three operators (§2.2), a legal draw can produce a squad with no way through Kurbyn.
-- **Luka's numbers** (§10.9). L repriced 4 → 5 and Vendetta 9 → 6 by the designer on first review; reasoned, not measured.
+- **Luka's numbers** (§10.9). Blind Spot (then L) repriced 4 → 5 and Vendetta 9 → 6 by the designer on first review; reasoned, not measured.
 - **Whether the same operator may take both dice in two steps.** §6 allows it, and it is Ludo-standard. It is also strictly worse in cells and strictly better in landings, which makes it a deliberate two-collision play rather than a mistake.
 
 ### Open, unmeasured
@@ -1100,8 +1100,8 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 
 **Luka — `LukaTests`, and Tech in `DamagePipelineTests`**
 
-- `L_TeleportsOneCellPastTheTarget_AndStrikesItForTwo`
-- `L_StrikesNobodyOnTheWay`
+- `BlindSpot_TeleportsOneCellPastTheTarget_AndStrikesItForTwo`
+- `BlindSpot_StrikesNobodyOnTheWay`
 - `FollowUp_LandsForOne_WhenTheTargetStaysClose`
 - `FollowUp_DealsTwo_ToAHeavyTarget`
 - `FollowUp_Misses_WhenTheTargetGotClear`
@@ -1152,3 +1152,4 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - 2026-09-15 — **Luka added as §10.9**, complete, with three amendments. **§2.2: the Tech damage type** — Normal plus one counter, a ward that blocks it outright before evasion and the shield (§2.1 step 1b), with amplifiers the stated direction and none built; **Mimi's Cryo-Pulse is now Tech.** **§2.4: critical hits** — a per-effect, per-recipient roll that multiplies damage, with a heavier multiplier against targets whose maximum health is above a stated threshold; an effect without a chance never draws, so no existing dice stream moved. §2.4 also states that one cast never neutralizes a target twice. **§6.5: follow-up strikes** — `EffectKind.FollowUp`, the thirteenth kind, in the same registry as charges: resolves at the caster's next upkeep only if the caster is within reach, target alone, heavy bonus, a miss reported, and — unlike a charge — lost with its caster. `StatusKind` gains `TechWard` (§5.12) and `Hunted` (§5.13). §2.1 step 3 corrected to the shield pool (it still described the whole-instance shield). Atomic is now in three operators (§2.2, §12). §9.1 randomness reaches three places; §9.3 gains `FollowUpMarked` and `FollowUpResolved`. Luka's L and Vendetta flagged for the balance pass; all his numbers are the designer's, unmeasured.
 - 2026-09-15 — **Luka repriced on first review** (designer): L 4 → 5, one above Zero-Day, which it out-damages on one target; Vendetta 9 → 6, out of Miracle Pull's price and beside Velvet Rope's. §2.2, §10.9 and §12 updated. Unmeasured.
 - 2026-09-15 — **Tech sources settled** (designer): damage from a guided or remote-operated device is Tech (§2.2). **Zero-Day and Drone Strike switch Normal → Tech**, joining Cryo-Pulse; Killzone is recorded as borderline and stays Normal. §5.12 states three consequences: the ward blocks damage but not riders, a warded holder still counts toward Drone Strike's split, and Mimi alone is fully shut out by the ward. A roster test pins the source list. §10.4, §10.6, §10.8, §10.9, §12 and §13 updated. Unmeasured.
+- 2026-09-15 — **"L" named Blind Spot** (designer). The device behind it and Hermes' Ring is one signal-spoofing ring: turned outward it hides him from every lens (the teleport), turned inward it jams guided tech (the ward). The fiction lives in `OPERATORS.md`. Ability id 901 unchanged. No rule or number changed.

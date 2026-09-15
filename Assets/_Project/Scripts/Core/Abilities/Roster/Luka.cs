@@ -41,16 +41,20 @@ namespace NonaRoyale.Core.Abilities
         /// </summary>
         public const int HeavyAbove = 6;
 
-        /// <summary>How close he must still be to L's target at his next upkeep.</summary>
+        /// <summary>How close he must still be to Blind Spot's target at his next upkeep.</summary>
         public const int FollowUpReach = 2;
 
         /// <summary>
-        /// Luka teleports to the target and strikes it. If it is still within
-        /// reach when his next turn begins, he strikes it again.
+        /// Luka's ring wipes him out of every lens in the room; he reappears
+        /// beside the target and strikes it. If it is still within reach when
+        /// his next turn begins, he strikes it again.
         /// </summary>
         /// <remarks>
-        /// <b>"L" is the name as dropped</b> and reads as a placeholder; it is
-        /// shown to players as written until the designer names it.
+        /// <b>Named 2026-09-15</b> (designer); dropped as "L". The device is
+        /// Hermes' Ring turned outward (OPERATORS.md): nobody sees him cross
+        /// the floor, which is why it plays as a teleport and hits nobody on
+        /// the way. He stays in the target's blind spot, which is the
+        /// follow-up.
         ///
         /// <b>The teleport is Collision's landing with no rake</b> (§7.6):
         /// placement one cell past the target, or one short when that cell is
@@ -72,10 +76,10 @@ namespace NonaRoyale.Core.Abilities
         /// others; this pays with the escape and the extra point. Normal
         /// damage, both hits — no type was specified.
         /// </remarks>
-        public static AbilityDefinition L { get; } = new AbilityDefinition(
-            id: 901, name: "L",
+        public static AbilityDefinition BlindSpot { get; } = new AbilityDefinition(
+            id: 901, name: "Blind Spot",
             description:
-                "Teleports to the target, viciously striking it. If it is still close when Luka's next turn begins, he strikes it again, harder if it is a heavy target.",
+                "Luka's ring wipes him from every lens in the room. He reappears beside the target and strikes it, and if it is still close when his next turn begins, he strikes it again, harder if it is a heavy target.",
             energyCost: 5, cooldownTurns: 3, range: 3,
             effects: new[]
             {
@@ -88,7 +92,8 @@ namespace NonaRoyale.Core.Abilities
             });
 
         /// <summary>
-        /// A ring that blocks all tech damage aimed at Luka for a while.
+        /// The ring turned inward: it jams anything guided or remote-operated
+        /// that is aimed at Luka, for a while.
         /// </summary>
         /// <remarks>
         /// <b>Dropped as a passive; built as a self-cast.</b> A passive with a
@@ -114,7 +119,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition HermesRing { get; } = new AbilityDefinition(
             id: 902, name: "Hermes' Ring",
             description:
-                "Luka's ring blocks all tech damage aimed at him for a while.",
+                "Luka turns his ring inward, jamming all tech damage aimed at him for a while.",
             energyCost: 3, cooldownTurns: 4, range: 0,
             targeting: AbilityTargeting.None,
             effects: new[]
@@ -158,7 +163,7 @@ namespace NonaRoyale.Core.Abilities
             effects: new[] { VendettaBlow(), VendettaBlow(), VendettaBlow() });
 
         public static IReadOnlyList<AbilityDefinition> All { get; } =
-            new[] { L, HermesRing, Vendetta };
+            new[] { BlindSpot, HermesRing, Vendetta };
 
         /// <summary>His uniform shape, for drafting. No aura, no passive.</summary>
         public static OperatorDefinition Definition { get; } = new OperatorDefinition(
