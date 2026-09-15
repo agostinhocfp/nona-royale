@@ -580,8 +580,11 @@ namespace NonaRoyale.Core
             if (command.DieFace == null) _unspentDice.Clear();
             else _unspentDice.Remove(command.DieFace.Value);
 
+            // The attempted landing travels with the final one, so the view can
+            // show the contested cell before the bounce (PRESENTATION §3).
             events.Add(new OperatorMoved(op, move.From, collision.MoverFinalProgress,
-                _map.CellAt(op.Owner, collision.MoverFinalProgress)));
+                _map.CellAt(op.Owner, collision.MoverFinalProgress),
+                attemptedTo: move.To));
 
             if (collision.Occurred)
             {

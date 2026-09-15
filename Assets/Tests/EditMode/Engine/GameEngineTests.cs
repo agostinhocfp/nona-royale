@@ -270,6 +270,54 @@ namespace NonaRoyale.Core.Tests.Engine
             Assert.That(moved.From, Is.EqualTo(0));
         }
 
+        [Test]
+        public void ABouncedMove_ReportsTheLandingItAttempted()
+        {
+            // PRESENTATION §3: the board has to show the contested cell before
+            // the bounce, and the view may not work it out for itself.
+            _engine.Execute(new RollDiceCommand());          // Red, whatever it rolls
+            var mover = Op(PlayerColor.Red, "Bouncer");
+            mover.MoveTo(0);                                 // Red's progress is its track cell
+
+            int landing = PooledLanding(mover);
+            int circuit = _match.Map.Profile.CircuitLength;
+            int blueStart = _match.Map.StartTrackIndex(PlayerColor.Blue);
+
+            // Syla, not Bouncer: Bouncer's aura slows enemies within 3, which
+            // would shorten the very move this test measures.
+            var occupant = Op(PlayerColor.Blue, "Syla");
+            occupant.MoveTo(((landing - blueStart) % circuit + circuit) % circuit);
+
+            Assert.That(occupant.Health, Is.GreaterThan(NonaRoyale.Core.Config.CombatConfig.Default.CollisionDamage),
+                "precondition: the occupant survives the hit");
+            Assert.That(_match.Map.IsSafe(CellRef.Track(landing)), Is.False,
+                "precondition: a contestable cell");
+            Assert.That(PooledLanding(mover), Is.EqualTo(landing),
+                "precondition: the occupant does not change where the move lands");
+
+            var moved = First<OperatorMoved>(_engine.Execute(new MoveCommand(mover.Id)));
+
+            Assert.That(moved.Bounced, Is.True);
+            Assert.That(moved.AttemptedTo, Is.EqualTo(landing));
+            Assert.That(moved.To, Is.EqualTo(landing - 1), "one step back along its own path");
+        }
+
+        [Test]
+        public void AnUncontestedMove_AttemptsExactlyWhereItLands()
+        {
+            RollUntil(r => r.Contains(6) && !r.IsDouble);
+            var syla = Op(PlayerColor.Red, "Syla");
+            _engine.Execute(new DeployCommand(syla.Id));
+
+            var moved = First<OperatorMoved>(_engine.Execute(new MoveCommand(syla.Id)));
+
+            Assert.That(moved.Bounced, Is.False);
+            Assert.That(moved.AttemptedTo, Is.EqualTo(moved.To));
+        }
+
+        private int PooledLanding(OperatorState op) =>
+            _engine.PreviewLandings().First(l => l.OperatorId == op.Id && l.IsPooled).Progress;
+
         // DeployingAfterMoving_IsRejected was deleted. It asserted that a deploy
         // must precede movement, a rule §6 removed deliberately — GameEngine.Deploy
         // now says in as many words that "deploy no longer has to precede

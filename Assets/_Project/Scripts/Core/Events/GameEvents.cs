@@ -95,17 +95,40 @@ namespace NonaRoyale.Core.Events
             $"{Operator.Name} deploys to {Cell} after {DroughtTurns} turns without a deploy face";
     }
 
+    /// <summary>An operator changed progress, by moving or by being placed.</summary>
+    /// <remarks>
+    /// <b>A bounced move carries both landings</b> (PRESENTATION §3). <see cref="To"/>
+    /// is where the operator ended up; <see cref="AttemptedTo"/> is the cell the
+    /// dice sent it to before the collision threw it back. Without the second,
+    /// the view could only draw the piece arriving at the bounce cell, and the
+    /// collision was legible in the log but not on the board.
+    /// </remarks>
     public sealed class OperatorMoved : IGameEvent
     {
-        public OperatorMoved(OperatorState op, int from, int to, CellRef cell)
+        public OperatorMoved(OperatorState op, int from, int to, CellRef cell, int? attemptedTo = null)
         {
             Operator = op; From = from; To = to; Cell = cell;
+            AttemptedTo = attemptedTo ?? to;
         }
         public OperatorState Operator { get; }
         public int From { get; }
         public int To { get; }
         public CellRef Cell { get; }
-        public override string ToString() => $"{Operator.Name} {From} -> {To}";
+
+        /// <summary>
+        /// The progress the move aimed for. Equal to <see cref="To"/> unless the
+        /// mover was bounced back (§7.2). Placement reports it equal to
+        /// <see cref="To"/>.
+        /// </summary>
+        public int AttemptedTo { get; }
+
+        /// <summary>True when a collision threw the mover back from where it aimed.</summary>
+        public bool Bounced => AttemptedTo != To;
+
+        public override string ToString() =>
+            Bounced
+                ? $"{Operator.Name} {From} -> {AttemptedTo}, bounced to {To}"
+                : $"{Operator.Name} {From} -> {To}";
     }
 
     public sealed class CollisionResolved : IGameEvent
