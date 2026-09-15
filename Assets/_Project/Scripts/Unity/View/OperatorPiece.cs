@@ -1,5 +1,6 @@
 // Assets/_Project/Scripts/Unity/View/OperatorPiece.cs
 using System.Collections.Generic;
+using NonaRoyale.Core.Model;
 using UnityEngine;
 
 namespace NonaRoyale.Unity.View
