@@ -10,6 +10,7 @@ using NonaRoyale.Core.Model;
 using NonaRoyale.Core.Services;
 using NonaRoyale.Unity.View;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace NonaRoyale.Unity.Composition
 {
@@ -19,9 +20,10 @@ namespace NonaRoyale.Unity.Composition
     /// </summary>
     /// <remarks>
     /// <b>Drop this on one empty GameObject and press Play.</b> No prefabs, no
-    /// Canvas, no imported art — the board, the pieces and the controls are all
-    /// generated at runtime. The only thing this build exists to answer is
-    /// whether the game is fun, and scene wiring does not help answer it.
+    /// scene wiring, no imported art — the board, the pieces, the controls and
+    /// the HUD canvas (ADR-0008) are all generated at runtime. The only thing
+    /// this build exists to answer is whether the game is fun, and scene
+    /// wiring does not help answer it.
     ///
     /// <b>It holds no rules.</b> Every action goes out as a command and comes
     /// back as events; the view never inspects a service or mutates state. If a
@@ -69,8 +71,8 @@ namespace NonaRoyale.Unity.Composition
         private AbilityDefinition _selectedAbility;
         private HighlightLayer _highlights;
         private FeedbackLayer _feedback;
-        // private HudRoot _hudRoot;
-        // private PieceHudLayer _pieceHud;
+        private HudRoot _hudRoot;
+        private PieceHudLayer _pieceHud;
         private Vector2 _panelScroll;
 
         private void Start() => NewMatch();
@@ -132,9 +134,9 @@ namespace NonaRoyale.Unity.Composition
 
             // The HUD scaffold survives a reseed — only the per-piece labels
             // are rebuilt, since the pieces they tracked were just destroyed.
-            // _hudRoot = GetComponent<HudRoot>() ?? gameObject.AddComponent<HudRoot>();
-            // _pieceHud = GetComponent<PieceHudLayer>() ?? gameObject.AddComponent<PieceHudLayer>();
-            // _pieceHud.Bind(_hudRoot.Root, _pieces, cellSpacing * 0.55f);
+            _hudRoot = GetComponent<HudRoot>() ?? gameObject.AddComponent<HudRoot>();
+            _pieceHud = GetComponent<PieceHudLayer>() ?? gameObject.AddComponent<PieceHudLayer>();
+            _pieceHud.Bind(_hudRoot.Root, _pieces, cellSpacing * 0.55f);
 
             FrameCamera();
             Handle(_match.Engine.Start(), immediate: true);
@@ -208,7 +210,7 @@ namespace NonaRoyale.Unity.Composition
 
             // Driven every frame rather than on the keypress, so flipping the
             // inspector checkbox works too.
-            // if (_pieceHud != null) _pieceHud.Visible = showPieceHealth;
+            if (_pieceHud != null) _pieceHud.Visible = showPieceHealth;
 
             // Game view resizing is routine while prototyping, and both the size
             // and the shift depend on aspect and on whether the panel is up.
@@ -241,6 +243,11 @@ namespace NonaRoyale.Unity.Composition
                 var gui = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
                 if (new Rect(10, 10, PanelWidth - 20f, Screen.height - 20).Contains(gui)) return;
             }
+
+            // The EventSystem sees uGUI and nothing else, so it cannot replace the
+            // rect guard above while the OnGUI panel still exists. Both apply until
+            // the OnGUI path is deleted, in the same commit (ADR-0008 consequence 4).
+            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
 
             var camera = Camera.main;
             if (camera == null) return;
@@ -539,12 +546,9 @@ namespace NonaRoyale.Unity.Composition
 
             if (!showPanel)
             {
-                // One line, out of the way, so the key is discoverable without
-                // the panel being up to advertise it.
-                GUI.Label(new Rect(10, 10, 200, 20), "<b>Tab</b> — controls");
-                // // One line, out of the way, so the keys are discoverable without
-                // // the panel being up to advertise them.
-                // GUI.Label(new Rect(10, 10, 260, 20), "<b>Tab</b> — controls   <b>H</b> — health");
+                // One line, out of the way, so the keys are discoverable without
+                // the panel being up to advertise them.
+                GUI.Label(new Rect(10, 10, 260, 20), "<b>Tab</b> — controls   <b>H</b> — health");
                 return;
             }
 
