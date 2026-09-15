@@ -53,6 +53,10 @@ namespace NonaRoyale.Unity.Composition
         [Tooltip("Show the controls panel. Tab toggles it while playing.")]
         public bool showPanel = true;
 
+        [Tooltip("Health readout above every deployed piece (ADR-0008). " +
+                 "H toggles it while playing — the stranger test decides its fate.")]
+        public bool showPieceHealth = true;
+
         private MatchFactory.Match _match;
         private BoardLayout _layout;
         private readonly List<OperatorPiece> _pieces = new List<OperatorPiece>();
@@ -65,6 +69,8 @@ namespace NonaRoyale.Unity.Composition
         private AbilityDefinition _selectedAbility;
         private HighlightLayer _highlights;
         private FeedbackLayer _feedback;
+        // private HudRoot _hudRoot;
+        // private PieceHudLayer _pieceHud;
         private Vector2 _panelScroll;
 
         private void Start() => NewMatch();
@@ -123,6 +129,12 @@ namespace NonaRoyale.Unity.Composition
                 piece.Bind(op, _layout.CellSize, cellSpacing);
                 _pieces.Add(piece);
             }
+
+            // The HUD scaffold survives a reseed — only the per-piece labels
+            // are rebuilt, since the pieces they tracked were just destroyed.
+            // _hudRoot = GetComponent<HudRoot>() ?? gameObject.AddComponent<HudRoot>();
+            // _pieceHud = GetComponent<PieceHudLayer>() ?? gameObject.AddComponent<PieceHudLayer>();
+            // _pieceHud.Bind(_hudRoot.Root, _pieces, cellSpacing * 0.55f);
 
             FrameCamera();
             Handle(_match.Engine.Start(), immediate: true);
@@ -191,6 +203,12 @@ namespace NonaRoyale.Unity.Composition
         private void Update()
         {
             if (Input.GetKeyDown(KeyCode.Tab)) showPanel = !showPanel;
+
+            if (Input.GetKeyDown(KeyCode.H)) showPieceHealth = !showPieceHealth;
+
+            // Driven every frame rather than on the keypress, so flipping the
+            // inspector checkbox works too.
+            // if (_pieceHud != null) _pieceHud.Visible = showPieceHealth;
 
             // Game view resizing is routine while prototyping, and both the size
             // and the shift depend on aspect and on whether the panel is up.
@@ -524,6 +542,9 @@ namespace NonaRoyale.Unity.Composition
                 // One line, out of the way, so the key is discoverable without
                 // the panel being up to advertise it.
                 GUI.Label(new Rect(10, 10, 200, 20), "<b>Tab</b> — controls");
+                // // One line, out of the way, so the keys are discoverable without
+                // // the panel being up to advertise them.
+                // GUI.Label(new Rect(10, 10, 260, 20), "<b>Tab</b> — controls   <b>H</b> — health");
                 return;
             }
 
@@ -553,7 +574,7 @@ namespace NonaRoyale.Unity.Composition
             // which is how "Standard 48x1" would have outlived the 48-cell board.
             GUILayout.Label($"{_match.Map.Profile}   phase {engine.Phase}");
 
-            GUILayout.Label($"<i>{(randomSquads ? "drafted squads" : "alpha three")} — Tab hides this</i>");
+            GUILayout.Label($"<i>{(randomSquads ? "drafted squads" : "alpha three")} — Tab hides this, H toggles health</i>");
 
             GUILayout.Space(6);
 

@@ -70,7 +70,7 @@ namespace NonaRoyale.Core.Abilities
             id: 501, name: "Nanite Infusion",
             description:
                 "Nanites seal an ally's wounds. Turned on an enemy they do the opposite, and your squad standing near them catches the runoff.",
-            energyCost: 3, cooldownTurns: 2, range: 3,
+            energyCost: 3, cooldownTurns: 2, range: 5,
             effects: new[]
             {
                 AbilityEffect.Heal(EffectScope.PrimaryTarget, 2, EffectAudience.AllyOnly),
@@ -128,7 +128,7 @@ namespace NonaRoyale.Core.Abilities
             id: 502, name: "Trauma Plate",
             description:
                 "Bolts a ballistic insert onto an ally's carrier. It takes what comes until it is spent, then fails.",
-            energyCost: 4, cooldownTurns: 3, range: 3,
+            energyCost: 4, cooldownTurns: 3, range: 4,
             effects: new[]
             {
                 AbilityEffect.Status_(
@@ -165,7 +165,7 @@ namespace NonaRoyale.Core.Abilities
             id: 503, name: "Neural Purge",
             description:
                 "Floods an ally's nerves with inhibitory signals, washing out everything riding them.",
-            energyCost: 6, cooldownTurns: 3, range: 3,
+            energyCost: 6, cooldownTurns: 3, range: 5,
             effects: new[] { AbilityEffect.Cleanse() });
 
         /// <remarks>Cast order, and id order — 501, 502, 503.</remarks>
