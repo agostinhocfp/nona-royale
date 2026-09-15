@@ -188,9 +188,10 @@ namespace NonaRoyale.Core.Abilities
         /// cast — only a place. <see cref="EffectScope.PrimaryTarget"/> is
         /// recorded so the field is never garbage, and the resolver ignores it.
         ///
-        /// The split is what makes it an assassination tool rather than an area
-        /// attack: six damage on one target kills most of the roster outright,
-        /// and the same six divided three ways is less than a collision each.
+        /// The split is what makes it a single-target bet rather than an area
+        /// attack: the whole beam on one operator is a heavy hit, and the same
+        /// beam divided three ways is less than a collision each. The split
+        /// floors. The numbers live on the ability (<c>Kian.DroneStrike</c>).
         /// </remarks>
         public static AbilityEffect PaintCell(
             int totalDamage, int radius, DamageType damageType,

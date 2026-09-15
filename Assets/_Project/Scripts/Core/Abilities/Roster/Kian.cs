@@ -66,9 +66,10 @@ namespace NonaRoyale.Core.Abilities
         ///
         /// <b>Damage 1 — it is a control tool, not a damage ability.</b> The
         /// stun is what is being bought. Compare Dargin Pulse at 6 energy for 2
-        /// area damage and a stun over 2N+1 cells; this covers 6 cells on one
+        /// area damage and a stun over 2N+1 cells; this covers 4 cells on one
         /// side for less, and the trade is that they all have to be in front of
-        /// him.
+        /// him. The line was 6 cells until the 2026-09-15 balance pass
+        /// (<c>245a60b</c>).
         ///
         /// <b>Duration 1 is already "their next turn".</b> A status applied
         /// outside its target's turn takes hold on that target's <i>next</i> one,
@@ -160,8 +161,9 @@ namespace NonaRoyale.Core.Abilities
         /// decide whether moving off it is worth what moving costs them.
         ///
         /// <b>It is at its best against one target and its worst against a
-        /// crowd.</b> Six on a lone operator kills Mimi, Syla, Javi and Kian
-        /// outright and takes Bouncer to 3; six split three ways is 2 each, less
+        /// crowd.</b> Four on a lone operator takes a 6-health operator to 2 and
+        /// Mimi to 1 — inside collision range, but nobody dies from full. Split
+        /// two ways it is 2 each, three ways 1 each (the split floors), both less
         /// than a collision. So its counterplay is to <i>bunch up</i> — which
         /// works against everything else on the board, since Ace Shards, Dargin
         /// Pulse and Cryo-Pulse all punish standing together. That tension is the
@@ -178,8 +180,12 @@ namespace NonaRoyale.Core.Abilities
         /// nowhere near, which is what an artillery operator should be doing.
         ///
         /// <b>Normal damage, so the plate and the charge both blunt it.</b>
-        /// Atomic is deliberately concentrated (§2.2), and a 6-damage strike that
+        /// Atomic is deliberately concentrated (§2.2), and a 4-damage strike that
         /// ignored every defence would make Javi pointless against him.
+        ///
+        /// <b>Beam walked 6 → 4 on 2026-09-15</b> (<c>245a60b</c>). At 6 a
+        /// correct guess killed four of the roster's operators from full; at 4 it
+        /// kills nobody from full and sets up the kill instead.
         ///
         /// <b>Cost 6, cooldown 2 — and the cooldown is doing the limiting.</b>
         /// It paints on one turn, fires on the next, and can be painted again the

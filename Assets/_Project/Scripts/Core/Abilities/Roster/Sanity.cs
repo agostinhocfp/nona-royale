@@ -5,18 +5,20 @@ using NonaRoyale.Core.Model;
 namespace NonaRoyale.Core.Abilities
 {
     /// <summary>
-    /// Operator #8 — the engineer. The roster's immovable object: the toughest
-    /// operator ever fielded, the slowest by half the band, and the first whose
+    /// Operator #8 — the engineer. The roster's immovable object: tied for the
+    /// most health on the roster, the slowest by half the band, and the first whose
     /// kit needed two new mechanics at once. Content, not logic — but content
     /// that arrived with an amendment (COMBAT_SYSTEMS §10.8, 2026-09-15).
     /// </summary>
     /// <remarks>
-    /// <b>He transgresses two precedents, knowingly, and both are recorded as
-    /// designer overrides rather than drift.</b> Speed 0.5 sits below the
-    /// 1.0–1.5 band (ADR-0002 Amendment 4), and health 12 ties the roster
-    /// maximum the Bouncer cut (2026-09-12) had just vacated. The 2026-09-15
-    /// amendment in COMBAT_SYSTEMS §10.8 owns both decisions; the roster test
-    /// that enforces the band names him as its one documented exception.
+    /// <b>He transgresses a precedent, knowingly, recorded as a designer
+    /// override rather than drift.</b> Speed 0.5 sits below the 1.0–1.5 band
+    /// (ADR-0002 Amendment 4). He shipped with a second override — health 12,
+    /// tying the maximum the Bouncer cut (2026-09-12) had just vacated — and
+    /// the balance pass the same day (<c>46488b6</c>) took him to 9, level
+    /// with the Bouncer, so only the speed override stands. COMBAT_SYSTEMS
+    /// §10.8 owns the decision; the roster test that enforces the band names
+    /// him as its one documented exception.
     ///
     /// <b>The slow-immunity side effect is accepted, not overlooked.</b> At 0.5
     /// he sits permanently on <c>GameConfig.MinSpeedMultiplier</c>, so no slow
@@ -44,12 +46,16 @@ namespace NonaRoyale.Core.Abilities
     public static class Sanity
     {
         /// <summary>
-        /// Twelve, tying the roster maximum. The Bouncer was cut from exactly
-        /// this figure because he absorbed four collisions and shrugged off the
-        /// sequence that kills everyone else — restoring it here is a
-        /// deliberate override (2026-09-15), bought back with the slowest
-        /// speed ever fielded rather than with a lower number.
+        /// Nine, level with the Bouncer at the top of the roster.
         /// </summary>
+        /// <remarks>
+        /// <b>Walked 12 → 9 on 2026-09-15.</b> He shipped at twelve as a
+        /// deliberate override, the figure the Bouncer was cut from because he
+        /// absorbed four collisions and shrugged off the sequence that kills
+        /// everyone else. The balance pass the same day withdrew it: at 9 he
+        /// survives two collisions, not three, and the slowest speed ever
+        /// fielded is the one override left.
+        /// </remarks>
         public const int MaxHealth = 9;
 
         /// <summary>

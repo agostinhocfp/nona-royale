@@ -25,6 +25,12 @@ namespace NonaRoyale.Core.Abilities
     /// instead. Anyone reading <c>_HANDOFF_mitigation.md</c> should know only
     /// half of it was adopted.
     ///
+    /// <b>Ranges raised on 2026-09-15</b> (<c>e85d710</c>): Nanite Infusion
+    /// and Neural Purge 3 → 5, Trauma Plate 3 → 4. The kit was designed at 3
+    /// across the board. Neural Purge now reaches one cell short of Mimi's
+    /// Translocation, which COMBAT_SYSTEMS §10.4 treats as her only
+    /// compensation for 5 health — the gap to watch if either moves again.
+    ///
     /// <b>He may be the operator that tips a combat game into a race.</b> A
     /// dedicated healer with a castable shield makes kills materially harder to
     /// land, on a board whose stated priority is 70% combat. The kill bounty
@@ -38,7 +44,7 @@ namespace NonaRoyale.Core.Abilities
         public const int MaxHealth = 6;
 
         /// <summary>
-        /// Every ability he has is range 3. A support who cannot reach the fight
+        /// His abilities reach 5, 4 and 5. A support who cannot reach the fight
         /// is a dead ability list, so he pays for his reach in fragility rather
         /// than in speed.
         /// </summary>
@@ -111,9 +117,9 @@ namespace NonaRoyale.Core.Abilities
         /// of every four of the holder's turns, so choosing <i>when</i> is the
         /// whole skill of the ability.
         ///
-        /// <b>Range 3, not the sketched 6.</b> Range 6 is Mimi's, and §10.4 makes
-        /// it the sole compensation for her 5 health. It also contradicts his own
-        /// rule: he pays for reach in fragility, not in distance.
+        /// <b>Range 4, not the sketched 6.</b> Range 6 is Mimi's, and §10.4 makes
+        /// it the sole compensation for her 5 health. Designed at 3; raised to 4
+        /// in the 2026-09-15 pass, one less than his other two abilities.
         ///
         /// <b>Ally-only, so a hostile cast is refused and costs nothing.</b>
         /// Every effect scoped away by the cast mode returns
@@ -174,7 +180,8 @@ namespace NonaRoyale.Core.Abilities
 
         /// <summary>
         /// His uniform shape, for drafting. No aura, no passive — three
-        /// abilities, all range 3, all pointed at keeping somebody else alive.
+        /// abilities, at ranges 5, 4 and 5, all pointed at keeping somebody else
+        /// alive.
         /// </summary>
         public static OperatorDefinition Definition { get; } = new OperatorDefinition(
             name: "Javi",
