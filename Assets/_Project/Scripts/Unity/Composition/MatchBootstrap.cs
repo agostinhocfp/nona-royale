@@ -73,6 +73,7 @@ namespace NonaRoyale.Unity.Composition
         private FeedbackLayer _feedback;
         private HudRoot _hudRoot;
         private PieceHudLayer _pieceHud;
+        private TurnStrip _turnStrip;
         private Vector2 _panelScroll;
 
         private void Start() => NewMatch();
@@ -137,6 +138,8 @@ namespace NonaRoyale.Unity.Composition
             _hudRoot = GetComponent<HudRoot>() ?? gameObject.AddComponent<HudRoot>();
             _pieceHud = GetComponent<PieceHudLayer>() ?? gameObject.AddComponent<PieceHudLayer>();
             _pieceHud.Bind(_hudRoot.Root, _pieces, cellSpacing * 0.55f);
+            _turnStrip = GetComponent<TurnStrip>() ?? gameObject.AddComponent<TurnStrip>();
+            _turnStrip.Bind(_hudRoot.Root);
 
             FrameCamera();
             Handle(_match.Engine.Start(), immediate: true);
@@ -150,6 +153,7 @@ namespace NonaRoyale.Unity.Composition
         private int _framedWidth;
         private int _framedHeight;
         private bool _framedWithPanel;
+        private float _framedScale;
 
         /// <summary>
         /// Sizes the camera and slides the board clear of the controls panel.
@@ -164,6 +168,13 @@ namespace NonaRoyale.Unity.Composition
         /// number of pixels, so the fraction of the view it eats grows as the
         /// Game view narrows. Framing on height alone was correct only at the
         /// aspect it happened to be tuned at.
+        ///
+        /// <b>The top edge belongs to the turn strip.</b> The same idea, turned
+        /// on its side: the board is fitted into the height the strip leaves,
+        /// and the camera moves <i>up</i> so the board sits lower on screen.
+        /// The strip's height is in canvas units, so it is converted with the
+        /// canvas scale factor, never assumed to be pixels (ADR-0008
+        /// consequence 5).
         /// </remarks>
         private void FrameCamera()
         {
@@ -189,17 +200,34 @@ namespace NonaRoyale.Unity.Composition
             // is sized into nothing.
             float usable = Mathf.Max(0.25f, 1f - panelFraction);
 
-            // Fit vertically, and fit horizontally in whatever the panel leaves.
+            float scale = _hudRoot != null ? _hudRoot.ScaleFactor : 1f;
+
+            float stripFraction = _turnStrip != null
+                ? Mathf.Clamp(TurnStrip.ReservedHeight * scale / Mathf.Max(1f, Screen.height), 0f, 0.25f)
+                : 0f;
+
+            float usableHeight = 1f - stripFraction;
+
+            // Fit vertically in what the strip leaves, and horizontally in
+            // what the panel leaves.
             camera.orthographicSize = Mathf.Max(
-                extent * FrameMargin,
+                extent * FrameMargin / usableHeight,
                 extent * FrameMargin / (aspect * usable));
 
             float halfWidth = camera.orthographicSize * aspect;
-            camera.transform.position = new Vector3(-halfWidth * panelFraction, 0f, -10f);
+            float halfHeight = camera.orthographicSize;
+
+            camera.transform.position = new Vector3(
+                -halfWidth * panelFraction,
+                halfHeight * stripFraction,
+                -10f);
+
+            if (_turnStrip != null) _turnStrip.CentreOver(showPanel ? PanelWidth : 0f, scale);
 
             _framedWidth = Screen.width;
             _framedHeight = Screen.height;
             _framedWithPanel = showPanel;
+            _framedScale = scale;
         }
 
         private void Update()
@@ -214,9 +242,12 @@ namespace NonaRoyale.Unity.Composition
 
             // Game view resizing is routine while prototyping, and both the size
             // and the shift depend on aspect and on whether the panel is up.
+            // The scale factor is checked too: the CanvasScaler updates it a
+            // frame after a resize, so the strip reservation catches up then.
             if (Screen.width != _framedWidth ||
                 Screen.height != _framedHeight ||
-                showPanel != _framedWithPanel)
+                showPanel != _framedWithPanel ||
+                (_hudRoot != null && !Mathf.Approximately(_hudRoot.ScaleFactor, _framedScale)))
             {
                 FrameCamera();
             }
@@ -300,6 +331,8 @@ namespace NonaRoyale.Unity.Composition
 
             Reposition(immediate);
             RefreshHighlights();
+
+            if (_turnStrip != null) _turnStrip.Refresh(_match.Engine);
         }
 
         /// <summary>

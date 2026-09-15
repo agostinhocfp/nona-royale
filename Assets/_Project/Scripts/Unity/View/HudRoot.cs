@@ -29,6 +29,7 @@ namespace NonaRoyale.Unity.View
     public sealed class HudRoot : MonoBehaviour
     {
         private RectTransform _root;
+        private Canvas _canvas;
 
         /// <summary>The canvas rect every HUD element parents under. Built on first use.</summary>
         public RectTransform Root
@@ -40,6 +41,25 @@ namespace NonaRoyale.Unity.View
             }
         }
 
+        /// <summary>
+        /// Screen pixels per canvas unit, as the CanvasScaler last set it.
+        /// Anything that turns HUD sizes into screen space (FrameCamera) reads
+        /// this rather than repeating the scaler's arithmetic.
+        /// </summary>
+        /// <remarks>
+        /// The scaler updates it in its own Update, so after a resize it can be
+        /// one frame stale. Callers that cache it should compare against it
+        /// every frame, which is what MatchBootstrap does.
+        /// </remarks>
+        public float ScaleFactor
+        {
+            get
+            {
+                if (_root == null) Build();
+                return _canvas.scaleFactor;
+            }
+        }
+
         private void Build()
         {
             var go = new GameObject("HUD", typeof(RectTransform));
@@ -47,6 +67,7 @@ namespace NonaRoyale.Unity.View
 
             var canvas = go.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            _canvas = canvas;
 
             var scaler = go.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
