@@ -30,7 +30,7 @@ namespace NonaRoyale.Unity.Composition
     /// move looks wrong on screen, the bug is in the core and there is an
     /// EditMode test missing for it.
     /// </remarks>
-    public sealed class MatchBootstrap : MonoBehaviour
+    public sealed class MatchBootstrap : MonoBehaviour, IControlPanelHost
     {
         [Header("Match")]
         [Tooltip("Draft three distinct operators per seat from the whole roster. " +
@@ -55,6 +55,10 @@ namespace NonaRoyale.Unity.Composition
         [Tooltip("Show the controls panel. Tab toggles it while playing.")]
         public bool showPanel = true;
 
+        [Tooltip("Use the old OnGUI panel instead of the uGUI one. F2 switches while playing. " +
+                 "Both exist until the stranger test passes on the uGUI panel (ADR-0008 consequence 6).")]
+        public bool useLegacyPanel = false;
+
         [Tooltip("Health readout above every deployed piece (ADR-0008). " +
                  "H toggles it while playing — the stranger test decides its fate.")]
         public bool showPieceHealth = true;
@@ -74,6 +78,7 @@ namespace NonaRoyale.Unity.Composition
         private HudRoot _hudRoot;
         private PieceHudLayer _pieceHud;
         private TurnStrip _turnStrip;
+        private ControlPanel _controls;
         private Vector2 _panelScroll;
 
         private void Start() => NewMatch();
@@ -140,12 +145,14 @@ namespace NonaRoyale.Unity.Composition
             _pieceHud.Bind(_hudRoot.Root, _pieces, cellSpacing * 0.55f);
             _turnStrip = GetComponent<TurnStrip>() ?? gameObject.AddComponent<TurnStrip>();
             _turnStrip.Bind(_hudRoot.Root);
+            _controls = GetComponent<ControlPanel>() ?? gameObject.AddComponent<ControlPanel>();
+            _controls.Bind(_hudRoot.Root, this);
 
             FrameCamera();
             Handle(_match.Engine.Start(), immediate: true);
         }
 
-        /// <summary>Screen width the controls panel occupies, including its margin.</summary>
+        /// <summary>Screen width the OnGUI panel occupies, including its margin. Pixels.</summary>
         private const float PanelWidth = 330f;
 
         private const float FrameMargin = 1.12f;
@@ -153,6 +160,7 @@ namespace NonaRoyale.Unity.Composition
         private int _framedWidth;
         private int _framedHeight;
         private bool _framedWithPanel;
+        private bool _framedLegacy;
         private float _framedScale;
 
         /// <summary>
@@ -164,10 +172,12 @@ namespace NonaRoyale.Unity.Composition
         /// herded the board <i>under</i> the panel — which cost a quarter of a
         /// cell at 1920 wide and buried nearly half the board at 1024.
         ///
-        /// <b>Width is sized for, not just height.</b> The panel is a fixed
-        /// number of pixels, so the fraction of the view it eats grows as the
-        /// Game view narrows. Framing on height alone was correct only at the
-        /// aspect it happened to be tuned at.
+        /// <b>Width is sized for, not just height.</b> The panel takes a fixed
+        /// width, so the fraction of the view it eats grows as the Game view
+        /// narrows. Framing on height alone was correct only at the aspect it
+        /// happened to be tuned at. The OnGUI panel's width is in pixels; the
+        /// uGUI panel's is in canvas units and is converted with the scale
+        /// factor (ADR-0008 consequence 5).
         ///
         /// <b>The top edge belongs to the turn strip.</b> The same idea, turned
         /// on its side: the board is fitted into the height the strip leaves,
@@ -192,15 +202,17 @@ namespace NonaRoyale.Unity.Composition
             float extent = _layout?.Extent ?? 8f;
             float aspect = Mathf.Max(0.1f, camera.aspect);
 
-            float panelFraction = showPanel
-                ? Mathf.Clamp01(PanelWidth / Mathf.Max(1f, Screen.width))
-                : 0f;
+            float scale = _hudRoot != null ? _hudRoot.ScaleFactor : 1f;
+
+            float panelPixels = !showPanel ? 0f
+                : useLegacyPanel ? PanelWidth
+                : ControlPanel.ReservedWidth * scale;
+
+            float panelFraction = Mathf.Clamp01(panelPixels / Mathf.Max(1f, Screen.width));
 
             // Never let the panel claim so much of a tiny window that the board
             // is sized into nothing.
             float usable = Mathf.Max(0.25f, 1f - panelFraction);
-
-            float scale = _hudRoot != null ? _hudRoot.ScaleFactor : 1f;
 
             float stripFraction = _turnStrip != null
                 ? Mathf.Clamp(TurnStrip.ReservedHeight * scale / Mathf.Max(1f, Screen.height), 0f, 0.25f)
@@ -222,11 +234,12 @@ namespace NonaRoyale.Unity.Composition
                 halfHeight * stripFraction,
                 -10f);
 
-            if (_turnStrip != null) _turnStrip.CentreOver(showPanel ? PanelWidth : 0f, scale);
+            if (_turnStrip != null) _turnStrip.CentreOver(panelPixels, scale);
 
             _framedWidth = Screen.width;
             _framedHeight = Screen.height;
             _framedWithPanel = showPanel;
+            _framedLegacy = useLegacyPanel;
             _framedScale = scale;
         }
 
@@ -234,11 +247,19 @@ namespace NonaRoyale.Unity.Composition
         {
             if (Input.GetKeyDown(KeyCode.Tab)) showPanel = !showPanel;
 
+            if (Input.GetKeyDown(KeyCode.F2)) useLegacyPanel = !useLegacyPanel;
+
             if (Input.GetKeyDown(KeyCode.H)) showPieceHealth = !showPieceHealth;
 
             // Driven every frame rather than on the keypress, so flipping the
             // inspector checkbox works too.
             if (_pieceHud != null) _pieceHud.Visible = showPieceHealth;
+
+            if (_controls != null)
+            {
+                _controls.Visible = showPanel && !useLegacyPanel;
+                _controls.HintVisible = !showPanel;
+            }
 
             // Game view resizing is routine while prototyping, and both the size
             // and the shift depend on aspect and on whether the panel is up.
@@ -247,6 +268,7 @@ namespace NonaRoyale.Unity.Composition
             if (Screen.width != _framedWidth ||
                 Screen.height != _framedHeight ||
                 showPanel != _framedWithPanel ||
+                useLegacyPanel != _framedLegacy ||
                 (_hudRoot != null && !Mathf.Approximately(_hudRoot.ScaleFactor, _framedScale)))
             {
                 FrameCamera();
@@ -269,7 +291,7 @@ namespace NonaRoyale.Unity.Composition
             if (_match == null || _selectedAbility == null || !_selectedAbility.RequiresCell) return;
             if (_selectedCaster == null || _selectedCaster.IsInYard) return;
 
-            if (showPanel)
+            if (showPanel && useLegacyPanel)
             {
                 var gui = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
                 if (new Rect(10, 10, PanelWidth - 20f, Screen.height - 20).Contains(gui)) return;
@@ -303,7 +325,7 @@ namespace NonaRoyale.Unity.Composition
             }
 
             _selectedCell = nearest;
-            RefreshHighlights();
+            SelectionChanged();
         }
 
         // ── Driving the engine ───────────────────────────────────────────
@@ -333,6 +355,134 @@ namespace NonaRoyale.Unity.Composition
             RefreshHighlights();
 
             if (_turnStrip != null) _turnStrip.Refresh(_match.Engine);
+            if (_controls != null) _controls.MarkDirty();
+        }
+
+        /// <summary>Redraws everything that depends on the selection.</summary>
+        private void SelectionChanged()
+        {
+            RefreshHighlights();
+            if (_controls != null) _controls.MarkDirty();
+        }
+
+        // ── Intents (IControlPanelHost) ──────────────────────────────────
+        //
+        // Both panels act only through these, so a button does the same thing
+        // in either one while they coexist. Explicit implementations keep them
+        // off the component's public surface; the OnGUI panel reaches them
+        // through Host.
+
+        private IControlPanelHost Host => this;
+
+        MatchFactory.Match IControlPanelHost.Match => _match;
+        bool IControlPanelHost.RandomSquads => randomSquads;
+        IReadOnlyList<string> IControlPanelHost.Log => _log;
+
+        OperatorState IControlPanelHost.SelectedCaster => _selectedCaster;
+        AbilityDefinition IControlPanelHost.SelectedAbility => _selectedAbility;
+        OperatorState IControlPanelHost.SelectedTarget => _selectedTarget;
+        CellRef? IControlPanelHost.SelectedCell => _selectedCell;
+
+        bool IControlPanelHost.CastReady =>
+            _selectedCaster != null &&
+            _selectedAbility != null &&
+            (!_selectedAbility.RequiresCell || _selectedCell != null) &&
+            (!_selectedAbility.RequiresTarget || _selectedTarget != null);
+
+        /// <remarks>
+        /// <b>The engine decides who is legal.</b> Range, stealth and home
+        /// columns are rules (§4) and the view must not evaluate them
+        /// (PRESENTATION §1). The query also drops targets whose cast mode
+        /// scopes every effect away — Neural Purge aimed at an enemy was never
+        /// a legal cast — which is most of what keeps the list short.
+        ///
+        /// Allies are included because they always were legal: Velvet Rope
+        /// pulls a friend, All-In Mauling heals one, Nanite Infusion and Neural
+        /// Purge exist for them, and Translocation swaps with one. The first
+        /// target list showed enemies only, so the roster's healing had never
+        /// been castable at all.
+        ///
+        /// The caster is filtered out here rather than in the engine. Aiming at
+        /// yourself is legal by §10's mode rule and would let the Bouncer heal
+        /// himself for the price of the ability — defensible, undecided, and not
+        /// something the UI should settle by offering it.
+        /// </remarks>
+        IReadOnlyList<OperatorState> IControlPanelHost.CastTargets()
+        {
+            if (_match == null || _selectedCaster == null || _selectedAbility == null)
+                return new List<OperatorState>();
+
+            return _match.Engine
+                .LegalTargetsFor(_selectedCaster, _selectedAbility)
+                .Where(o => !ReferenceEquals(o, _selectedCaster))
+                .ToList();
+        }
+
+        void IControlPanelHost.Roll() => Send(new RollDiceCommand());
+
+        void IControlPanelHost.EndTurn() => Send(new EndTurnCommand());
+
+        void IControlPanelHost.Deploy(OperatorState op) => Send(new DeployCommand(op.Id));
+
+        void IControlPanelHost.Move(OperatorState op, int? dieFace) => Send(new MoveCommand(op.Id, dieFace));
+
+        void IControlPanelHost.ToggleCaster(OperatorState op)
+        {
+            _selectedCaster = ReferenceEquals(op, _selectedCaster) ? null : op;
+            _selectedAbility = null;      // an ability belongs to its caster
+            _selectedTarget = null;       // and a target belongs to its ability
+            _selectedCell = null;         // as does a cell
+
+            SelectionChanged();
+        }
+
+        void IControlPanelHost.ToggleAbility(AbilityDefinition ability)
+        {
+            if (_match == null || _selectedCaster == null || ability == null) return;
+
+            bool chosen = _selectedAbility != null && _selectedAbility.Id == ability.Id;
+
+            // Selecting needs the engine's say-so; clearing never does.
+            if (!chosen && _match.Engine.CheckAbility(_selectedCaster, ability) != AbilityAvailability.Ready)
+                return;
+
+            _selectedAbility = chosen ? null : ability;
+            _selectedTarget = null;
+            _selectedCell = null;
+
+            SelectionChanged();
+        }
+
+        void IControlPanelHost.ToggleTarget(OperatorState op)
+        {
+            _selectedTarget = ReferenceEquals(op, _selectedTarget) ? null : op;
+            SelectionChanged();
+        }
+
+        void IControlPanelHost.Cast()
+        {
+            if (!Host.CastReady) return;
+
+            Send(new UseAbilityCommand(
+                _selectedCaster.Id, _selectedAbility.Id,
+                _selectedAbility.RequiresTarget && _selectedTarget != null
+                    ? _selectedTarget.Id
+                    : (int?)null,
+                _selectedAbility.RequiresCell ? _selectedCell : null));
+
+            _selectedAbility = null;
+            _selectedTarget = null;
+            _selectedCell = null;
+
+            // Send already refreshed the highlights, but with the old
+            // selection still set; clear them now that it is gone.
+            SelectionChanged();
+        }
+
+        void IControlPanelHost.Reseed()
+        {
+            seed++;
+            NewMatch();
         }
 
         /// <summary>
@@ -582,13 +732,9 @@ namespace NonaRoyale.Unity.Composition
             // below would otherwise render as literal angle brackets.
             GUI.skin.label.richText = true;
 
-            if (!showPanel)
-            {
-                // One line, out of the way, so the keys are discoverable without
-                // the panel being up to advertise them.
-                GUI.Label(new Rect(10, 10, 260, 20), "<b>Tab</b> — controls   <b>H</b> — health");
-                return;
-            }
+            // The key hint moved to the uGUI panel, which shows it in both
+            // modes whenever the panel is hidden.
+            if (!showPanel || !useLegacyPanel) return;
 
             GUILayout.BeginArea(new Rect(10, 10, PanelWidth - 20f, Screen.height - 20), GUI.skin.box);
 
@@ -616,14 +762,13 @@ namespace NonaRoyale.Unity.Composition
             // which is how "Standard 48x1" would have outlived the 48-cell board.
             GUILayout.Label($"{_match.Map.Profile}   phase {engine.Phase}");
 
-            GUILayout.Label($"<i>{(randomSquads ? "drafted squads" : "alpha three")} — Tab hides this, H toggles health</i>");
+            GUILayout.Label($"<i>{(randomSquads ? "drafted squads" : "alpha three")} — Tab hides this, H toggles health, F2 switches panel</i>");
 
             GUILayout.Space(6);
 
             if (GUILayout.Button("New match (reseed)"))
             {
-                seed++;
-                NewMatch();
+                Host.Reseed();
                 return;
             }
 
@@ -648,11 +793,11 @@ namespace NonaRoyale.Unity.Composition
                 ? "<i>no dice in hand</i>"
                 : $"unspent: <b>{Faces(dice)}</b>");
 
-            if (GUILayout.Button("Roll")) Send(new RollDiceCommand());
+            if (GUILayout.Button("Roll")) Host.Roll();
 
             GUI.enabled = !owesMovement;
             if (GUILayout.Button(owesMovement ? "End turn — spend your roll first" : "End turn"))
-                Send(new EndTurnCommand());
+                Host.EndTurn();
             GUI.enabled = true;
 
             GUILayout.Space(8);
@@ -666,7 +811,7 @@ namespace NonaRoyale.Unity.Composition
 
                 if (op.IsInYard)
                 {
-                    if (GUILayout.Button("Deploy", GUILayout.Width(78))) Send(new DeployCommand(op.Id));
+                    if (GUILayout.Button("Deploy", GUILayout.Width(78))) Host.Deploy(op);
                 }
                 else
                 {
@@ -675,14 +820,7 @@ namespace NonaRoyale.Unity.Composition
 
                 bool selected = ReferenceEquals(op, _selectedCaster);
                 if (GUILayout.Toggle(selected, "cast", GUI.skin.button, GUILayout.Width(42)) != selected)
-                {
-                    _selectedCaster = selected ? null : op;
-                    _selectedAbility = null;      // an ability belongs to its caster
-                    _selectedTarget = null;       // and a target belongs to its ability
-                    _selectedCell = null;         // as does a cell
-
-                    RefreshHighlights();
-                }
+                    Host.ToggleCaster(op);
 
                 GUILayout.EndHorizontal();
             }
@@ -717,7 +855,7 @@ namespace NonaRoyale.Unity.Composition
             if (dice.Count == 1)
             {
                 if (GUILayout.Button($"Move {dice[0]}", GUILayout.Width(78)))
-                    Send(new MoveCommand(op.Id));
+                    Host.Move(op, null);
 
                 return;
             }
@@ -725,14 +863,14 @@ namespace NonaRoyale.Unity.Composition
             int total = 0;
             for (int i = 0; i < dice.Count; i++) total += dice[i];
 
-            if (GUILayout.Button($"{total}", GUILayout.Width(30))) Send(new MoveCommand(op.Id));
+            if (GUILayout.Button($"{total}", GUILayout.Width(30))) Host.Move(op, null);
 
             for (int i = 0; i < dice.Count; i++)
             {
                 if (SeenEarlier(dice, i)) continue;
 
                 if (GUILayout.Button($"{dice[i]}", GUILayout.Width(22)))
-                    Send(new MoveCommand(op.Id, dice[i]));
+                    Host.Move(op, dice[i]);
             }
         }
 
@@ -793,17 +931,12 @@ namespace NonaRoyale.Unity.Composition
 
                 string label = usable
                     ? $"{ability.Name}  ({ability.EnergyCost}e, {reach})"
-                    : $"{ability.Name}  — {Explain(availability)}";
+                    : $"{ability.Name}  — {ControlPanel.Explain(availability)}";
                 var previous = GUI.color;
                 if (!usable) GUI.color = new Color(0.6f, 0.6f, 0.62f);
 
                 if (GUILayout.Toggle(chosen, label, GUI.skin.button) != chosen && usable)
-                {
-                    _selectedAbility = chosen ? null : ability;
-                    _selectedTarget = null;     // a target belongs to its ability
-                    _selectedCell = null;
-                    RefreshHighlights();
-                }
+                    Host.ToggleAbility(ability);
 
                 GUI.color = previous;
             }
@@ -821,8 +954,7 @@ namespace NonaRoyale.Unity.Composition
 
             GUILayout.Space(2);
 
-            bool ready = (!_selectedAbility.RequiresCell || _selectedCell != null) &&
-                         (!_selectedAbility.RequiresTarget || _selectedTarget != null);
+            bool ready = Host.CastReady;
 
             string missing = _selectedAbility.RequiresCell ? "click a cell" : "pick a target";
 
@@ -832,50 +964,23 @@ namespace NonaRoyale.Unity.Composition
                     ? $"CAST {_selectedAbility.Name}"
                     : $"CAST {_selectedAbility.Name} — {missing}"))
             {
-                Send(new UseAbilityCommand(
-                    _selectedCaster.Id, _selectedAbility.Id,
-                    _selectedAbility.RequiresTarget && _selectedTarget != null
-                        ? _selectedTarget.Id
-                        : (int?)null,
-                    _selectedAbility.RequiresCell ? _selectedCell : null));
-
-                _selectedAbility = null;
-                _selectedTarget = null;
-                _selectedCell = null;
+                Host.Cast();
             }
 
             GUI.enabled = true;
         }
 
         /// <summary>
-        /// Who this cast could be aimed at, split by side.
+        /// Who this cast could be aimed at, split by side. The list comes from
+        /// <see cref="IControlPanelHost.CastTargets"/>; its remarks say why it
+        /// holds what it holds.
         /// </summary>
-        /// <remarks>
-        /// <b>The engine decides who is legal.</b> Range, stealth and home
-        /// columns are rules (§4) and the view must not evaluate them
-        /// (<c>PRESENTATION.md</c> §1). The query also drops targets whose cast
-        /// mode scopes every effect away — Neural Purge aimed at an enemy was
-        /// never a legal cast — which is most of what makes the list short.
-        ///
-        /// Allies appear because they always were legal: Velvet Rope pulls a
-        /// friend, All-In Mauling heals one, Nanite Infusion and Neural Purge
-        /// exist for them, and Translocation swaps with one. This list showed
-        /// enemies only, so the roster's healing had never been castable at all.
-        ///
-        /// The caster is filtered out here rather than in the engine. Aiming at
-        /// yourself is legal by §10's mode rule and would let the Bouncer heal
-        /// himself for the price of the ability — defensible, undecided, and not
-        /// something the UI should settle by offering it.
-        /// </remarks>
         private void DrawTargetList(PlayerState seat)
         {
             GUILayout.Space(4);
             GUILayout.Label("<b>Target</b>");
 
-            var legal = _match.Engine
-                .LegalTargetsFor(_selectedCaster, _selectedAbility)
-                .Where(o => !ReferenceEquals(o, _selectedCaster))
-                .ToList();
+            var legal = Host.CastTargets();
 
             if (legal.Count == 0)
             {
@@ -903,20 +1008,8 @@ namespace NonaRoyale.Unity.Composition
                         $"{candidate.Owner} {candidate.Name} {candidate.Health}/{candidate.MaxHealth}",
                         GUI.skin.button) != selected)
                 {
-                    _selectedTarget = selected ? null : candidate;
+                    Host.ToggleTarget(candidate);
                 }
-            }
-        }
-
-        private static string Explain(AbilityAvailability availability)
-        {
-            switch (availability)
-            {
-                case AbilityAvailability.OnCooldown: return "cooling down";
-                case AbilityAvailability.InsufficientEnergy: return "not enough energy";
-                case AbilityAvailability.CasterStunned: return "stunned";
-                case AbilityAvailability.CasterOutOfPlay: return "out of play";
-                default: return "";
             }
         }
 
