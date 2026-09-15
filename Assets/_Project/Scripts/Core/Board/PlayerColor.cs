@@ -14,6 +14,10 @@ namespace NonaRoyale.Core.Board
         Red = 0,
         Blue = 1,
         Green = 2,
-        Yellow = 3
+        /// <summary>
+        /// Was Yellow until 2026-09-15. Violet reads against the gold trim
+        /// and the amber aim colour; yellow did not. The value is unchanged.
+        /// </summary>
+        Violet = 3
     }
 }

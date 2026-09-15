@@ -110,37 +110,69 @@ namespace NonaRoyale.Unity.View
         public static readonly Color DieFace = Hex("EDE3CC");
         public static readonly Color DieInk = Ink;
 
-        // ── Board (ART_DIRECTION §6, moderate: readable at rest) ────────
+        // ── Board (ART_DIRECTION §6.1: atmospheric at rest) ─────────────
 
         /// <summary>The camera's clear colour, around the table.</summary>
-        public static readonly Color BoardVoid = Obsidian;
+        public static readonly Color BoardVoid = Hex("08060A");
 
-        /// <summary>The table the board sits on.</summary>
-        public static readonly Color BoardField = Charcoal;
+        /// <summary>The square table the cross sits on.</summary>
+        public static readonly Color BoardField = Hex("0E0B0E");
 
-        /// <summary>A soft pool of warm light at the centre of the table.</summary>
-        public static readonly Color BoardGlow = WithAlpha(Gold, 0.07f);
+        /// <summary>Faint gold veins in the table.</summary>
+        public static readonly Color BoardVeins = WithAlpha(Gold, 0.07f);
 
-        /// <summary>Dark marble for a plain track cell.</summary>
-        public static readonly Color CellMarble = Hex("2A2328");
+        /// <summary>The cross-shaped floor the track runs on.</summary>
+        public static readonly Color CrossFloor = Hex("17131A");
 
-        /// <summary>The gold inlay line inside a plain cell.</summary>
-        public static readonly Color CellInlay = WithAlpha(Brass, 0.85f);
+        /// <summary>The cross's gilt edge.</summary>
+        public static readonly Color CrossEdge = WithAlpha(Brass, 0.95f);
 
-        /// <summary>A safe cell's marble, lifted toward cyan: a powered tile.</summary>
-        public static readonly Color SafeMarble = Color.Lerp(CellMarble, Cyan, 0.22f);
+        /// <summary>The lane down the middle of each arm: the home column's road.</summary>
+        public static readonly Color CrossLane = WithAlpha(Brass, 0.55f);
 
-        public static readonly Color SafeInlay = WithAlpha(Cyan, 0.9f);
+        /// <summary>Warm light pooled in each arm.</summary>
+        public static readonly Color ArmGlow = WithAlpha(Gold, 0.07f);
 
-        /// <summary>A home column's marble at its tip and at HOME, before the seat tint.</summary>
-        public const float HomeTintNear = 0.30f;
-        public const float HomeTintFar = 0.62f;
+        /// <summary>Drop shadows under the cross and the tables.</summary>
+        public static readonly Color Shadow = WithAlpha(Color.black, 0.75f);
 
-        /// <summary>Yard felt: the seat colour sunk into charcoal.</summary>
-        public const float FeltTint = 0.24f;
+        /// <summary>
+        /// A track cell at rest: a whisper of marble and inlay (decided
+        /// 2026-09-15). Your turn's landings light up over it.
+        /// </summary>
+        public static readonly Color CellWhisper = WithAlpha(Hex("2A2328"), 0.35f);
+        public static readonly Color CellInlay = WithAlpha(Gold, 0.16f);
 
-        public static readonly Color VaultFloor = Hex("1E160E");
-        public static readonly Color VaultLight = GoldBright;
+        /// <summary>A safe cell: still a whisper, but powered.</summary>
+        public static readonly Color SafeInlay = WithAlpha(Cyan, 0.45f);
+        public static readonly Color SafeGlow = WithAlpha(Cyan, 0.13f);
+
+        /// <summary>A start cell's inlay alpha, in its seat's colour.</summary>
+        public const float StartInlayAlpha = 0.6f;
+
+        /// <summary>A home column's seat wash and inlay alpha, at its mouth and beside HOME.</summary>
+        public const float HomeWashNear = 0.05f;
+        public const float HomeWashFar = 0.16f;
+        public const float HomeInlayNear = 0.22f;
+        public const float HomeInlayFar = 0.5f;
+
+        /// <summary>Felt: the seat colour, darkened. The felt sprite shades it further toward the rim.</summary>
+        public const float FeltBrightness = 0.62f;
+
+        /// <summary>The tables' gilt rim: gold warmed toward the highlight.</summary>
+        public static readonly Color TableRim = Color.Lerp(Gold, GoldBright, 0.45f);
+
+        /// <summary>Dotted ring, arc and chips on the felt.</summary>
+        public static readonly Color FeltTrim = WithAlpha(Gold, 0.5f);
+        public static readonly Color FeltChip = WithAlpha(GoldBright, 0.85f);
+
+        /// <summary>An empty seat at a table: where an operator stood up from.</summary>
+        public static readonly Color SeatMark = WithAlpha(Color.black, 0.35f);
+
+        public static readonly Color VaultPlate = Hex("0F0B08");
+        public static readonly Color VaultFrame = Color.Lerp(Gold, GoldBright, 0.35f);
+        public static readonly Color VaultGlow = WithAlpha(GoldBright, 0.28f);
+        public static readonly Color VaultBoss = GoldBright;
 
         // ── Pieces ──────────────────────────────────────────────────────
 
@@ -148,6 +180,12 @@ namespace NonaRoyale.Unity.View
         public static readonly Color PieceOutline = Ink;
 
         public static readonly Color PieceWaiting = Hex("66666B");
+
+        /// <summary>The operator's shape, worn as a gilt pin on the figure.</summary>
+        public static readonly Color PieceEmblem = GoldBright;
+
+        /// <summary>How far a figure's seat colour is lifted, since the figure sprite shades it down.</summary>
+        public const float FigureLift = 0.12f;
         public static readonly Color PieceBarBack = WithAlpha(Obsidian, 0.85f);
         public static readonly Color Select = Cyan;
 
@@ -156,7 +194,7 @@ namespace NonaRoyale.Unity.View
         public static readonly Color SeatRed = new Color(0.84f, 0.27f, 0.31f);
         public static readonly Color SeatBlue = new Color(0.32f, 0.56f, 0.88f);
         public static readonly Color SeatGreen = new Color(0.34f, 0.72f, 0.44f);
-        public static readonly Color SeatYellow = new Color(0.90f, 0.76f, 0.30f);
+        public static readonly Color SeatViolet = new Color(0.50f, 0.40f, 0.84f);
         public static readonly Color SeatNone = Hex("7A7570");
 
         public static Color Seat(PlayerColor colour)
@@ -166,7 +204,7 @@ namespace NonaRoyale.Unity.View
                 case PlayerColor.Red: return SeatRed;
                 case PlayerColor.Blue: return SeatBlue;
                 case PlayerColor.Green: return SeatGreen;
-                case PlayerColor.Yellow: return SeatYellow;
+                case PlayerColor.Violet: return SeatViolet;
                 default: return SeatNone;
             }
         }

@@ -21,8 +21,8 @@ namespace NonaRoyale.Unity.View
     ///
     /// <b>Sliced, at one texel per canvas unit.</b> HUD sprites are 100 pixels
     /// per unit, the canvas's reference, so a 2-texel line is 2 units at 1080p
-    /// whatever the size of the box. Board sprites that must keep their line
-    /// width at any size (the table) are sliced too, for a SpriteRenderer.
+    /// whatever the size of the box. The board's own sprites live in
+    /// <see cref="BoardArt"/>.
     ///
     /// Edges are anti-aliased from a signed distance, so nothing needs
     /// mipmaps or supersampling. Everything is built once and cached.
@@ -30,9 +30,6 @@ namespace NonaRoyale.Unity.View
     public static class DecoSprites
     {
         private const float HudPixelsPerUnit = 100f;
-
-        /// <summary>Texels per world unit for the sliced table sprites.</summary>
-        private const float TablePixelsPerUnit = 32f;
 
         // ── HUD frames (sliced) ─────────────────────────────────────────
 
@@ -83,7 +80,7 @@ namespace NonaRoyale.Unity.View
 
         // ── Board (world space) ─────────────────────────────────────────
 
-        private static Sprite _tileInlay, _ringThin, _sunburst, _glow, _tableFill, _tableEdge;
+        private static Sprite _tileInlay, _ringThin, _glow;
 
         /// <summary>
         /// A cell's inlay: a chamfered line inset from the tile's edge. One
@@ -94,17 +91,8 @@ namespace NonaRoyale.Unity.View
         /// <summary>A disc outline, a tenth of the radius thick. Yard rims.</summary>
         public static Sprite RingThin => _ringThin ?? (_ringThin = BuildRing(128, 0.9f));
 
-        /// <summary>The vault's radial fan: 24 rays around a solid core.</summary>
-        public static Sprite Sunburst => _sunburst ?? (_sunburst = BuildSunburst(192, 24));
-
         /// <summary>A soft radial falloff, for pools of light.</summary>
         public static Sprite Glow => _glow ?? (_glow = BuildGlow(128));
-
-        /// <summary>The table under the board, sliced for a SpriteRenderer. Corners cut at 12 texels.</summary>
-        public static Sprite TableFill => _tableFill ?? (_tableFill = Chamfer(12, null, TablePixelsPerUnit));
-
-        /// <summary>The table's double gilt frame, sliced for a SpriteRenderer.</summary>
-        public static Sprite TableEdge => _tableEdge ?? (_tableEdge = Chamfer(12, new[] { new Band(0f, 2f), new Band(5f, 1f) }, TablePixelsPerUnit));
 
         // ── Builders ────────────────────────────────────────────────────
 
@@ -233,35 +221,6 @@ namespace NonaRoyale.Unity.View
             }, size, Vector4.zero);
         }
 
-        private static Sprite BuildSunburst(int size, int rays)
-        {
-            float half = size * 0.5f;
-            float outer = half - 1f;
-            float core = outer * 0.28f;
-
-            return Rasterize(size, size, (px, py) =>
-            {
-                float dx = px - half;
-                float dy = py - half;
-                float r = Mathf.Sqrt(dx * dx + dy * dy);
-                if (r > outer + 0.5f) return 0f;
-
-                float rim = Coverage(r - outer);
-                if (r <= core) return rim;
-
-                // Alternating wedges: bright rays over a faint ground.
-                float angle = Mathf.Atan2(dy, dx);
-                float wave = Mathf.Cos(angle * rays);
-                // Scaled by r / rays so the wedge edge ramps over about one
-                // texel of arc at any radius: anti-aliased, not blurred.
-                float ray = Mathf.Clamp01(wave * r / rays + 0.5f);
-
-                // Rays thin toward the rim, so the fan reads as light, not a gear.
-                float fade = 1f - 0.55f * (r - core) / (outer - core);
-                return rim * Mathf.Lerp(0.28f, 1f, ray) * fade;
-            }, size, Vector4.zero);
-        }
-
         private static Sprite BuildGlow(int size)
         {
             float half = size * 0.5f;
@@ -277,10 +236,10 @@ namespace NonaRoyale.Unity.View
         // ── Coverage ────────────────────────────────────────────────────
 
         /// <summary>Anti-aliased coverage of a filled shape at signed distance <paramref name="d"/>.</summary>
-        private static float Coverage(float d) => Mathf.Clamp01(0.5f - d);
+        internal static float Coverage(float d) => Mathf.Clamp01(0.5f - d);
 
         /// <summary>Coverage of a band from <paramref name="inset"/> to inset + width inside the edge.</summary>
-        private static float BandCoverage(float d, float inset, float width)
+        internal static float BandCoverage(float d, float inset, float width)
         {
             // Distance from the band's centre line, measured inward.
             float centre = -(inset + width * 0.5f);
@@ -288,14 +247,30 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>Coverage of a line of <paramref name="width"/> at distance <paramref name="off"/> from its centre.</summary>
-        private static float Line(float off, float width) => Mathf.Clamp01(width * 0.5f - off + 0.5f);
+        internal static float Line(float off, float width) => Mathf.Clamp01(width * 0.5f - off + 0.5f);
 
         /// <summary>
         /// Samples <paramref name="alphaAt"/> at each texel centre (x + 0.5, y + 0.5)
         /// into a white texture.
         /// </summary>
-        private static Sprite Rasterize(
+        internal static Sprite Rasterize(
             int width, int height, Func<float, float, float> alphaAt,
+            float pixelsPerUnit, Vector4 border, Vector2? pivot = null)
+        {
+            return RasterizeShaded(width, height, (x, y) =>
+            {
+                float alpha = alphaAt(x, y);
+                return new Color(1f, 1f, 1f, alpha);
+            }, pixelsPerUnit, border, pivot);
+        }
+
+        /// <summary>
+        /// Samples <paramref name="colourAt"/> at each texel centre. For shaded
+        /// sprites: bake a grey luminance into RGB and the renderer's tint
+        /// multiplies it, so one sprite shades any seat colour.
+        /// </summary>
+        internal static Sprite RasterizeShaded(
+            int width, int height, Func<float, float, Color> colourAt,
             float pixelsPerUnit, Vector4 border, Vector2? pivot = null)
         {
             var texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
@@ -310,8 +285,9 @@ namespace NonaRoyale.Unity.View
             {
                 for (int x = 0; x < width; x++)
                 {
-                    byte alpha = (byte)Mathf.RoundToInt(Mathf.Clamp01(alphaAt(x + 0.5f, y + 0.5f)) * 255f);
-                    pixels[y * width + x] = new Color32(255, 255, 255, alpha);
+                    var c = colourAt(x + 0.5f, y + 0.5f);
+                    pixels[y * width + x] = new Color32(
+                        Byte(c.r), Byte(c.g), Byte(c.b), Byte(c.a));
                 }
             }
 
@@ -322,5 +298,7 @@ namespace NonaRoyale.Unity.View
                 texture, new Rect(0, 0, width, height), pivot ?? new Vector2(0.5f, 0.5f),
                 pixelsPerUnit, 0, SpriteMeshType.FullRect, border);
         }
+
+        private static byte Byte(float value) => (byte)Mathf.RoundToInt(Mathf.Clamp01(value) * 255f);
     }
 }

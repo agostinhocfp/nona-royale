@@ -115,7 +115,7 @@ namespace NonaRoyale.Core.Tests.Status
             _statuses.Apply(_blue, StatusKind.Stun, duration: 1);
 
             _clock.BeginTurnFor(PlayerColor.Green);
-            _clock.BeginTurnFor(PlayerColor.Yellow);
+            _clock.BeginTurnFor(PlayerColor.Violet);
             _clock.BeginTurnFor(PlayerColor.Red);
             _clock.BeginTurnFor(PlayerColor.Blue);
 

@@ -42,7 +42,7 @@ namespace NonaRoyale.Sim
 
         private static readonly PlayerColor[] Seats =
         {
-            PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Yellow
+            PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Violet
         };
 
         public static void Run(int matches)

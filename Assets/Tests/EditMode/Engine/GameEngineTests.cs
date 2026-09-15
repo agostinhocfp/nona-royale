@@ -507,7 +507,7 @@ namespace NonaRoyale.Core.Tests.Engine
             for (int seed = 0; seed < 40; seed++)
             {
                 var drafted = MatchFactory.Create(
-                    new[] { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Yellow },
+                    new[] { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Violet },
                     seed);
 
                 foreach (var player in drafted.Players)
@@ -799,7 +799,7 @@ namespace NonaRoyale.Core.Tests.Engine
             // touched, no state is set by hand. A greedy scripted player deploys
             // when it can and always advances its leader.
             var match = MatchFactory.CreateAlphaMatch(
-                new[] { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Yellow },
+                new[] { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Violet },
                 seed: 20260911, board: BoardProfile.Sprint);
 
             var engine = match.Engine;

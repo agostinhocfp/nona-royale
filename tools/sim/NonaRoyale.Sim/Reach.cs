@@ -35,7 +35,7 @@ namespace NonaRoyale.Sim
             {
                 foreach (var bonus in new[] { 0, 1, 2 })
                 {
-                    var colours = new[] { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Yellow };
+                    var colours = new[] { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Violet };
                     var runs = new List<MatchStats>(matches);
 
                     for (int i = 0; i < matches; i++)

@@ -149,7 +149,7 @@ namespace NonaRoyale.Core.Board
             if (color == PlayerColor.None)
                 throw new ArgumentException("PlayerColor.None is not a seat.", parameterName);
 
-            if (color < PlayerColor.Red || color > PlayerColor.Yellow)
+            if (color < PlayerColor.Red || color > PlayerColor.Violet)
                 throw new ArgumentException($"Unknown player colour: {color}.", parameterName);
         }
     }

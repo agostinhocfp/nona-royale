@@ -109,7 +109,7 @@ namespace NonaRoyale.Sim
         private static List<MatchStats> Run(
             int matches, int seats, BoardProfile board, RosterSpeeds speeds, CombatConfig combat = null)
         {
-            var colours = new[] { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Yellow };
+            var colours = new[] { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Violet };
             var results = new List<MatchStats>(matches);
 
             for (int i = 0; i < matches; i++)

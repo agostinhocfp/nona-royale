@@ -37,7 +37,7 @@ namespace NonaRoyale.Sim
 
         private static void Row(string label, BoardProfile board, int opening, int reach, int matches)
         {
-            var colours = new[] { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Yellow };
+            var colours = new[] { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Violet };
             var runs = new List<MatchStats>(matches);
 
             for (int i = 0; i < matches; i++)

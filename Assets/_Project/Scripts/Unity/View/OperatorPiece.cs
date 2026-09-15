@@ -6,10 +6,18 @@ using UnityEngine;
 namespace NonaRoyale.Unity.View
 {
     /// <summary>
-    /// One operator on screen: silhouette, health bar, and the walk between
-    /// cells. Holds no game state — it is told what is true and shows it.
+    /// One operator on screen: a figure, its shape pin, a health bar, and the
+    /// walk between cells. Holds no game state — it is told what is true and
+    /// shows it.
     /// </summary>
     /// <remarks>
+    /// <b>A person, not a token</b> (GUI increment G2, ART_DIRECTION §6.1).
+    /// In the yard the operator is a bust seated at its table; on the floor it
+    /// is a standing figure. Both wear the operator's shape
+    /// (<see cref="PieceShape"/>) as a gilt pin, so identity reads at a glance
+    /// until the rendered character models replace the figures. Size still
+    /// carries maximum health.
+    ///
     /// Status badges used to live here, as world-space squares. They moved to
     /// <see cref="PieceHudLayer"/> as named screen-space tags (ADR-0008
     /// increment C): at board scale a world-space badge was a few pixels
@@ -26,10 +34,11 @@ namespace NonaRoyale.Unity.View
     /// the cells is also the only way a player can count a move and check it.
     ///
     /// <b>It draws the board-first marks it is given</b> (<see cref="PieceMark"/>):
-    /// a cyan ring when selected, a pulsing one when a click would deploy it,
-    /// an amber ring when it can be targeted, and a slight lift under the
-    /// pointer. Cyan is the tech register for live, interactive states
-    /// (ART_DIRECTION §8). Which marks apply is decided elsewhere.
+    /// a cyan glow and a halo over the head when selected, a pulsing glow when
+    /// a click would deploy it, an amber ring when it can be targeted, and a
+    /// slight lift under the pointer. Cyan is the tech register for live,
+    /// interactive states (ART_DIRECTION §8). Which marks apply is decided
+    /// elsewhere.
     /// </remarks>
     public sealed class OperatorPiece : MonoBehaviour
     {
@@ -49,6 +58,15 @@ namespace NonaRoyale.Unity.View
         private const float HoverLift = 1.12f;
         private const float PulseSpeed = 4f;
 
+        /// <summary>A figure is drawn this much larger than the old shape token, since a person is mostly air.</summary>
+        private const float FigureScale = 1.45f;
+
+        /// <summary>The shape pin's size, as a fraction of the figure.</summary>
+        private const float PinSize = 0.18f;
+
+        /// <summary>Health bar height above the figure's centre, in figure units.</summary>
+        private const float BarHeight = 0.6f;
+
         private static Color SelectColour => UiTheme.Select;   // holo cyan, a live state
         private static Color TargetColour => UiTheme.Threat;   // amber, a warning
 
@@ -56,6 +74,8 @@ namespace NonaRoyale.Unity.View
 
         private SpriteRenderer _body;
         private SpriteRenderer _outline;
+        private SpriteRenderer _pin;
+        private SpriteRenderer _healthBack;
         private SpriteRenderer _healthFill;
         private float _alpha = 1f;
         private Color _seatColour;
@@ -64,8 +84,10 @@ namespace NonaRoyale.Unity.View
         private float _flash;
         private float _hold;
 
-        private SpriteRenderer _selectRing;
+        private SpriteRenderer _glow;
+        private SpriteRenderer _halo;
         private SpriteRenderer _targetRing;
+        private bool? _seated;
         private PieceMark _marks;
         private float _baseScale = 1f;
 
@@ -75,7 +97,7 @@ namespace NonaRoyale.Unity.View
         public bool IsWalking => _path.Count > 0;
 
         /// <summary>The drawn radius in world units, for hit testing. Ignores the hover lift.</summary>
-        public float Radius => _baseScale * 0.5f;
+        public float Radius => _baseScale * 0.4f;
 
         public PieceMark Marks => _marks;
 
@@ -84,28 +106,48 @@ namespace NonaRoyale.Unity.View
             Operator = op;
             name = $"{op.Owner}_{op.Name}";
 
-            _seatColour = BoardLayout.ColourOf(op.Owner);
+            // The figure's shading darkens the tint, so the seat colour is
+            // lifted a little to land on its true value.
+            _seatColour = Color.Lerp(BoardLayout.ColourOf(op.Owner), Color.white, UiTheme.FigureLift);
             _stepDistance = cellSpacing;
 
-            var shape = PieceShape.For(op);
-
             _body = gameObject.AddComponent<SpriteRenderer>();
-            _body.sprite = shape;
             _body.color = _seatColour;
             _body.sortingOrder = 4;
 
-            // The same silhouette, larger and dark, behind: an outline that
-            // works for any shape without a second sprite per shape.
-            _outline = Child("outline", 1.28f, Vector3.zero);
-            _outline.sprite = shape;
+            _outline = Child("outline", 1f, Vector3.zero);
             _outline.color = UiTheme.PieceOutline;
             _outline.sortingOrder = 3;
 
-            BuildHealthBar();
-            BuildRings(shape);
+            _pin = Child("pin", PinSize, Vector3.zero);
+            _pin.sprite = PieceShape.For(op);
+            _pin.color = UiTheme.PieceEmblem;
+            _pin.sortingOrder = 5;
 
-            _baseScale = cellSize * PieceShape.SizeFor(op);
+            BuildHealthBar();
+            BuildMarks();
+            SetPose(op.IsInYard);
+
+            _baseScale = cellSize * PieceShape.SizeFor(op) * FigureScale;
             transform.localScale = Vector3.one * _baseScale;
+        }
+
+        /// <summary>
+        /// Seated in the yard, standing anywhere else. Swaps sprites and moves
+        /// the pin and the halo; cheap, and a no-op when the pose is unchanged.
+        /// </summary>
+        private void SetPose(bool seated)
+        {
+            if (_seated == seated) return;
+            _seated = seated;
+
+            _body.sprite = seated ? BoardArt.Bust : BoardArt.Pawn;
+            _outline.sprite = seated ? BoardArt.BustOutline : BoardArt.PawnOutline;
+            _pin.transform.localPosition = seated ? BoardArt.BustPin : BoardArt.PawnPin;
+
+            // The halo sits over the head; a seated bust's head is lower.
+            var head = seated ? new Vector2(0f, 0.16f) : BoardArt.PawnHead;
+            _halo.transform.localPosition = head;
         }
 
         /// <summary>
@@ -116,18 +158,18 @@ namespace NonaRoyale.Unity.View
         {
             _marks = marks;
 
-            if (_selectRing == null) return;
+            if (_glow == null) return;
 
             bool selected = (marks & PieceMark.Selected) != 0;
             bool deployable = (marks & PieceMark.Deployable) != 0;
-            _selectRing.enabled = selected || deployable;
-            _selectRing.color = SelectColour;
+            _glow.enabled = selected || deployable;
+            _halo.enabled = selected;
 
             bool target = (marks & PieceMark.Target) != 0;
             bool targetable = (marks & PieceMark.Targetable) != 0;
             _targetRing.enabled = target || targetable;
             _targetRing.color = UiTheme.WithAlpha(TargetColour, target ? 1f : 0.45f);
-            _targetRing.transform.localScale = Vector3.one * (target ? 1.85f : 1.6f);
+            _targetRing.transform.localScale = Vector3.one * (target ? 1.15f : 1f);
         }
 
         /// <summary>Places the piece with no animation. For the opening layout.</summary>
@@ -192,22 +234,27 @@ namespace NonaRoyale.Unity.View
 
             _alpha = evasive ? EvasiveAlpha : 1f;
 
-            float health = Mathf.Clamp01((float)Operator.Health / Operator.MaxHealth);
+            // The pose says "waiting"; the figure keeps its full colour.
+            SetPose(Operator.IsInYard);
 
-            var tint = Operator.IsInYard
-                ? Color.Lerp(_seatColour, UiTheme.PieceWaiting, 0.55f)
-                : _seatColour;
+            float health = Mathf.Clamp01((float)Operator.Health / Operator.MaxHealth);
+            var tint = _seatColour;
 
             _body.color = WithAlpha(Color.Lerp(tint, Color.white, _flash));
+            _outline.color = WithAlpha(_outline.color);
+            _pin.color = WithAlpha(_pin.color);
 
-            if (_outline != null) _outline.color = WithAlpha(_outline.color);
+            // A seated operator is at full health by the rules; no bar.
+            bool showBar = !Operator.IsInYard;
+            _healthBack.enabled = showBar;
+            _healthFill.enabled = showBar;
 
-            if (_healthFill != null)
+            if (showBar)
             {
                 // Anchored left so the bar drains rightward rather than shrinking
                 // toward its centre, which reads as distance rather than loss.
-                _healthFill.transform.localScale = new Vector3(1.1f * health, 0.13f, 1f);
-                _healthFill.transform.localPosition = new Vector3(-0.55f * (1f - health), 0.78f, 0f);
+                _healthFill.transform.localScale = new Vector3(0.66f * health, 0.08f, 1f);
+                _healthFill.transform.localPosition = new Vector3(-0.33f * (1f - health), BarHeight, 0f);
                 _healthFill.color = Color.Lerp(UiTheme.Danger, tint, health);
             }
         }
@@ -220,27 +267,34 @@ namespace NonaRoyale.Unity.View
 
         private void BuildHealthBar()
         {
-            var back = Child("health_back", 1f, new Vector3(0f, 0.78f, 0f));
-            back.sprite = Primitives.Square;
-            back.color = UiTheme.PieceBarBack;
-            back.sortingOrder = 5;
-            back.transform.localScale = new Vector3(1.2f, 0.2f, 1f);
+            _healthBack = Child("health_back", 1f, new Vector3(0f, BarHeight, 0f));
+            _healthBack.sprite = Primitives.Square;
+            _healthBack.color = UiTheme.PieceBarBack;
+            _healthBack.sortingOrder = 5;
+            _healthBack.transform.localScale = new Vector3(0.74f, 0.13f, 1f);
 
-            _healthFill = Child("health_fill", 1f, new Vector3(0f, 0.78f, 0f));
+            _healthFill = Child("health_fill", 1f, new Vector3(0f, BarHeight, 0f));
             _healthFill.sprite = Primitives.Square;
             _healthFill.sortingOrder = 6;
         }
 
-        private void BuildRings(Sprite shape)
+        private void BuildMarks()
         {
-            // Rings, not a second silhouette: a ring reads the same around a
-            // star and a disc, and it never hides the shape it marks.
-            _selectRing = Child("select_ring", 1.55f, Vector3.zero);
-            _selectRing.sprite = Primitives.Ring;
-            _selectRing.sortingOrder = 2;
-            _selectRing.enabled = false;
+            // A glow behind the figure: it reads around any silhouette and
+            // never hides the one it marks.
+            _glow = Child("select_glow", 1.35f, Vector3.zero);
+            _glow.sprite = DecoSprites.Glow;
+            _glow.color = SelectColour;
+            _glow.sortingOrder = 1;
+            _glow.enabled = false;
 
-            _targetRing = Child("target_ring", 1.6f, Vector3.zero);
+            _halo = Child("halo", 0.5f, Vector3.zero);
+            _halo.sprite = BoardArt.Halo;
+            _halo.color = SelectColour;
+            _halo.sortingOrder = 6;
+            _halo.enabled = false;
+
+            _targetRing = Child("target_ring", 1f, Vector3.zero);
             _targetRing.sprite = Primitives.Ring;
             _targetRing.sortingOrder = 2;
             _targetRing.enabled = false;
@@ -297,15 +351,13 @@ namespace NonaRoyale.Unity.View
             if (!Mathf.Approximately(current, wanted))
                 transform.localScale = Vector3.one * Mathf.MoveTowards(current, wanted, _baseScale * Time.deltaTime * 2f);
 
-            if (_selectRing == null || !_selectRing.enabled) return;
+            if (_glow == null || !_glow.enabled) return;
 
             // Selected is steady; deployable-only pulses, so the two read apart.
             bool pulsing = (_marks & PieceMark.Deployable) != 0 && (_marks & PieceMark.Selected) == 0;
-            float alpha = pulsing ? 0.35f + 0.45f * (0.5f + 0.5f * Mathf.Sin(Time.time * PulseSpeed)) : 0.95f;
+            float alpha = pulsing ? 0.2f + 0.45f * (0.5f + 0.5f * Mathf.Sin(Time.time * PulseSpeed)) : 0.6f;
 
-            var colour = SelectColour;
-            colour.a = alpha;
-            _selectRing.color = colour;
+            _glow.color = UiTheme.WithAlpha(SelectColour, alpha);
         }
     }
-}
+}

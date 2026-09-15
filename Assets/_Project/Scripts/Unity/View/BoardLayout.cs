@@ -203,7 +203,7 @@
 //             new Vector3((cell.x - _centre) * _spacing, (_centre - cell.y) * _spacing, 0f);
 
 //         /// <summary>
-//         /// Arm per seat: Red north, Blue west, Green south, Yellow east — the
+//         /// Arm per seat: Red north, Blue west, Green south, Violet east — the
 //         /// order the walk visits them, so a colour's start lands in its own arm
 //         /// with no per-colour special case.
 //         /// </summary>
@@ -404,12 +404,45 @@ namespace NonaRoyale.Unity.View
                     return World(HomeCell(cell.Owner, cell.Index));
 
                 case CellKind.Yard:
-                    return World(YardCell(cell.Owner));
+                    return World(YardCentre(cell.Owner));
 
                 default:
                     return HomeGoalPosition;
             }
         }
+
+        /// <summary>
+        /// A yard table's diameter: the corner block less half a cell of floor
+        /// on each side (GUI increment G2). Five spacings on the standard board.
+        /// </summary>
+        public float TableDiameter => Mathf.Max(2f, _arm - 1f) * _spacing;
+
+        /// <summary>
+        /// Where the operator at <paramref name="seat"/> in its squad sits at
+        /// its table (ART_DIRECTION §6.1).
+        /// </summary>
+        /// <remarks>
+        /// Seats are fixed per operator, not per who is still seated, so a
+        /// figure never shuffles along when a squadmate stands up. They fill
+        /// west, north, east, south, then the diagonals.
+        /// </remarks>
+        public Vector3 YardSeat(PlayerColor colour, int seat)
+        {
+            var centre = PositionOf(CellRef.Yard(colour));
+            float angle = SeatAngle(seat) * Mathf.Deg2Rad;
+            float radius = TableDiameter * 0.5f * SeatRadius;
+
+            return centre + new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f) * radius;
+        }
+
+        /// <summary>A seat's distance from the table's centre, as a fraction of its radius.</summary>
+        public const float SeatRadius = 0.55f;
+
+        private static readonly float[] SeatAngles = { 180f, 90f, 0f, 270f, 135f, 45f, 315f, 225f };
+
+        /// <summary>Degrees, counter-clockwise from east, of a seat.</summary>
+        public static float SeatAngle(int seat) =>
+            SeatAngles[((seat % SeatAngles.Length) + SeatAngles.Length) % SeatAngles.Length];
 
         /// <summary>Fans stacked operators apart so a shared cell reads as a stack.</summary>
         public Vector3 Offset(int indexInStack, int stackSize)
@@ -466,8 +499,11 @@ namespace NonaRoyale.Unity.View
         private Vector3 World(Vector2Int cell) =>
             new Vector3((cell.x - _centre) * _spacing, (_centre - cell.y) * _spacing, 0f);
 
+        private Vector3 World(Vector2 cell) =>
+            new Vector3((cell.x - _centre) * _spacing, (_centre - cell.y) * _spacing, 0f);
+
         /// <summary>
-        /// Arm per seat: Red north, Blue west, Green south, Yellow east — the
+        /// Arm per seat: Red north, Blue west, Green south, Violet east — the
         /// order the walk visits them, so a colour's start lands in its own arm
         /// with no per-colour special case.
         /// </summary>
@@ -489,17 +525,23 @@ namespace NonaRoyale.Unity.View
             }
         }
 
-        private Vector2Int YardCell(PlayerColor colour)
+        /// <summary>
+        /// The centre of the colour's corner block, where its table stands.
+        /// The block is <see cref="ArmLength"/> cells square, so its centre
+        /// falls between cells on an even arm; the yard is not a cell anyone
+        /// walks through, so that is fine.
+        /// </summary>
+        private Vector2 YardCentre(PlayerColor colour)
         {
-            int near = _arm / 2;
-            int far = _last - near;
+            float near = (_arm - 1) * 0.5f;
+            float far = _last - near;
 
             switch (ArmOf(colour))
             {
-                case 0: return new Vector2Int(near, near);      // north arm, north-west block
-                case 1: return new Vector2Int(near, far);       // west arm, south-west block
-                case 2: return new Vector2Int(far, far);        // south arm, south-east block
-                default: return new Vector2Int(far, near);      // east arm, north-east block
+                case 0: return new Vector2(near, near);      // north arm, north-west block
+                case 1: return new Vector2(near, far);       // west arm, south-west block
+                case 2: return new Vector2(far, far);        // south arm, south-east block
+                default: return new Vector2(far, near);      // east arm, north-east block
             }
         }
 
@@ -541,4 +583,4 @@ namespace NonaRoyale.Unity.View
         /// <summary>A seat's colour. Kept here for its many callers; the value lives in <see cref="UiTheme"/>.</summary>
         public static Color ColourOf(PlayerColor colour) => UiTheme.Seat(colour);
     }
-}
+}

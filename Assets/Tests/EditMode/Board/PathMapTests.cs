@@ -40,7 +40,7 @@ namespace NonaRoyale.Core.Tests.Board
             Assert.That(_map.StartTrackIndex(PlayerColor.Red), Is.EqualTo(0));
             Assert.That(_map.StartTrackIndex(PlayerColor.Blue), Is.EqualTo(Offset));
             Assert.That(_map.StartTrackIndex(PlayerColor.Green), Is.EqualTo(2 * Offset));
-            Assert.That(_map.StartTrackIndex(PlayerColor.Yellow), Is.EqualTo(3 * Offset));
+            Assert.That(_map.StartTrackIndex(PlayerColor.Violet), Is.EqualTo(3 * Offset));
             Assert.That(4 * Offset, Is.EqualTo(Circuit), "four equal quarters");
         }
 
@@ -162,7 +162,7 @@ namespace NonaRoyale.Core.Tests.Board
 
             for (int progress = 0; progress < Journey; progress++)
             {
-                Assert.That(seen.Add(_map.CellAt(PlayerColor.Yellow, progress)), Is.True,
+                Assert.That(seen.Add(_map.CellAt(PlayerColor.Violet, progress)), Is.True,
                     $"Progress {progress} aliased an earlier cell.");
             }
 
@@ -175,7 +175,7 @@ namespace NonaRoyale.Core.Tests.Board
         public void AllFourStartCells_AreSafe()
         {
             foreach (var color in new[]
-                     { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Yellow })
+                     { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Violet })
             {
                 Assert.That(_map.IsSafe(CellRef.Track(_map.StartTrackIndex(color))), Is.True,
                     $"{color}'s start cell should be safe.");

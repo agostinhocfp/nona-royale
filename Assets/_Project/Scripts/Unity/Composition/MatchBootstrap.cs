@@ -148,7 +148,7 @@ namespace NonaRoyale.Unity.Composition
                 ? BoardProfile.Cross("Compact", 3, laps: 2)
                 : BoardProfile.Standard;
 
-            var seats = new[] { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Yellow }
+            var seats = new[] { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Violet }
                 .Take(players).ToList();
 
             _match = randomSquads
@@ -165,7 +165,11 @@ namespace NonaRoyale.Unity.Composition
             _layout = new BoardLayout(board, cellSpacing);
 
             var boardView = GetComponent<BoardView>() ?? gameObject.AddComponent<BoardView>();
-            boardView.Build(_match.Map, _layout);
+            int seatsPerTable = 0;
+            foreach (var player in _match.Players)
+                seatsPerTable = Mathf.Max(seatsPerTable, player.Operators.Count);
+
+            boardView.Build(_match.Map, _layout, seatsPerTable);
 
             _highlights = GetComponent<HighlightLayer>() ?? gameObject.AddComponent<HighlightLayer>();
             _highlights.Bind(_layout);
@@ -192,7 +196,8 @@ namespace NonaRoyale.Unity.Composition
             // are rebuilt, since the pieces they tracked were just destroyed.
             _hudRoot = GetComponent<HudRoot>() ?? gameObject.AddComponent<HudRoot>();
             _pieceHud = GetComponent<PieceHudLayer>() ?? gameObject.AddComponent<PieceHudLayer>();
-            _pieceHud.Bind(_hudRoot.Root, _pieces, cellSpacing * 0.55f);
+            // Clear of a standing figure's head and its bar (increment G2).
+            _pieceHud.Bind(_hudRoot.Root, _pieces, cellSpacing * 0.8f);
             _turnStrip = GetComponent<TurnStrip>() ?? gameObject.AddComponent<TurnStrip>();
             _turnStrip.Bind(_hudRoot.Root);
             _controls = GetComponent<ControlPanel>() ?? gameObject.AddComponent<ControlPanel>();
@@ -1104,11 +1109,17 @@ namespace NonaRoyale.Unity.Composition
             foreach (var pair in byCell)
             {
                 var basePosition = _layout.PositionOf(pair.Key);
+                bool yard = pair.Key.Kind == CellKind.Yard;
 
                 for (int i = 0; i < pair.Value.Count; i++)
                 {
                     var piece = pair.Value[i];
-                    var position = basePosition + _layout.Offset(i, pair.Value.Count);
+
+                    // In the yard each operator has its own seat at the table
+                    // (ART_DIRECTION §6.1); elsewhere a shared cell fans out.
+                    var position = yard
+                        ? _layout.YardSeat(piece.Operator.Owner, SeatOf(piece.Operator))
+                        : basePosition + _layout.Offset(i, pair.Value.Count);
 
                     if (immediate) piece.Place(position);
                     else piece.Settle(position);
@@ -1129,6 +1140,20 @@ namespace NonaRoyale.Unity.Composition
                     }
                 }
             }
+        }
+
+        /// <summary>An operator's place in its squad, which is its seat at the table.</summary>
+        private int SeatOf(OperatorState op)
+        {
+            foreach (var player in _match.Players)
+            {
+                if (player.Color != op.Owner) continue;
+
+                for (int i = 0; i < player.Operators.Count; i++)
+                    if (ReferenceEquals(player.Operators[i], op)) return i;
+            }
+
+            return 0;
         }
 
         // ── Controls ─────────────────────────────────────────────────────
