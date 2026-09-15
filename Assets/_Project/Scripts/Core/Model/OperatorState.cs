@@ -91,7 +91,7 @@ namespace NonaRoyale.Core.Model
         /// <summary>
         /// Returns the operator to full health. Called on neutralize. (Its
         /// remark once said neutralize and Bouncer were the only healing
-        /// routes; Nanite Infusion's splash and passive regen §5.8 have since
+        /// routes; Nanite Infusion's splash and passive regen §5.11 have since
         /// joined them — those go through <see cref="Heal"/>.)
         /// </summary>
         public void RestoreHealth() => Health = MaxHealth;

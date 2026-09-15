@@ -1,8 +1,8 @@
 # Nona Royale — Combat Systems
 
 > Location in repo: `docs/design/COMBAT_SYSTEMS.md`
-> Status: **Accepted (alpha).** Every mechanic the alpha three invoke is defined and built. §10.4 and §10.5 describe two operators who are draftable with an ability each still unbuilt; both carry banners. Open items in §12 are balance dials and post-MVP scope, not gaps.
-> Date: 2026-09-12
+> Status: **Accepted (alpha).** Every mechanic the roster invokes is defined and built, except Mimi's Cryo Field (§10.4, bannered). Open items in §12 are balance dials and post-MVP scope, not gaps.
+> Date: 2026-09-12 · synced to the code 2026-09-15
 > Related: `docs/design/OPERATORS.md` (roster), ADR-0002 (board size, incl. Amendment 5), ADR-0003 (topology), ADR-0004 (pure-C# core), `CONVENTIONS.md`, `docs/GDD.md`
 > Supersedes: `docs/design/_HANDOFF_combat.md` and `docs/design/_HANDOFF_split_movement.md` (delete both)
 
@@ -25,12 +25,12 @@ This is the decision the rest of the document falls out of. It is also where the
 ### 1.1 Health
 
 - Each operator has `MaxHealth` and a current HP.
-- Damage **persists across turns**. There is no passive regeneration.
+- Damage **persists across turns**. The one exception is a slow, gated regeneration (§5.11), which only ever tops up a badly wounded operator standing in the open.
 - HP is restored to full **only** on neutralize (§1.2). A wounded operator two cells from HOME is intended tension, not a problem to be smoothed.
 
 Healing exists in two places and they are deliberately different. Bouncer's All-In Mauling heals an ally as the friendly half of a hostile ability; Javi's Nanite Infusion heals as its whole purpose. The tank's is incidental, the support's is a role.
 
-The old `[Range(3, 9)]` cap on `Operator.maxHealth` is **dead**. The stat is unbounded in the core; presentation-layer sliders, if any, use 3–15. Note that the roster now happens to sit inside that old range again — Bouncer at 9 is the ceiling — which is coincidence, not a rule returning.
+The old `[Range(3, 9)]` cap on `Operator.maxHealth` is **dead**. The stat is unbounded in the core; presentation-layer sliders, if any, use 3–15. Note that the roster now happens to sit inside that old range again — Bouncer and Sanity at 9 are the ceiling — which is coincidence, not a rule returning.
 
 ### 1.2 Neutralized
 
@@ -232,11 +232,17 @@ The per-round cap is load-bearing. Uncapped, a roll across the half-dozen attack
 
 ### 5.6 Shield
 
-- **Effect:** absorbs one entire instance of Normal damage, including a collision, then expires.
+- **Effect:** a **pool** of absorb, sized by whatever granted it. Each instance of Normal damage, a collision included, is reduced by what the pool can still take; the pool shrinks by that much. The shield is removed when the pool reaches zero or its duration ends, whichever comes first.
+- **A partial absorb is still a hit.** The instance lands as `Dealt` with the absorbed part reported as `AmountMitigated`, so the view can play a glancing blow. Only an instance the pool eats entirely reports `Absorbed` (§9.3).
+- **Re-application refreshes the duration and refills the pool** to the larger of the remaining and the new pool — sources do not stack, the strongest applies (§5.2). A spent-down plate re-cast is a fresh plate.
+- **Evasion resolves first** (§2.1), so a dodged instance never spends a pool the holder may still need.
 - Atomic ignores it.
-- Granted by the `Shield` special space (ADR-0003). **Special spaces are deferred and not in the MVP.**
+- **Sources:** Javi's Trauma Plate (§10.5, 2-point pool on an ally) and Nuetu's Ablative Plating (§10.7, 2-point pool on himself). The deferred `Shield` board space (ADR-0003) would use `ShieldPoolDefault`; special spaces are not in the MVP.
+- A cleanse strips it, friendly or not (§5.8).
 
-**Absorbing a whole instance regardless of its size is a timing lottery**, and it is tolerable only while the sole source is a rare board space. Javi's Trauma Plate makes the shield castable, which means it has to become a **pool** with a per-ability value — predictable, and priceable. That change reworks the same pipeline branch the deterministic-evasion pass is rewriting, so the two land together. Until then Trauma Plate is unbuilt (§10.5).
+**Why a pool.** Absorbing a whole instance regardless of its size was a timing lottery, worth 1 against From the Hip and 3 against a collision, and unpriceable once a shield became castable. The pool landed on 2026-09-13 with Trauma Plate, as the shield half of the mitigation pass. The evasion half — replacing the roll with a flat reduction — was **declined**; the rate moved instead (§5.5, status history).
+
+**The remaining pool is queryable** (`StatusRegistry.ShieldPool`), because a partial absorb emits no status event. A shield drawn as on/off tells a player a 1-point remnant is a fresh plate.
 
 ### 5.7 Mark
 
@@ -274,6 +280,19 @@ Not a status — the absence of them. Javi's Neural Purge removes every **applie
 - **Duration 2, derived, not chosen.** The earliest a charge can detonate is the owner's next upkeep; a 1-turn marker applied during the owner's own turn would expire at the end of the target's intervening turn — before that upkeep — and a charge that cancelled itself on schedule would read as a cleanse that never happened. Two turns keeps the marker alive through every legal detonation window, and its expiry is otherwise harmless: a charge that has fired is gone whatever the registry says.
 
 ---
+
+### 5.11 Regeneration
+
+Not a status, and not a heal anyone casts — a passive rule for every operator.
+
+- **Effect:** `RegenAmount = 1` health at the operator's owner's upkeep, after `RegenEveryTurns = 3` **consecutive eligible** upkeeps. Reported as `OperatorRegenerated`.
+- **Eligible means all three at once:** in play, **below half health** (`health × 2 < maxHealth`, integers — a 9-health operator regenerates at 4 or less, a 5-health one at 2 or less), and **not on a safe cell**. An ineligible upkeep resets the streak.
+- **Evaluated after the upkeep's damage**, so regeneration never shields an operator from a bleed or mark tick that same upkeep.
+- Capped at `MaxHealth`, like every heal. `RegenEveryTurns = 0` disables it.
+
+**It is a comeback spring, not a second health bar.** An always-on +1 every 2 turns was argued down before it shipped: against pools of 5–9 and damage of 1s and 2s it refunds the chip damage that taxes racing, it answers "why pay for Trauma Plate" with "don't", and on a safe cell it re-opens free parking. The below-half gate turns it into income for the losing side only; the safe-cell exclusion keeps the shelter offering nothing but shelter; every 3 keeps it slower than every damage clock in the game.
+
+**Unmeasured.** The bet is testable: A/B `RegenEveryTurns` 0 against 3 in the policy sweep. If racers or bankers gain on the spender, or Javi's casts fall further, the gates are too loose — reach for 4 before touching the amount.
 
 ## 6. Turn structure and resolution order
 
@@ -478,7 +497,9 @@ Randomness reaches exactly two places: `MovementResolver` (dice) and `DamagePipe
 
 ### 9.3 Events (core → view)
 
-`DiceRolled` · `EnergyGranted` · `EnergySpent` · `OperatorDeployed` · `OperatorMoved` · `CollisionResolved` · `DamageDealt` · `DamageEvaded` · `DamageAbsorbed` · `HealApplied` · `StatusApplied` · `StatusExpired` · `OperatorNeutralized` · `OperatorReachedHome` · `TurnEnded` · `GameWon` · `BeaconPlaced` · `BeaconFired` · `ZoneDeployed` · `ZoneTicked` · `ZeroDayAttached` · `ZeroDayDetonated`
+`CommandRejected` · `TurnBegan` · `DiceRolled` · `EnergyGranted` · `EnergySpent` · `OperatorDeployed` · `OperatorPityDeployed` · `OperatorMoved` · `CollisionResolved` · `DamageDealt` · `DamageEvaded` · `DamageAbsorbed` · `HealApplied` · `OperatorRegenerated` · `StatusApplied` · `StatusExpired` · `OperatorNeutralized` · `OperatorReachedHome` · `TurnEnded` · `GameWon` · `BeaconPlaced` · `BeaconFired` · `ZoneDeployed` · `ZoneTicked` · `ZeroDayAttached` · `ZeroDayDetonated`
+
+**`OperatorMoved` carries the attempted landing as well as the final one** (`AttemptedTo`, `Bounced`), so a bounced move can be drawn reaching the contested cell before it is thrown back (§7.2, `PRESENTATION.md` §3). For placement the two are equal.
 
 `DamageEvaded` and `DamageAbsorbed` are separate events rather than a flag on `DamageDealt` because the view needs to play three visibly different things. `DamageDealt` and `OperatorNeutralized` both carry a **cause** for the reason given in §2.1. What the view is required to do with all of it is `docs/design/PRESENTATION.md`.
 
@@ -486,7 +507,9 @@ Randomness reaches exactly two places: `MovementResolver` (dice) and `DamagePipe
 
 ## 10. The roster, re-expressed
 
-The alpha three are complete and every ability they invoke is built. **§10.4 and §10.5 are not**: Mimi and Javi are in the draft pool with one ability each still unimplemented, and each section carries a banner saying which. An operator the game can deal but this document does not describe is worse than an entry marked incomplete — but the exception now covers two of six, and a third would mean the pool has become the place operators go to wait. Sanity (§10.8) is complete: all three abilities are implemented, and the two mechanics they needed are §6.4 and §7.6.
+Eight operators are in the draft pool. **Seven are complete; Mimi (§10.4) is not** — Cryo Field is unbuilt, and her section carries a banner saying so. An operator the game can deal but this document does not describe is worse than an entry marked incomplete, and an incomplete one is tolerable only while it is the exception.
+
+**The tables are copied from the roster files and the code wins any disagreement.** Numbers change there first (`Assets/_Project/Scripts/Core/Abilities/Roster/`), and a table that drifts is a second copy of a value that is now wrong. Last synced 2026-09-15.
 
 **Every ability carries a player-facing description** in the core, required by the constructor, and it contains no numbers. Cost, range, cooldown and damage all live on the same object; a figure repeated in prose is a second copy of a value that will be wrong the first time anyone tunes it.
 
@@ -524,13 +547,15 @@ Bouncer's kit is priced on **positioning, not energy** — the roster's slowest 
 | --- | --------------------- | ------------ | ---- | --- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | **From the Hip**      | Active       | 3    | 1   | 3                    | **1 Normal**; **Slow 1 turn**; **+1 damage** if the target is bleeding (§5.3).                                                                                                                                                                          |
 | 2   | **Ace Shards**        | Active       | 6    | 3   | 3 (AOE, self-origin) | **3 Normal** to all enemies in the window; applies **1 Bleed** each.                                                                                                                                                                                    |
-| 3   | **Tagged From Above** | Active (Ult) | 9    | 2   | 3                    | **Mark** an enemy for **2 turns**: **2 Atomic** at its upkeep each turn (§5.7). If it is neutralized by Syla's side **while marked**, the whole squad gains **Hastened** (§5.9). Syla gains **Stealth** for the current turn + 1, regardless of payout. |
+| 3   | **Tagged From Above** | Active (Ult) | 9    | 4   | 3                    | **Mark** an enemy for **2 turns**: **2 Atomic** at its upkeep each turn (§5.7). If it is neutralized by Syla's side **while marked**, the whole squad gains **Hastened** (§5.9). Syla gains **Stealth** for the current turn + 1, regardless of payout. |
 
 **From the Hip is a control tool with a damage rider, not a damage ability.** At 1 base against 6 health it will not trade with anything on its own; the slow is the point, and the bleed bonus doubles it. That makes Syla's line explicitly sequential — Ace Shards first for the bleed, From the Hip after — rather than a cheap ability she can lead with. It was 2 base until the bleed profile proved strong enough that the base did not need to carry the ability.
 
 The mark's payout credits _any_ neutralize by Syla's side, including a collision and including the mark's own ticks. The stealth is unconditional and does not break on attacking (§5.4).
 
 **The payout window is the mark's own duration.** The ability previously specified "within 3 of Syla's turns", a second timer that duplicated the status's duration and counted against a different operator's turn index than the status registry does. One timer, stored on the mark, expiring at the marked operator's own upkeep like every other status.
+
+**Cooldown 2 → 4 (2026-09-13)**, after human play read the ability as too frequent. At 2 the cooldown sat at roughly the cadence the energy drip already imposed, so it limited nothing; at 4 it is clearly in front of the drip, which is the lever §3.1 nominates.
 
 **And it can be answered.** Javi's Neural Purge strips the mark for 6 energy, taking the payout with it (§5.8). A 9-cost ultimate that is cancelled by a 6-cost cleanse is a real counter-pick relationship, not an accident — but it is unmeasured, and it is the sharpest thing a drafted squad can do to her.
 
@@ -543,7 +568,7 @@ Two numbers here have been walked back under measurement. The squad buff was **+
 | #   | Ability              | Type         | Cost | CD  | Range                | Effect                                                                                                                                                                                              |
 | --- | -------------------- | ------------ | ---- | --- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | **Dargin Pulse**     | Active       | 6    | 3   | 2 (AOE, self-origin) | **2 Normal** to all enemies in the window; **Stun 1 turn** (§5.1).                                                                                                                                  |
-| 2   | **Evasive Protocol** | Passive      | —    | —   | self                 | First Normal damage instance each round: **50% negated** (§5.5). Speed multiplier **+0.5**.                                                                                                         |
+| 2   | **Evasive Protocol** | Passive      | —    | —   | self                 | First Normal damage instance each round: negated on a **30%** roll (§5.5). Speed multiplier **+0.5**.                                                                                                         |
 | 3   | **Miracle Pull**     | Active (Ult) | 9    | 2   | 2                    | **3 Atomic** to the target. **Execute:** if the target was below 50% HP **at cast time**, it is instead neutralized outright. **2 Atomic** to enemies within 3 of the target, excluding the target. |
 
 The execute threshold is evaluated **before** the direct damage lands, on the target's HP at cast. Checking after would mean a full-health 6-HP target drops to 3 and survives at exactly 50%, which reads as a bug at the table. `current * 2 < max` — integer comparison, no fractional HP support required anywhere in the core.
@@ -560,7 +585,7 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 > **Incomplete, and in the draft pool.** Cryo Field is designed and not built: it needs a status that damages an area at its holder's upkeep, and no such mechanic exists. She is draftable now, so this section describes what she actually does.
 >
-> Her damage is declared **Normal** and should be **Tech** (§12). That type does not exist and is blocked on shields having a real source; until it does, Tech and Normal behave identically, so the substitution changes no outcome and expresses none of her identity.
+> Her damage is declared **Normal** and should be **Tech** (§12). That type does not exist yet — its blocker, a real shield source, landed with Trauma Plate, but the type itself is unbuilt; until it is, Tech and Normal behave identically, so the substitution changes no outcome and expresses none of her identity.
 
 | #   | Ability           | Type   | Cost | CD  | Range                                          | Effect                                                                                                           |
 | --- | ----------------- | ------ | ---- | --- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -578,33 +603,77 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 ### 10.5 Javi — Support
 
-**HP 6 · Speed 1.5× · Two of three abilities implemented**
-
-> **Incomplete, and in the draft pool.** Trauma Plate is designed and not built: a shield with a per-ability value needs the absorb layer reworked from a whole-instance bool to a pool (§5.6), which is the same pipeline branch the deterministic-evasion pass is rewriting. The two land together.
+**HP 6 · Speed 1.5× · Complete — all three abilities implemented**
 
 | #   | Ability             | Type   | Cost | CD  | Range | Effect                                                                                                           |
 | --- | ------------------- | ------ | ---- | --- | ----- | ---------------------------------------------------------------------------------------------------------------- |
-| 1   | **Nanite Infusion** | Active | 3    | 2   | 3     | Ally: **heal 2**. Enemy: **2 Normal**, and **heal 1** to every ally within 2 of the target, the caster included. |
-| 2   | **Trauma Plate**    | Active | 6    | 3   | 3     | _Not implemented._ Shield with a 2-point pool, 2 turns.                                                          |
-| 3   | **Neural Purge**    | Active | 6    | 3   | 3     | Remove **every applied status** from an ally (§5.8). Passives untouched.                                         |
+| 1   | **Nanite Infusion** | Active | 3    | 2   | 5     | Ally: **heal 2**. Enemy: **2 Normal**, and **heal 1** to every ally within 2 of the target, the caster included. |
+| 2   | **Trauma Plate**    | Active | 4    | 3   | 4     | Ally only: **Shield** with a **2-point pool** for **2 turns** (§5.6). A hostile cast is refused and costs nothing. |
+| 3   | **Neural Purge**    | Active | 6    | 3   | 5     | Remove **every applied status** from an ally (§5.8). Passives untouched.                                         |
 
-**He is the first operator who makes a target harder to kill**, which changes what the whole board is doing rather than adding to one side of it. Everything before him moved damage around; he removes it.
+**He is the first operator who makes a target harder to kill**, which changes what the whole board is doing rather than adding to one side of it. Everything before him moved damage around; he removes it. He is also why the shield layer matters: a board space could never give a mitigation type enough uptime to mean anything.
 
-**Speed 1.5 with every ability at range 3.** A support who cannot reach the fight is a dead ability list, so he pays for his reach in fragility rather than in slowness.
+**Ranges 5 / 4 / 5.** The kit was designed at range 3 across the board — a support who cannot reach the fight is a dead ability list, so he paid for reach in fragility rather than speed — and every range was raised by 2 on 2026-09-15 (`e85d710`). **The reason for the raise is not recorded**, and the remarks in `Javi.cs` still argue for 3. Note that §10.4 makes Mimi's range 6 her sole compensation for 5 health, and Neural Purge now sits one cell short of it.
 
 **Heal 2, not 3.** Collision is 3, so a heal never fully undoes a hit — he blunts damage rather than erasing it, which is the difference between a support and an undo button. Cooldown 2 on a 3-cost ability is one of only two cooldowns on the roster that bind tighter than the economy (§3.1).
 
-**The hostile mode is the interesting one.** Turned on an enemy it damages, and heals every ally within 2 of _that enemy_ — which is precisely where Ace Shards and Dargin Pulse punish a squad for standing. It pays for a commitment the rest of the roster charges for.
+**The hostile mode is the interesting one.** Turned on an enemy it damages, and heals every ally within 2 of _that enemy_ — which is precisely where Ace Shards and Dargin Pulse punish a squad for standing. It pays for a commitment the rest of the roster charges for. The splash heal is declared enemy-audience despite landing on allies: audience picks the cast mode, not the recipient.
 
-**Neural Purge was damage reduction until 2026-09-12**, and that design lost to Trauma Plate on every axis: a flat 2-point pool absorbs more than a 50% cut, and does it predictably.
+**Trauma Plate: a 2-point pool, cost walked 3 → 6 → 4.** The pool eats one small hit whole or takes the edge off a collision, never both. A 1-point pool was rejected: it cancels From the Hip outright and saves nobody from the collision that actually kills. The original cost 3 was too cheap beside a 6-energy Velvet Rope; 6 bought 2 points of absorb where the same 6 buys Atomic damage that ignores every defence. 4 is the compromise, **reasoned, not measured**.
 
-**He may be the operator that tips the game.** §12 records that neutralizing rewards the attacker with nothing, and suspects that suppresses combat in human play in a way the harness cannot detect, because the scripted player fights unconditionally. A dedicated healer makes kills materially harder to land. His measured strength depends entirely on which way that question goes, so settle it before trusting any figure about him.
+**Cooldown 3 against duration 2, deliberately.** The sketched cooldown 1 gave permanent uptime — plates held on two operators forever, which is flat damage reduction on a squad, not a shield. At 3 the plate is up for two of every four of the holder's turns, so choosing _when_ is the skill.
+
+**His two defensive abilities collide.** Neural Purge strips a friendly Trauma Plate along with everything else, because the cleanse is indiscriminate by design (§5.8). Casting them in the wrong order on one ally wastes one of them.
+
+**Neural Purge was damage reduction until 2026-09-12**, and that design lost to Trauma Plate on every axis: a flat 2-point pool absorbs more than a 50% cut, predictably, and a percentage would have forced fractional health into a pipeline that has none. As a cleanse it is a specific answer to Syla's mark (the payout goes with it) and to Kurbyn's stun.
+
+**He may tip a combat game into a race.** A dedicated healer with a castable shield makes kills materially harder to land, on a board whose stated priority is 70% combat. The kill bounty (§1.2) pushes the other way and landed at the same time. Neither direction has been measured with him in play.
+
+### 10.6 Kian — Artillery
+
+**HP 6 · Speed 1.0× · Complete — all three abilities implemented**
+
+| #   | Ability              | Type   | Cost | CD  | Range                     | Effect                                                                                                                                                  |
+| --- | -------------------- | ------ | ---- | --- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Inversion Matrix** | Active | 4    | 3   | 4 (line ahead, no target) | **1 Normal** and **Stun 1 turn** to every enemy on the next 4 cells **ahead of him** along his own direction of travel.                                 |
+| 2   | **Sonic Disrupter**  | Active | 4    | 3   | 2 (AOE, self-origin)      | **2 Normal**, **Slow 1 turn**, then **push 2 cells** away from him (§7.4), to every enemy within 2. The push never carries anyone into a home column.  |
+| 3   | **Drone Strike**     | Active | 6    | 2   | unlimited (cell)          | Paint any outer-track cell (ADR-0006). At Kian's next upkeep a beam deals **4 Normal in total**, **divided** among the enemies within 1 of the cell.   |
+
+**A sixth archetype, priced on being reached, not on reach.** At 6 health and 1.0 speed with no escape tool, anyone who closes on him has him. That is the entire cost of a kit that otherwise never needs to be near anything. He is the only operator with no single-target ability: he cannot pick one enemy and hit it.
+
+**Inversion Matrix is the roster's first directional effect.** Every other area is symmetric, which makes a self-centred blast something you position for; a line points somewhere, and choosing where is a decision no other ability asks for. Damage 1 because the stun is what is being bought. Cost walked 3 → 4: at 3 it matched Nanite Infusion's price for something that can lock down two or three operators at once. It is one of the three abilities that ended the cost tier (§3.2).
+
+**Sonic Disrupter's effect order is a rule:** damage, then slow, then push. Recipients are recomputed per effect, so pushing first would carry enemies out of the radius before the slow found them. **The push is away from him along the loop**, so an enemy ahead of him is thrown toward its own home — the first ability in the game that can help the player it is aimed at. Accepted: he is meant to be punishing and swingy, and which side of him to stand on is a real thing to get right. The forward clamp (§7.4) is not a balance dial; without it the ability finishes an opponent's lap. An enemy sharing his cell — reachable only on a safe cell — is thrown backwards, which breaks up exactly the free parking §4.4 worries about.
+
+**Drone Strike's delay is the mechanic, not a cost.** He bets a round ahead on where somebody will be; they see the mark (`PRESENTATION.md`, ADR-0006) and decide whether moving off it is worth what moving costs. The divided beam makes it strongest against a lone operator and weakest against a crowd, so its counterplay is to bunch up — which every area ability on the roster punishes. That tension is why it earns a place rather than being a second area attack. Radius 1 gives the prediction a margin without making it forgiving. Unlimited range is his only free axis. Normal damage, so a plate or an evasion charge blunts it. **The cooldown is the limiter**: paint, fire, one idle turn. The device survives his death and still credits him.
+
+**Every number is reasoned and none is measured.** The Drone Strike remarks in `Kian.cs` still reason about a 6-point beam; the code now deals 4 in total after a balance pass, and the prose there needs the designer's update.
+
+### 10.7 Nuetu — Bruiser
+
+**HP 6 · Speed 1.0× · Complete — all three abilities implemented**
+
+| #   | Ability              | Type   | Cost | CD  | Range      | Effect                                                                                                                                                                                              |
+| --- | -------------------- | ------ | ---- | --- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Bio-Link Rage**    | Active | 3    | 2   | 2          | Enemy: **3 Normal**, and Nuetu **heals 1** — **2** while one of his Killzones is live (ADR-0007). An ally target is refused and costs nothing.                                                      |
+| 2   | **Ablative Plating** | Active | 3    | 4   | self       | **Shield** on himself with a **2-point pool** for **2 turns** (§5.6).                                                                                                                               |
+| 3   | **Killzone**         | Active | 9    | 6   | 2 (cell)   | Deploy a zone on a cell (ADR-0007). At Nuetu's next upkeep it detonates: **1 Normal** and **Stun 2 turns** to every enemy within 1. Then **1 Normal** to each enemy standing in it at his next **two** upkeeps. Nuetu **heals 1** on cast. |
+
+**He needed almost no new engine capability, which is the point.** Bio-Link Rage and Ablative Plating are existing vocabulary. Killzone brought lingering zones and the first board-reading rider (ADR-0007). A seventh archetype, on a taxonomy that still names four (§12).
+
+**Health stopped being what prices him.** Walked 9 → 7 → 6: at 9 he tied the tank, and a second operator at tank health with a shield on top is a better tank, not a bruiser. At 6 he sits level with most of the roster, and with the plate up he is effectively 8 against Normal. **Reach is his real price**: range 2 on everything, no repositioning, no escape, at 1.0. Speed was the original price (a sketched 0.75) and was withdrawn: it sat below the band, and would have floored a single die of 1 to zero cells.
+
+**Bio-Link Rage is repeated pressure.** At 3 energy the cooldown is the whole regulator, and he can run it most turns — three damage and one health back, repeatedly, beats six once. Normal, not Atomic: a repeatable Atomic hit would make plates worthless against the operator who attacks most often. **Known limitation:** the heal is not lifesteal — it fires even when the damage is evaded or absorbed. **Open design choice (ADR-0007):** the rider reads whether a zone exists anywhere, not whether he stands in it; the positional version is a one-word change and is the stronger design.
+
+**Ablative Plating is deliberately worse than Trauma Plate.** Cut from a 3-point pool over 4 turns, which beat Javi's plate on every axis. At pool 2 it protects as much as a plate does; cooldown 4 against duration 2 is 40% uptime where Javi gets 50%, and self-only is why it costs 3 to Javi's 4. Neural Purge strips it — the rock-paper-scissors the cleanse exists for.
+
+**Killzone: only the detonation stuns, and that is a rule, not tuning.** Stun blocks movement (§5.1); a zone that stunned every tick would hold its victims until it expired. The stun is what the ability is priced on — three Normal over three rounds, telegraphed, is a rider — and the two dials are not independent: the stun is why a victim is still standing there for the later ticks. Damage is per target, the deliberate opposite of Drone Strike. **Cost 9, cooldown 6** — once every seven turns, the longest cooldown in the game, which is what lets the payload be this large. The damage was walked down twice in the same pass as his health; axes moved together are not separately measured.
 
 ### 10.8 Sanity — Engineer
 
-**HP 12 · Speed 0.5× · Complete — all three abilities implemented**
+**HP 9 · Speed 0.5× · Complete — all three abilities implemented**
 
-> **He transgresses two precedents, knowingly, and both are recorded here as designer overrides (2026-09-15), not drift.** Speed 0.5 sits below the 1.0–1.5 band (ADR-0002 Amendment 4, §6.3) — the first operator outside it. Health 12 ties the roster maximum the Bouncer cut (2026-09-12) had just vacated. Both were signed off as the price of the "immovable object" fantasy: the toughest operator ever fielded, and the slowest by half the band.
+> **He transgresses a precedent, knowingly, recorded here as a designer override (2026-09-15), not drift.** Speed 0.5 sits below the 1.0–1.5 band (ADR-0002 Amendment 4, §6.3) — the first operator outside it — signed off as the price of the "immovable object" fantasy. He shipped at health 12, tying the maximum the Bouncer cut had vacated, as a second override; a later balance pass the same day took him to **9**, level with the Bouncer. The remarks in `Sanity.cs` still describe 12.
 >
 > **The slow-immunity side effect is accepted, not overlooked.** At 0.5 he sits permanently on `MinSpeedMultiplier`, so no slow and no aura can move his speed at all — the floor swallows them (§5.2). That cuts both ways: his own Zero-Day slow is something he can never suffer in a mirror match.
 
@@ -636,7 +705,14 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 | `Energy Efficiency` stat                                     | **Cut.** One value on one operator, blank on two, no rule ever attached.                                                            |
 | `Energy` as a per-operator stat                              | **Cut.** The pool is player-level.                                                                                                  |
 | Shield as "2 hits to capture"                                | **Rewritten** as §5.6 — the capture system it described no longer exists.                                                           |
-| Shield absorbing a whole instance whatever its size          | **Superseded in principle** by §5.6's pool, which is unbuilt. The current rule stands until it lands.                               |
+| Shield absorbing a whole instance whatever its size          | **Replaced** by §5.6's pool, landed 2026-09-13 with Trauma Plate. `TryAbsorb` became `AbsorbFrom`.                                  |
+| Deterministic evasion (flat reduction of 1)                  | **Declined** 2026-09-13 (`_HANDOFF_mitigation.md`, retired). The roll stays; `EvasionChance` moved 0.5 → 0.3 instead (§5.5).       |
+| "There is no passive regeneration" (§1.1)                    | **Replaced** by gated regeneration (§5.11).                                                                                         |
+| Tagged From Above at cooldown 2                              | **Raised** to 4 (§10.2). At 2 it limited nothing the energy drip did not already.                                                   |
+| Javi's abilities at range 3                                  | **Raised** to 5 / 4 / 5 on 2026-09-15 (§10.5). Reason not recorded.                                                                 |
+| Trauma Plate at 6 energy, range 3                            | **Repriced** to 4 and built (§10.5); range then raised with the rest of his kit.                                                    |
+| Sanity at 12 health                                          | **Lowered** to 9 the day he shipped (§10.8). The speed override stands.                                                             |
+| Drone Strike's beam at 6 total                               | **Lowered** to 4 (§10.6). The rationale in `Kian.cs` still reasons about 6.                                                         |
 | Mark as bookkeeping-only, applying no modifier               | **Rewritten** as §5.7 — it now deals damage over time.                                                                              |
 | Tagged From Above's "within 3 of Syla's turns" payout window | **Replaced** by the mark's own duration (§5.7, §10.2).                                                                              |
 | "A collision is always exactly 1v1" (§7.2)                   | **False.** Contradicted §4.5. Replaced by §7.5.                                                                                     |
@@ -665,8 +741,6 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 ## 12. Open items
 
-## 12. Open items
-
 These are dials and scope, not holes. Nothing here blocks implementation.
 
 All figures below are measured against the live core by `tools/sim/NonaRoyale.Sim`, **800 matches per row**, four players, `openingDeployments = 2`, alpha three via `CreateAlphaMatch`. They supersede every earlier figure in this document and in ADR-0002 Amendments 2 through 6.
@@ -687,7 +761,7 @@ Recorded because the comparison looked alarming for an hour: **a figure is only 
 
 ### Nothing has measured a drafted squad, or a split roll
 
-- **The harness fields the alpha three.** Not one of Mimi's or Javi's four live abilities has run in a simulated match, and §2.2's concentration question — a legal draw with no answer to Evasion — has never been exercised.
+- **The harness fields the alpha three.** None of Mimi's, Javi's, Kian's, Nuetu's or Sanity's abilities has run in a simulated match, and §2.2's concentration question — a legal draw with no answer to Evasion — has never been exercised.
 - **`ScriptedPlayer` pools every roll and never splits**, by deliberate policy: a split policy is a tactical judgement the harness would be making on the player's behalf. So these figures measure compulsory movement and nothing about splitting. Everything under "Consequences of split movement" below remains unmeasured.
 
 ### The match is over its budget, and the board is why
@@ -746,75 +820,42 @@ That makes 44/5 the only lever measured that buys pacing without giving up comba
 ### Open, undecided
 
 - **Whether the 15–20 minute budget still stands.** It was set in ADR-0002 before anyone had played the game, and every board except the two smallest now exceeds it. It may be the budget that is wrong rather than the board — but that is a decision somebody has to take, not a number to tune toward silently.
-- **The Tech damage type, and the shield source it waits on.** Blocked on Trauma Plate. Until both land, Mimi's identity is unexpressed.
+- **The Tech and Force damage types.** A four-type matrix — Normal, Force, Tech, Atomic, across Evasion and Shield — is the agreed model. Its blocker, a real shield source, landed with Trauma Plate (2026-09-13); the types themselves are unbuilt. Until they are, Mimi's identity is unexpressed and Force and Tech would be indistinguishable from Atomic and Normal.
 - **A draft has no balance constraint.** Nothing checks that a squad has an answer to Evasion, a way to heal, or reliable damage. With Atomic in two operators (§2.2), a legal draw can produce a squad with no way through Kurbyn.
 - **Whether the same operator may take both dice in two steps.** §6 allows it, and it is Ludo-standard. It is also strictly worse in cells and strictly better in landings, which makes it a deliberate two-collision play rather than a mistake.
 
 ### Open, unmeasured
 
 - **Two-player is a different game, not a smaller one.** 1.0 neutralizes against four-player's 9.3 — a ratio near 1:9, and it has held through every rules change. Combat scales with the number of _pairs_ of players, so it is an emergent property of crowding rather than of any rule. **Nothing in this table will fix 1v1.**
-- **Javi may move the free-rider question.** Neutralizing now pays the attacker energy, which was the answer to killing being a public good — but a dedicated healer makes kills materially harder to land, and no measurement has ever included one.
+- **Javi may move the free-rider question.** Neutralizing now pays the attacker energy, which was the answer to killing being a public good — but a dedicated healer with a castable shield makes kills materially harder to land, and so do Nuetu's plate and regeneration (§5.11). No measurement has ever included any of them.
 - **Whether any of this is fun.** The harness reports pacing and throughput and says nothing about whether the density reads as tension or as thinness. Only a human can.
 
 ### Scope
 
 1. **Special spaces** are deferred (ADR-0003). Shield is defined (§5.6); Teleport, Slippery, Checkpoint, RollAgain and SharksTable are not. Checkpoint conflicts with §1.2's "return to yard" and needs an explicit exception when it lands.
 2. **"Brawler" is a fifth archetype** (Kurbyn) outside the base four, and the base four are now filled. Add it or re-tag.
-3. **Four of nine operators unwritten**, and two of the five written are incomplete.
+3. **One of nine operators unwritten**, and one of the eight written (Mimi) is incomplete. The taxonomy names four archetypes; the roster now has seven (tank, assassin, brawler, controller, support, artillery, bruiser, plus Sanity's engineer). Rewrite or drop it rather than stretch it.
 4. **Opt-out of home entry** (ADR-0003, §8) — designed, deferred. Note the overlap with Translocation, which delivers a version of home denial for 3 energy, and that splitting produces two landing decisions per roll where opt-out assumes one.
 5. **Two walks per roll.** `PRESENTATION.md` §3 has pieces walking the track cell by cell; a split produces two, and on the same piece they must be sequenced rather than overlapped.
 6. Flavour and world placement across the roster (`OPERATORS.md`).
 
-### Balance dials, ranked by effect per turn spent
+### Unmeasured dials — reasoning on record
 
-1. **Ability reach — the largest lever, and now partly spent and partly refunded.** Adding +1 to every range and radius bought **+47% neutralizes for under 1.5 turns** when measured. Since then Velvet Rope took +1 and gave it back, Intimidating Presence took +1 and kept it, and Miracle Pull took +1. The net is unmeasured.
+Carried from the pre-2026-09-14 version of this section, which the table above supersedes for ranking. The reasoning still applies until each is swept on its own.
 
-2. **Opening deployments.** Adopted at 2. The only lever found that improves a problem at no cost elsewhere: occupancy roughly doubles and matches get _shorter_. `openingDeployments = 1` is retained for a more classic Ludo opening.
-
-3. **Journey length.** The only thing that buys occupancy outright, and it costs pacing directly. **Now geometrically pinned** — the circuit must satisfy `8L + 4` to be drawable as a cross (ADR-0002 Amdt 5), so the nearest alternatives to 52 are 44 and 60. If pacing needs adjusting, this is no longer a free dial; use opening deployments or the speed band instead.
-
-4. `EvasionChance = 0.3` — **lowered from 0.5, adopted by reasoning and unmeasured.** Prevents 0.65 per round against the current Normal spread (mean 2.17), where 0.5 prevented 1.08. The per-round cap bounds the worst case; the rate itself is free to move. Note this dial was pulled ahead of restoring Velvet Rope's range, which this item had ranked first — that reordering is unexplained and the range is still shortened.
-
-5. `EnergyCap = 12` against a `floor(total/2)` drip — governs how often ultimates appear. Roughly 24 energy per match was burned at the cap, almost all of it pre-contact in the opening turns.
-
-6. `MarkDamagePerTurn = 2` over a 2-turn duration — **unmeasured.** Set by reasoning: 4 total leaves a 6-HP target at 2, inside collision range and inside Miracle Pull's execute window, while 9 would kill unassisted and make the ult's payout self-fulfilling.
-
-7. `SlowSpeedPenalty = 0.5` against the 1.0–1.5 band takes a 1.0 operator to the `MinSpeedMultiplier` floor (§5.2). Slow is harsher than it was under the earlier band and was not re-measured when the band moved. Intimidating Presence at radius 3, and Cryo-Pulse applying slow to a whole area, both make it land more often. Note it now also interacts with §6.1: a heavily slowed squad can reach the state where a roll has no legal consumer at all.
-
-8. `HasteSpeedBonus = 0.5` and `HasteDurationTurns = 2` — **unmeasured.** The bonus was inherited from a cut made against the 1.5–2.0 band, where it was a ~25% bump; against 1.0–1.5 it is +33% to +50%.
+- **Journey length is geometrically pinned.** The circuit must satisfy `8L + 4` to be drawable (ADR-0002 Amendment 5), so the nearest alternatives to 52 are 44 and 60. It is a board decision, not a free dial.
+- **`MarkDamagePerTurn = 2`** over a 2-turn mark: 4 total leaves a 6-HP target at 2, inside collision range and Miracle Pull's execute window, while 9 would kill unassisted and make the ult's payout self-fulfilling.
+- **`SlowSpeedPenalty = 0.5`** takes a 1.0 operator to the `MinSpeedMultiplier` floor (§5.2). It was not re-measured when the band moved, and Intimidating Presence and Cryo-Pulse make it land more often. It also interacts with §6.1: a heavily slowed squad can reach the state where a roll has no legal consumer.
+- **`HasteSpeedBonus = 0.5`, `HasteDurationTurns = 2`** — the bonus was cut against the 1.5–2.0 band, where it was about +25%; against 1.0–1.5 it is +33% to +50%.
+- **`RegenEveryTurns = 3`, `RegenAmount = 1`** (§5.11) — A/B 0 against 3 before trusting either.
 
 ### Struck
+
+Historical. `CollisionDamage` has since been restored and demoted — see item 3 of the dials table above for its current standing.
 
 - **`CollisionDamage` is not a dial** — _as measured._ Moving it from 2 to 6 changed match length by 0.4 turns and neutralizes by 1.1, because collisions occurred only ~2.4 times a match on Standard. This section and ADR-0002 Amendment 2 both named it as the first lever if the race reads as toothless; that advice was wrong on the figures available. **The strike rests entirely on collision frequency, and split movement raises it.** Re-measure before relying on this either way.
 - **The yard setback is not the most expensive rule.** The Python model showed it costing 6.4 turns per match at ~8 neutralizes. At the measured 6.7 across four players it fires under twice per player per match, and its contribution is far smaller than claimed.
 - **Occupancy is no longer 10–15%.** It measured that under the old speed band. At the adopted band with opening deployments it is **33%**.
-
-### Open, unresolved rules conflict
-
-- **Slows and auras stack, and §5.2 says they should not.** `GameEngine` sums two channels when computing effective speed — `StatusRegistry.SpeedModifier` and `AuraRules.SpeedModifierFor` — so From the Hip's slow and Bouncer's Intimidating Presence apply together. Within each channel the rule holds; across the two it does not.
-
-  Both readings are defensible: an aura and a status are arguably different things, and a tank's presence compounding a wound is reasonable. But the doc says one thing and the code does another, which is the state this project exists to avoid. **Decide it.** The stakes rose again with Cryo-Pulse, which slows an entire area, and again with §6.1, where a deep enough slow decides whether a turn can be ended at all.
-
-### Open, undecided
-
-- **The Tech damage type, and the shield source it waits on.** A four-type matrix — Normal, Force, Tech, Atomic, across Evasion and Shield — is the agreed model and is blocked on shields having a real source. Javi's Trauma Plate is that source. Until both land, Mimi's whole identity is unexpressed and Force and Tech are indistinguishable from Atomic and Normal.
-- **A draft has no balance constraint.** Nothing checks that a squad has an answer to Evasion, a way to heal, or reliable damage. With Atomic in two operators (§2.2), a legal draw can produce a squad with no way through Kurbyn.
-- **Whether the same operator may take both dice in two steps.** §6 allows it, and it is Ludo-standard. It is also strictly worse in cells and strictly better in landings, which makes it a deliberate two-collision play rather than a mistake. Undecided whether that is a feature worth keeping or an exploit worth naming.
-
-### Open, unmeasured
-
-- **Neutralizing rewards the attacker with nothing**, which at four players makes killing a public good bought with private resources. Believed to suppress combat in human play in a way no simulation can detect, because the scripted player fights unconditionally. Javi makes this more pressing, not less. See `_HANDOFF_neutralize_rewards.md`.
-- **Two-player matches are close to a pure race.** Pacing barely moves with seat count but combat scales hard: **0.6 neutralizes at two players against 4.0 at four**, measured under the older band. If 1v1 is meant to be a real mode it needs its own configuration, not just fewer seats.
-- **Whether any of this is fun.** The harness reports pacing and throughput. It says nothing about whether the density reads as tension or as thinness. Only a human can.
-
-### Scope
-
-1. **Special spaces** are deferred (ADR-0003). Shield is defined (§5.6); Teleport, Slippery, Checkpoint, RollAgain, and SharksTable are not. Checkpoint conflicts with §1.2's "return to yard" and needs an explicit exception when it lands.
-2. **"Brawler" is a fifth archetype** (Kurbyn) outside the base four, and the base four are now filled. Add it or re-tag.
-3. **Four of nine operators unwritten**, and two of the five written are incomplete. A new operator needing a new _mechanic_ gets an amendment to this doc, not a special case in its own stat block. Watch the Atomic concentration in §2.2.
-4. **Opt-out of home entry** (ADR-0003, §8) — designed, deferred. Note the overlap with Translocation, which delivers a version of home denial for 3 energy; when opt-out lands, review the two together. Note also that opt-out is a per-move decision at the moment of landing, and splitting produces two such moments per roll — the two want one consistent answer to "when is the player asked about a move, and what can they decline".
-5. **Two walks per roll.** `PRESENTATION.md` §3 has pieces walking the track cell by cell. A split produces two walks; on two different pieces they read fine, on the same piece twice they arrive back to back and must be sequenced rather than overlapped.
-6. Flavour and world placement across the roster (`OPERATORS.md`).
 
 ---
 
@@ -999,3 +1040,4 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - 2026-09-12 — Javi's shield named **Trauma Plate** and its values settled at 6 energy, cooldown 3, range 3, 2-point pool, 2 turns (§10.5). Still unbuilt: it needs the absorb layer reworked from a whole-instance bool to a pool, which is the same interface the deterministic-evasion pass is rewriting. Both are specified together in `_HANDOFF_mitigation.md`, which supersedes `_HANDOFF_evasion.md` — delete that file.
   **Deterministic evasion was proposed and declined (2026-09-13).** `_HANDOFF_mitigation.md` argued for replacing the roll with a flat reduction of 1 — zero variance, 1.00 prevented per round against 0.65 here. Declined on cost, not on merit: the rate is a one-line config edit, where going deterministic changes `IDamageMitigation`, removes `IRandom` from the pipeline, and rewrites five test fixtures. Lowering the rate does not address the variance the proposal was aimed at; if evasion still reads as arbitrary in human play, that pass is the answer and this number is not.
 - 2026-09-15 — **Sanity added as §10.8**, complete, with two recorded designer overrides: speed 0.5 below the 1.0–1.5 band (the first exception, slow-immunity side effect accepted) and health 12 tying the roster maximum the Bouncer cut had vacated. `EffectKind` gains `AttachCharge` and `DashToTarget`, the eleventh and twelfth kinds; `StatusKind` gains `ZeroDayCharge`, the first marker status (§5.10 — no gameplay effect, duration 2 derived from the detonation window, a cleanse cancels the charge). §6.4 states operator-anchored deferred effects: follows the target, owner's-next-upkeep timing, a bonus for the marked target, death-cell detonation, keyed to the seat so the caster's own death changes nothing, telegraphed and cleanse-detachable. §7.6 states the dash: shortest-way-round with ties forwards, the path rakes without contesting, landing one step past the target with a one-short fallback, placement throughout so one operator clamps. §4.4's camping rule now names the dash alongside pull, swap and push. §9.1's effect-kind enumeration was stale at "seven" — it had already missed the push and the two cell-anchored kinds — and now lists all twelve; §9.3's event list gains the beacon, zone and Zero-Day events it had never recorded. Costs 3 / 4 / 7 are the balance review's outcome, argued against peers and unmeasured.
+- 2026-09-15 — **Synced to the code; the code was authoritative.** §5.6 rewritten for the shield pool that landed on 2026-09-13 (partial absorbs are `Dealt` with `AmountMitigated`; re-casting refills; the evasion half of the mitigation pass declined — `_HANDOFF_mitigation.md` retired). §5.11 added for gated regeneration, which shipped with a code remark citing §5.8 and no section of its own; §1.1 no longer says there is none. §10.5 marked complete with the code's numbers (ranges raised to 5 / 4 / 5, reason unrecorded). **§10.6 Kian and §10.7 Nuetu written** — both were in the draft pool with no section. §10.2 Tagged From Above cooldown 2 → 4 and §10.3 Evasive Protocol 50% → 30% corrected in the tables. §10.8 Sanity at 9 health. §9.3 gains the events it had not listed and notes `OperatorMoved.AttemptedTo`. §12's duplicated second half merged: its unique reasoning kept under "Unmeasured dials", its superseded figures dropped. **Stale code remarks noted, not edited:** `Javi.cs` (range 3), `Kian.cs` (a 6-point beam), `Sanity.cs` (health 12).

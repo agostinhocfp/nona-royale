@@ -197,7 +197,7 @@ namespace NonaRoyale.Core.Events
     }
 
     /// <summary>
-    /// Passive regeneration ticked (§5.8): the operator spent
+    /// Passive regeneration ticked (§5.11): the operator spent
     /// <see cref="WoundedTurns"/> straight owner-upkeeps in play, below half
     /// health and off any safe cell, and knits a point back.
     /// </summary>

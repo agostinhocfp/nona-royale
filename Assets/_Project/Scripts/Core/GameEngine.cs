@@ -275,7 +275,7 @@ namespace NonaRoyale.Core
         }
 
         /// <summary>
-        /// Passive regeneration (§5.8): +<c>RegenAmount</c> after
+        /// Passive regeneration (§5.11): +<c>RegenAmount</c> after
         /// <c>RegenEveryTurns</c> straight owner-upkeeps spent in play, below
         /// half health, and off any safe cell.
         /// </summary>

@@ -221,7 +221,7 @@ namespace NonaRoyale.Core.Config
 
         /// <summary>
         /// Owner-upkeeps an operator must spend wounded and exposed before
-        /// passive regeneration ticks (COMBAT_SYSTEMS §5.8). Zero disables it.
+        /// passive regeneration ticks (COMBAT_SYSTEMS §5.11). Zero disables it.
         /// </summary>
         /// <remarks>
         /// <b>Eligible means all three at once</b>: in play, below half health
@@ -251,7 +251,7 @@ namespace NonaRoyale.Core.Config
         public int RegenEveryTurns { get; }
 
         /// <summary>
-        /// Health restored per regeneration tick (§5.8). At 1 against pools of
+        /// Health restored per regeneration tick (§5.11). At 1 against pools of
         /// 5–9 it undoes one bleed stack's turn — deliberately the smallest
         /// instrument in the game. Capped at max by <c>OperatorState.Heal</c>.
         /// </summary>
