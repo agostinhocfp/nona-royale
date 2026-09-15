@@ -32,6 +32,13 @@ namespace NonaRoyale.Core.Tests.Movement
         private static OperatorState Assassin() =>
             new OperatorState(Syla, "Syla", PlayerColor.Red, 6, 2.0);
 
+        // Progress values near the end of the journey are derived from the
+        // profile. They were literals for the 48-cell board (46, 49, 50, 52)
+        // and silently stopped testing the home column when Standard became
+        // 52/6 (ADR-0002 Amendment 6): 50 is still on the outer track now.
+        private static int TrackLength => BoardProfile.Standard.TrackLength;
+        private static int Journey => BoardProfile.Standard.Journey;
+
         private static OperatorState Deployed(OperatorState op, int progress)
         {
             op.MoveTo(progress);
@@ -58,10 +65,14 @@ namespace NonaRoyale.Core.Tests.Movement
         [Test]
         public void DoubleSixAtTopOfBand_IsTheLongestSingleMove()
         {
-            // 12 x 2.0 = 24, half the loop. This is the readability ceiling
-            // that fixed the speed band (ADR-0002 Amendment 2).
+            // 12 x 2.0 = 24, under half the loop. Half the loop is the
+            // readability ceiling that fixed the speed band (ADR-0002
+            // Amendment 2); the band has since dropped to 1.0-1.5
+            // (Amendment 4), so 2.0 is a bound on the schema, not a speed any
+            // operator ships with.
             Assert.That(_resolver.CellsFor(12, 2.0), Is.EqualTo(24));
-            Assert.That(_resolver.CellsFor(12, 2.0), Is.LessThanOrEqualTo(24));
+            Assert.That(_resolver.CellsFor(12, 2.0),
+                Is.LessThanOrEqualTo(BoardProfile.Standard.CircuitLength / 2));
         }
 
         // ── Effective speed ──────────────────────────────────────────────
@@ -226,9 +237,9 @@ namespace NonaRoyale.Core.Tests.Movement
         public void AMoveIntoTheHomeColumn_CannotBeContested()
         {
             // Home columns are out of the fight entirely (COMBAT_SYSTEMS §4.3).
-            var result = _resolver.ResolveMove(Deployed(Tank(), 46), 4);
+            var result = _resolver.ResolveMove(Deployed(Tank(), TrackLength - 2), 4);
 
-            Assert.That(result.To, Is.EqualTo(50));
+            Assert.That(result.To, Is.EqualTo(TrackLength + 2));
             Assert.That(result.EnteredHomeColumn, Is.True);
             Assert.That(result.CanBeContested, Is.False);
         }
@@ -236,15 +247,16 @@ namespace NonaRoyale.Core.Tests.Movement
         [Test]
         public void EnteringHomeColumn_IsReportedOnlyOnTheCrossingMove()
         {
-            var alreadyInside = _resolver.ResolveMove(Deployed(Tank(), 49), 2);
+            var alreadyInside = _resolver.ResolveMove(Deployed(Tank(), TrackLength + 1), 2);
 
+            Assert.That(_map.IsInHomeColumn(TrackLength + 1), Is.True, "precondition: already inside");
             Assert.That(alreadyInside.EnteredHomeColumn, Is.False);
         }
 
         [Test]
         public void ReachingJourneyExactly_Finishes()
         {
-            var result = _resolver.ResolveMove(Deployed(Tank(), 50), 4);
+            var result = _resolver.ResolveMove(Deployed(Tank(), Journey - 4), 4);
 
             Assert.That(result.Finished, Is.True);
             Assert.That(result.Overshot, Is.False);
@@ -255,7 +267,7 @@ namespace NonaRoyale.Core.Tests.Movement
         public void OvershootingHome_Finishes_RatherThanBouncing()
         {
             // Home entry is automatic in the MVP and needs no exact roll.
-            var result = _resolver.ResolveMove(Deployed(Tank(), 52), 9);
+            var result = _resolver.ResolveMove(Deployed(Tank(), TrackLength), BoardProfile.Standard.HomeColumnLength + 3);
 
             Assert.That(result.Finished, Is.True);
             Assert.That(result.Overshot, Is.True);
@@ -279,7 +291,7 @@ namespace NonaRoyale.Core.Tests.Movement
         [Test]
         public void AFullLap_LandsOnTheHomeColumnMouth()
         {
-            // The circuit is exactly one lap: 48 cells from the start cell puts
+            // The circuit is exactly one lap: CircuitLength cells from the start cell puts
             // an operator at its own column, not back on its start.
             var result = _resolver.ResolveMove(Deployed(Tank(), 0), BoardProfile.Standard.CircuitLength);
 

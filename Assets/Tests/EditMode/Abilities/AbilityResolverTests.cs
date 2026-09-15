@@ -302,14 +302,25 @@ namespace NonaRoyale.Core.Tests.Abilities
             // enemy single-targeting (§4.4, amended), and this test is about the
             // placement clamp rather than about targeting. A pull of three cells
             // backwards from progress 1 still goes negative, which is the case.
-            var atStart = AtTrack(10, "AtStart", PlayerColor.Blue, 6,
-                _map.StartTrackIndex(PlayerColor.Blue) + 1);
+            //
+            // Bouncer stands at Velvet Rope's full range behind the target. He
+            // used to sit at a fixed track 10, which was exactly range 3 from
+            // Blue's start + 1 on the 48-cell board and is 4 on the 52-cell one,
+            // so the cast was refused as out of range and nothing was pulled.
+            int range = Bouncer.VelvetRope.Range;
+            int targetCell = _map.StartTrackIndex(PlayerColor.Blue) + 1;
+
+            var atStart = AtTrack(10, "AtStart", PlayerColor.Blue, 6, targetCell);
             _board.Add(atStart);
+            _bouncer.MoveTo(ProgressAtTrack(PlayerColor.Red, targetCell - range));
 
             Assert.That(atStart.Progress, Is.EqualTo(1), "precondition: just past its own start");
+            Assert.That(range, Is.AtLeast(3),
+                "precondition: landing beside Bouncer puts the target behind its own start");
 
-            Use(_bouncer, Bouncer.VelvetRope, atStart);
+            var result = Use(_bouncer, Bouncer.VelvetRope, atStart);
 
+            Assert.That(result.Approved, Is.True, "precondition: in range, so the pull happened");
             Assert.That(atStart.Progress, Is.EqualTo(0));
         }
 
@@ -595,8 +606,13 @@ namespace NonaRoyale.Core.Tests.Abilities
                 _map.StartTrackIndex(PlayerColor.Blue));
             atStart.MoveTo(1);
             _board.Add(atStart);
+            // Mimi three cells *behind* the target's start, so the swap sends the
+            // target four cells backwards, past its start. This was "+ 3", which
+            // put Mimi ahead of the target: the swap moved it forwards, was
+            // legal, and the test could never pass.
+            int circuit = _map.Profile.CircuitLength;
             mimi.MoveTo(ProgressAtTrack(PlayerColor.Red,
-                (_map.StartTrackIndex(PlayerColor.Blue) + 3) % _map.Profile.CircuitLength));
+                (_map.StartTrackIndex(PlayerColor.Blue) - 3 + circuit) % circuit));
 
             int before = _red.Energy;
             var result = Use(mimi, Mimi.Translocation, atStart);

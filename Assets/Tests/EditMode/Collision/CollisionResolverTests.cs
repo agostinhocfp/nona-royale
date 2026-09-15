@@ -62,6 +62,24 @@ namespace NonaRoyale.Core.Tests.Collision
             _resolver = new CollisionResolver(_map, _combat, _pipeline, _movement);
         }
 
+        // ── Geometry ─────────────────────────────────────────────────────
+        //
+        // Fixtures are stated in track cells and converted per owner, so they
+        // survive a board change. These tests were written against the 48-cell
+        // board with literal progress values (Blue = progress + 12) and went red
+        // when Standard became 52/6 (ADR-0002 Amendment 6): every enemy stood one
+        // cell away from where its comment said, so no collision happened.
+
+        /// <summary>The contested cell most tests use. Red starts at track 0, so it is also Red's progress.</summary>
+        private const int Landing = 20;
+
+        private int Circuit => _map.Profile.CircuitLength;
+        private int TrackLength => _map.Profile.TrackLength;
+
+        /// <summary>The progress at which <paramref name="owner"/> stands on track cell <paramref name="track"/>.</summary>
+        private int ProgressAtTrack(PlayerColor owner, int track) =>
+            ((track - _map.StartTrackIndex(owner)) % Circuit + Circuit) % Circuit;
+
         private static OperatorState Op(int id, string name, PlayerColor owner, int hp, int progress)
         {
             var op = new OperatorState(id, name, owner, hp, 1.5);
@@ -76,9 +94,24 @@ namespace NonaRoyale.Core.Tests.Collision
         private static OperatorState RedAssassin(int progress) =>
             Op(2, "Syla", PlayerColor.Red, 6, progress);
 
-        /// <summary>Blue starts at track 12, so its track cell is progress + 12.</summary>
-        private static OperatorState BlueAssassin(int progress) =>
-            Op(3, "Kurbyn", PlayerColor.Blue, 6, progress);
+        /// <summary>A Blue assassin standing on the given <b>track cell</b>.</summary>
+        private OperatorState BlueAssassinOn(int track) =>
+            Op(3, "Kurbyn", PlayerColor.Blue, 6, ProgressAtTrack(PlayerColor.Blue, track));
+
+        /// <summary>Any operator standing on the given <b>track cell</b>.</summary>
+        private OperatorState OpOn(int id, string name, PlayerColor owner, int hp, int track) =>
+            Op(id, name, owner, hp, ProgressAtTrack(owner, track));
+
+        [Test]
+        public void TheLandingCell_IsAnOrdinaryContestableCell()
+        {
+            // Every "a collision happens" test below leans on this. If a board
+            // change ever made the landing cell safe, they would pass or fail
+            // for the wrong reason.
+            Assert.That(_map.IsSafe(CellRef.Track(Landing)), Is.False);
+            Assert.That(_map.IsSafe(CellRef.Track(Landing - 1)), Is.False, "the bounce cell too");
+            Assert.That(Landing + 10, Is.LessThan(TrackLength), "and far from Red's home column");
+        }
 
         private CollisionResult Move(OperatorState mover, int cells, params OperatorState[] board)
         {
@@ -92,11 +125,11 @@ namespace NonaRoyale.Core.Tests.Collision
         [Test]
         public void LandingOnEnemy_DealsThreeNormalDamage()
         {
-            // Red moves 0 -> 20. Blue sits at progress 8, which is track 20.
+            // Red moves 0 -> Landing, where a Blue operator is standing.
             var mover = RedTank(0);
-            var victim = BlueAssassin(8);
+            var victim = BlueAssassinOn(Landing);
 
-            var result = Move(mover, 20, victim);
+            var result = Move(mover, Landing, victim);
 
             Assert.That(result.Occurred, Is.True);
             Assert.That(result.FirstDamage.AmountApplied, Is.EqualTo(3));
@@ -107,27 +140,28 @@ namespace NonaRoyale.Core.Tests.Collision
         public void SurvivingOccupant_HoldsCellAndMoverBouncesBack()
         {
             var mover = RedTank(0);
-            var victim = BlueAssassin(8);       // 6 hp, survives 3 damage
+            var victim = BlueAssassinOn(Landing);   // 6 hp, survives 3 damage
+            int victimProgress = victim.Progress;
 
-            var result = Move(mover, 20, victim);
+            var result = Move(mover, Landing, victim);
 
             Assert.That(result.MoverBouncedBack, Is.True);
-            Assert.That(result.MoverFinalProgress, Is.EqualTo(19), "one step back along the mover's own path");
-            Assert.That(victim.Progress, Is.EqualTo(8), "the occupant does not move");
+            Assert.That(result.MoverFinalProgress, Is.EqualTo(Landing - 1), "one step back along the mover's own path");
+            Assert.That(victim.Progress, Is.EqualTo(victimProgress), "the occupant does not move");
         }
 
         [Test]
         public void NeutralizedOccupant_YieldsCellToMover()
         {
             var mover = RedTank(0);
-            var victim = BlueAssassin(8);
+            var victim = BlueAssassinOn(Landing);
             victim.SetHealth(3);                // one collision finishes it
 
-            var result = Move(mover, 20, victim);
+            var result = Move(mover, Landing, victim);
 
             Assert.That(result.AllOccupantsNeutralized, Is.True);
             Assert.That(result.MoverBouncedBack, Is.False);
-            Assert.That(result.MoverFinalProgress, Is.EqualTo(20));
+            Assert.That(result.MoverFinalProgress, Is.EqualTo(Landing));
         }
 
         [Test]
@@ -136,10 +170,11 @@ namespace NonaRoyale.Core.Tests.Collision
             // Collision is one-directional. Running into a 12-health tank costs
             // the mover position, never health.
             var mover = RedAssassin(0);
-            var victim = Op(4, "Bouncer", PlayerColor.Blue, 12, 8);
+            var victim = OpOn(4, "Bouncer", PlayerColor.Blue, 12, Landing);
 
-            Move(mover, 20, victim);
+            var result = Move(mover, Landing, victim);
 
+            Assert.That(result.Occurred, Is.True, "precondition: the collision happened");
             Assert.That(mover.Health, Is.EqualTo(6));
         }
 
@@ -151,10 +186,11 @@ namespace NonaRoyale.Core.Tests.Collision
             // red, CollisionDamage was raised and the design should know.
             foreach (var hp in new[] { 6, 12 })
             {
-                var victim = Op(9, "any", PlayerColor.Blue, hp, 8);
+                var victim = OpOn(9, "any", PlayerColor.Blue, hp, Landing);
 
-                Move(RedTank(0), 20, victim);
+                var result = Move(RedTank(0), Landing, victim);
 
+                Assert.That(result.Occurred, Is.True, "precondition: the collision happened");
                 Assert.That(victim.Health, Is.AtLeast(1), $"{hp} hp operator");
             }
         }
@@ -164,14 +200,17 @@ namespace NonaRoyale.Core.Tests.Collision
         [Test]
         public void LandingOnEnemyOnSafeCell_DoesNotCollide()
         {
-            // Track 12 is Blue's start cell, and safe for anyone standing on it.
+            // Blue's start cell is safe for anyone standing on it.
+            int blueStart = _map.StartTrackIndex(PlayerColor.Blue);
             var mover = RedTank(0);
-            var victim = BlueAssassin(0);       // sitting on its own start, track 12
+            var victim = BlueAssassinOn(blueStart);   // sitting on its own start
 
-            var result = Move(mover, 12, victim);
+            var result = Move(mover, blueStart, victim);
 
+            Assert.That(_map.CellAt(mover.Owner, blueStart), Is.EqualTo(_map.CellAt(victim.Owner, victim.Progress)),
+                "precondition: the mover really lands on the victim's cell");
             Assert.That(result.Occurred, Is.False);
-            Assert.That(result.MoverFinalProgress, Is.EqualTo(12), "both simply share the cell");
+            Assert.That(result.MoverFinalProgress, Is.EqualTo(blueStart), "both simply share the cell");
             Assert.That(victim.Health, Is.EqualTo(6));
         }
 
@@ -180,9 +219,9 @@ namespace NonaRoyale.Core.Tests.Collision
         {
             // Friendly operators stack freely; there is no blocking in the MVP.
             var mover = RedTank(0);
-            var ally = RedAssassin(20);
+            var ally = RedAssassin(Landing);
 
-            var result = Move(mover, 20, ally);
+            var result = Move(mover, Landing, ally);
 
             Assert.That(result.Occurred, Is.False);
             Assert.That(ally.Health, Is.EqualTo(6));
@@ -191,11 +230,11 @@ namespace NonaRoyale.Core.Tests.Collision
         [Test]
         public void PassingThroughOccupiedCell_DoesNotCollide()
         {
-            // Blue sits on track 20; Red passes over it and lands on track 30.
+            // Blue sits on the landing cell; Red passes over it and lands ten further on.
             var mover = RedTank(0);
-            var passedOver = BlueAssassin(8);
+            var passedOver = BlueAssassinOn(Landing);
 
-            var result = Move(mover, 30, passedOver);
+            var result = Move(mover, Landing + 10, passedOver);
 
             Assert.That(result.Occurred, Is.False);
             Assert.That(passedOver.Health, Is.EqualTo(6));
@@ -206,23 +245,30 @@ namespace NonaRoyale.Core.Tests.Collision
         {
             // Home columns are out of the fight entirely (§4.3), and they are
             // private anyway — no enemy can be standing there.
-            var mover = RedTank(46);
+            // Two cells short of the column, moving four: the move ends two
+            // cells inside it. A Blue operator stands on the track cell a wrap
+            // would have reached, so a bug that kept counting round the loop
+            // would collide.
+            var mover = RedTank(TrackLength - 2);
 
-            var result = Move(mover, 4, BlueAssassin(8));
+            var result = Move(mover, 4, BlueAssassinOn(2));
 
+            Assert.That(_map.IsInHomeColumn(TrackLength + 2), Is.True, "precondition: the move ends inside the column");
             Assert.That(result.Occurred, Is.False);
-            Assert.That(result.MoverFinalProgress, Is.EqualTo(50));
+            Assert.That(result.MoverFinalProgress, Is.EqualTo(TrackLength + 2));
         }
 
         [Test]
         public void AnOperatorInItsHomeColumn_CannotBeCollidedWith()
         {
-            // Blue at progress 50 is inside its own column. Red landing on the
-            // track cell that would otherwise be shared must not reach it.
+            // Blue is two cells inside its own column. Red landing anywhere on
+            // the track must not reach it.
             var mover = RedTank(0);
-            var sheltered = Op(3, "Kurbyn", PlayerColor.Blue, 6, 50);
+            var sheltered = Op(3, "Kurbyn", PlayerColor.Blue, 6, TrackLength + 2);
 
-            var result = Move(mover, 20, sheltered);
+            Assert.That(_map.IsInHomeColumn(sheltered.Progress), Is.True, "precondition");
+
+            var result = Move(mover, Landing, sheltered);
 
             Assert.That(result.Occurred, Is.False);
             Assert.That(sheltered.Health, Is.EqualTo(6));
@@ -234,7 +280,7 @@ namespace NonaRoyale.Core.Tests.Collision
             var mover = RedTank(0);
             var undeployed = Op(3, "Kurbyn", PlayerColor.Blue, 6, PathMap.YardProgress);
 
-            var result = Move(mover, 20, undeployed);
+            var result = Move(mover, Landing, undeployed);
 
             Assert.That(result.Occurred, Is.False);
         }
@@ -247,16 +293,16 @@ namespace NonaRoyale.Core.Tests.Collision
             // Evasion negates damage, never movement (§5.5). The occupant
             // survived, so it holds the cell — how it survived is irrelevant.
             var mover = RedTank(0);
-            var victim = BlueAssassin(8);
+            var victim = BlueAssassinOn(Landing);
             victim.SetHealth(3);                // would die if the hit landed
             _mitigation.EvadeNext = true;
 
-            var result = Move(mover, 20, victim);
+            var result = Move(mover, Landing, victim);
 
             Assert.That(result.FirstDamage.Outcome, Is.EqualTo(DamageOutcome.Evaded));
             Assert.That(victim.Health, Is.EqualTo(3), "no health lost");
             Assert.That(result.MoverBouncedBack, Is.True);
-            Assert.That(result.MoverFinalProgress, Is.EqualTo(19));
+            Assert.That(result.MoverFinalProgress, Is.EqualTo(Landing - 1));
         }
 
         [Test]
@@ -267,10 +313,10 @@ namespace NonaRoyale.Core.Tests.Collision
             // hit rather than erasing it (§5.6). Before the rework this instance
             // was swallowed whole regardless of its size.
             var mover = RedTank(0);
-            var victim = BlueAssassin(8);
+            var victim = BlueAssassinOn(Landing);
             _mitigation.ShieldPool = 2;
 
-            var result = Move(mover, 20, victim);
+            var result = Move(mover, Landing, victim);
 
             Assert.That(result.FirstDamage.Outcome, Is.EqualTo(DamageOutcome.Dealt));
             Assert.That(result.FirstDamage.AmountApplied, Is.EqualTo(1));
@@ -283,16 +329,16 @@ namespace NonaRoyale.Core.Tests.Collision
         [Test]
         public void BounceBack_DoesNotTriggerSecondCollision()
         {
-            // Two Blue operators, on track 19 and track 20. Red lands on 20,
-            // bounces to 19 — and must not strike the operator standing there.
-            // Bounce-back is placement, not movement (§7.2).
+            // Two Blue operators, on the landing cell and the one before it.
+            // Red lands, bounces back one — and must not strike the operator
+            // standing there. Bounce-back is placement, not movement (§7.2).
             var mover = RedTank(0);
-            var struck = BlueAssassin(8);       // track 20
-            var behind = Op(4, "Bouncer", PlayerColor.Blue, 12, 7);  // track 19
+            var struck = BlueAssassinOn(Landing);
+            var behind = OpOn(4, "Bouncer", PlayerColor.Blue, 12, Landing - 1);
 
-            var result = Move(mover, 20, struck, behind);
+            var result = Move(mover, Landing, struck, behind);
 
-            Assert.That(result.MoverFinalProgress, Is.EqualTo(19));
+            Assert.That(result.MoverFinalProgress, Is.EqualTo(Landing - 1));
             Assert.That(behind.Health, Is.EqualTo(12), "the bounce destination is untouched");
             Assert.That(struck.Health, Is.EqualTo(3), "only the contested cell resolved");
         }
@@ -306,10 +352,10 @@ namespace NonaRoyale.Core.Tests.Collision
             // stack freely (§4.5), and bounce-back and pulls are placement that
             // never collides. The mover hits all of them.
             var mover = RedTank(0);
-            var first = BlueAssassin(8);                             // track 20
-            var second = Op(5, "Syla", PlayerColor.Green, 6, 44);    // green starts at 24 -> track 20
+            var first = BlueAssassinOn(Landing);
+            var second = OpOn(5, "Syla", PlayerColor.Green, 6, Landing);   // a second seat, same cell
 
-            var result = Move(mover, 20, first, second);
+            var result = Move(mover, Landing, first, second);
 
             Assert.That(result.Occurred, Is.True);
             Assert.That(result.Occupants.Count, Is.EqualTo(2));
@@ -321,38 +367,40 @@ namespace NonaRoyale.Core.Tests.Collision
         public void AStackWithAnySurvivor_HoldsTheCell()
         {
             var mover = RedTank(0);
-            var dying = BlueAssassin(8);
+            var dying = BlueAssassinOn(Landing);
             dying.SetHealth(3);                                      // dies to the collision
-            var survivor = Op(5, "Bouncer", PlayerColor.Green, 12, 44);
+            var survivor = OpOn(5, "Bouncer", PlayerColor.Green, 12, Landing);
 
-            var result = Move(mover, 20, dying, survivor);
+            var result = Move(mover, Landing, dying, survivor);
 
+            Assert.That(result.Occurred, Is.True, "precondition: the collision happened");
             Assert.That(result.MoverBouncedBack, Is.True);
-            Assert.That(result.MoverFinalProgress, Is.EqualTo(19));
+            Assert.That(result.MoverFinalProgress, Is.EqualTo(Landing - 1));
         }
 
         [Test]
         public void AStackWipedOut_YieldsTheCell()
         {
             var mover = RedTank(0);
-            var first = BlueAssassin(8);
+            var first = BlueAssassinOn(Landing);
             first.SetHealth(3);
-            var second = Op(5, "Syla", PlayerColor.Green, 6, 44);
+            var second = OpOn(5, "Syla", PlayerColor.Green, 6, Landing);
             second.SetHealth(2);
 
-            var result = Move(mover, 20, first, second);
+            var result = Move(mover, Landing, first, second);
 
+            Assert.That(result.Occurred, Is.True, "precondition: the collision happened");
             Assert.That(result.MoverBouncedBack, Is.False);
-            Assert.That(result.MoverFinalProgress, Is.EqualTo(20));
+            Assert.That(result.MoverFinalProgress, Is.EqualTo(Landing));
         }
 
         [Test]
         public void AMoveWithNobodyElseOnTheBoard_ResolvesCleanly()
         {
-            var result = Move(RedTank(0), 20);
+            var result = Move(RedTank(0), Landing);
 
             Assert.That(result.Occurred, Is.False);
-            Assert.That(result.MoverFinalProgress, Is.EqualTo(20));
+            Assert.That(result.MoverFinalProgress, Is.EqualTo(Landing));
             Assert.That(result.Occupant, Is.Null);
         }
 
@@ -362,10 +410,10 @@ namespace NonaRoyale.Core.Tests.Collision
             // The resolver decides; the caller commits.
             var mover = RedTank(0);
 
-            var result = Move(mover, 20, BlueAssassin(8));
+            var result = Move(mover, Landing, BlueAssassinOn(Landing));
 
             Assert.That(mover.Progress, Is.EqualTo(0));
-            Assert.That(result.MoverFinalProgress, Is.EqualTo(19));
+            Assert.That(result.MoverFinalProgress, Is.EqualTo(Landing - 1));
         }
     }
 }

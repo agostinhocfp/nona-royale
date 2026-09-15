@@ -11,26 +11,46 @@ namespace NonaRoyale.Core.Tests.Board
         [Test]
         public void StandardProfile_MatchesTheCanonicalConstants()
         {
-            // ADR-0002: CircuitLength 48, HomeColumnLength 6,
-            // PlayerStartOffset 12, 72 total path positions.
+            // ADR-0002 Amendments 5 and 6: CircuitLength 52, HomeColumnLength 6,
+            // PlayerStartOffset 13, journey 58, 76 total path positions. Was
+            // 48/6/12/54/72, which could not be drawn as a continuous cross.
+            //
+            // The one place these numbers are literals on purpose: every other
+            // fixture derives its cells from the profile, so a board change
+            // fails here, loudly and once, instead of across six files.
             var board = BoardProfile.Standard;
 
-            Assert.That(board.CircuitLength, Is.EqualTo(48));
+            Assert.That(board.CircuitLength, Is.EqualTo(52));
             Assert.That(board.HomeColumnLength, Is.EqualTo(6));
-            Assert.That(board.PlayerStartOffset, Is.EqualTo(12));
-            Assert.That(board.Journey, Is.EqualTo(54));
-            Assert.That(board.TotalPathPositions, Is.EqualTo(72));
+            Assert.That(board.PlayerStartOffset, Is.EqualTo(13));
+            Assert.That(board.Journey, Is.EqualTo(58));
+            Assert.That(board.TotalPathPositions, Is.EqualTo(76));
         }
 
         [Test]
         public void SprintProfile_IsTheSameTopologyWithFewerCells()
         {
+            // 28/3 since Amendment 6; was 24/3, which is not a drawable cross.
             var board = BoardProfile.Sprint;
 
-            Assert.That(board.CircuitLength, Is.EqualTo(24));
+            Assert.That(board.CircuitLength, Is.EqualTo(28));
             Assert.That(board.HomeColumnLength, Is.EqualTo(3));
-            Assert.That(board.PlayerStartOffset, Is.EqualTo(6));
-            Assert.That(board.Journey, Is.EqualTo(27));
+            Assert.That(board.PlayerStartOffset, Is.EqualTo(7));
+            Assert.That(board.Journey, Is.EqualTo(31));
+        }
+
+        [Test]
+        public void NamedProfiles_AreAllDrawableCrosses()
+        {
+            // BoardLayout can only render the 8L + 4 family with a home column
+            // of L (ADR-0002 Amendment 6). A named profile outside it would
+            // simulate fine and fail the first time anyone drew it.
+            foreach (var (board, arm) in new[]
+                     { (BoardProfile.Standard, 6), (BoardProfile.Sprint, 3), (BoardProfile.Long, 7) })
+            {
+                Assert.That(board.CircuitLength, Is.EqualTo(8 * arm + 4), board.Name);
+                Assert.That(board.HomeColumnLength, Is.EqualTo(arm), board.Name);
+            }
         }
 
         [Test]
@@ -76,12 +96,15 @@ namespace NonaRoyale.Core.Tests.Board
         }
 
         [Test]
-        public void FromCircuitLength_MatchesTheNamedProfilesItCanReach()
+        public void FromCircuitLength_NoLongerProducesTheNamedProfiles()
         {
-            Assert.That(BoardProfile.FromCircuitLength("x", 48).HomeColumnLength,
-                Is.EqualTo(BoardProfile.Standard.HomeColumnLength));
-            Assert.That(BoardProfile.FromCircuitLength("x", 24).HomeColumnLength,
-                Is.EqualTo(BoardProfile.Sprint.HomeColumnLength));
+            // It used to: 48 and 24 were Standard and Sprint. Those were the
+            // boards that could not be drawn, and the named profiles are built
+            // with Cross now. The shortcut is kept for the harness only.
+            Assert.That(BoardProfile.FromCircuitLength("x", 48).CircuitLength,
+                Is.Not.EqualTo(BoardProfile.Standard.CircuitLength));
+            Assert.That(BoardProfile.FromCircuitLength("x", 24).CircuitLength,
+                Is.Not.EqualTo(BoardProfile.Sprint.CircuitLength));
         }
 
         [Test]

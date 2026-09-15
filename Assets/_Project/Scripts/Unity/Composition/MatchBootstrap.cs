@@ -78,6 +78,7 @@ namespace NonaRoyale.Unity.Composition
         private HudRoot _hudRoot;
         private PieceHudLayer _pieceHud;
         private TurnStrip _turnStrip;
+        private DeviceLayer _devices;
         private ControlPanel _controls;
         private Vector2 _panelScroll;
 
@@ -124,6 +125,10 @@ namespace NonaRoyale.Unity.Composition
             _highlights = GetComponent<HighlightLayer>() ?? gameObject.AddComponent<HighlightLayer>();
             _highlights.Bind(_layout);
             _highlights.Clear();
+
+            _devices = GetComponent<DeviceLayer>() ?? gameObject.AddComponent<DeviceLayer>();
+            _devices.Bind(_layout);
+            _devices.Clear();
 
             _feedback = GetComponent<FeedbackLayer>() ?? gameObject.AddComponent<FeedbackLayer>();
             _feedback.Bind(_layout.CellSize);
@@ -353,6 +358,10 @@ namespace NonaRoyale.Unity.Composition
 
             Reposition(immediate);
             RefreshHighlights();
+
+            // Beacons and zones are redrawn from the engine every time
+            // (ADR-0006 decision 6), so a spent one disappears on its own.
+            if (_devices != null) _devices.Show(_match.Engine.ActiveCellEffects());
 
             if (_turnStrip != null) _turnStrip.Refresh(_match.Engine);
             if (_controls != null) _controls.MarkDirty();
@@ -712,12 +721,14 @@ namespace NonaRoyale.Unity.Composition
                     if (immediate) piece.Place(position);
                     else piece.Settle(position);
 
-                    piece.Refresh();
-
                     // Statuses come from the engine, never from replaying
-                    // StatusApplied/StatusExpired (PRESENTATION §1).
-                    if (_pieceHud != null)
-                        _pieceHud.ShowStatuses(piece, _match.Engine.ActiveStatusesOn(piece.Operator));
+                    // StatusApplied/StatusExpired (PRESENTATION §1). Evasion is
+                    // drawn on the piece; everything else is a tag.
+                    var statuses = _match.Engine.ActiveStatusesOn(piece.Operator);
+
+                    piece.Refresh(evasive: statuses.Contains(StatusKind.Evasion));
+
+                    if (_pieceHud != null) _pieceHud.ShowStatuses(piece, statuses);
                 }
             }
         }

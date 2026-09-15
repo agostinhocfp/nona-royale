@@ -195,6 +195,33 @@ namespace NonaRoyale.Core.Services
         }
 
         /// <summary>
+        /// Every outer-track cell inside an area centred on
+        /// <paramref name="origin"/>, the origin included.
+        /// </summary>
+        /// <remarks>
+        /// Built from <see cref="IsInArea"/> rather than from index arithmetic,
+        /// so a drawn area can never disagree with the area that decides who is
+        /// caught. It exists for the board to draw pending cell effects
+        /// (<c>GameEngine.ActiveCellEffects</c>); nothing in the rules needs a
+        /// list of cells.
+        /// </remarks>
+        public IReadOnlyList<CellRef> CellsInArea(CellRef origin, int radius)
+        {
+            if (radius < 0) throw new ArgumentOutOfRangeException(nameof(radius));
+
+            var cells = new List<CellRef>(AreaCellCount(radius));
+            int circuit = _map.Profile.CircuitLength;
+
+            for (int index = 0; index < circuit; index++)
+            {
+                var cell = CellRef.Track(index);
+                if (IsInArea(origin, cell, radius)) cells.Add(cell);
+            }
+
+            return cells;
+        }
+
+        /// <summary>
         /// Every enemy of <paramref name="casterColor"/> inside an area.
         /// </summary>
         /// <remarks>

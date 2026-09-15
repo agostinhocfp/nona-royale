@@ -37,6 +37,16 @@ namespace NonaRoyale.Unity.View
             }
         }
 
+        /// <summary>
+        /// True for a status the piece itself shows, which therefore gets no tag.
+        /// </summary>
+        /// <remarks>
+        /// Only Evasion, which fades the silhouette (<c>OperatorPiece</c>). It is
+        /// a passive on the operators that have it, so as a tag it sat under the
+        /// same pieces all match and taught nothing after the first turn.
+        /// </remarks>
+        public static bool IsDrawnOnPiece(StatusKind kind) => kind == StatusKind.Evasion;
+
         /// <summary>The word printed on the tag.</summary>
         public static string Label(StatusKind kind)
         {

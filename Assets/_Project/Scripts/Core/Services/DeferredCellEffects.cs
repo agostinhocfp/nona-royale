@@ -183,6 +183,24 @@ namespace NonaRoyale.Core.Services
         /// <summary>Cells holding a lingering zone right now. Drawn differently from a beacon.</summary>
         public IReadOnlyList<CellRef> ActiveZones() => CellsWhere(true);
 
+        /// <summary>
+        /// Everything pending, with its owner and the cells it covers, for the
+        /// board to draw. See <see cref="CellEffectSnapshot"/>.
+        /// </summary>
+        public IReadOnlyList<CellEffectSnapshot> Snapshot()
+        {
+            var shown = new List<CellEffectSnapshot>(_pending.Count);
+
+            foreach (var entry in _pending)
+            {
+                shown.Add(new CellEffectSnapshot(
+                    entry.Cell, entry.Owner, entry.IsZone, entry.HasDetonated,
+                    _targeting.CellsInArea(entry.Cell, entry.Radius)));
+            }
+
+            return shown;
+        }
+
         /// <summary>Whether a seat has any lingering zone in play (ADR-0007).</summary>
         /// <remarks>
         /// Read by Killzone's rider on Bio-Link Rage — the first case of one

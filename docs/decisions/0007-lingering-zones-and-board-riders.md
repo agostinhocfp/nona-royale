@@ -22,7 +22,7 @@ ADR-0006 gave the core cell-anchored effects that **fire once and are deleted**.
 2. **The effect kind is `DeployZone`.** It detonates at the owner's next upkeep, then bills again for a set number of the owner's turns, each time on the owner's upkeep (ADR-0006's clock).
 3. **Zone damage is per target, not divided.** This is the deliberate opposite of a beacon: a beam of fixed energy is at its best against a lone target, and ground that grinds is at its best against a crowd. Two cell abilities that behaved alike would not have been worth two.
 4. **Only the detonation applies the status.** Stun blocks movement (§5.1), so a zone that stunned on every tick would hold its victims inside itself until it expired, removing them from the game with no answer on the roster. The grenade crushes once; what lingers only grinds.
-5. **Beacons and zones are distinct events and distinct queries.** Beacons produce `BeaconFired`; zones produce `ZoneTicked`, which carries whether this resolution is the detonation. `ActiveZones()` sits beside `ActiveBeacons()`, and the view is meant to draw zones differently from beacons. The two read differently: one beam resolving once, against ground doing its work for the third round running.
+5. **Beacons and zones are distinct events and distinct queries.** Beacons produce `BeaconFired`; zones produce `ZoneTicked`, which carries whether this resolution is the detonation. `ActiveZones()` sits beside `ActiveBeacons()`, and the view draws zones differently from beacons. The two read differently: one beam resolving once, against ground doing its work for the third round running.
 6. **The rider is a field on the effect, `BonusInOwnZone`,** read through `DeferredCellEffects.HasActiveZoneFor(owner)`. It is a field because nothing in the vocabulary can express "this effect, but only sometimes".
 
 ## Options considered
@@ -36,7 +36,7 @@ ADR-0006 gave the core cell-anchored effects that **fire once and are deleted**.
 
 - **This is the first number in the game that one ability changes on another.** Balance reasoning about Bio-Link Rage now depends on whether a Killzone is live.
 - **`Nuetu.cs` required no new engine capability beyond this.** The rest of his kit is existing vocabulary, which is what `AbilityResolver`'s contract predicted operators would eventually look like.
-- **Open: the view does not draw zones yet,** for the same reason given in ADR-0006: `ActiveZones()` has no caller in the Unity assembly.
+- **Closed 2026-09-15: zones were not drawn,** for the same reason given in ADR-0006. `DeviceLayer` now draws them: an armed zone as a heavier area with a ring, a zone that has gone off as a fainter area with a thin ring (`CellEffectSnapshot.HasDetonated`).
 - **Zone numbers are reasoned, not measured.** They were walked down several times in one pass, together with Nuetu's health; `Nuetu.cs` records the history. Axes moved together are not independently measured.
 
 ## Open design choice

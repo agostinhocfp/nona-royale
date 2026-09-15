@@ -15,6 +15,11 @@ namespace NonaRoyale.Unity.View
     /// increment C): at board scale a world-space badge was a few pixels
     /// wide, and a word does not fit in that.
     ///
+    /// <b>Evasion is the exception: it fades the piece instead of tagging it.</b>
+    /// An evasive operator is drawn at <see cref="EvasiveAlpha"/>, which reads
+    /// as "hard to pin down" without a word. The panel and log still name it.
+    /// If Stealth ever wants a look of its own, it must not be this one.
+    ///
     /// <b>It walks the track rather than sliding to the destination.</b> A
     /// straight-line slide was fine on the old ring layout; on the cross it cuts
     /// diagonally through the board interior and reads as a teleport. Following
@@ -25,10 +30,15 @@ namespace NonaRoyale.Unity.View
         private const float CellsPerSecond = 11f;
         private const float SettleSpeed = 12f;
 
+        /// <summary>Opacity of an evasive operator's silhouette and outline.</summary>
+        private const float EvasiveAlpha = 0.7f;
+
         private readonly Queue<Vector3> _path = new Queue<Vector3>();
 
         private SpriteRenderer _body;
+        private SpriteRenderer _outline;
         private SpriteRenderer _healthFill;
+        private float _alpha = 1f;
         private Color _seatColour;
         private Vector3 _target;
         private float _stepDistance = 1f;
@@ -56,10 +66,10 @@ namespace NonaRoyale.Unity.View
 
             // The same silhouette, larger and dark, behind: an outline that
             // works for any shape without a second sprite per shape.
-            var outline = Child("outline", 1.28f, Vector3.zero);
-            outline.sprite = shape;
-            outline.color = new Color(0.04f, 0.04f, 0.06f);
-            outline.sortingOrder = 3;
+            _outline = Child("outline", 1.28f, Vector3.zero);
+            _outline.sprite = shape;
+            _outline.color = new Color(0.04f, 0.04f, 0.06f);
+            _outline.sortingOrder = 3;
 
             BuildHealthBar();
 
@@ -96,9 +106,16 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         public void Flash() => _flash = 1f;
 
-        public void Refresh()
+        /// <summary>Redraws health and tint from the operator's state.</summary>
+        /// <param name="evasive">
+        /// Whether the engine reports Evasion on this operator. Passed in, never
+        /// inferred: the piece does not read the status registry (PRESENTATION §1).
+        /// </param>
+        public void Refresh(bool evasive)
         {
             if (Operator == null || _body == null) return;
+
+            _alpha = evasive ? EvasiveAlpha : 1f;
 
             float health = Mathf.Clamp01((float)Operator.Health / Operator.MaxHealth);
 
@@ -106,7 +123,9 @@ namespace NonaRoyale.Unity.View
                 ? Color.Lerp(_seatColour, new Color(0.4f, 0.4f, 0.42f), 0.55f)
                 : _seatColour;
 
-            _body.color = Color.Lerp(tint, Color.white, _flash);
+            _body.color = WithAlpha(Color.Lerp(tint, Color.white, _flash));
+
+            if (_outline != null) _outline.color = WithAlpha(_outline.color);
 
             if (_healthFill != null)
             {
@@ -116,6 +135,12 @@ namespace NonaRoyale.Unity.View
                 _healthFill.transform.localPosition = new Vector3(-0.55f * (1f - health), 0.78f, 0f);
                 _healthFill.color = Color.Lerp(new Color(0.80f, 0.25f, 0.25f), tint, health);
             }
+        }
+
+        private Color WithAlpha(Color colour)
+        {
+            colour.a = _alpha;
+            return colour;
         }
 
         private void BuildHealthBar()
@@ -146,7 +171,8 @@ namespace NonaRoyale.Unity.View
             if (_flash > 0f)
             {
                 _flash = Mathf.Max(0f, _flash - Time.deltaTime * 4f);
-                if (_body != null) _body.color = Color.Lerp(_body.color, Color.white, _flash * 0.5f);
+                // The flash must not undo the evasive fade, so alpha is put back.
+                if (_body != null) _body.color = WithAlpha(Color.Lerp(_body.color, Color.white, _flash * 0.5f));
             }
 
             if (_path.Count > 0)

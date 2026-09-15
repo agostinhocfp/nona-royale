@@ -80,6 +80,7 @@ namespace NonaRoyale.Unity.View
         }
 
         private readonly List<Entry> _entries = new List<Entry>();
+        private readonly List<StatusKind> _tagged = new List<StatusKind>();
         private RectTransform _canvasRect;
         private float _worldOffset;
 
@@ -119,14 +120,24 @@ namespace NonaRoyale.Unity.View
         /// <summary>
         /// Sets the statuses shown under a piece. The list comes from
         /// <c>GameEngine.ActiveStatusesOn</c>, never from events (§1), and is
-        /// copied, so the caller's list can be reused.
+        /// copied, so the caller's list can be reused. Statuses the piece draws
+        /// itself (<see cref="StatusPalette.IsDrawnOnPiece"/>) get no tag.
         /// </summary>
         public void ShowStatuses(OperatorPiece piece, IReadOnlyList<StatusKind> statuses)
         {
             var entry = _entries.Find(e => ReferenceEquals(e.Piece, piece));
             if (entry == null) return;
 
-            int count = statuses == null ? 0 : Mathf.Min(statuses.Count, MaxTags);
+            _tagged.Clear();
+
+            if (statuses != null)
+            {
+                foreach (var kind in statuses)
+                    if (!StatusPalette.IsDrawnOnPiece(kind)) _tagged.Add(kind);
+            }
+
+            statuses = _tagged;
+            int count = Mathf.Min(statuses.Count, MaxTags);
 
             if (SameAs(entry.Statuses, statuses, count)) return;
 

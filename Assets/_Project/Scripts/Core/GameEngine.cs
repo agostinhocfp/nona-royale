@@ -962,6 +962,19 @@ namespace NonaRoyale.Core
         /// <summary>Cells holding a lingering zone right now (ADR-0007).</summary>
         public IReadOnlyList<CellRef> ActiveZones() => _cellEffects.ActiveZones();
 
+        /// <summary>
+        /// Every pending beacon and zone, with its owner and the cells it will
+        /// strike, for the board to draw (ADR-0006, ADR-0007).
+        /// </summary>
+        /// <remarks>
+        /// <see cref="ActiveBeacons"/> and <see cref="ActiveZones"/> give only
+        /// anchor cells, which is not enough to draw from. The area is a rule
+        /// (§4.2), so the view must not work it out from a radius (PRESENTATION
+        /// §1), and the owner is what a player needs to decide whether to step
+        /// off.
+        /// </remarks>
+        public IReadOnlyList<CellEffectSnapshot> ActiveCellEffects() => _cellEffects.Snapshot();
+
 
         /// <summary>
         /// Whether any operator could still legally move with an unspent die.

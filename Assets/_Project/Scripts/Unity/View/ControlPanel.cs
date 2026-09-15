@@ -46,10 +46,20 @@ namespace NonaRoyale.Unity.View
     public sealed class ControlPanel : MonoBehaviour
     {
         /// <summary>Panel width in canvas units, at 1080p.</summary>
-        public const float Width = 340f;
+        public const float Width = 400f;
 
         private const float Margin = 10f;
-        private const float ButtonHeight = 30f;
+        private const float ButtonHeight = 38f;
+
+        // Text sizes in canvas units at 1080p. They shrink with the window
+        // (CanvasScaler), so they are set for a 1280×720 Game view to stay
+        // readable: the smallest here renders at about 11 px there.
+        private const float FontBody = 20f;
+        private const float FontSmall = 17f;
+        private const float FontHeading = 23f;
+        private const float FontButton = 19f;
+        private const float FontLog = 16f;
+        private const float FontHint = 18f;
         private const int LogLines = 10;
 
         /// <summary>Canvas units the panel claims from the left edge, margins included.</summary>
@@ -184,7 +194,7 @@ namespace NonaRoyale.Unity.View
 
             var hintText = hint.gameObject.AddComponent<TextMeshProUGUI>();
             hintText.raycastTarget = false;
-            hintText.fontSize = 15f;
+            hintText.fontSize = FontHint;
             hintText.color = TextDim;
             hintText.textWrappingMode = TextWrappingModes.NoWrap;
             hintText.text = "<b>Tab</b> controls   <b>H</b> health   <b>F2</b> switch panel";
@@ -212,7 +222,7 @@ namespace NonaRoyale.Unity.View
             // The profile's own description, not restated numbers: a
             // hard-coded label is one more place to forget.
             AddLabel(_content, $"{match.Map.Profile} · {(_host.RandomSquads ? "drafted squads" : "alpha three")}",
-                size: 13f, colour: TextDim);
+                size: FontSmall, colour: TextDim);
 
             AddButton(_content, "New match", _host.Reseed);
 
@@ -237,7 +247,7 @@ namespace NonaRoyale.Unity.View
                 AddLabel(_content, engine.Phase == TurnPhase.AwaitingRoll
                         ? "Roll before ending the turn."
                         : "Spend your roll before ending the turn.",
-                    size: 13f, colour: TextDim);
+                    size: FontSmall, colour: TextDim);
             }
 
             DrawOperators(engine.CurrentPlayer, engine.UnspentDice);
@@ -255,15 +265,15 @@ namespace NonaRoyale.Unity.View
             {
                 var row = Row(_content);
 
-                AddLabel(row, $"{op.Name} <color=#{Hex(TextDim)}>{op.Health}/{op.MaxHealth}</color>", width: 118f);
+                AddLabel(row, $"{op.Name} <color=#{Hex(TextDim)}>{op.Health}/{op.MaxHealth}</color>", width: 150f);
 
-                if (op.IsInYard) AddButton(row, "Deploy", () => _host.Deploy(op), width: 84f);
+                if (op.IsInYard) AddButton(row, "Deploy", () => _host.Deploy(op), width: 104f);
                 else DrawMoveButtons(row, op, dice);
 
                 Filler(row);
 
                 bool selected = ReferenceEquals(op, _host.SelectedCaster);
-                AddButton(row, "Cast", () => _host.ToggleCaster(op), selected: selected, width: 52f);
+                AddButton(row, "Cast", () => _host.ToggleCaster(op), selected: selected, width: 68f);
             }
         }
 
@@ -279,21 +289,21 @@ namespace NonaRoyale.Unity.View
         {
             if (dice.Count == 0)
             {
-                AddLabel(row, "—", width: 84f, colour: TextDim);
+                AddLabel(row, "—", width: 104f, colour: TextDim);
                 return;
             }
 
             if (dice.Count == 1)
             {
-                AddButton(row, $"Move {dice[0]}", () => _host.Move(op, null), width: 84f);
+                AddButton(row, $"Move {dice[0]}", () => _host.Move(op, null), width: 104f);
                 return;
             }
 
             int total = dice.Sum();
-            AddButton(row, $"<b>{total}</b>", () => _host.Move(op, null), width: 36f);
+            AddButton(row, $"<b>{total}</b>", () => _host.Move(op, null), width: 46f);
 
             foreach (int face in dice.Distinct())
-                AddButton(row, face.ToString(), () => _host.Move(op, face), width: 26f);
+                AddButton(row, face.ToString(), () => _host.Move(op, face), width: 34f);
         }
 
         private void DrawAbilities(PlayerState seat)
@@ -324,7 +334,7 @@ namespace NonaRoyale.Unity.View
                     interactable: usable || chosen, selected: chosen, leftAlign: true);
 
                 if (chosen && !string.IsNullOrEmpty(ability.Description))
-                    AddLabel(_content, ability.Description, size: 13f, colour: TextDim);
+                    AddLabel(_content, ability.Description, size: FontSmall, colour: TextDim);
             }
 
             var selectedAbility = _host.SelectedAbility;
@@ -336,9 +346,9 @@ namespace NonaRoyale.Unity.View
                 AddLabel(_content, _host.SelectedCell == null
                         ? "Click a highlighted cell on the board."
                         : $"Target cell: <b>{_host.SelectedCell.Value}</b> — click another to change.",
-                    size: 14f, colour: TextDim);
+                    size: FontSmall, colour: TextDim);
             }
-            else AddLabel(_content, "No target — it fires around the caster.", size: 14f, colour: TextDim);
+            else AddLabel(_content, "No target — it fires around the caster.", size: FontSmall, colour: TextDim);
 
             AddSpace(2f);
 
@@ -359,7 +369,7 @@ namespace NonaRoyale.Unity.View
 
             if (legal.Count == 0)
             {
-                AddLabel(_content, "Nothing in reach.", size: 14f, colour: TextDim);
+                AddLabel(_content, "Nothing in reach.", size: FontSmall, colour: TextDim);
                 return;
             }
 
@@ -372,7 +382,7 @@ namespace NonaRoyale.Unity.View
             var list = candidates.ToList();
             if (list.Count == 0) return;
 
-            AddLabel(_content, heading, size: 13f, colour: TextDim);
+            AddLabel(_content, heading, size: FontSmall, colour: TextDim);
 
             foreach (var candidate in list)
             {
@@ -396,7 +406,7 @@ namespace NonaRoyale.Unity.View
             var log = _host.Log;
 
             for (int i = log.Count - 1; i >= 0 && i >= log.Count - LogLines; i--)
-                AddLabel(_content, log[i], size: 12f, colour: TextDim, rich: false);
+                AddLabel(_content, log[i], size: FontLog, colour: TextDim, rich: false);
         }
 
         // ── Widgets ──────────────────────────────────────────────────────
@@ -422,7 +432,7 @@ namespace NonaRoyale.Unity.View
         private void Heading(string text)
         {
             AddSpace(8f);
-            AddLabel(_content, $"<b>{text}</b>", size: 17f);
+            AddLabel(_content, $"<b>{text}</b>", size: FontHeading);
         }
 
         private void AddSpace(float height)
@@ -457,7 +467,7 @@ namespace NonaRoyale.Unity.View
 
         private static void AddLabel(
             Transform parent, string text,
-            float width = -1f, float size = 16f, Color? colour = null, bool rich = true)
+            float width = -1f, float size = FontBody, Color? colour = null, bool rich = true)
         {
             var rect = NewRect("label", parent);
 
@@ -537,7 +547,7 @@ namespace NonaRoyale.Unity.View
 
             var label = labelRect.gameObject.AddComponent<TextMeshProUGUI>();
             label.raycastTarget = false;
-            label.fontSize = 15f;
+            label.fontSize = FontButton;
             label.color = interactable ? TextNormal : TextDisabled;
             label.alignment = leftAlign ? TextAlignmentOptions.MidlineLeft : TextAlignmentOptions.Center;
             label.textWrappingMode = TextWrappingModes.NoWrap;

@@ -603,6 +603,61 @@ namespace NonaRoyale.Core.Tests.Turn
             Assert.That(kurbyn.Health, Is.EqualTo(4), "and one beam's worth of damage");
         }
 
+        // ── Snapshots for the board (ADR-0006, ADR-0007) ─────────────────
+
+        [Test]
+        public void ASnapshot_ShowsAPaintedArea_UntilTheBeamFires()
+        {
+            // The board draws from this, so it has to name the owner and every
+            // cell the beam will reach, and forget the beacon once it has fired.
+            var machine = Machine(new SeededRandom(1));
+            machine.BeginTurn();
+            PaintForRed(BlueCell(5), totalDamage: 2, radius: 1);
+
+            var shown = _cellEffects.Snapshot();
+
+            Assert.That(shown.Count, Is.EqualTo(1));
+            Assert.That(shown[0].Cell, Is.EqualTo(BlueCell(5)));
+            Assert.That(shown[0].Owner, Is.EqualTo(PlayerColor.Red));
+            Assert.That(shown[0].IsZone, Is.False);
+            Assert.That(shown[0].HasDetonated, Is.False);
+            Assert.That(shown[0].Covered, Is.EquivalentTo(new[] { BlueCell(4), BlueCell(5), BlueCell(6) }),
+                "radius 1 is the anchor and one cell either side, along the track");
+
+            machine.Roll(); machine.EndTurn();
+            machine.BeginTurn(); machine.Roll(); machine.EndTurn();
+            machine.BeginTurn();                          // Red turn 2 — it fires
+
+            Assert.That(_cellEffects.Snapshot(), Is.Empty, "a spent beacon is no longer drawn");
+        }
+
+        [Test]
+        public void ASnapshot_KeepsAZoneAfterItsDetonation_AndSaysItHasGoneOff()
+        {
+            // A zone lingers (ADR-0007), so the board keeps drawing it, and the
+            // armed and lingering states have to be told apart.
+            var machine = Machine(new SeededRandom(1));
+            machine.BeginTurn();
+            _cellEffects.Deploy(
+                cell: BlueCell(30), owner: PlayerColor.Red, sourceOperatorId: _red.Operators.First().Id,
+                detonationDamage: 1, lingerDamage: 1, lingerTicks: 2, radius: 1,
+                damageType: DamageType.Normal, detonationStatus: StatusKind.Stun, statusDuration: 2);
+
+            var armed = _cellEffects.Snapshot();
+            Assert.That(armed.Count, Is.EqualTo(1));
+            Assert.That(armed[0].IsZone, Is.True);
+            Assert.That(armed[0].HasDetonated, Is.False);
+
+            machine.Roll(); machine.EndTurn();
+            machine.BeginTurn(); machine.Roll(); machine.EndTurn();
+            machine.BeginTurn();                          // Red turn 2 — detonation
+
+            var lingering = _cellEffects.Snapshot();
+            Assert.That(lingering.Count, Is.EqualTo(1), "a detonated zone is still on the board");
+            Assert.That(lingering[0].HasDetonated, Is.True);
+            Assert.That(lingering[0].Covered.Count, Is.EqualTo(3));
+        }
+
         // ── End of turn ──────────────────────────────────────────────────
 
         [Test]
