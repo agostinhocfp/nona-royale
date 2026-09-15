@@ -73,11 +73,12 @@ namespace NonaRoyale.Unity.View
             _tray.pivot = new Vector2(0.5f, 0f);
             _tray.offsetMin = Vector2.zero;
             _tray.offsetMax = new Vector2(0f, Height);
-            UiKit.Frame(_tray, UiKit.Panel, true, RectTransform.Edge.Top);
+            UiKit.Dock(_tray, true, RectTransform.Edge.Top);
 
             _content = UiKit.Rect("content", _tray);
             UiKit.Stretch(_content);
             var row = UiKit.Row(_content, 14f, 12);
+            row.padding.top = 16; // clear of the double rule
             row.childForceExpandHeight = true;
             row.childAlignment = TextAnchor.UpperLeft;
         }
@@ -118,12 +119,7 @@ namespace NonaRoyale.Unity.View
             CastSection();
         }
 
-        private void Divider()
-        {
-            var line = UiKit.Rect("divider", _content);
-            UiKit.Fill(line, UiKit.Line);
-            UiKit.Fixed(line, 1f);
-        }
+        private void Divider() => UiKit.Divider(_content, vertical: true);
 
         // ── Dice ─────────────────────────────────────────────────────────
 
@@ -135,7 +131,7 @@ namespace NonaRoyale.Unity.View
             UiKit.Column(box, 10f);
             UiKit.Fixed(box, 250f);
 
-            UiKit.Label(box, "DICE", UiKit.FontSmall, UiKit.TextDim, bold: true);
+            UiKit.Heading(box, "Dice");
 
             var faces = UiKit.Rect("faces", box);
             UiKit.Row(faces, 10f);
@@ -160,8 +156,8 @@ namespace NonaRoyale.Unity.View
 
             // Roll and End turn live on the turn button at the board's corner
             // (TurnButton); the tray only shows the dice and what they need.
-            var hint = UiKit.Label(box, DiceHint(engine, dice.Count, canRoll, canEnd), UiKit.FontSmall,
-                canEnd && !canRoll ? UiKit.Cyan : UiKit.TextDim, wrap: true);
+            var hint = UiKit.Label(box, DiceHint(engine, dice.Count, canRoll, canEnd), UiTheme.FontSmall,
+                canEnd && !canRoll ? UiTheme.Cyan : UiTheme.TextDim, wrap: true);
             UiKit.Size(hint, height: 40f);
         }
 
@@ -176,12 +172,14 @@ namespace NonaRoyale.Unity.View
             return "";
         }
 
+        /// <summary>An ivory die with a brass edge; a spent slot is a dim inset.</summary>
         private static void Die(Transform parent, string face, bool live)
         {
             var die = UiKit.Rect("die", parent);
-            UiKit.Fill(die, live ? new Color(0.93f, 0.90f, 0.82f) : UiKit.Track);
+            UiKit.Sliced(die, DecoSprites.ButtonFill, live ? UiTheme.DieFace : UiTheme.PanelInset);
+            UiKit.Overlay(die, DecoSprites.ButtonEdge, live ? UiTheme.Gold : UiTheme.WithAlpha(UiTheme.Line, 0.4f));
             UiKit.Size(die, 64f, 64f);
-            UiKit.Caption(die, face, 36f, live ? new Color(0.08f, 0.06f, 0.07f) : UiKit.TextOff,
+            UiKit.Caption(die, face, 36f, live ? UiTheme.DieInk : UiTheme.TextOff,
                 TextAlignmentOptions.Center).fontStyle = FontStyles.Bold;
         }
 
@@ -196,12 +194,12 @@ namespace NonaRoyale.Unity.View
             UiKit.Column(card, 6f);
             UiKit.Fixed(card, 300f);
 
-            UiKit.Label(card, "OPERATOR", UiKit.FontSmall, UiKit.TextDim, bold: true);
+            UiKit.Heading(card, "Operator");
 
             if (op == null)
             {
-                UiKit.Label(card, "None selected", UiKit.FontLarge, UiKit.TextDim);
-                UiKit.Label(card, "Click one of your pieces, or its row on the left.", UiKit.FontSmall, UiKit.TextDim, wrap: true);
+                UiKit.Label(card, "None selected", UiTheme.FontLarge, UiTheme.TextDim);
+                UiKit.Label(card, "Click one of your pieces, or its row on the left.", UiTheme.FontSmall, UiTheme.TextDim, wrap: true);
                 return;
             }
 
@@ -216,20 +214,20 @@ namespace NonaRoyale.Unity.View
             var name = UiKit.Rect("name", top);
             UiKit.Column(name, 2f);
             UiKit.Size(name, flexibleWidth: 1f);
-            UiKit.Label(name, op.Name, UiKit.FontLarge, bold: true);
+            UiKit.Label(name, op.Name, UiTheme.FontLarge, bold: true);
 
             string where = engine.IsHome(op) ? "home"
                 : engine.CanDeploy(op) ? "ready to deploy — click it"
                 : op.IsInYard ? "waiting in the yard"
                 : "on the board";
-            UiKit.Label(name, where, UiKit.FontSmall, UiKit.TextDim);
+            UiKit.Label(name, where, UiTheme.FontSmall, UiTheme.TextDim);
 
             var health = UiKit.Rect("health", card);
             UiKit.Row(health, 8f);
             UiKit.Size(health, height: 20f);
             float fraction = (float)op.Health / Mathf.Max(1, op.MaxHealth);
-            UiKit.Bar(health, fraction, Color.Lerp(UiKit.Danger, seatColour, fraction), 200f, 10f);
-            UiKit.Label(health, $"<b>{op.Health}</b>/{op.MaxHealth}", UiKit.FontBody);
+            UiKit.Bar(health, fraction, Color.Lerp(UiTheme.Danger, seatColour, fraction), 200f, 10f);
+            UiKit.Label(health, $"<b>{op.Health}</b>/{op.MaxHealth}", UiTheme.FontBody);
 
             var tags = UiKit.Rect("statuses", card);
             UiKit.Row(tags, 4f);
@@ -238,7 +236,7 @@ namespace NonaRoyale.Unity.View
             if (!op.IsInYard)
             {
                 var statuses = engine.ActiveStatusesOn(op);
-                if (statuses.Count == 0) UiKit.Label(tags, "no statuses", UiKit.FontSmall, UiKit.TextOff);
+                if (statuses.Count == 0) UiKit.Label(tags, "no statuses", UiTheme.FontSmall, UiTheme.TextOff);
 
                 foreach (var kind in statuses)
                     UiKit.Tag(tags, StatusPalette.Label(kind), StatusPalette.For(kind), 12f);
@@ -256,11 +254,11 @@ namespace NonaRoyale.Unity.View
             UiKit.Column(box, 6f);
             UiKit.Size(box, flexibleWidth: 1f);
 
-            UiKit.Label(box, "ABILITIES", UiKit.FontSmall, UiKit.TextDim, bold: true);
+            UiKit.Heading(box, "Abilities");
 
             if (op == null || !_host.Match.AbilitiesByOperator.TryGetValue(op.Id, out var abilities))
             {
-                UiKit.Label(box, "Select an operator to see its abilities.", UiKit.FontBody, UiKit.TextDim);
+                UiKit.Label(box, "Select an operator to see its abilities.", UiTheme.FontBody, UiTheme.TextDim);
                 return;
             }
 
@@ -278,7 +276,7 @@ namespace NonaRoyale.Unity.View
                 ? chosen.Description
                 : "Pick an ability (1–3) to see its reach on the board. Nothing is spent until you cast.";
 
-            UiKit.Label(box, description, UiKit.FontSmall, chosen != null ? UiKit.Text : UiKit.TextDim, wrap: true);
+            UiKit.Label(box, description, UiTheme.FontSmall, chosen != null ? UiTheme.Text : UiTheme.TextDim, wrap: true);
         }
 
         private void AbilityCard(Transform parent, OperatorState op, AbilityDefinition ability, int index, Core.GameEngine engine)
@@ -295,7 +293,7 @@ namespace NonaRoyale.Unity.View
             switch (availability)
             {
                 case AbilityAvailability.Ready:
-                    state = $"<color=#{UiKit.Hex(UiKit.Cyan)}>READY</color>";
+                    state = $"<color=#{UiTheme.Hex(UiTheme.Cyan)}>READY</color>";
                     break;
                 case AbilityAvailability.OnCooldown:
                     int turns = engine.TurnsUntilReady(op, ability);
@@ -318,17 +316,17 @@ namespace NonaRoyale.Unity.View
             column.padding.top = 10;
             column.childAlignment = TextAnchor.UpperLeft;
 
-            var textColour = usable || chosen ? UiKit.Text : UiKit.TextOff;
+            var textColour = usable || chosen ? UiTheme.Text : UiTheme.TextOff;
 
             // Smaller than body text (feedback 2026-09-15): three names side by
             // side read as a row of buttons, not a row of headlines.
             UiKit.Label(card,
-                $"<color=#{UiKit.Hex(UiKit.GoldBright)}>{index + 1}</color>  <b>{ability.Name}</b>",
+                $"<color=#{UiTheme.Hex(UiTheme.GoldBright)}>{index + 1}</color>  <b>{ability.Name}</b>",
                 AbilityNameSize, textColour);
             UiKit.Label(card,
-                $"<color=#{UiKit.Hex(UiKit.Cyan)}>{ability.EnergyCost}e</color> · {reach} · cd {ability.CooldownTurns}",
+                $"<color=#{UiTheme.Hex(UiTheme.Cyan)}>{ability.EnergyCost}e</color> · {reach} · cd {ability.CooldownTurns}",
                 AbilityMetaSize, textColour);
-            UiKit.Label(card, state, AbilityMetaSize, usable ? UiKit.Text : UiKit.TextDim);
+            UiKit.Label(card, state, AbilityMetaSize, usable ? UiTheme.Text : UiTheme.TextDim);
         }
 
         // ── Cast ─────────────────────────────────────────────────────────
@@ -341,7 +339,7 @@ namespace NonaRoyale.Unity.View
             UiKit.Column(box, 8f);
             UiKit.Fixed(box, 210f);
 
-            UiKit.Label(box, "AIM", UiKit.FontSmall, UiKit.TextDim, bold: true);
+            UiKit.Heading(box, "Aim");
 
             string aim;
 
@@ -363,7 +361,7 @@ namespace NonaRoyale.Unity.View
             }
             else aim = "No aim needed — it fires from the caster.";
 
-            var aimLabel = UiKit.Label(box, aim, UiKit.FontSmall, wrap: true);
+            var aimLabel = UiKit.Label(box, aim, UiTheme.FontSmall, wrap: true);
             UiKit.Size(aimLabel, height: 58f);
 
             bool ready = _host.CastReady;
@@ -371,7 +369,8 @@ namespace NonaRoyale.Unity.View
             var cast = UiKit.Button(box,
                 ability == null ? "Cast" : $"<b>Cast</b>  <size=70%>Enter</size>",
                 _host.Cast, MarkDirty, interactable: ready,
-                tint: ready ? new Color(0.07f, 0.36f, 0.39f) : (Color?)null);
+                tint: ready ? UiTheme.CyanDeep : (Color?)null,
+                edge: ready ? UiTheme.Cyan : (Color?)null);
             UiKit.Size(cast, height: 52f);
         }
     }

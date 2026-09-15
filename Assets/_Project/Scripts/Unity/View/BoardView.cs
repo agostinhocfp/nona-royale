@@ -81,12 +81,52 @@ namespace NonaRoyale.Unity.View
     /// Draws the board once. It renders shape, never state, because the board
     /// itself never changes during a match.
     /// </summary>
+    /// <remarks>
+    /// <b>The casino floor, moderately</b> (GUI increment G, ART_DIRECTION §6).
+    /// A charcoal table with a double gilt frame and a pool of warm light;
+    /// track cells as dark marble with a brass inlay; yards as felt tables in
+    /// the seat's colour; HOME as a lit vault. §6.1 asks for a board that is
+    /// atmospheric at rest and lit on demand; this stops short of the full
+    /// whisper, so a stranger can still read the path at rest (decided
+    /// 2026-09-15, ahead of the stranger test).
+    ///
+    /// <b>Safe cells are powered tiles</b>, the one place the board itself
+    /// uses the cool register (§6, contrast discipline): marble lifted toward
+    /// cyan, a cyan inlay and a faint cyan glow. Each seat's start cell also
+    /// carries a wash of the seat's colour.
+    ///
+    /// <b>Home columns deepen toward HOME</b>, which gives a direction of
+    /// travel without arrows, and take a gold inlay: the road to the vault.
+    ///
+    /// Sorting orders are all below zero. Devices draw at 0, highlights at 1
+    /// and 2, pieces from 2 up.
+    /// </remarks>
     public sealed class BoardView : MonoBehaviour
     {
         private static readonly PlayerColor[] Seats =
         {
             PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Yellow
         };
+
+        // Back to front.
+        private const int TableOrder = -12;
+        private const int TableTrimOrder = -11;
+        private const int FeltOrder = -10;
+        private const int FeltRimOrder = -9;
+        private const int VaultOrder = -8;
+        private const int VaultRaysOrder = -7;
+        private const int PowerGlowOrder = -5;
+        private const int CellOrder = -4;
+        private const int InlayOrder = -3;
+
+        /// <summary>Table border beyond the outermost cells, in cell spacings.</summary>
+        private const float TableMargin = 0.7f;
+
+        /// <summary>A yard table's diameter, in cell sizes.</summary>
+        private const float YardSize = 3.2f;
+
+        /// <summary>World size of a table corner fan.</summary>
+        private const float TableFanSize = 1.5f;
 
         private readonly List<GameObject> _drawn = new List<GameObject>();
 
@@ -99,47 +139,128 @@ namespace NonaRoyale.Unity.View
 
             var profile = map.Profile;
 
-            // The shared track. Safe cells are drawn bright because they are the
-            // only cells carrying a rule a player must see without asking.
+            DrawTable(layout);
+
+            foreach (var seat in Seats) DrawYard(layout, seat);
+
+            DrawVault(layout);
+
+            // The shared track.
+            var starts = new Dictionary<int, PlayerColor>();
+            foreach (var seat in Seats) starts[map.StartTrackIndex(seat)] = seat;
+
             for (int i = 0; i < profile.CircuitLength; i++)
             {
                 var cell = CellRef.Track(i);
+                var at = layout.PositionOf(cell);
 
-                Spawn($"track_{i}", layout.PositionOf(cell), layout.CellSize,
-                    map.IsSafe(cell) ? new Color(0.93f, 0.88f, 0.62f) : new Color(0.24f, 0.24f, 0.28f));
+                if (!map.IsSafe(cell))
+                {
+                    Tile($"track_{i}", at, layout.CellSize, UiTheme.CellMarble, UiTheme.CellInlay);
+                    continue;
+                }
+
+                var marble = starts.TryGetValue(i, out var owner)
+                    ? Color.Lerp(UiTheme.SafeMarble, UiTheme.Seat(owner), 0.28f)
+                    : UiTheme.SafeMarble;
+
+                Sprite($"safe_glow_{i}", DecoSprites.Glow, at, layout.CellSize * 1.5f,
+                    UiTheme.WithAlpha(UiTheme.Cyan, 0.22f), PowerGlowOrder);
+                Tile($"safe_{i}", at, layout.CellSize, marble, UiTheme.SafeInlay);
             }
 
             foreach (var seat in Seats)
             {
-                var tint = BoardLayout.ColourOf(seat);
+                var tint = UiTheme.Seat(seat);
 
-                // Home column, tip to centre. Deepening tint gives a direction
-                // of travel without needing arrows.
+                // Home column, tip to centre.
                 for (int depth = 0; depth < profile.HomeColumnLength; depth++)
                 {
                     float t = depth / Mathf.Max(1f, profile.HomeColumnLength - 1f);
+                    float wash = Mathf.Lerp(UiTheme.HomeTintNear, UiTheme.HomeTintFar, t);
 
-                    Spawn($"home_{seat}_{depth}",
-                        layout.PositionOf(CellRef.HomeColumn(seat, depth)),
-                        layout.CellSize, Color.Lerp(tint * 0.45f, tint * 0.85f, t));
+                    Tile($"home_{seat}_{depth}",
+                        layout.PositionOf(CellRef.HomeColumn(seat, depth)), layout.CellSize,
+                        Color.Lerp(UiTheme.CellMarble, tint, wash),
+                        UiTheme.WithAlpha(UiTheme.Gold, 0.7f));
                 }
-
-                // Yard: a large disc in the quadrant beside its arm.
-                SpawnDisc($"yard_{seat}", layout.PositionOf(CellRef.Yard(seat)),
-                    layout.CellSize * 3.2f, tint * 0.22f);
             }
-
-            SpawnDisc("home_goal", layout.HomeGoalPosition, layout.HomeGoalSize,
-                new Color(0.88f, 0.83f, 0.55f));
         }
 
-        private void Spawn(string name, Vector3 position, float size, Color colour) =>
-            Create(name, position, size, colour, Primitives.Square, -1);
+        // ── Pieces of the floor ──────────────────────────────────────────
 
-        private void SpawnDisc(string name, Vector3 position, float size, Color colour) =>
-            Create(name, position, size, colour, Primitives.Disc, -2);
+        /// <summary>The table: a charcoal field, a gilt double frame, a fan in each corner, and a pool of light.</summary>
+        private void DrawTable(BoardLayout layout)
+        {
+            // Extent is half the grid; the margin is measured in spacings.
+            float spacing = layout.Spacing;
+            float side = 2f * layout.Extent + 2f * TableMargin * spacing;
+            var centre = layout.HomeGoalPosition;
 
-        private void Create(string name, Vector3 position, float size, Color colour, Sprite sprite, int order)
+            Sliced("table", DecoSprites.TableFill, centre, side, UiTheme.BoardField, TableOrder);
+            Sliced("table_frame", DecoSprites.TableEdge, centre, side - 0.25f * spacing,
+                UiTheme.WithAlpha(UiTheme.Gold, 0.85f), TableTrimOrder);
+
+            Sprite("table_light", DecoSprites.Glow, centre, side * 0.95f, UiTheme.BoardGlow, TableTrimOrder);
+
+            // Fans open inward from each corner of the frame.
+            float half = side * 0.5f - 0.35f * spacing;
+            var fan = UiTheme.WithAlpha(UiTheme.Gold, 0.35f);
+            Fan(centre + new Vector3(-half, -half, 0f), 0f, fan);
+            Fan(centre + new Vector3(half, -half, 0f), 90f, fan);
+            Fan(centre + new Vector3(half, half, 0f), 180f, fan);
+            Fan(centre + new Vector3(-half, half, 0f), 270f, fan);
+        }
+
+        /// <summary>A round felt table in the seat's colour, with a seat rim and a gilt rim.</summary>
+        private void DrawYard(BoardLayout layout, PlayerColor seat)
+        {
+            var tint = UiTheme.Seat(seat);
+            var at = layout.PositionOf(CellRef.Yard(seat));
+            float size = layout.CellSize * YardSize;
+
+            Sprite($"yard_{seat}", Primitives.Disc, at, size,
+                Color.Lerp(UiTheme.Charcoal, tint, UiTheme.FeltTint), FeltOrder);
+            Sprite($"yard_rim_{seat}", DecoSprites.RingThin, at, size * 0.94f,
+                UiTheme.WithAlpha(tint, 0.7f), FeltRimOrder);
+            Sprite($"yard_trim_{seat}", DecoSprites.RingThin, at, size * 1.06f,
+                UiTheme.WithAlpha(UiTheme.Gold, 0.55f), FeltRimOrder);
+        }
+
+        /// <summary>HOME: a dark vault floor under a lit gold sunburst.</summary>
+        private void DrawVault(BoardLayout layout)
+        {
+            var at = layout.HomeGoalPosition;
+            float size = layout.HomeGoalSize;
+
+            Sprite("home_floor", Primitives.Disc, at, size, UiTheme.VaultFloor, VaultOrder);
+            Sprite("home_light", DecoSprites.Glow, at, size * 1.8f,
+                UiTheme.WithAlpha(UiTheme.VaultLight, 0.3f), VaultOrder);
+            Sprite("home_rays", DecoSprites.Sunburst, at, size * 0.96f,
+                UiTheme.WithAlpha(UiTheme.VaultLight, 0.8f), VaultRaysOrder);
+            Sprite("home_rim", DecoSprites.RingThin, at, size,
+                UiTheme.Gold, VaultRaysOrder);
+        }
+
+        /// <summary>A marble cell with its inlay.</summary>
+        private void Tile(string name, Vector3 at, float size, Color marble, Color inlay)
+        {
+            Sprite(name, Primitives.Square, at, size, marble, CellOrder);
+            Sprite(name + "_inlay", DecoSprites.TileInlay, at, size, inlay, InlayOrder);
+        }
+
+        private void Fan(Vector3 corner, float rotation, Color colour)
+        {
+            // The HUD fan is 26 texels at 100 per unit; scale it up to world size.
+            float scale = TableFanSize / (DecoSprites.FanSize / 100f);
+            var renderer = Sprite("table_fan", DecoSprites.CornerFan, corner, scale, colour, TableTrimOrder);
+            renderer.transform.localEulerAngles = new Vector3(0f, 0f, rotation);
+        }
+
+        // ── Renderers ────────────────────────────────────────────────────
+
+        /// <summary>A sprite one world unit across, scaled to <paramref name="size"/>.</summary>
+        private SpriteRenderer Sprite(string name, Sprite sprite, Vector3 position, float size, Color colour, int order)
         {
             var go = new GameObject(name);
             go.transform.SetParent(transform, false);
@@ -152,6 +273,15 @@ namespace NonaRoyale.Unity.View
             renderer.sortingOrder = order;
 
             _drawn.Add(go);
+            return renderer;
+        }
+
+        /// <summary>A nine-sliced square, so its frame keeps its width at any size.</summary>
+        private void Sliced(string name, Sprite sprite, Vector3 position, float side, Color colour, int order)
+        {
+            var renderer = Sprite(name, sprite, position, 1f, colour, order);
+            renderer.drawMode = SpriteDrawMode.Sliced;
+            renderer.size = new Vector2(side, side);
         }
     }
 }

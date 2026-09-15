@@ -31,10 +31,6 @@ namespace NonaRoyale.Unity.View
         private const float ButtonHeight = 62f;
         private const float Gap = 14f;
 
-        private static readonly Color RollTint = new Color(0.36f, 0.27f, 0.08f);
-        private static readonly Color EndTint = new Color(0.06f, 0.38f, 0.41f);
-        private static readonly Color WaitTint = new Color(0.10f, 0.09f, 0.10f);
-
         private IControlPanelHost _host;
         private RectTransform _area;
         private RectTransform _slot;
@@ -100,6 +96,7 @@ namespace NonaRoyale.Unity.View
             bool enabled;
             bool pulse;
             Color tint;
+            Color accent;
 
             if (engine.Phase == TurnPhase.AwaitingRoll || (engine.CanRollAgain && dice.Count == 0))
             {
@@ -107,7 +104,10 @@ namespace NonaRoyale.Unity.View
                 hint = "Space";
                 enabled = true;
                 pulse = true;
-                tint = RollTint;
+
+                // Rolling is the turn's ritual, not a live state: gold.
+                tint = UiTheme.GoldDeep;
+                accent = UiTheme.GoldBright;
             }
             else if (engine.Phase == TurnPhase.Action && engine.MustSpendRoll)
             {
@@ -115,7 +115,8 @@ namespace NonaRoyale.Unity.View
                 hint = $"{string.Join(" + ", dice)} left";
                 enabled = false;
                 pulse = false;
-                tint = WaitTint;
+                tint = UiTheme.ButtonFill;
+                accent = UiTheme.Line;
             }
             else
             {
@@ -123,23 +124,29 @@ namespace NonaRoyale.Unity.View
                 hint = "E";
                 enabled = true;
                 pulse = true;
-                tint = EndTint;
+
+                // Ending is the live next step: the cool register (ART_DIRECTION §8).
+                tint = UiTheme.CyanDeep;
+                accent = UiTheme.Cyan;
             }
 
             System.Action press = label.StartsWith("ROLL") ? (System.Action)_host.Roll : _host.EndTurn;
 
-            var button = UiKit.Button(_slot, "", press, interactable: enabled, tint: tint);
+            var button = UiKit.Button(_slot, "", press, interactable: enabled, tint: tint, edge: accent);
             var rect = (RectTransform)button.transform;
             UiKit.Stretch(rect);
 
             var column = UiKit.Column(rect, 0f, 6);
             column.childAlignment = TextAnchor.MiddleCenter;
 
-            UiKit.Label(rect, label, 22f, enabled ? UiKit.Text : UiKit.TextDim, TextAlignmentOptions.Center, bold: true);
-            UiKit.Label(rect, hint, 13f, enabled ? UiKit.GoldBright : UiKit.TextOff, TextAlignmentOptions.Center);
+            var title = UiKit.Label(rect, label, 22f, enabled ? UiTheme.Text : UiTheme.TextDim, TextAlignmentOptions.Center, bold: true);
+            title.characterSpacing = UiTheme.HeadingSpacing * 0.5f;
+            UiKit.Label(rect, hint, 13f, enabled ? accent : UiTheme.TextOff, TextAlignmentOptions.Center);
 
-            if (pulse) UiKit.Pulse(button);
-            else UiKit.Border(rect, UiKit.Line, 1f);
+            // The showpiece control gets the panel's corner fans.
+            UiKit.CornerFans(rect, UiTheme.WithAlpha(enabled ? accent : UiTheme.Line, 0.45f));
+
+            if (pulse) UiKit.Pulse(button, accent);
         }
     }
 }

@@ -381,6 +381,9 @@ namespace NonaRoyale.Unity.View
 
         public float CellSize => _spacing * 0.86f;
 
+        /// <summary>World distance between neighbouring cell centres.</summary>
+        public float Spacing => _spacing;
+
         public Vector3 HomeGoalPosition => World(new Vector2Int(_centre, _centre));
 
         /// <summary>
@@ -535,16 +538,7 @@ namespace NonaRoyale.Unity.View
             return cells.ToArray();
         }
 
-        public static Color ColourOf(PlayerColor colour)
-        {
-            switch (colour)
-            {
-                case PlayerColor.Red: return new Color(0.84f, 0.27f, 0.31f);
-                case PlayerColor.Blue: return new Color(0.32f, 0.56f, 0.88f);
-                case PlayerColor.Green: return new Color(0.34f, 0.72f, 0.44f);
-                case PlayerColor.Yellow: return new Color(0.90f, 0.76f, 0.30f);
-                default: return Color.grey;
-            }
-        }
+        /// <summary>A seat's colour. Kept here for its many callers; the value lives in <see cref="UiTheme"/>.</summary>
+        public static Color ColourOf(PlayerColor colour) => UiTheme.Seat(colour);
     }
-}
+}

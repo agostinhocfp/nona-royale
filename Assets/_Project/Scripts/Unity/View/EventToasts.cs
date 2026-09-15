@@ -26,8 +26,6 @@ namespace NonaRoyale.Unity.View
         private const float Life = 3.6f;
         private const float FadeTime = 0.6f;
 
-        private static readonly Color RejectColour = new Color(0.95f, 0.45f, 0.35f);
-
         private sealed class Toast
         {
             public GameObject Root;
@@ -81,7 +79,7 @@ namespace NonaRoyale.Unity.View
             if (_root == null || batch == null) return;
 
             foreach (var reason in batch.Rejections)
-                Push($"Can't do that: {reason}", RejectColour);
+                Push($"Can't do that: {reason}", UiTheme.Reject);
 
             foreach (var item in batch.Items)
             {
@@ -90,27 +88,27 @@ namespace NonaRoyale.Unity.View
                 var seat = BoardLayout.ColourOf(item.Seat);
                 string value = string.IsNullOrEmpty(item.Value)
                     ? ""
-                    : $"   <color=#{UiKit.Hex(item.ValueColour)}><b>{item.Value}</b></color>";
-                string knockout = item.Knockout ? $"   <color=#{UiKit.Hex(UiKit.Danger)}><b>KO</b></color>" : "";
+                    : $"   <color=#{UiTheme.Hex(item.ValueColour)}><b>{item.Value}</b></color>";
+                string knockout = item.Knockout ? $"   <color=#{UiTheme.Hex(UiTheme.Danger)}><b>KO</b></color>" : "";
 
-                Push($"<color=#{UiKit.Hex(UiKit.Readable(seat))}>{item.Seat}</color>  {item.Title}{value}{knockout}", seat);
+                Push($"<color=#{UiTheme.Hex(UiTheme.Readable(seat))}>{item.Seat}</color>  {item.Title}{value}{knockout}", seat);
             }
         }
 
         private void Push(string text, Color accent)
         {
             var row = UiKit.Rect("toast", _root);
-            UiKit.Fill(row, new Color(0.02f, 0.015f, 0.02f, 0.88f));
+            UiKit.Sliced(row, DecoSprites.ChipFill, UiTheme.Scrim);
+            UiKit.Overlay(row, DecoSprites.ButtonEdge, UiTheme.WithAlpha(UiTheme.Line, 0.7f));
 
             var layout = UiKit.Row(row, 10f);
-            layout.padding = new RectOffset(0, 14, 5, 5);
-            layout.childForceExpandHeight = true;
+            layout.padding = new RectOffset(10, 16, 6, 6);
+            layout.childForceExpandHeight = false;
 
-            var bar = UiKit.Rect("accent", row);
-            UiKit.Fill(bar, accent);
-            UiKit.Fixed(bar, 4f);
+            // The accent is a diamond in the seat's colour, or the refusal colour.
+            UiKit.Diamond(row, accent, 10f, 15f);
 
-            UiKit.Label(row, text, UiKit.FontBody).overflowMode = TextOverflowModes.Overflow;
+            UiKit.Label(row, text, UiTheme.FontBody).overflowMode = TextOverflowModes.Overflow;
 
             var group = row.gameObject.AddComponent<CanvasGroup>();
             group.blocksRaycasts = false;

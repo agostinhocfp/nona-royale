@@ -8,52 +8,35 @@ using UnityEngine.UI;
 namespace NonaRoyale.Unity.View
 {
     /// <summary>
-    /// Shared widget construction and colours for the in-match HUD (GUI phase,
-    /// increment F).
+    /// Shared widget construction for the in-match HUD (GUI phase, increments
+    /// F and G).
     /// </summary>
     /// <remarks>
-    /// <b>One place for the look.</b> The top bar, squad rail, action tray and
-    /// log all build their widgets here, so the skin pass (increment G) changes
-    /// these values and methods rather than four files. The colours already
-    /// lean on ART_DIRECTION §3: near-black panels, gold for static emphasis,
-    /// cyan for live and selected states (§8).
+    /// <b>One place for the shapes; <see cref="UiTheme"/> for the colours.</b>
+    /// The top bar, squad rail, action tray, history strip and overlays all
+    /// build their widgets here. Increment G moved every colour and type size
+    /// to <see cref="UiTheme"/> and gave the widgets their Deco frames from
+    /// <see cref="DecoSprites"/>: chamfered corners, double gilt rules, corner
+    /// fans, diamond pips (ART_DIRECTION §8).
     ///
-    /// <b>Creation-time defaults carry the ADR-0008 rules.</b> Text and
-    /// display images never catch the pointer (consequence 9). Buttons have no
+    /// <b>Two kinds of panel.</b> A docked panel (<see cref="Dock"/>) is flush
+    /// with a screen edge, so it is a plain dark field with a double rule along
+    /// its inner edge. A floating panel (<see cref="Panel"/>) is a chamfered
+    /// card with a double frame and corner fans.
+    ///
+    /// <b>Creation-time defaults carry the ADR-0008 rules.</b> Text, frames and
+    /// ornaments never catch the pointer (consequence 9). Buttons have no
     /// keyboard navigation and drop focus after a click, so Enter and Space,
-    /// which are game keys, never press a button a second time.
+    /// which are game keys, never press a button a second time. Ornaments
+    /// ignore layout, so a layout group on the framed rect never places them.
     ///
     /// The dev panel (<see cref="ControlPanel"/>) keeps its own helpers. It is
     /// a debugging tool, and it is not skinned.
     /// </remarks>
     public static class UiKit
     {
-        // ── Colours (ART_DIRECTION §3, provisional until the palette lock) ──
-
-        public static readonly Color Panel = new Color(0.039f, 0.027f, 0.035f, 0.94f);      // obsidian
-        public static readonly Color PanelRaised = new Color(0.078f, 0.063f, 0.075f, 0.96f); // charcoal velvet
-        public static readonly Color Line = new Color(0.486f, 0.353f, 0.118f, 0.9f);        // aged brass
-        public static readonly Color Gold = new Color(0.788f, 0.604f, 0.235f);               // gilt gold
-        public static readonly Color GoldBright = new Color(0.957f, 0.851f, 0.545f);
-        public static readonly Color Cyan = new Color(0.373f, 0.878f, 0.910f);               // holo cyan
-        public static readonly Color Text = new Color(0.93f, 0.91f, 0.88f);
-        public static readonly Color TextDim = new Color(0.62f, 0.60f, 0.58f);
-        public static readonly Color TextOff = new Color(0.42f, 0.41f, 0.40f);
-        public static readonly Color ButtonFill = new Color(0.12f, 0.10f, 0.11f);
-        public static readonly Color ButtonOff = new Color(0.07f, 0.06f, 0.07f);
-        public static readonly Color Selected = new Color(0.09f, 0.29f, 0.31f);
-        public static readonly Color Danger = new Color(0.80f, 0.25f, 0.25f);
-        public static readonly Color Track = new Color(1f, 1f, 1f, 0.08f);
-
-        public const float FontSmall = 15f;
-        public const float FontBody = 18f;
-        public const float FontLarge = 22f;
-        public const float FontTitle = 26f;
-
-        public static string Hex(Color colour) => ColorUtility.ToHtmlStringRGB(colour);
-
-        /// <summary>A seat colour lifted toward white, readable on a dark panel.</summary>
-        public static Color Readable(Color seat) => Color.Lerp(seat, Color.white, 0.35f);
+        /// <summary>Canvas units between a docked panel's two rules.</summary>
+        private const float RuleGap = 3f;
 
         // ── Layout primitives ────────────────────────────────────────────
 
@@ -82,41 +65,149 @@ namespace NonaRoyale.Unity.View
             return image;
         }
 
-        /// <summary>A background with a thin brass rule along one edge, or none.</summary>
-        public static void Frame(RectTransform rect, Color colour, bool blocksPointer, RectTransform.Edge? rule)
+        /// <summary>A nine-sliced sprite as the rect's own background.</summary>
+        public static Image Sliced(RectTransform rect, Sprite sprite, Color colour, bool blocksPointer = false)
         {
-            Fill(rect, colour, blocksPointer);
-            if (rule == null) return;
+            var image = Fill(rect, colour, blocksPointer);
+            image.sprite = sprite;
+            image.type = Image.Type.Sliced;
+            image.fillCenter = true;
+            return image;
+        }
 
+        /// <summary>
+        /// A sliced sprite stretched over <paramref name="rect"/> as a child:
+        /// an edge or a glow on top of the background. Ignores layout and the
+        /// pointer.
+        /// </summary>
+        public static Image Overlay(RectTransform rect, Sprite sprite, Color colour, string name = "edge")
+        {
+            var child = Rect(name, rect);
+            Stretch(child);
+            Decoration(child);
+            return Sliced(child, sprite, colour);
+        }
+
+        /// <summary>Marks a child as decoration: a layout group on its parent leaves it alone.</summary>
+        private static void Decoration(RectTransform rect) =>
+            rect.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+
+        // ── Panels ───────────────────────────────────────────────────────
+
+        /// <summary>
+        /// A panel docked to a screen edge: a dark field with a double rule,
+        /// gold outside and brass inside, along <paramref name="rule"/>, and a
+        /// diamond at the rule's middle.
+        /// </summary>
+        public static void Dock(RectTransform rect, bool blocksPointer, RectTransform.Edge rule)
+        {
+            Fill(rect, UiTheme.Panel, blocksPointer);
+
+            EdgeLine(rect, rule, 0f, 2f, UiTheme.LineBright);
+            EdgeLine(rect, rule, 2f + RuleGap, 1f, UiTheme.Line);
+
+            // The diamond straddles the outer rule.
+            var gem = Rect("rule_gem", rect);
+            Decoration(gem);
+            var image = Fill(gem, UiTheme.Gold);
+            image.sprite = DecoSprites.Diamond;
+
+            bool horizontal = rule == RectTransform.Edge.Top || rule == RectTransform.Edge.Bottom;
+            // Lying along the rule: a horizontal rule turns the tall diamond on its side.
+            gem.sizeDelta = new Vector2(10f, 15f);
+            if (horizontal) gem.localEulerAngles = new Vector3(0f, 0f, 90f);
+
+            switch (rule)
+            {
+                case RectTransform.Edge.Top: gem.anchorMin = gem.anchorMax = new Vector2(0.5f, 1f); break;
+                case RectTransform.Edge.Bottom: gem.anchorMin = gem.anchorMax = new Vector2(0.5f, 0f); break;
+                case RectTransform.Edge.Left: gem.anchorMin = gem.anchorMax = new Vector2(0f, 0.5f); break;
+                default: gem.anchorMin = gem.anchorMax = new Vector2(1f, 0.5f); break;
+            }
+
+            gem.pivot = new Vector2(0.5f, 0.5f);
+            gem.anchoredPosition = Vector2.zero;
+        }
+
+        /// <summary>
+        /// A floating chamfered panel: raised fill, double gilt frame, and a
+        /// fan in each corner.
+        /// </summary>
+        public static Image Panel(RectTransform rect, bool blocksPointer, bool fans = true, Color? fill = null)
+        {
+            var body = Sliced(rect, DecoSprites.PanelFill, fill ?? UiTheme.PanelRaised, blocksPointer);
+            Overlay(rect, DecoSprites.PanelEdge, UiTheme.Line);
+            if (fans) CornerFans(rect, UiTheme.WithAlpha(UiTheme.Gold, 0.55f));
+            return body;
+        }
+
+        /// <summary>A quarter sunburst in each of the rect's corners, opening inward.</summary>
+        public static void CornerFans(RectTransform rect, Color colour)
+        {
+            Fan(rect, new Vector2(0f, 0f), 0f, colour);
+            Fan(rect, new Vector2(1f, 0f), 90f, colour);
+            Fan(rect, new Vector2(1f, 1f), 180f, colour);
+            Fan(rect, new Vector2(0f, 1f), 270f, colour);
+        }
+
+        private static void Fan(RectTransform parent, Vector2 corner, float rotation, Color colour)
+        {
+            var fan = Rect("fan", parent);
+            Decoration(fan);
+            var image = Fill(fan, colour);
+            image.sprite = DecoSprites.CornerFan;
+
+            fan.anchorMin = corner;
+            fan.anchorMax = corner;
+            fan.pivot = Vector2.zero;
+            fan.sizeDelta = new Vector2(DecoSprites.FanSize, DecoSprites.FanSize);
+
+            // Inset toward the panel's centre, whichever corner this is.
+            var inward = new Vector2(corner.x < 0.5f ? 1f : -1f, corner.y < 0.5f ? 1f : -1f);
+            fan.anchoredPosition = inward * DecoSprites.FanInset;
+            fan.localEulerAngles = new Vector3(0f, 0f, rotation);
+        }
+
+        /// <summary>
+        /// A line along one edge, <paramref name="inset"/> in from it and
+        /// <paramref name="thickness"/> thick.
+        /// </summary>
+        private static void EdgeLine(RectTransform rect, RectTransform.Edge edge, float inset, float thickness, Color colour)
+        {
             var line = Rect("rule", rect);
-            Fill(line, Line);
+            Fill(line, colour);
+            Decoration(line);
 
-            // Decoration, not content: a layout group on the framed rect must
-            // not place it.
-            line.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
-
-            switch (rule.Value)
+            switch (edge)
             {
                 case RectTransform.Edge.Top:
                     line.anchorMin = new Vector2(0f, 1f); line.anchorMax = Vector2.one;
-                    line.sizeDelta = new Vector2(0f, 2f); line.pivot = new Vector2(0.5f, 1f);
+                    line.pivot = new Vector2(0.5f, 1f);
+                    line.sizeDelta = new Vector2(0f, thickness);
+                    line.anchoredPosition = new Vector2(0f, -inset);
                     break;
                 case RectTransform.Edge.Bottom:
                     line.anchorMin = Vector2.zero; line.anchorMax = new Vector2(1f, 0f);
-                    line.sizeDelta = new Vector2(0f, 2f); line.pivot = new Vector2(0.5f, 0f);
+                    line.pivot = new Vector2(0.5f, 0f);
+                    line.sizeDelta = new Vector2(0f, thickness);
+                    line.anchoredPosition = new Vector2(0f, inset);
                     break;
                 case RectTransform.Edge.Left:
                     line.anchorMin = Vector2.zero; line.anchorMax = new Vector2(0f, 1f);
-                    line.sizeDelta = new Vector2(2f, 0f); line.pivot = new Vector2(0f, 0.5f);
+                    line.pivot = new Vector2(0f, 0.5f);
+                    line.sizeDelta = new Vector2(thickness, 0f);
+                    line.anchoredPosition = new Vector2(inset, 0f);
                     break;
                 default:
                     line.anchorMin = new Vector2(1f, 0f); line.anchorMax = Vector2.one;
-                    line.sizeDelta = new Vector2(2f, 0f); line.pivot = new Vector2(1f, 0.5f);
+                    line.pivot = new Vector2(1f, 0.5f);
+                    line.sizeDelta = new Vector2(thickness, 0f);
+                    line.anchoredPosition = new Vector2(-inset, 0f);
                     break;
             }
-
-            line.anchoredPosition = Vector2.zero;
         }
+
+        // ── Layout groups ────────────────────────────────────────────────
 
         public static VerticalLayoutGroup Column(RectTransform rect, float spacing = 4f, int padding = 0)
         {
@@ -186,7 +277,7 @@ namespace NonaRoyale.Unity.View
         // ── Content ──────────────────────────────────────────────────────
 
         public static TMP_Text Label(
-            Transform parent, string text, float size = FontBody, Color? colour = null,
+            Transform parent, string text, float size = UiTheme.FontBody, Color? colour = null,
             TextAlignmentOptions align = TextAlignmentOptions.MidlineLeft, bool wrap = false, bool bold = false)
         {
             var rect = Rect("label", parent);
@@ -196,11 +287,22 @@ namespace NonaRoyale.Unity.View
             label.richText = true;
             label.fontSize = size;
             label.fontStyle = bold ? FontStyles.Bold : FontStyles.Normal;
-            label.color = colour ?? Text;
+            label.color = colour ?? UiTheme.Text;
             label.alignment = align;
             label.textWrappingMode = wrap ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
             label.overflowMode = wrap ? TextOverflowModes.Overflow : TextOverflowModes.Ellipsis;
             label.text = text;
+            return label;
+        }
+
+        /// <summary>
+        /// A section heading: small spaced gold capitals, the Deco signage
+        /// voice. Static chrome, so warm (ART_DIRECTION §8).
+        /// </summary>
+        public static TMP_Text Heading(Transform parent, string text, TextAlignmentOptions align = TextAlignmentOptions.MidlineLeft)
+        {
+            var label = Label(parent, text.ToUpperInvariant(), 13f, UiTheme.Heading, align, bold: true);
+            label.characterSpacing = UiTheme.HeadingSpacing;
             return label;
         }
 
@@ -225,11 +327,21 @@ namespace NonaRoyale.Unity.View
             return image;
         }
 
+        /// <summary>A tall diamond of a fixed size, for pips and bullets.</summary>
+        public static Image Diamond(Transform parent, Color colour, float width, float height, bool outline = false)
+        {
+            var rect = Rect("diamond", parent);
+            var image = Fill(rect, colour);
+            image.sprite = outline ? DecoSprites.DiamondOutline : DecoSprites.Diamond;
+            Size(image, width, height);
+            return image;
+        }
+
         /// <summary>A horizontal bar filled to <paramref name="fraction"/>.</summary>
         public static void Bar(Transform parent, float fraction, Color fill, float width, float height)
         {
             var back = Rect("bar", parent);
-            Fill(back, Track);
+            Fill(back, UiTheme.Track);
             Size(back, width, height);
 
             var front = Rect("fill", back);
@@ -240,28 +352,51 @@ namespace NonaRoyale.Unity.View
             front.offsetMax = Vector2.zero;
         }
 
+        /// <summary>
+        /// A divider between tray sections: a brass rule with a diamond at its
+        /// middle. Vertical in a row, horizontal in a column.
+        /// </summary>
+        public static void Divider(Transform parent, bool vertical)
+        {
+            var box = Rect("divider", parent);
+            if (vertical) Fixed(box, 12f);
+            else Size(box, height: 12f);
+
+            var line = Rect("line", box);
+            Fill(line, UiTheme.Line);
+            line.anchorMin = vertical ? new Vector2(0.5f, 0f) : new Vector2(0f, 0.5f);
+            line.anchorMax = vertical ? new Vector2(0.5f, 1f) : new Vector2(1f, 0.5f);
+            line.sizeDelta = vertical ? new Vector2(1f, -16f) : new Vector2(-16f, 1f);
+
+            var gem = Rect("gem", box);
+            var image = Fill(gem, UiTheme.Gold);
+            image.sprite = DecoSprites.Diamond;
+            gem.anchorMin = gem.anchorMax = new Vector2(0.5f, 0.5f);
+            gem.sizeDelta = new Vector2(8f, 12f);
+            if (!vertical) gem.localEulerAngles = new Vector3(0f, 0f, 90f);
+        }
+
         /// <summary>A status word on its own colour, as under the pieces.</summary>
         public static void Tag(Transform parent, string word, Color colour, float size = 12f)
         {
             var rect = Rect($"tag_{word}", parent);
-            Fill(rect, colour);
+            Sliced(rect, DecoSprites.ChipFill, colour);
 
             var pad = rect.gameObject.AddComponent<HorizontalLayoutGroup>();
-            pad.padding = new RectOffset(5, 5, 1, 1);
+            pad.padding = new RectOffset(6, 6, 1, 1);
             pad.childControlWidth = true;
             pad.childControlHeight = true;
             pad.childForceExpandWidth = false;
             pad.childForceExpandHeight = true;
 
-            float luminance = 0.2126f * colour.r + 0.7152f * colour.g + 0.0722f * colour.b;
-            var text = Label(rect, word, size, luminance < 0.5f ? Color.white : new Color(0.06f, 0.06f, 0.08f),
-                TextAlignmentOptions.Center, bold: true);
+            var text = Label(rect, word, size, UiTheme.TextOn(colour), TextAlignmentOptions.Center, bold: true);
             text.overflowMode = TextOverflowModes.Overflow;
         }
 
         /// <summary>
-        /// A thin border inside <paramref name="rect"/>, drawn as four strips
-        /// that layout ignores.
+        /// A thin rectangular border inside <paramref name="rect"/>, drawn as
+        /// four strips that layout ignores. For square-cornered boxes; framed
+        /// widgets use <see cref="Overlay"/> with a Deco edge instead.
         /// </summary>
         public static Image[] Border(RectTransform rect, Color colour, float thickness)
         {
@@ -275,59 +410,77 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
-        /// A gold border that breathes, to mark the next thing to press.
+        /// A double edge that breathes, to mark the next thing to press. Gold
+        /// by default; a live control passes cyan.
         /// </summary>
-        public static void Pulse(Component target)
+        public static void Pulse(Component target, Color? colour = null)
         {
             var rect = (RectTransform)target.transform;
+            var edge = Overlay(rect, DecoSprites.ButtonEdgeDouble, colour ?? UiTheme.GoldBright, "pulse");
+
             var pulse = rect.gameObject.AddComponent<UiPulse>();
-            pulse.Targets = Border(rect, GoldBright, 3f);
+            pulse.Targets = new Graphic[] { edge };
         }
 
         private static Image Strip(RectTransform parent, Color colour, Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin, Vector2 offsetMax)
         {
             var strip = Rect("border", parent);
-            Fill(strip, colour);
+            var image = Fill(strip, colour);
             strip.anchorMin = anchorMin;
             strip.anchorMax = anchorMax;
             strip.offsetMin = offsetMin;
             strip.offsetMax = offsetMax;
-            strip.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
-            return (Image)strip.GetComponent<Image>();
+            Decoration(strip);
+            return image;
         }
 
         /// <summary>
-        /// A button. The click runs <paramref name="onClick"/> and then
-        /// <paramref name="afterClick"/>, usually the owner's MarkDirty.
+        /// A chamfered button with a brass edge. The click runs
+        /// <paramref name="onClick"/> and then <paramref name="afterClick"/>,
+        /// usually the owner's MarkDirty.
         /// </summary>
+        /// <remarks>
+        /// A selected button is a live state, so it fills with
+        /// <see cref="UiTheme.CyanDeep"/> and takes a cyan double edge
+        /// (ART_DIRECTION §8). <paramref name="edge"/> overrides the resting
+        /// edge colour.
+        /// </remarks>
         public static UnityEngine.UI.Button Button(
             Transform parent, string text, Action onClick, Action afterClick = null,
-            bool interactable = true, bool selected = false, float size = FontBody,
-            TextAlignmentOptions align = TextAlignmentOptions.Center, Color? tint = null)
+            bool interactable = true, bool selected = false, float size = UiTheme.FontBody,
+            TextAlignmentOptions align = TextAlignmentOptions.Center, Color? tint = null, Color? edge = null)
         {
             var rect = Rect("button", parent);
 
             // White, so the button's tint is the colour shown rather than
             // being multiplied by a second one.
-            var image = rect.gameObject.AddComponent<Image>();
-            image.color = Color.white;
+            var image = Sliced(rect, DecoSprites.ButtonFill, Color.white, blocksPointer: true);
 
             var button = rect.gameObject.AddComponent<UnityEngine.UI.Button>();
             button.targetGraphic = image;
             button.interactable = interactable;
             button.navigation = new Navigation { mode = Navigation.Mode.None };
 
-            var baseTint = tint ?? (selected ? Selected : ButtonFill);
+            var baseTint = tint ?? (selected ? UiTheme.CyanDeep : UiTheme.ButtonFill);
             var colours = ColorBlock.defaultColorBlock;
             colours.normalColor = baseTint;
-            colours.highlightedColor = Color.Lerp(baseTint, Color.white, 0.12f);
+            colours.highlightedColor = Color.Lerp(baseTint, Color.white, 0.10f);
             colours.pressedColor = Color.Lerp(baseTint, Color.black, 0.25f);
             colours.selectedColor = baseTint;
-            colours.disabledColor = ButtonOff;
+            colours.disabledColor = UiTheme.ButtonOff;
             colours.colorMultiplier = 1f;
+            colours.fadeDuration = 0.08f;
             button.colors = colours;
 
-            if (selected) Border(rect, Cyan, 2f);
+            if (selected)
+            {
+                Overlay(rect, DecoSprites.ButtonEdgeDouble, UiTheme.Cyan);
+            }
+            else
+            {
+                var resting = edge ?? UiTheme.Line;
+                Overlay(rect, DecoSprites.ButtonEdge, interactable ? resting : UiTheme.WithAlpha(resting, 0.35f));
+            }
 
             button.onClick.AddListener(() =>
             {
@@ -339,9 +492,9 @@ namespace NonaRoyale.Unity.View
 
             // The caption ignores layout, so a button can also hold laid-out
             // content of its own (the squad rail's rows do).
-            var label = Caption(rect, text, size, interactable ? Text : TextOff, align, 8f);
+            var label = Caption(rect, text, size, interactable ? UiTheme.Text : UiTheme.TextOff, align, 8f);
             label.textWrappingMode = TextWrappingModes.NoWrap;
-            label.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            Decoration((RectTransform)label.transform);
 
             return button;
         }

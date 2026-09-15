@@ -105,11 +105,11 @@ namespace NonaRoyale.Unity.View
             _strip.pivot = new Vector2(1f, 0.5f);
             _strip.offsetMin = new Vector2(-Width, 0f);
             _strip.offsetMax = new Vector2(0f, -TurnStrip.ReservedHeight);
-            UiKit.Frame(_strip, UiKit.Panel, true, RectTransform.Edge.Left);
+            UiKit.Dock(_strip, true, RectTransform.Edge.Left);
 
             var column = UiKit.Rect("column", _strip);
             UiKit.Stretch(column);
-            UiKit.Column(column, 6f, 5);
+            UiKit.Column(column, 6f, 5).padding.left = 10; // clear of the double rule
 
             var log = UiKit.Button(column, "LOG <size=70%>L</size>", () => LogRequested?.Invoke(), size: 13f);
             UiKit.Size(log, height: 28f);
@@ -146,26 +146,27 @@ namespace NonaRoyale.Unity.View
             _card.anchorMax = new Vector2(0.5f, 0.5f);
             _card.pivot = new Vector2(1f, 0.5f);
             _card.sizeDelta = new Vector2(CardWidth, 0f);
-            UiKit.Fill(_card, UiKit.PanelRaised);
+            UiKit.Panel(_card, blocksPointer: false);
 
-            var column = UiKit.Column(_card, 4f, 12);
-            column.padding.left = 18;
+            // Padding keeps the text clear of the corner fans.
+            var column = UiKit.Column(_card, 4f, 16);
+            column.padding.left = 24;
+            column.padding.right = 20;
             var fit = _card.gameObject.AddComponent<ContentSizeFitter>();
             fit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
             var accent = UiKit.Rect("accent", _card);
-            _cardAccent = UiKit.Fill(accent, UiKit.Gold);
+            _cardAccent = UiKit.Fill(accent, UiTheme.Gold);
             accent.anchorMin = Vector2.zero;
             accent.anchorMax = new Vector2(0f, 1f);
             accent.pivot = new Vector2(0f, 0.5f);
-            accent.sizeDelta = new Vector2(5f, 0f);
-            accent.anchoredPosition = Vector2.zero;
+            // Inside the frame, clear of the chamfer.
+            accent.sizeDelta = new Vector2(4f, -28f);
+            accent.anchoredPosition = new Vector2(10f, 0f);
             accent.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
 
-            UiKit.Border(_card, UiKit.Line, 1f);
-
-            _cardTitle = UiKit.Label(_card, "", UiKit.FontBody, bold: true, wrap: true);
-            _cardBody = UiKit.Label(_card, "", UiKit.FontSmall, UiKit.TextDim, wrap: true);
+            _cardTitle = UiKit.Label(_card, "", UiTheme.FontBody, bold: true, wrap: true);
+            _cardBody = UiKit.Label(_card, "", UiTheme.FontSmall, UiTheme.TextDim, wrap: true);
 
             _card.gameObject.SetActive(false);
         }
@@ -186,11 +187,11 @@ namespace NonaRoyale.Unity.View
             line.sizeDelta = new Vector2(0f, 2f);
 
             var tag = UiKit.Rect("round", divider);
-            UiKit.Fill(tag, UiKit.Panel);
+            UiKit.Sliced(tag, DecoSprites.ChipFill, UiTheme.Obsidian);
             tag.anchorMin = new Vector2(0.5f, 0f);
             tag.anchorMax = new Vector2(0.5f, 1f);
             tag.sizeDelta = new Vector2(40f, 0f);
-            UiKit.Caption(tag, $"R{item.Round}", 11f, UiKit.Readable(colour), TextAlignmentOptions.Center).fontStyle = FontStyles.Bold;
+            UiKit.Caption(tag, $"R{item.Round}", 11f, UiTheme.Readable(colour), TextAlignmentOptions.Center).fontStyle = FontStyles.Bold;
 
             return divider;
         }
@@ -200,7 +201,7 @@ namespace NonaRoyale.Unity.View
             var seatColour = BoardLayout.ColourOf(item.Seat);
 
             var chip = UiKit.Rect($"chip_{item.Kind}", _content);
-            UiKit.Fill(chip, UiKit.PanelRaised, blocksPointer: true);
+            UiKit.Sliced(chip, DecoSprites.ChipFill, UiTheme.PanelInset, blocksPointer: true);
             UiKit.Size(chip, height: ChipHeight);
 
             // Seat colour down the left edge.
@@ -209,14 +210,14 @@ namespace NonaRoyale.Unity.View
             stripe.anchorMin = Vector2.zero;
             stripe.anchorMax = new Vector2(0f, 1f);
             stripe.pivot = new Vector2(0f, 0.5f);
-            stripe.sizeDelta = new Vector2(3f, 0f);
+            stripe.sizeDelta = new Vector2(3f, -10f);
             stripe.anchoredPosition = Vector2.zero;
 
             // Who acted: the piece's own silhouette.
             var icon = UiKit.Rect("icon", chip);
             var image = icon.gameObject.AddComponent<Image>();
             image.sprite = item.Actor != null ? PieceShape.For(item.Actor) : Primitives.Disc;
-            image.color = item.Kind == HistoryKind.Win ? UiKit.GoldBright : seatColour;
+            image.color = item.Kind == HistoryKind.Win ? UiTheme.GoldBright : seatColour;
             image.preserveAspect = true;
             image.raycastTarget = false;
             icon.anchorMin = new Vector2(0f, 1f);
@@ -225,7 +226,7 @@ namespace NonaRoyale.Unity.View
             icon.sizeDelta = new Vector2(22f, 22f);
             icon.anchoredPosition = new Vector2(8f, -5f);
 
-            var word = UiKit.Label(chip, item.Word, 10f, UiKit.TextDim, TextAlignmentOptions.TopRight, bold: true);
+            var word = UiKit.Label(chip, item.Word, 10f, UiTheme.TextDim, TextAlignmentOptions.TopRight, bold: true);
             var wordRect = (RectTransform)word.transform;
             wordRect.anchorMin = new Vector2(0f, 1f);
             wordRect.anchorMax = new Vector2(1f, 1f);
@@ -235,7 +236,7 @@ namespace NonaRoyale.Unity.View
             word.overflowMode = TextOverflowModes.Overflow;
 
             string value = item.Value;
-            if (item.Knockout) value += $" <size=65%><color=#{UiKit.Hex(UiKit.Danger)}>KO</color></size>";
+            if (item.Knockout) value += $" <size=65%><color=#{UiTheme.Hex(UiTheme.Danger)}>KO</color></size>";
 
             var mark = UiKit.Label(chip, value, 20f, item.ValueColour, TextAlignmentOptions.Bottom, bold: true);
             var markRect = (RectTransform)mark.transform;
@@ -263,8 +264,8 @@ namespace NonaRoyale.Unity.View
             _cardAccent.color = colour;
 
             _cardTitle.text =
-                $"<color=#{UiKit.Hex(UiKit.Readable(colour))}>{item.Seat}</color>  {item.Title}" +
-                $"  <size=75%><color=#{UiKit.Hex(UiKit.TextDim)}>round {item.Round}</color></size>";
+                $"<color=#{UiTheme.Hex(UiTheme.Readable(colour))}>{item.Seat}</color>  {item.Title}" +
+                $"  <size=75%><color=#{UiTheme.Hex(UiTheme.TextDim)}>round {item.Round}</color></size>";
 
             _cardBody.text = item.Lines.Count > 0 ? string.Join("\n", item.Lines) : "—";
 

@@ -263,7 +263,7 @@ namespace NonaRoyale.Unity.Composition
             // gradient washes out the cells, and clearFlags defaults to Skybox
             // on every camera the templates create.
             camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = new Color(0.09f, 0.08f, 0.10f);
+            camera.backgroundColor = UiTheme.BoardVoid;
 
             float extent = _layout?.Extent ?? 8f;
             float aspect = Mathf.Max(0.1f, camera.aspect);

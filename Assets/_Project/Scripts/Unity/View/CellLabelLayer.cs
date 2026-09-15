@@ -29,10 +29,11 @@ namespace NonaRoyale.Unity.View
         private const float FontSize = 17f;
         private const float Height = 22f;
 
-        private static readonly Color StrongBack = new Color(0.04f, 0.04f, 0.06f, 0.85f);
-        private static readonly Color FaintBack = new Color(0.04f, 0.04f, 0.06f, 0.6f);
-        private static readonly Color StrongText = new Color(0.98f, 0.95f, 0.78f);
-        private static readonly Color FaintText = new Color(0.80f, 0.78f, 0.66f);
+        // Landing pips are live information, so the cool register (ART_DIRECTION §8).
+        private static Color StrongBack => UiTheme.Scrim;
+        private static Color FaintBack => UiTheme.WithAlpha(UiTheme.Obsidian, 0.6f);
+        private static Color StrongText => UiTheme.CyanBright;
+        private static Color FaintText => UiTheme.WithAlpha(UiTheme.Cyan, 0.8f);
 
         private sealed class Label
         {
@@ -82,6 +83,8 @@ namespace NonaRoyale.Unity.View
             rect.sizeDelta = new Vector2(Mathf.Max(Height, 12f * text.Length + 10f), Height);
 
             var back = go.AddComponent<Image>();
+            back.sprite = DecoSprites.ChipFill;
+            back.type = Image.Type.Sliced;
             back.color = strong ? StrongBack : FaintBack;
             back.raycastTarget = false;
 

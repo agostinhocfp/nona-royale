@@ -56,8 +56,8 @@ namespace NonaRoyale.Unity.View
             var colour = BoardLayout.ColourOf(seat);
             _dot.color = colour;
             _text.text =
-                $"<color=#{UiKit.Hex(UiKit.Readable(colour))}><b>{seat.ToString().ToUpperInvariant()}</b></color>'s turn" +
-                $"   <color=#{UiKit.Hex(UiKit.TextDim)}>round {round}  ·  <b>Space</b> to roll</color>";
+                $"<color=#{UiTheme.Hex(UiTheme.Readable(colour))}><b>{seat.ToString().ToUpperInvariant()}</b></color>'s turn" +
+                $"   <color=#{UiTheme.Hex(UiTheme.TextDim)}>round {round}  ·  <b>Space</b> to roll</color>";
 
             _fading = false;
             _group.alpha = 1f;
@@ -90,7 +90,8 @@ namespace NonaRoyale.Unity.View
             _root.anchorMax = new Vector2(0.5f, 1f);
             _root.pivot = new Vector2(0.5f, 1f);
             _root.anchoredPosition = Vector2.zero;
-            UiKit.Fill(_root, new Color(0.02f, 0.015f, 0.02f, 0.82f));
+            UiKit.Sliced(_root, DecoSprites.ChipFill, UiTheme.Scrim);
+            UiKit.Overlay(_root, DecoSprites.ButtonEdge, UiTheme.Line);
 
             var row = UiKit.Row(_root, 10f);
             row.padding = new RectOffset(14, 16, 6, 6);
@@ -99,12 +100,9 @@ namespace NonaRoyale.Unity.View
             fit.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
             fit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-            var dot = UiKit.Rect("seat", _root);
-            _dot = UiKit.Fill(dot, Color.gray);
-            dot.GetComponent<Image>().sprite = Primitives.Disc;
-            UiKit.Fixed(dot, 12f, 12f);
+            _dot = UiKit.Diamond(_root, UiTheme.SeatNone, 11f, 17f);
 
-            _text = UiKit.Label(_root, "", UiKit.FontBody);
+            _text = UiKit.Label(_root, "", UiTheme.FontBody);
             _text.overflowMode = TextOverflowModes.Overflow;
 
             _group = _root.gameObject.AddComponent<CanvasGroup>();

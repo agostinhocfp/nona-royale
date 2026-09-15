@@ -196,11 +196,7 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>Dark text on a light tag, white on a dark one.</summary>
-        private static Color ReadableOn(Color background)
-        {
-            float luminance = 0.2126f * background.r + 0.7152f * background.g + 0.0722f * background.b;
-            return luminance < 0.5f ? Color.white : new Color(0.06f, 0.06f, 0.08f);
-        }
+        private static Color ReadableOn(Color background) => UiTheme.TextOn(background);
 
         private Entry Build(OperatorPiece piece)
         {
@@ -225,7 +221,9 @@ namespace NonaRoyale.Unity.View
             // backing that keeps the number readable over safe-cell colours
             // and highlight rings alike.
             var backing = go.AddComponent<Image>();
-            backing.color = new Color(0f, 0f, 0f, 0.45f);
+            backing.sprite = DecoSprites.ChipFill;
+            backing.type = Image.Type.Sliced;
+            backing.color = UiTheme.WithAlpha(UiTheme.Obsidian, 0.6f);
             backing.raycastTarget = false;
 
             var textGo = new GameObject("text", typeof(RectTransform));
@@ -245,7 +243,7 @@ namespace NonaRoyale.Unity.View
             // Seat colour, so the label answers "whose" as well as "how much"
             // — but nudged toward white, because the raw seat blue is nearly
             // invisible on a dark backing over a dark board.
-            text.color = Color.Lerp(BoardLayout.ColourOf(piece.Operator.Owner), Color.white, 0.35f);
+            text.color = UiTheme.Readable(BoardLayout.ColourOf(piece.Operator.Owner));
 
             entry.Root = go;
             entry.Rect = rect;
@@ -281,6 +279,8 @@ namespace NonaRoyale.Unity.View
                 tag.transform.SetParent(rect, false);
 
                 var back = tag.AddComponent<Image>();
+                back.sprite = DecoSprites.ChipFill;
+                back.type = Image.Type.Sliced;
                 back.raycastTarget = false;
 
                 // Each tag is sized by its own layout group from the word it

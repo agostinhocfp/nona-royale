@@ -62,6 +62,8 @@ Grounded, rich, shadow-heavy. Accent tones are *accents*, never base colors — 
 | Ink line | Deep maroon-black | `#1C0E12` | Character/tile outlines |
 | **Tech accent** | Holo cyan | `#5FE0E8` -> hi `#C9FBFF` | **Ability FX, holographic UI states, powered tiles — FX only, never a surface color** |
 
+**In code:** these values live in `Assets/_Project/Scripts/Unity/View/UiTheme.cs` (GUI increment G, 2026-09-15). Locking the palette means editing that file; nothing else in the view holds a colour.
+
 Rough mix per frame: ~70% dark neutrals, ~20% gold, ~10% one jewel tone. The tech cyan appears only when something is *powered/active* — its rarity is what gives it meaning.
 
 ## 4. Moodboard anchors
@@ -172,3 +174,4 @@ Plus **structural / art-only elements** that are not gameplay cells: floor field
   - §10 reference 1 is flagged as drawn against the dead 48-cell circuit, with a matching open item.
   - Luka's ring is added to the §0 list of devices.
   - **The magic rule is reconciled** (designer). §0 kept the door open for rare, very light magic, but the open-items list said "no literal magic". The door stays open and tech stays the default; the open item and `OPERATORS.md` now say the same thing.
+- 2026-09-15 — The §3 proposals were put into `UiTheme.cs` as the working palette for the GUI skin pass. They are still proposals; the lock is a visual sign-off in Play Mode.

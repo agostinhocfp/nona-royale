@@ -25,8 +25,6 @@ namespace NonaRoyale.Unity.View
         public const float Width = 380f;
         private const int Lines = 80;
 
-        private static readonly Color RejectedColour = new Color(0.95f, 0.55f, 0.45f);
-
         /// <summary>Whether the log is open. MatchBootstrap drives it from its inspector flag and L.</summary>
         public bool Expanded { get; set; }
 
@@ -60,17 +58,17 @@ namespace NonaRoyale.Unity.View
             _panel.pivot = new Vector2(1f, 0.5f);
             _panel.offsetMin = new Vector2(-HistoryStrip.Width - Width, ActionTray.Height);
             _panel.offsetMax = new Vector2(-HistoryStrip.Width, -TurnStrip.ReservedHeight);
-            UiKit.Frame(_panel, new Color(0.03f, 0.02f, 0.03f, 0.96f), true, RectTransform.Edge.Left);
+            UiKit.Panel(_panel, blocksPointer: true, fill: UiTheme.WithAlpha(UiTheme.Charcoal, 0.98f));
 
             var body = UiKit.Rect("body", _panel);
             UiKit.Stretch(body);
-            UiKit.Column(body, 6f, 10);
+            UiKit.Column(body, 6f, 16);
 
             var header = UiKit.Rect("header", body);
             UiKit.Row(header, 8f);
             UiKit.Size(header, height: 30f);
-            UiKit.Size(UiKit.Label(header, "EVENT LOG", UiKit.FontSmall, UiKit.TextDim, bold: true), flexibleWidth: 1f);
-            UiKit.Fixed(UiKit.Button(header, "Close  <size=70%>L</size>", () => CloseRequested?.Invoke(), size: UiKit.FontSmall), 100f, 28f);
+            UiKit.Size(UiKit.Heading(header, "Event log"), flexibleWidth: 1f);
+            UiKit.Fixed(UiKit.Button(header, "Close  <size=70%>L</size>", () => CloseRequested?.Invoke(), size: UiTheme.FontSmall), 100f, 28f);
 
             var scrollRect = UiKit.Rect("scroll", body);
             UiKit.Size(scrollRect, flexibleHeight: 1f);
@@ -141,8 +139,8 @@ namespace NonaRoyale.Unity.View
                 string line = log[i];
                 bool rejected = line.StartsWith("rejected:", System.StringComparison.Ordinal);
 
-                var colour = rejected ? RejectedColour : n == 0 ? UiKit.Text : UiKit.TextDim;
-                var label = UiKit.Label(_content, line, UiKit.FontSmall, colour, wrap: true);
+                var colour = rejected ? UiTheme.Reject : n == 0 ? UiTheme.Text : UiTheme.TextDim;
+                var label = UiKit.Label(_content, line, UiTheme.FontSmall, colour, wrap: true);
                 label.richText = false;
             }
 

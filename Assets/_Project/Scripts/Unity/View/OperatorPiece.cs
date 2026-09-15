@@ -49,8 +49,8 @@ namespace NonaRoyale.Unity.View
         private const float HoverLift = 1.12f;
         private const float PulseSpeed = 4f;
 
-        private static readonly Color SelectColour = new Color(0.37f, 0.88f, 0.91f);   // holo cyan, ART_DIRECTION §3
-        private static readonly Color TargetColour = new Color(0.98f, 0.72f, 0.28f);
+        private static Color SelectColour => UiTheme.Select;   // holo cyan, a live state
+        private static Color TargetColour => UiTheme.Threat;   // amber, a warning
 
         private readonly Queue<Vector3> _path = new Queue<Vector3>();
 
@@ -98,7 +98,7 @@ namespace NonaRoyale.Unity.View
             // works for any shape without a second sprite per shape.
             _outline = Child("outline", 1.28f, Vector3.zero);
             _outline.sprite = shape;
-            _outline.color = new Color(0.04f, 0.04f, 0.06f);
+            _outline.color = UiTheme.PieceOutline;
             _outline.sortingOrder = 3;
 
             BuildHealthBar();
@@ -126,7 +126,7 @@ namespace NonaRoyale.Unity.View
             bool target = (marks & PieceMark.Target) != 0;
             bool targetable = (marks & PieceMark.Targetable) != 0;
             _targetRing.enabled = target || targetable;
-            _targetRing.color = new Color(TargetColour.r, TargetColour.g, TargetColour.b, target ? 1f : 0.45f);
+            _targetRing.color = UiTheme.WithAlpha(TargetColour, target ? 1f : 0.45f);
             _targetRing.transform.localScale = Vector3.one * (target ? 1.85f : 1.6f);
         }
 
@@ -195,7 +195,7 @@ namespace NonaRoyale.Unity.View
             float health = Mathf.Clamp01((float)Operator.Health / Operator.MaxHealth);
 
             var tint = Operator.IsInYard
-                ? Color.Lerp(_seatColour, new Color(0.4f, 0.4f, 0.42f), 0.55f)
+                ? Color.Lerp(_seatColour, UiTheme.PieceWaiting, 0.55f)
                 : _seatColour;
 
             _body.color = WithAlpha(Color.Lerp(tint, Color.white, _flash));
@@ -208,7 +208,7 @@ namespace NonaRoyale.Unity.View
                 // toward its centre, which reads as distance rather than loss.
                 _healthFill.transform.localScale = new Vector3(1.1f * health, 0.13f, 1f);
                 _healthFill.transform.localPosition = new Vector3(-0.55f * (1f - health), 0.78f, 0f);
-                _healthFill.color = Color.Lerp(new Color(0.80f, 0.25f, 0.25f), tint, health);
+                _healthFill.color = Color.Lerp(UiTheme.Danger, tint, health);
             }
         }
 
@@ -222,7 +222,7 @@ namespace NonaRoyale.Unity.View
         {
             var back = Child("health_back", 1f, new Vector3(0f, 0.78f, 0f));
             back.sprite = Primitives.Square;
-            back.color = new Color(0.06f, 0.06f, 0.08f, 0.85f);
+            back.color = UiTheme.PieceBarBack;
             back.sortingOrder = 5;
             back.transform.localScale = new Vector3(1.2f, 0.2f, 1f);
 
@@ -308,4 +308,4 @@ namespace NonaRoyale.Unity.View
             _selectRing.color = colour;
         }
     }
-}
+}

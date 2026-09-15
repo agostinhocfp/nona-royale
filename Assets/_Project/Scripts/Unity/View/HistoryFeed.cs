@@ -84,9 +84,9 @@ namespace NonaRoyale.Unity.View
     /// </remarks>
     public static class HistoryFeed
     {
-        private static readonly Color DamageColour = new Color(1f, 0.45f, 0.40f);
-        private static readonly Color HealColour = new Color(0.50f, 0.95f, 0.55f);
-        private static readonly Color MoveColour = new Color(0.85f, 0.85f, 0.88f);
+        private static Color DamageColour => UiTheme.Damage;
+        private static Color HealColour => UiTheme.Heal;
+        private static Color MoveColour => UiTheme.Move;
 
         public static HistoryBatch Build(
             IReadOnlyList<IGameEvent> events, OperatorState castBy, AbilityDefinition cast, int round)
@@ -195,7 +195,7 @@ namespace NonaRoyale.Unity.View
             {
                 item = New(HistoryKind.Cast, castBy, round, "CAST", $"{castBy.Name} · {cast.Name}");
                 item.Value = damage > 0 ? $"-{damage}" : heal > 0 ? $"+{heal}" : Initials(cast.Name);
-                item.ValueColour = damage > 0 ? DamageColour : heal > 0 ? HealColour : UiKit.GoldBright;
+                item.ValueColour = damage > 0 ? DamageColour : heal > 0 ? HealColour : UiTheme.GoldBright;
                 item.Toast = true;
             }
             else if (moved != null && collided)

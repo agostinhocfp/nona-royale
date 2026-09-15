@@ -1,7 +1,7 @@
 # Nona Royale — GUI Phase
 
 > Location in repo: `docs/design/GUI_PHASE.md`
-> Status: **In progress.** Started 2026-09-15. E is done; F is written and waiting for a Play Mode check.
+> Status: **In progress.** Started 2026-09-15. E, F and F2 are committed; G is written and waiting for a Play Mode check.
 > Related: ADR-0008 (uGUI; its removal order stays binding), `PRESENTATION.md` (what the view may do and must show), `ART_DIRECTION.md` §3 and §8 (palette, UI registers), `STRANGER_TEST.md` (the gate before `OnGUI` is deleted)
 
 ## Goal
@@ -73,3 +73,14 @@ Each increment ends with a Play Mode check and a commit.
 - 2026-09-15 — **Turn flow made subtle and clear** (designer: ending a turn still unclear, and the turn card too big).
   - **`TurnButton`: one button at the board's bottom-right corner**, in the card-game end-turn style. It reads ROLL or ROLL AGAIN (gold, breathing), then MOVE FIRST with the dice left (dim, disabled), then END TURN (teal, breathing). Roll and End turn left the tray, whose dice section now shows only the dice and a one-line hint.
   - **`TurnBanner` became a slim pill** under the top bar: a seat-colour dot, "RED's turn", the round and "Space to roll". It stays until the roll, then fades. It no longer catches the pointer, and Esc no longer touches it. Upkeep effects are left to the toasts.
+- 2026-09-15 — **F and F2 passed Play Mode** and were committed together.
+- 2026-09-15 — **Increment G written: the skin pass.** Decided with the designer: the ART_DIRECTION §3 hexes are used as they stand (the lock is later, and is a one-file edit); the board goes "moderate" toward §6.1, still readable at rest for the stranger test; aim targets stay amber; theme tokens are a static class.
+  - New files:
+    - `UiTheme`: every colour and type size the view uses. The §3 swatches, HUD surfaces, text, game meaning (damage, heal, threat, reject), board, pieces and seats. `UiKit`'s colour fields moved here, and `BoardLayout.ColourOf` now reads `UiTheme.Seat`.
+    - `DecoSprites`: the frame kit, drawn in code from signed distances, white so it tints. Chamfered fills and edges (panel, button, chip), sliced at one texel per canvas unit; a double rule; a corner fan; tall diamonds, filled and outlined; and for the board a tile inlay, a thin ring, a sunburst, a glow and a sliced table.
+  - `UiKit`: `Frame` became `Dock` (a docked panel with a gold-and-brass double rule and a diamond at its middle). `Panel` is the floating chamfered card with corner fans. New `Heading` (spaced gold capitals), `Diamond`, `Divider`, `Sliced`, `Overlay` and `CornerFans`. Buttons are chamfered with a brass edge; a selected button fills cyan-deep with a cyan double edge. `Pulse` breathes a double edge and takes a colour.
+  - HUD: section labels are gold headings. Energy pips are diamonds, cyan when lit and brass outlines when empty. Dice are ivory with a gold edge. Cast, when ready, is cyan. The turn button has corner fans: ROLL in gold, END TURN in cyan (the live step), MOVE FIRST dim. The rail marks the seat to play with a gilt plate and each seat with a diamond. Chips, tags, toasts, the turn pill and cell labels are chamfered; landing labels are cyan. The log overlay and the history hover card are framed panels.
+  - Board (`BoardView`): a charcoal table with a double gilt frame, corner fans and a pool of warm light. Track cells are dark marble with a brass inlay. Safe cells are powered tiles (cyan-lifted marble, cyan inlay, faint cyan glow), and each start cell carries a wash of its seat colour. Home columns deepen toward HOME with a gold inlay. Yards are felt tables in the seat's colour with a seat rim and a gilt rim. HOME is a dark vault floor under a lit gold sunburst. `BoardLayout.Spacing` was added for the table margin.
+  - Highlights: landings are cyan rings; reach became small cyan dots, so landings and reach tell apart by shape; cell targets and target rings are amber (`UiTheme.Threat`). Piece outlines are ink (§5).
+  - Left as they were: `StatusPalette` (status colours are their own table), `DeviceLayer` (seat-tinted by design) and the dev panel.
+  - No core changes. View compile-checked against the editor's DLLs; 429 passing in the stand-in run.

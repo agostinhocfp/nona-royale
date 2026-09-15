@@ -21,11 +21,11 @@ namespace NonaRoyale.Unity.View
         private const string FollowUpCause = "follow-up";
         private const string CriticalCause = "critical";
 
-        private static readonly Color HitColour = new Color(1f, 0.45f, 0.40f);
-        private static readonly Color OverTimeColour = new Color(0.85f, 0.35f, 0.75f);
-        private static readonly Color HealColour = new Color(0.50f, 0.95f, 0.55f);
-        private static readonly Color EvadeColour = new Color(0.45f, 0.90f, 0.85f);
-        private static readonly Color BlockColour = new Color(0.85f, 0.87f, 0.95f);
+        private static Color HitColour => UiTheme.Damage;
+        private static Color OverTimeColour => UiTheme.OverTime;
+        private static Color HealColour => UiTheme.Heal;
+        private static Color EvadeColour => UiTheme.Evade;
+        private static Color BlockColour => UiTheme.Block;
 
         private float _scale = 1f;
 
@@ -74,13 +74,13 @@ namespace NonaRoyale.Unity.View
         public void Evaded(Vector3 at)
         {
             FloatingText.Spawn(transform, at, "MISS", EvadeColour, _scale);
-            Pulse(at, new Color(EvadeColour.r, EvadeColour.g, EvadeColour.b, 0.8f), 2.6f);
+            Pulse(at, UiTheme.WithAlpha(EvadeColour, 0.8f), 2.6f);
         }
 
         public void Absorbed(Vector3 at)
         {
             FloatingText.Spawn(transform, at, "BLOCK", BlockColour, _scale);
-            Pulse(at, new Color(BlockColour.r, BlockColour.g, BlockColour.b, 0.9f), 2.2f);
+            Pulse(at, UiTheme.WithAlpha(BlockColour, 0.9f), 2.2f);
         }
 
         /// <summary>
@@ -156,4 +156,4 @@ namespace NonaRoyale.Unity.View
             if (t >= 1f) Destroy(gameObject);
         }
     }
-}
+}

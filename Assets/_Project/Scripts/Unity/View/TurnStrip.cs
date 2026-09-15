@@ -68,18 +68,19 @@ namespace NonaRoyale.Unity.View
             _rect.pivot = new Vector2(0.5f, 1f);
             _rect.sizeDelta = new Vector2(0f, Height);
             _rect.anchoredPosition = Vector2.zero;
-            UiKit.Frame(_rect, UiKit.Panel, false, RectTransform.Edge.Bottom);
+            UiKit.Dock(_rect, false, RectTransform.Edge.Bottom);
 
+            // The bottom 6 units hold the double rule.
             var row = UiKit.Row(_rect, 16f);
-            row.padding = new RectOffset(0, 18, 0, 2);
+            row.padding = new RectOffset(0, 18, 0, 8);
             row.childForceExpandHeight = true;
 
             // A block of seat colour on the left edge, readable from across the table.
             var accent = UiKit.Rect("seat_colour", _rect);
             _accent = UiKit.Fill(accent, Color.gray);
-            UiKit.Fixed(accent, 12f);
+            UiKit.Fixed(accent, 10f);
 
-            _seat = UiKit.Label(_rect, "", UiKit.FontTitle, bold: true);
+            _seat = UiKit.Label(_rect, "", UiTheme.FontTitle, bold: true);
             UiKit.Fixed(_seat, 230f);
 
             var energyBox = UiKit.Rect("energy", _rect);
@@ -88,30 +89,27 @@ namespace NonaRoyale.Unity.View
             energyRow.childAlignment = TextAnchor.MiddleLeft;
             UiKit.Fixed(energyBox, 330f);
 
-            UiKit.Label(energyBox, "ENERGY", UiKit.FontSmall, UiKit.TextDim, bold: true);
+            UiKit.Heading(energyBox, "Energy");
 
+            // Tall diamonds (ART_DIRECTION §8 icon language): lit ones are
+            // live, so cyan; empty ones are chrome, so a brass outline.
             _pips = UiKit.Rect("pips", energyBox);
-            var pipRow = UiKit.Row(_pips, 3f);
+            var pipRow = UiKit.Row(_pips, 2f);
             pipRow.childAlignment = TextAnchor.MiddleLeft;
 
             for (int i = 0; i < MaxPips; i++)
-            {
-                var pip = UiKit.Rect($"pip_{i}", _pips);
-                _pipImages[i] = UiKit.Fill(pip, UiKit.Track);
-                UiKit.Size(pip, 10f, 18f);
-            }
+                _pipImages[i] = UiKit.Diamond(_pips, UiTheme.Line, 11f, 17f, outline: true);
 
-            _energy = UiKit.Label(energyBox, "", UiKit.FontBody, bold: true);
+            _energy = UiKit.Label(energyBox, "", UiTheme.FontBody, bold: true);
 
-            _round = UiKit.Label(_rect, "", UiKit.FontBody, UiKit.TextDim);
-            UiKit.Fixed(_round, 110f);
+            _round = UiKit.Label(_rect, "", UiTheme.FontBody, UiTheme.Heading);
+            _round.characterSpacing = UiTheme.HeadingSpacing * 0.5f;
+            UiKit.Fixed(_round, 120f);
 
-            _prompt = UiKit.Label(_rect, "", UiKit.FontLarge, UiKit.GoldBright, TextAlignmentOptions.Center);
+            _prompt = UiKit.Label(_rect, "", UiTheme.FontLarge, UiTheme.GoldBright, TextAlignmentOptions.Center);
             UiKit.Size(_prompt, flexibleWidth: 1f);
 
-            UiKit.Label(_rect,
-                "<b>Space</b> roll  <b>E</b> end  <b>1–3</b> ability  <b>Enter</b> cast  <b>Esc</b> back  <b>L</b> log  <b>H</b> health  <b>Tab</b> dev",
-                UiKit.FontSmall, UiKit.TextDim, TextAlignmentOptions.MidlineRight);
+            UiKit.Label(_rect, KeyLegend(), UiTheme.FontSmall, UiTheme.TextDim, TextAlignmentOptions.MidlineRight);
 
             _shown = null;
         }
@@ -132,16 +130,16 @@ namespace NonaRoyale.Unity.View
             if (key == _shown) return;
             _shown = key;
 
-            _round.text = $"Round <b>{engine.Round}</b>";
+            _round.text = $"ROUND <b><color=#{UiTheme.Hex(UiTheme.GoldBright)}>{engine.Round}</color></b>";
 
             if (engine.MatchOver)
             {
                 var winner = engine.Winner;
-                var colour = winner.HasValue ? BoardLayout.ColourOf(winner.Value) : Color.gray;
+                var colour = winner.HasValue ? BoardLayout.ColourOf(winner.Value) : UiTheme.SeatNone;
 
                 _accent.color = colour;
                 _seat.text = winner.HasValue
-                    ? $"<color=#{UiKit.Hex(UiKit.Readable(colour))}>{winner.Value.ToString().ToUpperInvariant()}</color> WINS"
+                    ? $"<color=#{UiTheme.Hex(UiTheme.Readable(colour))}>{winner.Value.ToString().ToUpperInvariant()}</color> WINS"
                     : "MATCH OVER";
                 _energy.text = "";
                 _prompt.text = "Match over — start a new one from the dev panel (Tab)";
@@ -153,8 +151,8 @@ namespace NonaRoyale.Unity.View
             var seatColour = BoardLayout.ColourOf(seat.Color);
 
             _accent.color = seatColour;
-            _seat.text = $"<color=#{UiKit.Hex(UiKit.Readable(seatColour))}>{seat.Color.ToString().ToUpperInvariant()}</color> <size=70%><color=#{UiKit.Hex(UiKit.TextDim)}>to play</color></size>";
-            _energy.text = $"{seat.Energy}<color=#{UiKit.Hex(UiKit.TextDim)}>/{engine.EnergyCap}</color>";
+            _seat.text = $"<color=#{UiTheme.Hex(UiTheme.Readable(seatColour))}>{seat.Color.ToString().ToUpperInvariant()}</color> <size=70%><color=#{UiTheme.Hex(UiTheme.TextDim)}>to play</color></size>";
+            _energy.text = $"{seat.Energy}<color=#{UiTheme.Hex(UiTheme.TextDim)}>/{engine.EnergyCap}</color>";
             _prompt.text = Prompt(engine);
 
             SetPips(seat.Energy, engine.EnergyCap);
@@ -168,9 +166,23 @@ namespace NonaRoyale.Unity.View
             for (int i = 0; i < MaxPips; i++)
             {
                 var pip = _pipImages[i];
+                bool lit = i < energy;
+
                 pip.gameObject.SetActive(i < shown);
-                pip.color = i < energy ? UiKit.Cyan : UiKit.Track;
+                pip.sprite = lit ? DecoSprites.Diamond : DecoSprites.DiamondOutline;
+                pip.color = lit ? UiTheme.Cyan : UiTheme.Line;
             }
+        }
+
+        /// <summary>The key legend, keys in gold.</summary>
+        private static string KeyLegend()
+        {
+            string gold = UiTheme.Hex(UiTheme.Gold);
+            string Key(string key, string what) => $"<color=#{gold}><b>{key}</b></color> {what}";
+
+            return string.Join("   ",
+                Key("Space", "roll"), Key("E", "end"), Key("1–3", "ability"), Key("Enter", "cast"),
+                Key("Esc", "back"), Key("L", "log"), Key("H", "health"), Key("Tab", "dev"));
         }
 
         private static string Prompt(GameEngine engine)

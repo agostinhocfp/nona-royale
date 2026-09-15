@@ -49,13 +49,13 @@ namespace NonaRoyale.Unity.View
             if (pooled != null)
             {
                 foreach (var cell in pooled)
-                    Spawn(cell, _layout.CellSize * 0.92f, new Color(0.95f, 0.92f, 0.70f, 0.35f), 1);
+                    Spawn(cell, _layout.CellSize * 0.92f, UiTheme.WithAlpha(UiTheme.CyanBright, 0.6f), 1);
             }
 
             if (perDie == null) return;
 
             foreach (var cell in perDie)
-                Spawn(cell, _layout.CellSize * 0.58f, new Color(0.95f, 0.92f, 0.70f, 0.15f), 1);
+                Spawn(cell, _layout.CellSize * 0.58f, UiTheme.WithAlpha(UiTheme.Cyan, 0.3f), 1);
         }
 
         /// <summary>
@@ -71,10 +71,10 @@ namespace NonaRoyale.Unity.View
             for (int step = 1; step <= range; step++)
             {
                 Spawn(CellRef.Track(((origin.Index + step) % circuit + circuit) % circuit),
-                    _layout.CellSize * 0.55f, new Color(0.45f, 0.75f, 0.95f, 0.55f), 1);
+                    _layout.CellSize * 0.22f, ReachColour, 1, Primitives.Disc);
 
                 Spawn(CellRef.Track(((origin.Index - step) % circuit + circuit) % circuit),
-                    _layout.CellSize * 0.55f, new Color(0.45f, 0.75f, 0.95f, 0.55f), 1);
+                    _layout.CellSize * 0.22f, ReachColour, 1, Primitives.Disc);
             }
         }
 
@@ -86,7 +86,7 @@ namespace NonaRoyale.Unity.View
         /// Legality arrives from the engine already decided — range, home
         /// columns and the camping rule included — so this draws exactly the
         /// clickable set and nothing a cast would refuse. Amber rather than
-        /// the range blue: these are not "cells in reach", they are "cells a
+        /// the reach cyan: these are not "cells in reach", they are "cells a
         /// strike will land on", and a player mid-aim should not have to
         /// remember which meaning the colour carries this time.
         /// </remarks>
@@ -95,13 +95,20 @@ namespace NonaRoyale.Unity.View
             if (legal == null) return;
 
             foreach (var cell in legal)
-                Spawn(cell, _layout.CellSize * 0.66f, new Color(0.95f, 0.66f, 0.30f, 0.50f), 1);
+                Spawn(cell, _layout.CellSize * 0.66f, UiTheme.WithAlpha(UiTheme.Threat, 0.55f), 1);
 
             if (chosen != null)
-                Spawn(chosen.Value, _layout.CellSize * 0.98f, new Color(0.98f, 0.72f, 0.28f, 0.95f), 2);
+                Spawn(chosen.Value, _layout.CellSize * 0.98f, UiTheme.WithAlpha(UiTheme.Threat, 0.95f), 2);
         }
 
-        private void Spawn(CellRef cell, float size, Color colour, int order)
+        /// <summary>
+        /// Reach is drawn as dots, not rings: a selected operator can show its
+        /// landings and its ability's reach at once, and both are cyan (live).
+        /// Shape tells them apart.
+        /// </summary>
+        private static Color ReachColour => UiTheme.WithAlpha(UiTheme.Cyan, 0.55f);
+
+        private void Spawn(CellRef cell, float size, Color colour, int order, Sprite sprite = null)
         {
             if (_layout == null) return;
 
@@ -111,11 +118,11 @@ namespace NonaRoyale.Unity.View
             go.transform.localScale = Vector3.one * size;
 
             var renderer = go.AddComponent<SpriteRenderer>();
-            renderer.sprite = Primitives.Ring;
+            renderer.sprite = sprite ?? Primitives.Ring;
             renderer.color = colour;
             renderer.sortingOrder = order;
 
             _markers.Add(go);
         }
     }
-}
+}
