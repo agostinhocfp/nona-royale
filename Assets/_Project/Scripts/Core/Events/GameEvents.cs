@@ -173,6 +173,28 @@ namespace NonaRoyale.Core.Events
         public override string ToString() => $"{Target.Name} heals {Amount}";
     }
 
+    /// <summary>
+    /// Passive regeneration ticked (§5.8): the operator spent
+    /// <see cref="WoundedTurns"/> straight owner-upkeeps in play, below half
+    /// health and off any safe cell, and knits a point back.
+    /// </summary>
+    public sealed class OperatorRegenerated : IGameEvent
+    {
+        public OperatorRegenerated(OperatorState target, int amount, int woundedTurns)
+        {
+            Target = target;
+            Amount = amount;
+            WoundedTurns = woundedTurns;
+        }
+
+        public OperatorState Target { get; }
+        public int Amount { get; }
+        public int WoundedTurns { get; }
+
+        public override string ToString() =>
+            $"{Target.Name} regenerates {Amount} after {WoundedTurns} wounded turns";
+    }
+
     public sealed class StatusApplied : IGameEvent
     {
         public StatusApplied(OperatorState target, StatusKind status, int duration)

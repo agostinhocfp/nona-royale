@@ -328,6 +328,14 @@ namespace NonaRoyale.Unity.Composition
                     continue;
                 }
 
+                var regen = e as OperatorRegenerated;
+                if (regen != null)
+                {
+                    var piece = PieceFor(regen.Target);
+                    if (piece != null) _feedback.Heal(piece.transform.position, regen.Amount);
+                    continue;
+                }
+
                 var down = e as OperatorNeutralized;
                 if (down != null)
                 {

@@ -252,6 +252,60 @@ namespace NonaRoyale.Core
             }
 
             ResetRollState();
+
+            EvaluateRegen(events);
+        }
+
+        /// <summary>
+        /// Passive regeneration (§5.8): +<c>RegenAmount</c> after
+        /// <c>RegenEveryTurns</c> straight owner-upkeeps spent in play, below
+        /// half health, and off any safe cell.
+        /// </summary>
+        /// <remarks>
+        /// <b>Engine-side for the pity deploy's reason</b>: eligibility reads
+        /// the board (safe cells), which the deliberately board-blind
+        /// <c>TurnStateMachine</c> cannot do — and this runs after
+        /// <c>_turns.BeginTurn()</c> has resolved every upkeep tick, so an
+        /// operator regenerates only if it survived its wounds. Regen is never
+        /// a bleed shield.
+        ///
+        /// <b>Below half in integers</b>: <c>health × 2 &lt; maxHealth</c>.
+        /// The tick can carry an operator to the threshold, where the next
+        /// evaluation resets it — the spring compresses once.
+        ///
+        /// <b>An ineligible upkeep resets the streak</b> (see
+        /// <c>OperatorState.TurnsTowardRegen</c>): sheltering costs the clock
+        /// rather than pausing it, and no neutralize hook is needed because a
+        /// yarded operator is out of play here.
+        /// </remarks>
+        private void EvaluateRegen(List<IGameEvent> events)
+        {
+            int every = _config.RegenEveryTurns;
+            if (every <= 0 || _config.RegenAmount <= 0) return;
+
+            var player = _turns.CurrentPlayer;
+            if (player == null) return;
+
+            foreach (var op in player.Operators)
+            {
+                bool eligible =
+                    _map.IsOnOuterTrack(op.Progress) &&
+                    op.Health * 2 < op.MaxHealth &&
+                    !_map.IsSafe(_map.CellAt(op.Owner, op.Progress));
+
+                if (!eligible)
+                {
+                    op.ResetRegenProgress();
+                    continue;
+                }
+
+                op.RecordTurnTowardRegen();
+                if (op.TurnsTowardRegen < every) continue;
+
+                op.Heal(_config.RegenAmount);
+                events.Add(new OperatorRegenerated(op, _config.RegenAmount, every));
+                op.ResetRegenProgress();
+            }
         }
 
         private void Roll(List<IGameEvent> events)

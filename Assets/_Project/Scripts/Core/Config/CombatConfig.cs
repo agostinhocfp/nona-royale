@@ -23,7 +23,9 @@ namespace NonaRoyale.Core.Config
             double hasteSpeedBonus = 0.5,
             int hasteDurationTurns = 2,
             int neutralizeEnergyBounty = 3,
-            int shieldPoolDefault = 2)
+            int shieldPoolDefault = 2,
+            int regenEveryTurns = 3,
+            int regenAmount = 1)
         {
             if (slowSpeedPenalty < 0) throw new ArgumentOutOfRangeException(nameof(slowSpeedPenalty));
             if (collisionDamage < 0) throw new ArgumentOutOfRangeException(nameof(collisionDamage));
@@ -39,6 +41,11 @@ namespace NonaRoyale.Core.Config
             if (shieldPoolDefault < 1)
                 throw new ArgumentOutOfRangeException(nameof(shieldPoolDefault),
                     "A shield that absorbs nothing is worse than no shield — it draws a badge and lies.");
+            if (regenEveryTurns < 0)
+                throw new ArgumentOutOfRangeException(nameof(regenEveryTurns),
+                    "Negative makes no sense; zero disables regeneration.");
+            if (regenAmount < 0)
+                throw new ArgumentOutOfRangeException(nameof(regenAmount));
 
             CollisionDamage = collisionDamage;
             EvasionChance = evasionChance;
@@ -212,6 +219,46 @@ namespace NonaRoyale.Core.Config
         /// </remarks>
         public int ShieldPoolDefault { get; }
 
+        /// <summary>
+        /// Owner-upkeeps an operator must spend wounded and exposed before
+        /// passive regeneration ticks (COMBAT_SYSTEMS §5.8). Zero disables it.
+        /// </summary>
+        /// <remarks>
+        /// <b>Eligible means all three at once</b>: in play, below half health
+        /// (<c>health × 2 &lt; maxHealth</c>, integers — a 9-health operator
+        /// regens at ≤4, a 5-health at ≤2), and not on a safe cell. An
+        /// ineligible upkeep resets the streak.
+        ///
+        /// <b>3, walked back from a rejected 2, walked back from a rejected
+        /// unconditional version.</b> Global always-on regen at +1/2 turns was
+        /// argued down before it shipped: against pools of 5–9 and damage
+        /// instruments of 1s and 2s it is a second health bar, it refunds the
+        /// chip damage that taxes racing (the one measured result is fighting
+        /// beating racing 67/33, and regen income moves it the wrong way), it
+        /// answers "why pay 4 energy for Trauma Plate" with "don't" while
+        /// support is already the starving archetype (1.36 casts), and regen
+        /// on a safe cell re-opens free parking through the back door. The
+        /// below-half gate turns income into a comeback spring; the safe-cell
+        /// exclusion keeps the shelter offering nothing but shelter; per-3
+        /// keeps it slower than every damage clock in the game (bleed and
+        /// marks tick every turn).
+        ///
+        /// <b>The bet is measurable and has not been run</b>: A/B this dial
+        /// (0 against 3) in the policy sweep. If racer or banker win rates
+        /// rise against the spendthrift, or Javi's casts fall further, the
+        /// gates are too loose — reach for 4 before touching the amount.
+        /// </remarks>
+        public int RegenEveryTurns { get; }
+
+        /// <summary>
+        /// Health restored per regeneration tick (§5.8). At 1 against pools of
+        /// 5–9 it undoes one bleed stack's turn — deliberately the smallest
+        /// instrument in the game. Capped at max by <c>OperatorState.Heal</c>.
+        /// </summary>
+        public int RegenAmount { get; }
+
         public static CombatConfig Default => new CombatConfig();
+
+
     }
 }
