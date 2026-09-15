@@ -1,6 +1,6 @@
 # ADR-0008 — HUD widget technology: uGUI (Canvas)
 
-- **Status:** Proposed (accept when the first uGUI increment lands)
+- **Status:** Accepted 2026-09-15 — increment A (HUD canvas scaffold, per-piece health labels) verified in Play Mode, commit `175d16f`
 - **Date:** 2026-09-15
 - **Location:** `docs/decisions/0008-hud-widget-technology.md`
 - **Relates to:** PRESENTATION §2 (the requirements table), §6 ("OnGUI… replaced by a real UI when there is something worth dressing" — this ADR is that sentence coming due), §7 (open items on scaling and layout), ADR-0004 (view holds no rules), the HUD phase brief of 2026-09-14 (session C).
