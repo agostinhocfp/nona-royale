@@ -86,14 +86,14 @@ namespace NonaRoyale.Core.Abilities
             id: 601, name: "Inversion Matrix",
             description:
                 "Fires a line of graviton emitters down the track ahead of you, lifting every enemy in their path off the ground.",
-            energyCost: 4, cooldownTurns: 3, range: 6,
+            energyCost: 4, cooldownTurns: 3, range: 4,
             targeting: AbilityTargeting.None,
             effects: new[]
             {
                 AbilityEffect.Damage(EffectScope.EnemiesInLineFromCaster, 1, DamageType.Normal,
-                    EffectAudience.EnemyOnly, radius: 6),
+                    EffectAudience.EnemyOnly, radius: 4),
                 AbilityEffect.Status_(EffectScope.EnemiesInLineFromCaster, StatusKind.Stun,
-                    duration: 1, radius: 6)
+                    duration: 1, radius: 4)
             });
 
         /// <summary>
@@ -200,7 +200,7 @@ namespace NonaRoyale.Core.Abilities
             targeting: AbilityTargeting.Cell,
             effects: new[]
             {
-                AbilityEffect.PaintCell(totalDamage: 6, radius: 1, DamageType.Normal)
+                AbilityEffect.PaintCell(totalDamage: 4, radius: 1, DamageType.Normal)
             });
 
         public static IReadOnlyList<AbilityDefinition> All { get; } =
