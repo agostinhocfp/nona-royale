@@ -62,16 +62,28 @@ namespace NonaRoyale.Core.Services
 
         /// <summary>
         /// Cells moved for a dice value at a given speed:
-        /// <c>max(1, floor(dice × speed))</c> for any spent die
-        /// (COMBAT_SYSTEMS §6, amended 2026-09-14).
+        /// <c>max(1, floor(dice × speed))</c> at 1.0× and above, but half
+        /// cells round UP below 1.0× (COMBAT_SYSTEMS §6, amended 2026-09-15).
         /// </summary>
         /// <remarks>
-        /// Floored rather than rounded so a half-step multiplier never gifts a
-        /// cell. At 1.5×, a roll of 7 moves 10, not 11 — and the player can
-        /// verify it by halving in their head, which is the readability
-        /// constraint that fixed the speed band in the first place.
+        /// Floored rather than rounded at 1.0× and above, so a half-step
+        /// multiplier never gifts a cell. At 1.5×, a roll of 7 moves 10, not
+        /// 11 — and the player can verify it by halving in their head, which
+        /// is the readability constraint that fixed the speed band in the
+        /// first place.
         ///
-        /// <b>The floor is per move, not per roll</b>, which is what gives
+        /// <b>Below 1.0× the half cell rounds up (2026-09-15).</b> Sanity is
+        /// the first operator who lives under 1.0× permanently, and the floor
+        /// taxed him twice: once by the multiplier, then again on every odd
+        /// die — a 5 always moved 2, never 3. For a fast operator the floored
+        /// half is a rounding tax on a long move; for the slowest operator
+        /// ever fielded it is half of everything he has. So below 1.0× the
+        /// half rounds up: a 5 moves 3, a 7 moves 4. The rule is general —
+        /// anyone slowed to 0.5× gets the same grace — but 1.5× is untouched:
+        /// the "never gifts a cell" argument above still holds at or above
+        /// 1.0×, where the floor is the affordable tax.
+        ///
+        /// <b>The rounding is per move, not per roll</b>, which is what gives
         /// splitting its price. Two dice pooled lose at most one half-cell;
         /// spent separately they can lose one each. The two losses coincide
         /// exactly when both dice are odd — 9 rolls in 36 — and at whole-number
@@ -98,7 +110,12 @@ namespace NonaRoyale.Core.Services
 
             if (diceValue == 0) return 0;
 
-            return Math.Max(1, (int)Math.Floor(diceValue * effectiveSpeed));
+            double exact = diceValue * effectiveSpeed;
+            int cells = effectiveSpeed < 1.0
+                ? (int)Math.Round(exact, MidpointRounding.AwayFromZero)
+                : (int)Math.Floor(exact);
+
+            return Math.Max(1, cells);
         }
 
         /// <summary>

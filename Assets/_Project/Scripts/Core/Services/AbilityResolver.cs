@@ -34,6 +34,7 @@ namespace NonaRoyale.Core.Services
         private readonly TargetingRules _targeting;
         private readonly DamagePipeline _damage;
         private readonly DeferredCellEffects _cellEffects;
+        private readonly DeferredOperatorEffects _operatorEffects;
 
         /// <summary>operator id → ability id → the owner-turn on which it becomes usable again.</summary>
         private readonly Dictionary<int, Dictionary<int, int>> _readyOn =
@@ -46,7 +47,8 @@ namespace NonaRoyale.Core.Services
             StatusRegistry statuses,
             TargetingRules targeting,
             DamagePipeline damage,
-            DeferredCellEffects cellEffects)
+            DeferredCellEffects cellEffects,
+            DeferredOperatorEffects operatorEffects = null)
         {
             _map = map ?? throw new ArgumentNullException(nameof(map));
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
@@ -55,6 +57,12 @@ namespace NonaRoyale.Core.Services
             _targeting = targeting ?? throw new ArgumentNullException(nameof(targeting));
             _damage = damage ?? throw new ArgumentNullException(nameof(damage));
             _cellEffects = cellEffects ?? throw new ArgumentNullException(nameof(cellEffects));
+
+            // Optional rather than required: fixtures built before Zero-Day
+            // existed construct this resolver without the registry, and one of
+            // them is frozen red. Only an AttachCharge effect can tell the
+            // difference, and content that lists one is wired with one.
+            _operatorEffects = operatorEffects;
         }
 
         /// <summary>Whether an ability is off cooldown for this operator.</summary>
@@ -363,6 +371,14 @@ namespace NonaRoyale.Core.Services
                     case EffectKind.Execute:
                         outcomes.Add(RunExecute(effect, caster, recipient));
                         break;
+
+                    case EffectKind.AttachCharge:
+                        RunAttachCharge(effect, caster, recipient, outcomes);
+                        break;
+
+                    case EffectKind.DashToTarget:
+                        RunDash(effect, caster, recipient, allOperators, outcomes);
+                        break;
                 }
             }
         }
@@ -417,6 +433,153 @@ namespace NonaRoyale.Core.Services
                 statusDuration: effect.Duration);
 
             outcomes.Add(EffectOutcome.ZoneDeployed(caster, cell.Value, effect.Amount));
+        }
+
+        /// <summary>
+        /// Attaches a charge to the target. Nothing detonates now — the charge
+        /// follows the target and fires at the caster's next upkeep (§6.4).
+        /// </summary>
+        /// <remarks>
+        /// Reads the payload out of the reused fields the factory packed it
+        /// into: <c>Amount</c> is the splash, <c>Stacks</c> the marked target's
+        /// bonus, <c>Status</c>/<c>Duration</c> what everyone caught receives.
+        ///
+        /// <b>The marker is applied here, at cast time, not by the registry.</b>
+        /// It is an ordinary status — the badge layer draws it through
+        /// <c>ActiveStatusesOn</c> and a cleanse strips it through
+        /// <c>ClearApplied</c> — so it goes through the same
+        /// <see cref="StatusRegistry.Apply"/> call as every other debuff. The
+        /// registry only reads it back at fire time to tell a cleansed charge
+        /// from a live one.
+        ///
+        /// A null <see cref="DeferredOperatorEffects"/> is a wiring bug, not a
+        /// content bug, but it is guarded the same way <see cref="RunPaintCell"/>
+        /// guards its missing cell: the mildest failure is the charge simply
+        /// never existing, and the alternative is throwing at a player mid-turn.
+        /// </remarks>
+        private void RunAttachCharge(
+            AbilityEffect effect, OperatorState caster, OperatorState target, List<EffectOutcome> outcomes)
+        {
+            if (_operatorEffects == null) return;
+
+            _statuses.Apply(target, StatusKind.ZeroDayCharge,
+                DeferredOperatorEffects.MarkerDurationTurns, sourceOperatorId: caster.Id);
+
+            _operatorEffects.Attach(
+                target, caster.Owner, caster.Id,
+                splashDamage: effect.Amount,
+                primaryBonus: effect.Stacks,
+                radius: effect.Radius,
+                damageType: effect.DamageType,
+                status: effect.Status,
+                statusDuration: effect.Duration);
+
+            outcomes.Add(EffectOutcome.ChargeAttached(target));
+            outcomes.Add(EffectOutcome.StatusApplied(
+                target, StatusKind.ZeroDayCharge, DeferredOperatorEffects.MarkerDurationTurns));
+        }
+
+        /// <summary>
+        /// Dashes the caster along the track to the target, striking every enemy
+        /// on the traversed cells, and places the caster one step past the
+        /// target along the dash direction — one short of it, on the caster's
+        /// side, when that cell is occupied (§7.6).
+        /// </summary>
+        /// <remarks>
+        /// <b>The dash is placement, never movement.</b> It collides with
+        /// nothing and triggers nothing (§7.4), which is why passing through an
+        /// occupied cell contests nothing either (§7.1): the only damage the
+        /// path deals is the effect's own, declared in the stat block.
+        ///
+        /// <b>Direction is the shortest way round, exactly as targeting measured
+        /// it.</b> Range is a distance in either direction (§4.1), so a target
+        /// behind the caster is dashed to against the race direction. A tie at
+        /// exactly half the circuit resolves forward — the rule
+        /// <see cref="SignedShortestShift"/> already fixes for swaps, reused
+        /// rather than re-decided.
+        ///
+        /// <b>The landing clamp is §7.4's general rule applied to a new case.</b>
+        /// A dash moves one operator, and placement that moves one operator
+        /// clamps: behind the caster's own start cell there is no path, and past
+        /// the last outer-track cell is its home column, which no ability may
+        /// reach into (§4.3). The arithmetic is the same conversion every
+        /// placement effect performs — cells for the geometry, a signed shift on
+        /// the caster's own progress for the application.
+        ///
+        /// A target sharing the caster's cell has no dash direction — reachable
+        /// only on a safe cell. The dash resolves forward, the same arbitrary
+        /// but fixed answer <see cref="PushAwayFromCaster"/> gives its own
+        /// zero-length arc.
+        /// </remarks>
+        private void RunDash(
+            AbilityEffect effect,
+            OperatorState caster,
+            OperatorState target,
+            IReadOnlyList<OperatorState> allOperators,
+            List<EffectOutcome> outcomes)
+        {
+            int circuit = _map.Profile.CircuitLength;
+            int track = _map.Profile.TrackLength;
+
+            int casterCell = _map.CellAt(caster.Owner, caster.Progress).Index;
+            int targetCell = _map.CellAt(target.Owner, target.Progress).Index;
+
+            int shift = SignedShortestShift(casterCell, targetCell);
+            int step = shift == 0 ? 1 : Math.Sign(shift);
+            int distance = Math.Abs(shift);
+
+            // Every enemy standing on a cell the dash traverses, the target's
+            // own cell included — the caster passes through it on the way past.
+            // The target itself is excluded: whatever it suffers is declared as
+            // separate effects on the ability, and striking it here as well
+            // would hit it twice.
+            for (int i = 1; i <= distance; i++)
+            {
+                int index = ((casterCell + step * i) % circuit + circuit) % circuit;
+
+                foreach (var op in allOperators)
+                {
+                    if (op == null) continue;
+                    if (ReferenceEquals(op, caster) || ReferenceEquals(op, target)) continue;
+                    if (op.Owner == caster.Owner) continue;
+                    if (!_targeting.IsInPlay(op)) continue;
+                    if (_map.CellAt(op.Owner, op.Progress).Index != index) continue;
+
+                    outcomes.Add(ApplyDamage(effect, caster, op));
+                }
+            }
+
+            // One step past the target along the dash direction; if that cell
+            // is occupied — by anyone, friend or foe — fall back to one short
+            // of it, on the side the caster came from. The fallback itself may
+            // be occupied and that is legal: placement onto an occupied cell
+            // resolves nothing (§7.4), so there is always somewhere to land.
+            int landingCell = ((targetCell + step) % circuit + circuit) % circuit;
+
+            if (IsOccupied(landingCell, caster, allOperators))
+                landingCell = ((targetCell - step) % circuit + circuit) % circuit;
+
+            int progress = caster.Progress + SignedShortestShift(casterCell, landingCell);
+
+            if (progress < 0) progress = 0;
+            if (progress > track - 1) progress = track - 1;
+
+            caster.MoveTo(progress);
+            outcomes.Add(EffectOutcome.Dashed(caster, progress));
+        }
+
+        /// <summary>Whether any operator in play stands on the given track cell.</summary>
+        private bool IsOccupied(int trackIndex, OperatorState caster, IReadOnlyList<OperatorState> allOperators)
+        {
+            foreach (var op in allOperators)
+            {
+                if (op == null) continue;
+                if (ReferenceEquals(op, caster)) continue;
+                if (!_targeting.IsInPlay(op)) continue;
+                if (_map.CellAt(op.Owner, op.Progress).Index == trackIndex) return true;
+            }
+
+            return false;
         }
 
         private EffectOutcome ApplyDamage(AbilityEffect effect, OperatorState caster, OperatorState recipient)

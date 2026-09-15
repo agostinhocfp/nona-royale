@@ -165,7 +165,7 @@ This makes ADR-0003's home-entry safe cell redundant in the best way, and remove
 - **No collision occurs on a safe cell.** A mover landing on a safe cell occupied by an enemy simply shares it. Both operators occupy; nothing resolves.
 - **Safe cells and abilities — amended twice.** The original rule: safe cells do **not** block abilities; safe means safe from _collision_, nothing more — otherwise S becomes a free parking space and the combat layer stalls. Both amendments below deliberately moved off that position. The original reasoning stays on the page because the free-parking risk it named is real — the second amendment exists to pay for the first.
 - **First amendment (2026-09-13): a safe cell refuses enemy single-targeting.** An operator standing on S cannot be picked out by an enemy single-target ability. The counterweight the original rule did not weigh: winning needs all three operators home, so an operator parked on a start cell is an operator not winning. Scoped to enemies exactly as stealth is (§5.4) — an ally can still be healed, plated, cleansed or repositioned while standing on one — and single-target only: areas, lines, beacons and zones all still reach the cell. A safe cell stops somebody picking you out; it does not stop a blast.
-- **Second amendment (2026-09-14): the camping rule.** An operator standing on a safe cell may not **aim behind itself**. Refused with `AimedBehindFromSafeCell`: enemy single-targets, cell aims (Drone Strike, Killzone), and placements at allies — any ability containing a pull, swap or push, today exactly Velvet Rope and Translocation, which closes the safe-cell taxi. Still legal: heals, plates and cleanses at allies behind, because support is not the aggression this rule exists to stop; and self-origin areas, which radiate backwards unconsulted, because presence is not an aim. **"Behind" is the direction of travel, never progress** — a forward track offset greater than half the circuit. Progress is per-colour and meaningless to compare across seats. On an even circuit the exact-opposite cell counts as _ahead_, so the rule never blocks more than what is strictly behind. This amendment is the first one's price: a shelter that is single-target-proof must not also be an artillery position.
+- **Second amendment (2026-09-14): the camping rule.** An operator standing on a safe cell may not **aim behind itself**. Refused with `AimedBehindFromSafeCell`: enemy single-targets, cell aims (Drone Strike, Killzone), and placements at allies — any ability containing a pull, swap, push or dash, today exactly Velvet Rope, Translocation and Collision, which closes the safe-cell taxi. Still legal: heals, plates and cleanses at allies behind, because support is not the aggression this rule exists to stop; and self-origin areas, which radiate backwards unconsulted, because presence is not an aim. **"Behind" is the direction of travel, never progress** — a forward track offset greater than half the circuit. Progress is per-colour and meaningless to compare across seats. On an even circuit the exact-opposite cell counts as _ahead_, so the rule never blocks more than what is strictly behind. This amendment is the first one's price: a shelter that is single-target-proof must not also be an artillery position.
 
 ### 4.5 Friendly stacking
 
@@ -267,6 +267,12 @@ Not a status — the absence of them. Javi's Neural Purge removes every **applie
 
 **Two turns, not one.** The payout can fire on the marker's own turn — a collision or ability kill — by which point that turn's movement is usually already spent, so a 1-turn buff would routinely be worth nothing. At 2 it covers the remainder of the current turn and the whole of the next, whether it fired on the marker's turn or on an opponent's upkeep.
 
+### 5.10 ZeroDayCharge
+
+- **Effect:** none. A pure marker — the visible half of Zero-Day's attached charge (§6.4), present so the attachment is something the rules can see and remove.
+- **A cleanse strips it, and the charge never detonates.** The deferred effect checks for the marker at the owner's upkeep; a target still in play without it means the charge was answered, and it cancels silently (§5.8's rule — removing the status removes what the status carried — applied to a delayed effect for the first time).
+- **Duration 2, derived, not chosen.** The earliest a charge can detonate is the owner's next upkeep; a 1-turn marker applied during the owner's own turn would expire at the end of the target's intervening turn — before that upkeep — and a charge that cancelled itself on schedule would read as a cleanse that never happened. Two turns keeps the marker alive through every legal detonation window, and its expiry is otherwise harmless: a charge that has fired is gone whatever the registry says.
+
 ---
 
 ## 6. Turn structure and resolution order
@@ -300,9 +306,11 @@ Expiry sits at End and application takes hold at the target's next turn, so a 1-
 
 ### 6.3 Movement arithmetic
 
-**Movement:** `cells = floor(Pips × EffectiveSpeed)`, where `Pips` is the sum of the dice being spent on this move — the whole unspent roll, or one die. `EffectiveSpeed` is the moving operator's multiplier after auras and slows, floored at `MinSpeedMultiplier`.
+**Movement:** `cells = floor(Pips × EffectiveSpeed)` at 1.0× and above; **below 1.0×, half cells round up** (amendment, 2026-09-15). `Pips` is the sum of the dice being spent on this move — the whole unspent roll, or one die. `EffectiveSpeed` is the moving operator's multiplier after auras and slows, floored at `MinSpeedMultiplier`.
 
-**The floor applies per move, which is what splitting costs.** Two dice pooled lose at most one half-cell to it; spent separately they lose one each. So splitting costs a **whole cell exactly when both dice are odd** — 9 rolls in 36 — and nothing otherwise. At whole-number speeds it costs nothing at all.
+**Amendment (2026-09-15): below 1.0×, the half cell rounds up.** Sanity is the first operator who lives under 1.0× permanently, and the floor taxed him twice — once by the multiplier, then again on every odd die: a 5 always moved 2, never 3. For a fast operator the floored half is a rounding tax on a long move; for the slowest operator ever fielded it is half of everything he has. So below 1.0× the half rounds up: a 5 moves 3, a 7 moves 4. The rule is general — anyone slowed to 0.5× gets the same grace — but 1.5× is deliberately untouched: at or above 1.0× a half-step multiplier still never gifts a cell, and the player can still halve the roll in their head. Same family as the 2026-09-14 "a spent die always moves at least one cell" clamp: slows may shrink a move, never erase one — and now, never tax the odd die twice.
+
+**The rounding applies per move, which is what splitting costs.** Two dice pooled lose at most one half-cell to it; spent separately they lose one each. So splitting costs a **whole cell exactly when both dice are odd** — 9 rolls in 36 — and nothing otherwise. At whole-number speeds it costs nothing at all.
 
 **The larger cost is routing a die through a slower operator**, which forfeits that operator's whole speed deficit on those pips: a double six pooled onto a 1.5 operator moves 18; split between a 1.5 and a 1.0 operator it moves 15. That is three cells, not one, and it is why the landing preview must show every option before one is chosen (§9.1).
 
@@ -310,6 +318,22 @@ Expiry sits at End and application takes hold at the target's next turn, so a 1-
 
 - **A slow operator no longer taxes the match** the way it did before opening deployments landed. The pacing cost that pushed Bouncer up to 1.5 in Amendment 2 was paid for elsewhere, which freed the tank to be genuinely the slow one again.
 - **Above 1.5 a single move stops being readable.** The ceiling exists so a mean move stays near a fifth of the loop — the figure that actually governs whether a player can follow a piece across the board.
+
+**The band has one recorded exception.** Sanity fields at 0.5 — below the floor, permanently on `MinSpeedMultiplier`, and therefore immune to every slow and aura in the game as a side effect. That is a deliberate designer override (2026-09-15), recorded with its reasoning at §10.8; it does not reopen the band for anyone else.
+
+### 6.4 Operator-anchored deferred effects
+
+A beacon is anchored to a **cell** (§9.1, `DeferredCellEffects`): it fires at the caster's next upkeep on whoever is standing there then. Zero-Day introduces the twin: a charge anchored to an **operator**. The rules, parallel to the beacon's wherever the two can be:
+
+- **It follows the target.** The detonation cell is wherever the target stands at the owner's next upkeep — moved, pulled, swapped or dashed, the charge goes with it. A beacon is a bet on where somebody will be; an attached charge is a delayed certainty that somebody will be struck wherever they go.
+- **Timing is the owner's next upkeep**, exactly as a beacon's, and it resolves in the same upkeep window.
+- **The marked target is hit hardest.** Everyone in the blast takes the splash; the operator carrying the charge takes the splash plus a bonus. The bonus has no recipient if the carrier is already dead.
+- **Death does not disarm it, on either side.** If the target is neutralized before the detonation, the charge goes off on the death cell — the blast still happens, only the bonus is lost. And the charge is keyed to the owning *seat's* upkeep, not to the operator who threw it: Sanity in his yard changes nothing, exactly as a deployed beacon outlives its caster (ADR-0006). A kill still credits the recorded source.
+- **Re-attaching replaces.** A second charge from the same seat onto the same target refreshes the pending one rather than stacking — the same shape as re-painting a cell or re-applying a status.
+- **It is telegraphed and it can be answered.** Attachment applies the ZeroDayCharge marker (§5.10) and emits its own event, so the view can show the grenade riding the target. A cleanse strips the marker and cancels the detonation outright — the counterplay is the marker, not the blast.
+- **Kill credit follows the source.** Damage at detonation is attributed to the operator who attached the charge, through the same neutralize fold as everything else.
+
+**Known limitation:** charges from two different seats on one target share one marker — the registry stores one entry per status kind per operator. The first detonation consumes it, and the second charge then reads as cleansed. A four-seat edge the design has not needed to answer; recorded rather than solved.
 
 ---
 
@@ -396,6 +420,16 @@ Striking the whole stack, rather than one occupant, was chosen over two alternat
 
 > This rule was found by simulation, not by review. The invariant held for two years of design documents and failed in the first three hundred simulated matches.
 
+### 7.6 Dash
+
+A dash moves the **caster** along the track to a chosen target and through whatever lies between — the first placement effect that repositions the caster without swapping (§7.4), added for Collision (§10.8).
+
+- **Direction is the shortest way round to the target**, either way along the loop. A tie — a target exactly half the circuit away — resolves **forwards**, as does the degenerate case of a target on the caster's own cell: a dash that cannot pick a direction picks the direction of travel.
+- **The path rakes, it does not contest.** Every enemy standing on a traversed cell — from one step out to the target's own cell inclusive — takes the dash's path damage through the standard pipeline. The caster passes through occupants without colliding (§7.1: a collision is a landing, and the dash's only landing is its final placement). Allies on the path are untouched, and the target itself is not path damage's business — what happens to the target is declared as ordinary effects on the ability, filtered by cast mode like anything else.
+- **The landing is one step past the target** along the dash direction — "a cell behind it". If that cell is occupied, the caster lands **one step short** instead, on his own side of the target. The fallback is not refused and not searched further: a second occupant there simply stacks, which placement already allows (§7.4, consequences).
+- **It is placement throughout.** No collision, no cell effects, no bounce-back, no home entry — and the camping rule applies, because the ability contains a placement (§4.4, second amendment): a sheltered engineer may not dash to an ally behind himself.
+- **One operator moves, so it clamps** (§7.4's general rule). A landing computed past the home mouth clamps to the last track cell; one behind the start clamps to the start cell. The dash never carries anyone into a home column, its own included.
+
 ---
 
 ## 8. Win condition
@@ -430,7 +464,7 @@ Noun-based, per `CONVENTIONS.md`. Each owns one rule family and nothing else.
 
 **`StatusRegistry` reports damage, it never applies it.** The pipeline consults the registry for evasion and shields, so a registry that called the pipeline would close a dependency cycle. Bleed and mark ticks are therefore _queried_ — the registry says what the tick owes and the caller pushes it through the pipeline as Atomic. The registry decides what damage is owed, the pipeline decides how damage lands, and neither knows the other exists.
 
-**An ability is a list of effects, and there are seven kinds:** Damage, Heal, ApplyStatus, PullToCaster, Execute, SwapWithCaster, RemoveStatuses. The resolver never branches on which ability is being cast. A new operator that cannot be expressed in those seven gets an amendment to this document and a new kind — never an `if`. Two have been added in earnest: the swap, for Mimi, and the cleanse, for Javi.
+**An ability is a list of effects, and there are twelve kinds:** Damage, Heal, ApplyStatus, PullToCaster, Execute, SwapWithCaster, RemoveStatuses, PushFromCaster, PaintCell, DeployZone, AttachCharge, DashToTarget. The resolver never branches on which ability is being cast. A new operator that cannot be expressed in those twelve gets an amendment to this document and a new kind — never an `if`. Seven have been added in earnest: the swap for Mimi, the cleanse for Javi, the push and the two cell-anchored deferred kinds for Kian and Nuetu, and the operator-anchored charge and the dash for Sanity (§10.8).
 
 **The engine reports every move a roll could make, not just one.** `PreviewLandings` returns, per operator, the pooled landing and one per distinct unspent face. A preview that showed only the pooled option would hide exactly the choice §6.3 prices, and the view must not compute any of it itself (`PRESENTATION.md` §1).
 
@@ -444,7 +478,7 @@ Randomness reaches exactly two places: `MovementResolver` (dice) and `DamagePipe
 
 ### 9.3 Events (core → view)
 
-`DiceRolled` · `EnergyGranted` · `EnergySpent` · `OperatorDeployed` · `OperatorMoved` · `CollisionResolved` · `DamageDealt` · `DamageEvaded` · `DamageAbsorbed` · `HealApplied` · `StatusApplied` · `StatusExpired` · `OperatorNeutralized` · `OperatorReachedHome` · `TurnEnded` · `GameWon`
+`DiceRolled` · `EnergyGranted` · `EnergySpent` · `OperatorDeployed` · `OperatorMoved` · `CollisionResolved` · `DamageDealt` · `DamageEvaded` · `DamageAbsorbed` · `HealApplied` · `StatusApplied` · `StatusExpired` · `OperatorNeutralized` · `OperatorReachedHome` · `TurnEnded` · `GameWon` · `BeaconPlaced` · `BeaconFired` · `ZoneDeployed` · `ZoneTicked` · `ZeroDayAttached` · `ZeroDayDetonated`
 
 `DamageEvaded` and `DamageAbsorbed` are separate events rather than a flag on `DamageDealt` because the view needs to play three visibly different things. `DamageDealt` and `OperatorNeutralized` both carry a **cause** for the reason given in §2.1. What the view is required to do with all of it is `docs/design/PRESENTATION.md`.
 
@@ -452,7 +486,7 @@ Randomness reaches exactly two places: `MovementResolver` (dice) and `DamagePipe
 
 ## 10. The roster, re-expressed
 
-The alpha three are complete and every ability they invoke is built. **§10.4 and §10.5 are not**: Mimi and Javi are in the draft pool with one ability each still unimplemented, and each section carries a banner saying which. An operator the game can deal but this document does not describe is worse than an entry marked incomplete — but the exception now covers two of five, and a third would mean the pool has become the place operators go to wait.
+The alpha three are complete and every ability they invoke is built. **§10.4 and §10.5 are not**: Mimi and Javi are in the draft pool with one ability each still unimplemented, and each section carries a banner saying which. An operator the game can deal but this document does not describe is worse than an entry marked incomplete — but the exception now covers two of six, and a third would mean the pool has become the place operators go to wait. Sanity (§10.8) is complete: all three abilities are implemented, and the two mechanics they needed are §6.4 and §7.6.
 
 **Every ability carries a player-facing description** in the core, required by the constructor, and it contains no numbers. Cost, range, cooldown and damage all live on the same object; a figure repeated in prose is a second copy of a value that will be wrong the first time anyone tunes it.
 
@@ -566,6 +600,28 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 **He may be the operator that tips the game.** §12 records that neutralizing rewards the attacker with nothing, and suspects that suppresses combat in human play in a way the harness cannot detect, because the scripted player fights unconditionally. A dedicated healer makes kills materially harder to land. His measured strength depends entirely on which way that question goes, so settle it before trusting any figure about him.
 
+### 10.8 Sanity — Engineer
+
+**HP 12 · Speed 0.5× · Complete — all three abilities implemented**
+
+> **He transgresses two precedents, knowingly, and both are recorded here as designer overrides (2026-09-15), not drift.** Speed 0.5 sits below the 1.0–1.5 band (ADR-0002 Amendment 4, §6.3) — the first operator outside it. Health 12 ties the roster maximum the Bouncer cut (2026-09-12) had just vacated. Both were signed off as the price of the "immovable object" fantasy: the toughest operator ever fielded, and the slowest by half the band.
+>
+> **The slow-immunity side effect is accepted, not overlooked.** At 0.5 he sits permanently on `MinSpeedMultiplier`, so no slow and no aura can move his speed at all — the floor swallows them (§5.2). That cuts both ways: his own Zero-Day slow is something he can never suffer in a mirror match.
+
+| #   | Ability           | Type   | Cost | CD  | Range | Effect                                                                                                                                                                            |
+| --- | ----------------- | ------ | ---- | --- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Short Circuit** | Active | 3    | 1   | 1     | **1 Normal**; **Stun 1 turn** (§5.1).                                                                                                                                             |
+| 2   | **Zero-Day**      | Active | 4    | 3   | 2     | Attach a charge to an enemy (§6.4): at Sanity's next upkeep it detonates on the target's current cell — **1 Normal** to all enemies within 1, **+1** to the marked target, **Slow 1 turn** to everyone caught. Telegraphed on attach; cleanse-detachable (§5.10). |
+| 3   | **Collision**     | Active | 7    | 4   | 5     | **Dash** to the target, enemy or ally (§7.6): **1 Normal** to every enemy on the traversed cells. Enemy target: **3 Normal** and **Stun 1 turn**. Lands a cell behind the target. |
+
+**Short Circuit is From the Hip's shape with the reach spent on a stun.** Same price, same 1 damage — but Syla's slow at range 3 becomes the strongest control status in the game at melee range, on the slowest operator ever fielded. The range is the whole cost of the ability: he has to be standing next to somebody, and at 0.5× that is the rarest thing on the board.
+
+**Zero-Day is the first operator-anchored deferred effect (§6.4).** A beacon is a bet on where somebody will be; the charge is a delayed certainty that follows them there, and it pays for the certainty in counterplay rather than in damage — telegraphed on attachment, and a cleanse strips the marker and cancels it outright. Javi's Neural Purge answers a 4-energy ability for 6, which is the rock-paper-scissors the cleanse exists for (§5.8). The damage split inverts Drone Strike's: the beacon is strongest against a crowd that scatters its beam, the charge against the one operator it is riding. Normal type, so a plate absorbs it and an evasion charge can dodge it, on top of the cleanse — Atomic would make the counterplay one-dimensional, and Atomic is deliberately concentrated (§2.2).
+
+**Collision is the mobility his speed denies him, priced as an ultimate.** At 0.5 he moves three cells on a six; the dash moves him up to six — five to the target and one past it — in either direction. The ally mode is the escape the rest of the kit refuses to give him, and it is why the ability carries the camping rule (§4.4, second amendment). Priced under Miracle Pull's 9: three Normal and a stun on the anchor plus a rake along the path is less than a possible execute, and the dash cuts both ways — it delivers the slowest operator in the game to exactly where the fight is, which is sometimes where he wanted to be.
+
+**Costs 3 / 4 / 7 are the balance review's outcome (2026-09-15), argued against peers and unmeasured.** A basic priced like From the Hip, a delayed area priced under Drone Strike because it can be cleansed away, an ultimate priced under Miracle Pull because its damage is Normal and its target can be an ally. Adding him shifts the draft's dice stream besides, so nothing here can be compared to figures taken before him.
+
 ---
 
 ## 11. Superseded and removed
@@ -574,7 +630,7 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
 | "Exactly one operator moves per roll" (§6)                   | **Dead.** Replaced by per-die consumption and compulsory movement (§6, §6.1).                                                       |
 | Deploy having to precede movement in a roll                  | **Dead.** An artifact of computing the movement total up front from the whole roll; a deploy now simply removes a die (§6).         |
-| `cells = floor(DiceTotal × EffectiveSpeed)`                  | **Restated** as `floor(Pips × EffectiveSpeed)`, where Pips is what this move spends (§6.3). The arithmetic is unchanged.            |
+| `cells = floor(DiceTotal × EffectiveSpeed)`                  | **Restated** as `floor(Pips × EffectiveSpeed)`, where Pips is what this move spends (§6.3). Amended 2026-09-15: below 1.0× the half cell rounds up. |
 | Tiered energy (≤4 → 1, 5–8 → 2, ≥9 → 3)                      | **Dead.** Replaced by §3.1.                                                                                                         |
 | "3 energy points per turn to spend" (GDD)                    | **Dead.** Never closed against 9-cost ultimates.                                                                                    |
 | `Energy Efficiency` stat                                     | **Cut.** One value on one operator, blank on two, no rule ever attached.                                                            |
@@ -587,6 +643,7 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 | §7.4 covering pulls only                                     | **Extended** to swaps, with the cells-versus-progress conversion and the forwards case stated for the first time.                   |
 | The pull clamp as "owed a doc amendment"                     | **Discharged.** Stated in §7.4.                                                                                                     |
 | Speed band 1.5–2.0 (Amendment 2)                             | **Lowered** to 1.0–1.5 by Amendment 4. Bouncer 1.5 → 1.0, Syla 2.0 → 1.5, Kurbyn 1.5+0.5 → 1.0+0.5.                                 |
+| Speed band 1.0–1.5 as a roster-wide invariant                | **Amended** 2026-09-15: Sanity fields at 0.5, the first recorded exception (§10.8) — a designer override, bought with the slow-immunity side effect stated there. The band stands for everyone else. |
 | Standard board 48/6                                          | **Replaced** by 52/6 (ADR-0002 Amendment 5). 48 cannot be drawn as a continuous Ludo cross; journey 54 → 58.                        |
 | Bouncer at 12 health                                         | **Lowered** to 9 (§10.1). He absorbed four collisions and shrugged off the sequence that kills everyone else.                       |
 | Velvet Rope as 3 Normal at range 3                           | **Retuned** to 3 **Atomic** at range 4, then **back to range 3** (§10.1). Atomic stayed; the reach did not.                         |
@@ -941,3 +998,4 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - 2026-09-12 — **Mandatory rolls and split movement.** §6's "exactly one operator moves per roll" replaced by per-die consumption, which generalises §1.3's existing one-die-per-deploy rule rather than inventing a second scheme. Movement is now compulsory while a legal consumer exists (§6.1), and a doubles re-roll waits on the roll in hand. Deploy no longer has to precede movement — that rule was an artifact of computing the movement total up front. The movement formula is restated per move (§6.3), which is where splitting's price lives: a whole cell when both dice are odd, and considerably more when a die is routed through a slower operator. `MoveCommand` gains a die selector and `PreviewLandings` reports every option per operator, because a price the player cannot see before choosing is not a decision. **Unmeasured**, and the harness will not measure it: `ScriptedPlayer` pools and never splits by deliberate policy. §12 records the consequences, including that the `CollisionDamage` strike rests on a collision frequency this change attacks.
 - 2026-09-12 — Javi's shield named **Trauma Plate** and its values settled at 6 energy, cooldown 3, range 3, 2-point pool, 2 turns (§10.5). Still unbuilt: it needs the absorb layer reworked from a whole-instance bool to a pool, which is the same interface the deterministic-evasion pass is rewriting. Both are specified together in `_HANDOFF_mitigation.md`, which supersedes `_HANDOFF_evasion.md` — delete that file.
   **Deterministic evasion was proposed and declined (2026-09-13).** `_HANDOFF_mitigation.md` argued for replacing the roll with a flat reduction of 1 — zero variance, 1.00 prevented per round against 0.65 here. Declined on cost, not on merit: the rate is a one-line config edit, where going deterministic changes `IDamageMitigation`, removes `IRandom` from the pipeline, and rewrites five test fixtures. Lowering the rate does not address the variance the proposal was aimed at; if evasion still reads as arbitrary in human play, that pass is the answer and this number is not.
+- 2026-09-15 — **Sanity added as §10.8**, complete, with two recorded designer overrides: speed 0.5 below the 1.0–1.5 band (the first exception, slow-immunity side effect accepted) and health 12 tying the roster maximum the Bouncer cut had vacated. `EffectKind` gains `AttachCharge` and `DashToTarget`, the eleventh and twelfth kinds; `StatusKind` gains `ZeroDayCharge`, the first marker status (§5.10 — no gameplay effect, duration 2 derived from the detonation window, a cleanse cancels the charge). §6.4 states operator-anchored deferred effects: follows the target, owner's-next-upkeep timing, a bonus for the marked target, death-cell detonation, keyed to the seat so the caster's own death changes nothing, telegraphed and cleanse-detachable. §7.6 states the dash: shortest-way-round with ties forwards, the path rakes without contesting, landing one step past the target with a one-short fallback, placement throughout so one operator clamps. §4.4's camping rule now names the dash alongside pull, swap and push. §9.1's effect-kind enumeration was stale at "seven" — it had already missed the push and the two cell-anchored kinds — and now lists all twelve; §9.3's event list gains the beacon, zone and Zero-Day events it had never recorded. Costs 3 / 4 / 7 are the balance review's outcome, argued against peers and unmeasured.

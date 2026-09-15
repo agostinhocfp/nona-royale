@@ -17,13 +17,21 @@ namespace NonaRoyale.Unity.View
         private static Sprite _disc;
         private static Sprite _ring;
         private static Sprite _square;
+        private static Sprite _cross;
         private static readonly Dictionary<int, Sprite> Polygons = new Dictionary<int, Sprite>();
+        private static readonly Dictionary<int, Sprite> Stars = new Dictionary<int, Sprite>();
 
         public static Sprite Disc => _disc ?? (_disc = BuildDisc(64, filled: true));
         public static Sprite Ring => _ring ?? (_ring = BuildDisc(64, filled: false));
 
         /// <summary>Board cells. Squares read as a Ludo grid; discs read as beads.</summary>
         public static Sprite Square => _square ?? (_square = BuildSquare(8));
+
+        /// <summary>
+        /// A plus sign. Not a polygon — its concave corners are what make it
+        /// read as a medic's mark rather than a rotated square.
+        /// </summary>
+        public static Sprite Cross => _cross ?? (_cross = BuildCross(96));
 
         /// <summary>
         /// A regular polygon, cached per shape. Sides and rotation are how
@@ -39,6 +47,24 @@ namespace NonaRoyale.Unity.View
             {
                 sprite = BuildPolygon(96, sides, rotationDegrees);
                 Polygons[key] = sprite;
+            }
+
+            return sprite;
+        }
+
+        /// <summary>
+        /// A star, cached per shape like <see cref="Polygon"/>. Concave like
+        /// the cross — a polygon generator cannot produce it, and the indents
+        /// are exactly what separates it from a decagon at board scale.
+        /// </summary>
+        public static Sprite Star(int points, float rotationDegrees)
+        {
+            int key = points * 1000 + Mathf.RoundToInt(rotationDegrees);
+
+            if (!Stars.TryGetValue(key, out var sprite))
+            {
+                sprite = BuildStar(96, points, rotationDegrees);
+                Stars[key] = sprite;
             }
 
             return sprite;
@@ -78,6 +104,63 @@ namespace NonaRoyale.Unity.View
                 float angle = Mathf.Atan2(dy, dx) - rotation;
                 float within = Mathf.Repeat(angle, wedge) - wedge * 0.5f;
                 float edge = apothem / Mathf.Cos(within);
+
+                return Mathf.Clamp01(edge - distance + 1f);
+            });
+        }
+
+        private static Sprite BuildCross(int size)
+        {
+            float centre = (size - 1) * 0.5f;
+            float outer = centre - 1.5f;
+            float arm = outer * 0.36f;
+
+            return Rasterize(size, (x, y) =>
+            {
+                float ax = Mathf.Abs(x - centre);
+                float ay = Mathf.Abs(y - centre);
+
+                // Signed distance to each bar's rectangle; inside either bar
+                // is inside the cross. Negative inside, so 1 - d fades the edge.
+                float horizontal = Mathf.Max(ax - outer, ay - arm);
+                float vertical = Mathf.Max(ay - outer, ax - arm);
+
+                return Mathf.Clamp01(1f - Mathf.Min(horizontal, vertical));
+            });
+        }
+
+        private static Sprite BuildStar(int size, int points, float rotationDegrees)
+        {
+            float centre = (size - 1) * 0.5f;
+            float outer = centre - 1.5f;
+            float inner = outer * 0.382f; // the classic five-point proportion
+            float rotation = rotationDegrees * Mathf.Deg2Rad;
+            float halfWedge = Mathf.PI / points;
+
+            // The edge runs from an outer vertex at (outer, 0) to the indent
+            // at halfWedge; precompute that segment and its cross with the
+            // outer vertex, then ray-cast against it per pixel.
+            float dx = inner * Mathf.Cos(halfWedge) - outer;
+            float dy = inner * Mathf.Sin(halfWedge);
+            float edgeCross = outer * dy;
+
+            return Rasterize(size, (x, y) =>
+            {
+                float px = x - centre;
+                float py = y - centre;
+                float distance = Mathf.Sqrt(px * px + py * py);
+
+                if (distance < 0.0001f) return 1f;
+
+                // Fold the direction into [0, halfWedge]: one edge segment.
+                float angle = Mathf.Atan2(py, px) - rotation;
+                float a = Mathf.Repeat(angle, 2f * halfWedge);
+                if (a > halfWedge) a = 2f * halfWedge - a;
+
+                float cos = Mathf.Cos(a);
+                float sin = Mathf.Sin(a);
+                float denom = cos * dy - sin * dx;
+                float edge = denom > 0.0001f ? edgeCross / denom : outer;
 
                 return Mathf.Clamp01(edge - distance + 1f);
             });

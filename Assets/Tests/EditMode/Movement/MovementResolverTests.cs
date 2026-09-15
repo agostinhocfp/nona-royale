@@ -91,7 +91,33 @@ namespace NonaRoyale.Core.Tests.Movement
         [Test]
         public void AnOperatorAtTheSpeedFloor_StillMoves()
         {
-            Assert.That(_resolver.CellsFor(7, 0.5), Is.EqualTo(3));
+            Assert.That(_resolver.CellsFor(6, 0.5), Is.EqualTo(3));
+        }
+
+        [Test]
+        public void BelowFullSpeed_HalfCellsRoundUp()
+        {
+            // Sanity's rule (2026-09-15): below 1.0x the floor taxed every odd
+            // die a second time. A 5 moves 3, a 7 moves 4 — the half is his.
+            Assert.That(_resolver.CellsFor(5, 0.5), Is.EqualTo(3));
+            Assert.That(_resolver.CellsFor(7, 0.5), Is.EqualTo(4));
+        }
+
+        [Test]
+        public void AtOrAboveFullSpeed_HalfCellsStillFloor()
+        {
+            // The round-up is scoped below 1.0x: 1.5x keeps the documented
+            // floor, so Syla and Javi move exactly as before the amendment.
+            Assert.That(_resolver.CellsFor(7, 1.5), Is.EqualTo(10));
+            Assert.That(_resolver.CellsFor(5, 1.5), Is.EqualTo(7));
+        }
+
+        [Test]
+        public void SlowedOperatorAtTheFloor_AlsoRoundsUp()
+        {
+            // The rule is general, not Sanity's: anyone slowed to 0.5x gets
+            // the same grace on an odd die.
+            Assert.That(_resolver.CellsFor(3, 0.5), Is.EqualTo(2));
         }
 
         // ── Deploy ───────────────────────────────────────────────────────

@@ -119,6 +119,48 @@ namespace NonaRoyale.Core.Abilities
         /// inside itself until it expired — nine energy to remove somebody from
         /// the game. The grenade crushes once; what lingers only grinds.
         /// </remarks>
-        DeployZone = 9
+        DeployZone = 9,
+
+        /// <summary>
+        /// Attaches a charge to the primary target. Nothing happens now; the
+        /// charge follows the target and detonates at the caster's next upkeep,
+        /// on whatever cell the target then occupies (§6.4). Sanity's Zero-Day.
+        /// </summary>
+        /// <remarks>
+        /// <b>The sibling of <see cref="PaintCell"/> anchored to a victim rather
+        /// than a place.</b> A beacon is a bet on where somebody will be; an
+        /// attached charge is a delayed certainty that somebody will be struck
+        /// wherever they go — which is exactly why it is cleanse-detachable
+        /// (§5.10). The marker status is the counterplay, not decoration.
+        ///
+        /// <c>Amount</c> carries the splash dealt to every enemy in
+        /// <c>Radius</c> of the detonation cell; <c>Stacks</c> the bonus added
+        /// for the marked target itself; <c>Status</c>/<c>Duration</c> the
+        /// status applied to everyone caught. Reused fields, the same trade
+        /// <see cref="DeployZone"/> already makes.
+        /// </remarks>
+        AttachCharge = 10,
+
+        /// <summary>
+        /// The caster dashes along the track to the primary target, damaging
+        /// every enemy on the traversed cells, and is <i>placed</i> one step
+        /// past the target along the dash direction — one short of it, on the
+        /// caster's side, when that cell is occupied (§7.6). Sanity's Collision.
+        /// </summary>
+        /// <remarks>
+        /// <b>The first kind that repositions the caster without swapping.</b>
+        /// Pull, push and swap all move somebody else (or exchange two pieces);
+        /// this moves the caster, and the landing is placement rather than
+        /// movement — it collides with nothing and triggers nothing (§7.4),
+        /// which is also why the dash itself passes through occupants without
+        /// contesting them (§7.1).
+        ///
+        /// <b>Only the path damage lives here.</b> What happens to the target
+        /// itself — Collision's hit and stun — is declared as ordinary
+        /// enemy-audience effects on the ability, so the cast-mode system
+        /// filters them out for an ally target instead of the dash branching on
+        /// it. <c>Amount</c> carries the per-enemy path damage.
+        /// </remarks>
+        DashToTarget = 11
     }
 }

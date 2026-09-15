@@ -120,6 +120,22 @@ Read at the table: _the one you have to kill twice._
 
 ---
 
+## Beyond the alpha
+
+### Sanity — Engineer
+
+The house's maintenance man, and the first operator who looks like work rather than violence. A broad, hulking silhouette — an octagon where everyone else is a dart or a disc — in a heavy canvas apron over the livery, tool roll across the chest, and a charged prod slung at the hip like a sidearm. He does not hurry. He has never once hurried.
+
+His kit is the fantasy of the immovable object. He is the toughest operator ever fielded and the slowest by half the band, and everything he carries is built to make standing still a threat: a prod that shorts out whatever he can reach, a magnetized grenade that snaps onto a victim and follows it home, and a winch-anchor that fires him along the track at a target — enemy or ally — raking everyone between. The grenade is the tell of the whole design: a delayed certainty you can see coming, and the counterplay is to cleanse it off before it goes off.
+
+He is tagged **Engineer**, which is a sixth archetype and as undefined as Brawler — the same open question, now twice as pressing. Both should be settled together.
+
+Read at the table: _the one the fight has to come to._
+
+**Complete and in the pool.** His live kit is in `COMBAT_SYSTEMS.md` §10.8, including the two recorded designer overrides — the sub-band speed and the roster-maximum health — that his fantasy was bought with.
+
+---
+
 ## Design constraints on future operators
 
 - **Silhouette-first.** Identifiable in pure black at board scale (`ART_DIRECTION.md` §5). Five shapes are spoken for; a sixth has to stay legible beside all of them at a third of a cell.

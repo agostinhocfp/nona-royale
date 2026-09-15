@@ -150,7 +150,13 @@ namespace NonaRoyale.Core
             // writes beacons into it, and before the turn machine, which fires
             // them at upkeep — one registry, two callers, no second copy.
             var cellEffects = new DeferredCellEffects(clock, targeting, damage, statuses);
-            var abilities = new AbilityResolver(map, clock, energy, statuses, targeting, damage, cellEffects);
+            // Operator-anchored charges (§6.4) — the same shape again: the
+            // resolver attaches them, the turn machine fires them, and
+            // NeutralizeRules reports death cells to them, so it is built
+            // before all three.
+            var operatorEffects = new DeferredOperatorEffects(clock, targeting, damage, statuses);
+            var abilities = new AbilityResolver(
+                map, clock, energy, statuses, targeting, damage, cellEffects, operatorEffects);
             var auraRules = new AuraRules(targeting, auras);
 
 
@@ -161,7 +167,7 @@ namespace NonaRoyale.Core
             // the attacker's pool, which is player-level, so neither the victim nor
             // the operator that landed the hit is enough on its own.
             var neutralize = new NeutralizeRules(
-                statuses, abilities, energy, operators, players, combatConfig);
+                statuses, abilities, energy, operators, players, combatConfig, operatorEffects);
 
             var win = new WinConditions(map);
 
@@ -174,7 +180,7 @@ namespace NonaRoyale.Core
                 statuses.ApplyPassive(pair.Key, pair.Value.Passive.Value, pair.Value.PassiveMagnitude);
 
             var turns = new TurnStateMachine(
-     players, clock, gameConfig, random, energy, statuses, damage, neutralize, win, cellEffects);
+     players, clock, gameConfig, random, energy, statuses, damage, neutralize, win, cellEffects, operatorEffects);
 
 
             var abilityBook = new Dictionary<int, AbilityDefinition>();

@@ -53,7 +53,8 @@ namespace NonaRoyale.Core.Abilities
             Mimi.Definition,
             Javi.Definition,
             Kian.Definition,
-            Nuetu.Definition
+            Nuetu.Definition,
+            Sanity.Definition
         };
 
         /// <summary>The alpha three, in order. What every sweep and test measured.</summary>

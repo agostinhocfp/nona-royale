@@ -56,21 +56,24 @@ namespace NonaRoyale.Core.Services
         public IReadOnlyList<OperatorState> Hastened => Outcome.Hastened;
     }
 
-    /// <summary>What upkeep resolved: over-time ticks, beacons, and anyone they finished off.</summary>
+    /// <summary>What upkeep resolved: over-time ticks, beacons, charges, and anyone they finished off.</summary>
     public sealed class UpkeepReport
     {
         private static readonly CellEffectResolution[] NoCellEffects = new CellEffectResolution[0];
+        private static readonly OperatorEffectResolution[] NoOperatorEffects = new OperatorEffectResolution[0];
 
         public UpkeepReport(
             PlayerColor player,
             IReadOnlyList<DamageResult> bleedTicks,
             IReadOnlyList<UpkeepNeutralize> neutralized,
-            IReadOnlyList<CellEffectResolution> cellEffects = null)
+            IReadOnlyList<CellEffectResolution> cellEffects = null,
+            IReadOnlyList<OperatorEffectResolution> operatorEffects = null)
         {
             Player = player;
             BleedTicks = bleedTicks ?? throw new ArgumentNullException(nameof(bleedTicks));
             Neutralized = neutralized ?? throw new ArgumentNullException(nameof(neutralized));
             CellEffects = cellEffects ?? NoCellEffects;
+            OperatorEffects = operatorEffects ?? NoOperatorEffects;
         }
 
         public PlayerColor Player { get; }
@@ -96,11 +99,25 @@ namespace NonaRoyale.Core.Services
         /// </remarks>
         public IReadOnlyList<CellEffectResolution> CellEffects { get; }
 
+        /// <summary>
+        /// Operator-anchored charges that detonated this upkeep (§6.4). Empty
+        /// on most turns, and always empty in a match wired without
+        /// <c>DeferredOperatorEffects</c>.
+        /// </summary>
+        /// <remarks>
+        /// Kept out of <see cref="CellEffects"/> for the reason that list is
+        /// kept out of <see cref="BleedTicks"/>: a charge's blast is Normal
+        /// damage and can be evaded or absorbed, and its reporting carries a
+        /// status kind and duration a cell effect never has.
+        /// </remarks>
+        public IReadOnlyList<OperatorEffectResolution> OperatorEffects { get; }
+
         /// <summary>Operators that died at upkeep. They never get this turn (§5.3).</summary>
         public IReadOnlyList<UpkeepNeutralize> Neutralized { get; }
 
         public override string ToString() =>
-            $"{Player} upkeep: {BleedTicks.Count} ticks, {CellEffects.Count} beacons, {Neutralized.Count} neutralized";
+            $"{Player} upkeep: {BleedTicks.Count} ticks, {CellEffects.Count} beacons, " +
+            $"{OperatorEffects.Count} charges, {Neutralized.Count} neutralized";
     }
 
     /// <summary>The dice, what they paid, and whether another roll is coming.</summary>

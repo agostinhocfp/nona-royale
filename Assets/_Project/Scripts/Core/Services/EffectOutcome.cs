@@ -66,7 +66,32 @@ namespace NonaRoyale.Core.Services
         /// for longer: a beacon is a crosshair that resolves once, a zone is
         /// ground that stays dangerous for several rounds.
         /// </remarks>
-        ZoneDeployed = 9
+        ZoneDeployed = 9,
+
+        /// <summary>
+        /// A charge was attached to an operator. Nothing has detonated yet — the
+        /// charge fires at its owner's next upkeep (§6.4).
+        /// </summary>
+        /// <remarks>
+        /// The telegraph the ability is balanced around: an attached grenade the
+        /// opponent cannot see is a trap, not a prediction. <see cref="EffectOutcome.Recipient"/>
+        /// is the operator now carrying the charge — the subject is a person,
+        /// not a place, which is what separates it from <see cref="BeaconPlaced"/>.
+        /// </remarks>
+        ChargeAttached = 10,
+
+        /// <summary>
+        /// The caster was placed at the end of a dash (§7.6). One of these per
+        /// dash; the enemies it struck on the way through are ordinary
+        /// <see cref="Damaged"/> outcomes.
+        /// </summary>
+        /// <remarks>
+        /// Its own kind rather than reusing <see cref="Pulled"/> for the same
+        /// reason <see cref="Swapped"/> exists: the view plays a self-launched
+        /// caster differently from a dragged victim, and the subject here is the
+        /// caster rather than the ability's target.
+        /// </remarks>
+        Dashed = 11
     }
 
     /// <summary>
@@ -146,6 +171,14 @@ namespace NonaRoyale.Core.Services
         public static EffectOutcome ZoneDeployed(OperatorState caster, CellRef cell, int detonationDamage) =>
             new EffectOutcome(EffectOutcomeKind.ZoneDeployed, caster, default, detonationDamage,
                 default, 0, 0, cell);
+
+        /// <summary>A charge attached to <paramref name="target"/>, which now carries it.</summary>
+        public static EffectOutcome ChargeAttached(OperatorState target) =>
+            new EffectOutcome(EffectOutcomeKind.ChargeAttached, target, default, 0, default, 0, 0);
+
+        /// <summary>The caster placed at <paramref name="progress"/> by its own dash.</summary>
+        public static EffectOutcome Dashed(OperatorState caster, int progress) =>
+            new EffectOutcome(EffectOutcomeKind.Dashed, caster, default, 0, default, 0, progress);
 
         public static EffectOutcome Executed(OperatorState recipient) =>
             new EffectOutcome(EffectOutcomeKind.Executed, recipient, default, 0, default, 0, 0);

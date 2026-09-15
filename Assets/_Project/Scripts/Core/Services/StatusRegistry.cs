@@ -455,6 +455,27 @@ namespace NonaRoyale.Core.Services
         }
 
         /// <summary>
+        /// Removes one applied status by kind. Returns whether anything was
+        /// removed.
+        /// </summary>
+        /// <remarks>
+        /// <b>For an effect that consumes its own marker.</b> Zero-Day's
+        /// detonation strips the charge it just fired (§5.10), and bleed's tick
+        /// already removes its own entry the same way, from inside this class.
+        /// <see cref="ClearApplied"/> is the indiscriminate version and stays
+        /// the cleanse's: an effect that knows exactly what it is taking should
+        /// not also strip whatever else the operator happens to be carrying.
+        /// Passives are unreachable here, as they are from every applied-status
+        /// path.
+        /// </remarks>
+        public bool Remove(OperatorState op, StatusKind kind)
+        {
+            if (op == null) throw new ArgumentNullException(nameof(op));
+
+            return _byOperator.TryGetValue(op.Id, out var entries) && entries.Remove(kind);
+        }
+
+        /// <summary>
         /// Strips every applied status on neutralize — stun, slow, bleed,
         /// stealth, shield, mark, haste (§1.2). <b>Passives survive</b>: they
         /// live in their own store and an operator returning to the yard is

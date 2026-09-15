@@ -234,6 +234,24 @@ namespace NonaRoyale.Core
                     EmitDamage(resolved.Caught[i], resolved.Damage[i], events);
             }
 
+            // Operator-anchored charges detonate at the same upkeep, and are
+            // reported before the neutralize loop for the reason beacons are:
+            // the blast has to land on screen before the piece it finished
+            // disappears (§6.4). Unlike a zone tick the resolution carries its
+            // own status kind and duration — nothing here may hardcode them.
+            foreach (var charge in upkeep.OperatorEffects)
+            {
+                events.Add(new ZeroDayDetonated(
+                    charge.Owner, charge.Cell, charge.Caught.Count,
+                    charge.DamagePerTarget, charge.MarkedTargetBonus));
+
+                foreach (var statused in charge.Statused)
+                    events.Add(new StatusApplied(statused, charge.Status, charge.StatusDuration));
+
+                for (int i = 0; i < charge.Damage.Count; i++)
+                    EmitDamage(charge.Caught[i], charge.Damage[i], events);
+            }
+
 
             // Neutralizes from upkeep are applied by TurnStateMachine, so this
             // reports rather than resolves. It reports the cause, the mark
@@ -694,6 +712,18 @@ namespace NonaRoyale.Core
                     events.Add(new ZoneDeployed(outcome.Recipient, outcome.Cell, outcome.Amount));
                     break;
 
+                case EffectOutcomeKind.ChargeAttached:
+                    events.Add(new ZeroDayAttached(caster, outcome.Recipient));
+                    break;
+
+                // Placement again, with the caster as the subject: reported as
+                // a move from a progress to itself, exactly as a swap is,
+                // because the piece has already been placed and placement is
+                // not movement (§7.4).
+                case EffectOutcomeKind.Dashed:
+                    events.Add(new OperatorMoved(outcome.Recipient, outcome.Progress, outcome.Progress,
+                        _map.CellAt(outcome.Recipient.Owner, outcome.Progress)));
+                    break;
 
             }
         }

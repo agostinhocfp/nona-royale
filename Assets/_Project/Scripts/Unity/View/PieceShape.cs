@@ -54,6 +54,22 @@ namespace NonaRoyale.Unity.View
                 // board and Syla is not.
                 case "Mimi": return Primitives.Polygon(5, 90f);
 
+                // Javi, Support: a cross — the medic's mark. The only concave
+                // silhouette besides Kian's star, and the read is instant.
+                case "Javi": return Primitives.Cross;
+
+                // Kian, Artillery: a five-pointed star, point up. Sharp
+                // corners from every angle for the operator who can strike
+                // from anywhere on the board.
+                case "Kian": return Primitives.Star(5, 90f);
+
+                // Sanity, Engineer: an octagon — the nearest a polygon gets to
+                // a solid block of machinery. At twelve health he is also the
+                // largest piece on the board, so the hulking read comes from
+                // size and the silhouette only has to stay distinct from
+                // Bouncer's hexagon at the same end of the scale.
+                case "Sanity": return Primitives.Polygon(8, 0f);
+
                 default: return Primitives.Disc;
             }
         }

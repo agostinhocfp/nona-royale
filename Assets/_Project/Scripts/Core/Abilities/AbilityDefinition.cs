@@ -128,8 +128,8 @@ namespace NonaRoyale.Core.Abilities
         public bool HasUnlimitedRange => Range == UnlimitedRange;
 
         /// <summary>
-        /// True when any effect relocates its recipient — a pull, a swap, or a
-        /// push.
+        /// True when any effect relocates somebody — a pull, a swap, a push, or
+        /// a dash.
         /// </summary>
         /// <remarks>
         /// Exists for the safe-cell camping rule (§4.4, second amendment),
@@ -137,8 +137,15 @@ namespace NonaRoyale.Core.Abilities
         /// standing on a safe cell — the safe-cell taxi. Expressed as a
         /// question about effect kinds rather than a list of ability ids
         /// because content must never branch into logic (<see cref="Roster"/>):
-        /// today this is exactly Velvet Rope and Translocation, and any future
-        /// ally-mover inherits the rule without anyone remembering to add it.
+        /// today this is exactly Velvet Rope, Translocation and Collision, and
+        /// any future ally-mover inherits the rule without anyone remembering
+        /// to add it.
+        ///
+        /// <b>A dash moves the caster, not the target — and it still counts.</b>
+        /// The rule's shape is "no repositioning plays backwards out of a
+        /// shelter", and a sheltered caster dashing to an ally behind itself is
+        /// the same taxi with the seats exchanged: the camper spends the ability
+        /// and the camp is still handed down the track.
         /// </remarks>
         public bool ContainsPlacement
         {
@@ -148,7 +155,8 @@ namespace NonaRoyale.Core.Abilities
                 {
                     if (effect.Kind == EffectKind.PullToCaster ||
                         effect.Kind == EffectKind.SwapWithCaster ||
-                        effect.Kind == EffectKind.PushFromCaster)
+                        effect.Kind == EffectKind.PushFromCaster ||
+                        effect.Kind == EffectKind.DashToTarget)
                         return true;
                 }
 

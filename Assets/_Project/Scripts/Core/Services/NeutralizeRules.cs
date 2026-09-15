@@ -74,6 +74,7 @@ namespace NonaRoyale.Core.Services
         private readonly IReadOnlyList<OperatorState> _operators;
         private readonly IReadOnlyList<PlayerState> _players;
         private readonly CombatConfig _config;
+        private readonly DeferredOperatorEffects _operatorEffects;
 
         public NeutralizeRules(
             StatusRegistry statuses,
@@ -81,7 +82,8 @@ namespace NonaRoyale.Core.Services
             EnergyLedger energy,
             IReadOnlyList<OperatorState> operators,
             IReadOnlyList<PlayerState> players,
-            CombatConfig config)
+            CombatConfig config,
+            DeferredOperatorEffects operatorEffects = null)
         {
             _statuses = statuses ?? throw new ArgumentNullException(nameof(statuses));
             _abilities = abilities ?? throw new ArgumentNullException(nameof(abilities));
@@ -89,6 +91,11 @@ namespace NonaRoyale.Core.Services
             _operators = operators ?? throw new ArgumentNullException(nameof(operators));
             _players = players ?? throw new ArgumentNullException(nameof(players));
             _config = config ?? throw new ArgumentNullException(nameof(config));
+
+            // Optional, matching the other Zero-Day wiring: this is the one
+            // place every death funnels through, which is exactly where an
+            // attached charge learns its carrier's death cell (§6.4).
+            _operatorEffects = operatorEffects;
         }
 
         /// <summary>
@@ -114,6 +121,12 @@ namespace NonaRoyale.Core.Services
             // Likewise before the yard move: the bounty is refused when the
             // killer is the victim, and that comparison reads the victim.
             var bounty = PayBounty(op, killerOperatorId);
+
+            // Also before the yard move: a charge riding on this operator
+            // detonates on its death cell (§6.4), and once the piece is in the
+            // yard that cell is unrecoverable — progress is relative to a
+            // colour's own start, and the yard has no cell at all.
+            _operatorEffects?.OperatorDied(op);
 
             op.MoveTo(PathMap.YardProgress);   // track progress entirely lost
             op.RestoreHealth();

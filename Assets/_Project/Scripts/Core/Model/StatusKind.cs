@@ -47,6 +47,21 @@ namespace NonaRoyale.Core.Model
         /// Above's payout (§10.2). Carries its size in the entry's magnitude
         /// rather than in a config constant, so two sources of haste can differ.
         /// </summary>
-        Hastened = 7
+        Hastened = 7,
+
+        /// <summary>
+        /// A marker with no gameplay effect of its own: a Zero-Day grenade is
+        /// attached to this operator and detonates at its owner's next upkeep
+        /// (§5.10). It exists so the attachment is visible on the board and,
+        /// above all, so a cleanse has something to remove — stripping the
+        /// marker cancels the detonation.
+        /// </summary>
+        /// <remarks>
+        /// Magnitude is irrelevant and left at zero, which also keeps it out of
+        /// the speed sum. Unlike bleed or a mark it is not the payload — the
+        /// pending detonation lives in <c>DeferredOperatorEffects</c>, keyed on
+        /// the operator, and this status is only its tell.
+        /// </remarks>
+        ZeroDayCharge = 8
     }
 }

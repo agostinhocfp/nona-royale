@@ -38,6 +38,7 @@ namespace NonaRoyale.Core.Services
         private readonly NeutralizeRules _neutralize;
         private readonly WinConditions _win;
         private readonly DeferredCellEffects _cellEffects;
+        private readonly DeferredOperatorEffects _operatorEffects;
 
         /// <summary>
         /// Every operator in the match, flattened once at construction.
@@ -66,7 +67,8 @@ namespace NonaRoyale.Core.Services
             DamagePipeline damage,
             NeutralizeRules neutralize,
             WinConditions win,
-            DeferredCellEffects cellEffects)
+            DeferredCellEffects cellEffects,
+            DeferredOperatorEffects operatorEffects = null)
         {
             _players = players ?? throw new ArgumentNullException(nameof(players));
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
@@ -78,6 +80,11 @@ namespace NonaRoyale.Core.Services
             _neutralize = neutralize ?? throw new ArgumentNullException(nameof(neutralize));
             _win = win ?? throw new ArgumentNullException(nameof(win));
             _cellEffects = cellEffects ?? throw new ArgumentNullException(nameof(cellEffects));
+
+            // Optional for the same reason AbilityResolver's is: fixtures older
+            // than Zero-Day build the machine without it, and one is frozen
+            // red. Null means no operator-anchored charges ever fire.
+            _operatorEffects = operatorEffects;
 
             if (_players.Count == 0)
                 throw new ArgumentException("A match needs at least one player.", nameof(players));
@@ -156,9 +163,10 @@ namespace NonaRoyale.Core.Services
             }
 
             var beacons = FireBeacons(neutralized);
+            var charges = FireCharges(neutralized);
 
             Phase = TurnPhase.AwaitingRoll;
-            return new UpkeepReport(CurrentPlayer.Color, ticks, neutralized, beacons);
+            return new UpkeepReport(CurrentPlayer.Color, ticks, neutralized, beacons, charges);
         }
 
         /// <summary>
@@ -246,6 +254,35 @@ namespace NonaRoyale.Core.Services
         private IReadOnlyList<CellEffectResolution> FireBeacons(List<UpkeepNeutralize> neutralized)
         {
             var resolutions = _cellEffects.Fire(CurrentPlayer.Color, _allOperators);
+
+            foreach (var resolution in resolutions)
+            {
+                for (int i = 0; i < resolution.Damage.Count; i++)
+                {
+                    if (resolution.Damage[i].Outcome != DamageOutcome.Neutralized) continue;
+
+                    var victim = resolution.Caught[i];
+                    var outcome = _neutralize.Apply(victim, resolution.SourceOperatorId);
+
+                    neutralized.Add(new UpkeepNeutralize(victim, resolution.Cause, outcome));
+                }
+            }
+
+            return resolutions;
+        }
+
+        /// <summary>
+        /// Resolves every operator-anchored charge of the current seat that has
+        /// come due, and folds any kills into the upkeep's neutralize list
+        /// (§6.4). The operator-anchored twin of <see cref="FireBeacons"/>,
+        /// with the same division of labour: the registry owns the blast and
+        /// the pipeline calls, this owns what reaching zero means.
+        /// </summary>
+        private IReadOnlyList<OperatorEffectResolution> FireCharges(List<UpkeepNeutralize> neutralized)
+        {
+            if (_operatorEffects == null) return Array.Empty<OperatorEffectResolution>();
+
+            var resolutions = _operatorEffects.Fire(CurrentPlayer.Color, _allOperators);
 
             foreach (var resolution in resolutions)
             {

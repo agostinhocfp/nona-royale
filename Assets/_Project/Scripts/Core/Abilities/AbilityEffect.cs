@@ -272,5 +272,62 @@ namespace NonaRoyale.Core.Abilities
             return new AbilityEffect(EffectKind.Execute, EffectScope.PrimaryTarget, EffectAudience.EnemyOnly,
                 fallbackAmount, fallbackType, 0, default, 0, 0, 0, 0, numerator, denominator);
         }
+
+        /// <summary>
+        /// Attaches a charge to the target operator. It follows the target and
+        /// detonates at the caster's next upkeep on the target's current cell:
+        /// <paramref name="splashDamage"/> to every enemy within
+        /// <paramref name="radius"/>, plus <paramref name="primaryBonus"/> more
+        /// for the marked target, and the status on everyone caught (§6.4).
+        /// </summary>
+        /// <remarks>
+        /// <b>It has no recipients at cast time beyond the mark itself</b>, like
+        /// <see cref="PaintCell"/> — but it names an operator rather than a
+        /// place, so it keeps <see cref="EffectScope.PrimaryTarget"/> and means
+        /// it. The attachment is telegraphed two ways: an event when it lands,
+        /// and a <see cref="StatusKind.ZeroDayCharge"/> marker on the target,
+        /// which is what a cleanse strips to cancel the detonation (§5.10).
+        ///
+        /// Reused fields, exactly as <see cref="DeployZone"/> packs its payload:
+        /// <c>Amount</c> is the splash, <c>Stacks</c> the primary bonus,
+        /// <c>Status</c>/<c>Duration</c> the status everyone caught receives.
+        /// </remarks>
+        public static AbilityEffect AttachCharge(
+            int splashDamage, int primaryBonus, int radius,
+            DamageType damageType, StatusKind detonationStatus, int statusDuration,
+            EffectAudience audience = EffectAudience.EnemyOnly)
+        {
+            if (splashDamage < 0) throw new ArgumentOutOfRangeException(nameof(splashDamage));
+            if (primaryBonus < 0) throw new ArgumentOutOfRangeException(nameof(primaryBonus));
+            if (radius < 0) throw new ArgumentOutOfRangeException(nameof(radius));
+            if (statusDuration < 1) throw new ArgumentOutOfRangeException(nameof(statusDuration));
+
+            return new AbilityEffect(EffectKind.AttachCharge, EffectScope.PrimaryTarget, audience,
+                splashDamage, damageType, radius, detonationStatus, statusDuration,
+                primaryBonus, 0, 0, 0, 0);
+        }
+
+        /// <summary>
+        /// The caster dashes along the track to the target, dealing
+        /// <paramref name="pathDamage"/> to every enemy standing on the cells it
+        /// traverses, and is placed one step past the target — or one short of
+        /// it when that cell is occupied. Placement, not movement (§7.4, §7.6).
+        /// </summary>
+        /// <remarks>
+        /// <b>Defaults to <see cref="EffectAudience.Any"/></b>: the dash is the
+        /// mobility half of the ability and runs in both cast modes. Whatever
+        /// the target itself suffers belongs in separate enemy-audience effects
+        /// on the ability, which the cast-mode system filters — an ally anchor
+        /// is a pure reposition with the path damage still applying.
+        /// </remarks>
+        public static AbilityEffect Dash(
+            int pathDamage, DamageType damageType = DamageType.Normal,
+            EffectAudience audience = EffectAudience.Any)
+        {
+            if (pathDamage < 0) throw new ArgumentOutOfRangeException(nameof(pathDamage));
+
+            return new AbilityEffect(EffectKind.DashToTarget, EffectScope.PrimaryTarget, audience,
+                pathDamage, damageType, 0, default, 0, 0, 0, 0, 0, 0);
+        }
     }
 }
