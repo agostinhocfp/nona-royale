@@ -43,7 +43,7 @@ Set these on `MatchBootstrap` before pressing Play:
    - a pause of more than ~10 seconds with no action;
    - a question, even one asked to themselves;
    - a rejected command (it appears in the Events list);
-   - a misread: acting on something the screen did not say (clicking a piece to move it, expecting a cast to fire on selection, playing the wrong seat's operators).
+   - a misread: acting on something the screen did not say (expecting a cast to fire on selection, clicking a landing that is not the selected piece's, playing the wrong seat's operators). Clicking a piece and then its landing is how the board works since 2026-09-15, not a misread.
 5. **Debrief (5 minutes).** Pause a match in progress and ask the questions in §4, pointing at the screen. Write down the answers word for word.
 
 ## 4. Pass bar

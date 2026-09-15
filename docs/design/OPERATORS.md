@@ -40,9 +40,9 @@ All four are now filled: Bouncer, Syla, Mimi and Javi. Kurbyn is tagged **Brawle
 
 ## The house and the rest
 
-Four operators work for the house: Bouncer on the door, Kurbyn sent after whoever gets past it, Javi keeping both of them upright, and Sanity keeping the building running. Syla and Mimi are outside contractors. **Luka is neither**: nobody pays him and nobody sent him. He is the first operator with a grudge against the house, a third camp chosen on purpose (2026-09-15).
+Four operators work for the house: Bouncer on the door, Kurbyn sent after whoever gets past it, Javi keeping both of them upright, and Sanity keeping the building running. Four are outside contractors: Syla, Mimi, and — decided 2026-09-15, identities still unwritten — Kian and Nuetu. **Luka is neither**: nobody pays him and nobody sent him. He is the first operator with a grudge against the house, a third camp chosen on purpose (2026-09-15).
 
-That split emerged rather than being designed, and it is worth ratifying or breaking on purpose. It currently gives the house a visual language — charcoal, oxblood and brass livery, worn differently by each — and leaves the contractors free to look like anything, which is real work being done at board scale. Four unwritten operators will tip it either way.
+**The split is ratified (2026-09-15): four house, four contractors, one grudge.** It emerged rather than being designed, and it now stands on purpose. It gives the house a visual language — charcoal, oxblood and brass livery, worn differently by each — and leaves the contractors free to look like anything, which is real work being done at board scale.
 
 ---
 
@@ -173,7 +173,7 @@ The whole kit is a duel. Blind Spot puts him next to his target, and the threat 
 ## Design constraints on future operators
 
 - **Silhouette-first.** Identifiable in pure black at board scale (`ART_DIRECTION.md` §5). Five shapes are spoken for; a sixth has to stay legible beside all of them at a third of a cell.
-- **Powers are technology, never magic.** Every ability must have a plausible near-future device behind it — an emitter, a rig, a drone, a tether. This is locked (`ART_DIRECTION.md` §0).
+- **Powers are technology by default.** Every ability should have a plausible near-future device behind it: an emitter, a rig, a drone, a tether, a ring. `ART_DIRECTION.md` §0 keeps the door open for rare, very light magical touches, always drawn in the cool register. Treat magic as an exception to argue for, never a shortcut past designing the device. Locked in that form (confirmed 2026-09-15).
 - **A discreet tech tell.** Formalwear silhouette, with one visible device that hints at the ability.
 - **Expressible in the existing rules**, per Roster scope above.
 - **No operator carries a stat nobody can feel.** Energy Efficiency was cut for exactly this reason: one value on one operator, blank on two, and no rule ever attached to it.
@@ -188,12 +188,12 @@ The whole kit is a duel. Blind Spot puts him next to his target, and the threat 
 - [ ] Resolve **Brawler**: define it as a fifth archetype, or re-tag Kurbyn. More pressing now the base four are filled.
 - [ ] **Finish Mimi** — an area-damage-over-time status for Cryo Field. (Tech landed 2026-09-15.)
 - [x] ~~**Write Luka**~~: look, fiction, device and the Blind Spot name are done (2026-09-15). Whether "Duelist" is an archetype is still open, together with Brawler and Engineer.
-- [ ] **Write Kian and Nuetu.** Both are complete in `COMBAT_SYSTEMS.md` §10.6 and §10.7 and have no entry here.
+- [ ] **Write Kian and Nuetu** — deferred (2026-09-15): backstory waits until later in development. Both are complete in `COMBAT_SYSTEMS.md` §10.6 and §10.7, both are contractors, and Nuetu's piece is the disc.
 - [ ] **Javi's entry is stale.** It still says Trauma Plate is unbuilt; §10.5 has him complete.
-- [ ] **`ART_DIRECTION.md` does not exist.** This file, `PROJECT_IDENTITY.md`, `PRESENTATION.md`, `ART_PIPELINE.md` and ADR-0001 all cite it, including the locked tech-not-magic rule (§0) and the silhouette rule (§5). The tech-not-magic rule survives in `PROJECT_IDENTITY.md` and in the constraints above. The rest of what those citations point to has no source.
+- [x] ~~**`ART_DIRECTION.md` missing from the repo.**~~ Restored to `docs/art/` from project knowledge (2026-09-15), with its magic rule reconciled to the constraint above.
 - [ ] **Finish Javi** — a shield with a per-ability value, which lands with the mitigation pass.
 - [ ] **Measure both.** They are in the pool and nothing has ever dealt them: the harness still fields the alpha three, so not one of their four live abilities has run in a simulated match. Three questions wait on it — whether Cryo-Pulse outclasses its peer at the same cost, whether Translocation is as strong a denial tool as it looks, and whether a healer turns a combat game into a race.
-- [ ] **Ratify or break the house split.** Three of five work for the house. It emerged rather than being designed, and four unwritten operators will tip it either way.
+- [x] ~~**Ratify or break the house split.**~~ Ratified 2026-09-15: four house, four contractors (Syla, Mimi, Kian, Nuetu), and Luka on his own.
 - [ ] Settle the **tech level**. Bouncer has a rope and Kurbyn has a neural-prediction rig; Mimi has a singularity core and tachyon targeting. Those are not the same world. Either the ceiling moves up for everyone or Mimi's fiction comes down to meet the others — but nine operators should not be spread across three centuries by accident.
 - [ ] Write the remaining **four operators**, mechanically and in flavour.
 - [ ] Backstory and world placement — how the five connect to the casino, to each other, and to whoever runs the house.

@@ -75,6 +75,14 @@ namespace NonaRoyale.Unity.View
                 // read as Javi's cross; four points, because five is Kian's.
                 case "Luka": return Primitives.Star(4, 45f);
 
+                // Nuetu, Bruiser: the disc — the only round piece, read as a
+                // plate or a swarm. It was the fallback he drew with by
+                // accident; adopted on purpose 2026-09-15, so the fallback
+                // below now shares a shape with a real operator. An unknown
+                // operator is still drawn (PRESENTATION §5), and the art pass
+                // replaces every procedural shape with a sprite anyway.
+                case "Nuetu": return Primitives.Disc;
+
                 default: return Primitives.Disc;
             }
         }

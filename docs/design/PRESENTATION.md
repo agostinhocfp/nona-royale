@@ -86,6 +86,20 @@ The cost is one extra click per ability use, in a match already running past its
 
 Deploy and move fire on one click. Neither spends energy, and both are already previewed.
 
+### 4.1 The board is the primary control
+
+_Added 2026-09-15, GUI phase increment E._ A stranger's first instinct is to click a piece, so the board answers clicks and the panel becomes the second way to do the same things. Both go through the same intents, so a click and a button can never disagree.
+
+- **Click one of your pieces** to select it. Its landings are drawn alone, each labelled with the pips it spends. A second click lets go.
+- **Click a landing** to move there. With several dice arriving on the same cell, the fewest pips win: the same result for less is never worse.
+- **Click a pulsing yard piece** to deploy it. The pulse comes from `GameEngine.CanDeploy`, the same check the command runs.
+- **With an ability selected, a click aims it.** A cell ability snaps to the nearest legal cell. A target ability takes an amber-ringed piece, and the rings come from `LegalTargetsFor`. Clicking your own non-target piece switches the selection.
+- **Right-click or Esc steps back:** first the aim, then the ability, then the piece.
+- **Keys:** Space rolls, E ends the turn, 1–3 pick an ability, Enter casts.
+- **A landing beats a piece only for the selected operator.** With nothing selected, a piece wins, so clicking your own piece never moves a different operator whose landing shares its cell.
+- **Only clickable pieces lift under the pointer**: your own, and legal targets. A lift that promised nothing would teach the player to click at random.
+- **The selection belongs to the seat that made it** and is dropped when the turn passes.
+
 ---
 
 ## 5. Unknown state still draws

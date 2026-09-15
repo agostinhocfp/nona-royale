@@ -495,17 +495,11 @@ namespace NonaRoyale.Core
             var op = FindOwnedOperator(command.OperatorId, events);
             if (op == null) return;
 
-            if (!op.IsInYard)
-            {
-                events.Add(new CommandRejected($"{op.Name} is already on the board"));
-                return;
-            }
+            string refusal = DeployRefusal(op);
 
-            int face = _movement.DeployFace;
-
-            if (!_unspentDice.Contains(face))
+            if (refusal != null)
             {
-                events.Add(new CommandRejected($"deploying needs an unspent {face}"));
+                events.Add(new CommandRejected(refusal));
                 return;
             }
 
@@ -514,11 +508,34 @@ namespace NonaRoyale.Core
             // later deploy could not take a die back out of it. Now a deploy
             // just removes a die from the unspent set, so moving with one die
             // and deploying with the other in either order is coherent (§6).
-            _unspentDice.Remove(face);
+            _unspentDice.Remove(_movement.DeployFace);
 
             op.MoveTo(_movement.DeployProgress);
 
             events.Add(new OperatorDeployed(op, _map.CellAt(op.Owner, op.Progress)));
+        }
+
+        /// <summary>
+        /// Why deploying this operator would be refused right now, or null if
+        /// it would not be.
+        /// </summary>
+        /// <remarks>
+        /// Shared by <see cref="Deploy"/> and <see cref="CanDeploy"/>, so the
+        /// board's "click to deploy" mark and the command cannot disagree.
+        /// <c>Deploy</c> runs the phase and ownership checks first with its own
+        /// messages; repeating them here is what lets <c>CanDeploy</c> answer
+        /// for any operator at any moment.
+        /// </remarks>
+        private string DeployRefusal(OperatorState op)
+        {
+            if (_turns.Phase != TurnPhase.Action) return "roll first";
+            if (op.Owner != _turns.CurrentPlayer.Color) return $"{op.Name} is not yours to command";
+            if (!op.IsInYard) return $"{op.Name} is already on the board";
+
+            int face = _movement.DeployFace;
+            if (!_unspentDice.Contains(face)) return $"deploying needs an unspent {face}";
+
+            return null;
         }
 
         private void Move(MoveCommand command, List<IGameEvent> events)
@@ -876,6 +893,36 @@ namespace NonaRoyale.Core
         /// </summary>
         public IReadOnlyList<CellRef> LegalCellsFor(OperatorState caster, AbilityDefinition ability) =>
             _abilities.LegalCells(caster, ability);
+
+        /// <summary>
+        /// Whether a <see cref="DeployCommand"/> for this operator would be
+        /// accepted right now.
+        /// </summary>
+        /// <remarks>
+        /// The board deploys an operator when its yard piece is clicked, so it
+        /// has to know which yard pieces to mark before the click, and it must
+        /// not work that out from the dice itself (PRESENTATION §1). The answer
+        /// comes from the same checks the command runs.
+        /// </remarks>
+        public bool CanDeploy(OperatorState op)
+        {
+            if (op == null) throw new ArgumentNullException(nameof(op));
+            return DeployRefusal(op) == null;
+        }
+
+        /// <summary>
+        /// Whether an operator has reached HOME and left play for the match (§8).
+        /// </summary>
+        /// <remarks>
+        /// The HUD shows each operator as waiting, on the board or home.
+        /// Progress alone cannot say which without restating the board's
+        /// geometry in the view.
+        /// </remarks>
+        public bool IsHome(OperatorState op)
+        {
+            if (op == null) throw new ArgumentNullException(nameof(op));
+            return _win.HasFinished(op);
+        }
 
 
         /// <summary>

@@ -29,6 +29,12 @@ namespace NonaRoyale.Unity.Composition
     /// back as events; the view never inspects a service or mutates state. If a
     /// move looks wrong on screen, the bug is in the core and there is an
     /// EditMode test missing for it.
+    ///
+    /// <b>The board is the primary control</b> (GUI phase, increment E). Click
+    /// a piece to select it, click where it lands to move it, click a yard
+    /// piece to deploy it, click a ringed piece or cell to aim. Right-click or
+    /// Esc steps back. Every mark and every clickable thing comes from an
+    /// engine query; the click only picks between the engine's answers.
     /// </remarks>
     public sealed class MatchBootstrap : MonoBehaviour, IControlPanelHost
     {
@@ -68,10 +74,34 @@ namespace NonaRoyale.Unity.Composition
         private readonly List<OperatorPiece> _pieces = new List<OperatorPiece>();
         private readonly List<string> _log = new List<string>();
 
-        private OperatorState _selectedCaster;
+        private OperatorState _selectedOperator;
         private OperatorState _selectedTarget;
         private CellRef? _selectedCell;
         private IReadOnlyList<CellRef> _legalCells = new List<CellRef>();
+        private IReadOnlyList<OperatorState> _castTargets = new List<OperatorState>();
+        private readonly List<MoveOption> _moveOptions = new List<MoveOption>();
+        private OperatorPiece _hovered;
+        private CellLabelLayer _cellLabels;
+
+        /// <summary>
+        /// One way to spend the dice, as the board offers it: this operator,
+        /// this die (or all of them), landing on this cell.
+        /// </summary>
+        private readonly struct MoveOption
+        {
+            public MoveOption(OperatorState op, int? die, int pips, CellRef cell)
+            {
+                Operator = op;
+                Die = die;
+                Pips = pips;
+                Cell = cell;
+            }
+
+            public OperatorState Operator { get; }
+            public int? Die { get; }
+            public int Pips { get; }
+            public CellRef Cell { get; }
+        }
         private AbilityDefinition _selectedAbility;
         private HighlightLayer _highlights;
         private FeedbackLayer _feedback;
@@ -91,7 +121,8 @@ namespace NonaRoyale.Unity.Composition
 
             _pieces.Clear();
             _log.Clear();
-            _selectedCaster = null;
+            _hovered = null;
+            _selectedOperator = null;
             _selectedTarget = null;
             _selectedAbility = null;
             _selectedCell = null;
@@ -152,6 +183,8 @@ namespace NonaRoyale.Unity.Composition
             _turnStrip.Bind(_hudRoot.Root);
             _controls = GetComponent<ControlPanel>() ?? gameObject.AddComponent<ControlPanel>();
             _controls.Bind(_hudRoot.Root, this);
+            _cellLabels = GetComponent<CellLabelLayer>() ?? gameObject.AddComponent<CellLabelLayer>();
+            _cellLabels.Bind(_hudRoot.Root);
 
             FrameCamera();
             Handle(_match.Engine.Start(), immediate: true);
@@ -279,59 +312,221 @@ namespace NonaRoyale.Unity.Composition
                 FrameCamera();
             }
 
+            if (_match == null) return;
+
+            HandleKeys();
+            UpdateHover();
+
             if (Input.GetMouseButtonDown(0)) HandleBoardClick();
+            if (Input.GetMouseButtonDown(1)) StepBack();
+        }
+
+        // ── Board-first input ────────────────────────────────────────────
+
+        private const float PieceClickRadius = 0.45f;   // cells
+        private const float CellSnapRadius = 0.55f;     // cells
+
+        /// <summary>
+        /// Keyboard shortcuts. Each one is a panel button pressed another way,
+        /// so it goes through the same intent.
+        /// </summary>
+        private void HandleKeys()
+        {
+            if (Input.GetKeyDown(KeyCode.Escape)) StepBack();
+
+            if (_match.Engine.MatchOver) return;
+
+            if (Input.GetKeyDown(KeyCode.Space)) Host.Roll();
+            if (Input.GetKeyDown(KeyCode.E)) Host.EndTurn();
+
+            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) Host.Cast();
+
+            if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1)) SelectAbilityAt(0);
+            if (Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Keypad2)) SelectAbilityAt(1);
+            if (Input.GetKeyDown(KeyCode.Alpha3) || Input.GetKeyDown(KeyCode.Keypad3)) SelectAbilityAt(2);
+        }
+
+        private void SelectAbilityAt(int index)
+        {
+            if (_selectedOperator == null) return;
+            if (!_match.AbilitiesByOperator.TryGetValue(_selectedOperator.Id, out var abilities)) return;
+            if (index < 0 || index >= abilities.Count) return;
+
+            Host.ToggleAbility(abilities[index]);
+            _controls?.MarkDirty();
         }
 
         /// <summary>
-        /// Turns a board click into the selected cell for a cell-targeted cast.
+        /// Undoes the last choice: the aim, then the ability, then the operator.
         /// </summary>
-        /// <remarks>
-        /// Only legal cells are clickable, and the engine decided which those
-        /// are (PRESENTATION §1) — this just snaps the click to the nearest
-        /// highlighted cell. A click anywhere else clears the choice rather
-        /// than guessing, so a miss never silently re-aims a strike.
-        /// </remarks>
-        private void HandleBoardClick()
+        private void StepBack()
         {
-            if (_match == null || _selectedAbility == null || !_selectedAbility.RequiresCell) return;
-            if (_selectedCaster == null || _selectedCaster.IsInYard) return;
+            if (_selectedTarget != null || _selectedCell != null)
+            {
+                _selectedTarget = null;
+                _selectedCell = null;
+            }
+            else if (_selectedAbility != null) _selectedAbility = null;
+            else if (_selectedOperator != null) _selectedOperator = null;
+            else return;
 
+            SelectionChanged();
+        }
+
+        /// <summary>
+        /// Whether the pointer is over either panel. The EventSystem sees uGUI
+        /// only, so the OnGUI rect is still guarded by hand while that panel
+        /// exists (ADR-0008 consequence 4); both go in the same commit.
+        /// </summary>
+        private bool PointerOverPanel()
+        {
             if (showPanel && useLegacyPanel)
             {
                 var gui = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
-                if (new Rect(10, 10, PanelWidth - 20f, Screen.height - 20).Contains(gui)) return;
+                if (new Rect(10, 10, PanelWidth - 20f, Screen.height - 20).Contains(gui)) return true;
             }
 
-            // The EventSystem sees uGUI and nothing else, so it cannot replace the
-            // rect guard above while the OnGUI panel still exists. Both apply until
-            // the OnGUI path is deleted, in the same commit (ADR-0008 consequence 4).
-            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
-
-            var camera = Camera.main;
-            if (camera == null) return;
-
-            Vector3 world = camera.ScreenToWorldPoint(Input.mousePosition);
-
-            CellRef? nearest = null;
-            float best = cellSpacing * cellSpacing * 0.3f;   // snap radius ≈ 0.55 of a cell
-
-            foreach (var cell in _legalCells)
-            {
-                Vector3 position = _layout.PositionOf(cell);
-                float dx = position.x - world.x;
-                float dy = position.y - world.y;
-                float sq = dx * dx + dy * dy;
-
-                if (sq < best)
-                {
-                    best = sq;
-                    nearest = cell;
-                }
-            }
-
-            _selectedCell = nearest;
-            SelectionChanged();
+            return BoardPointer.IsOverHud;
         }
+
+        /// <summary>
+        /// Lifts the piece under the pointer, but only if clicking it would do
+        /// something: the current seat's own pieces, and legal targets.
+        /// </summary>
+        private void UpdateHover()
+        {
+            OperatorPiece hovered = null;
+
+            if (!_match.Engine.MatchOver && !PointerOverPanel() && BoardPointer.TryWorldPoint(out var world))
+            {
+                var piece = BoardPointer.PieceAt(world, _pieces, PieceClickRadius * cellSpacing);
+
+                if (piece != null && (IsCommandable(piece.Operator) || _castTargets.Contains(piece.Operator)))
+                    hovered = piece;
+            }
+
+            if (ReferenceEquals(hovered, _hovered)) return;
+
+            _hovered = hovered;
+            RefreshMarks();
+        }
+
+        /// <summary>
+        /// Turns a board click into an intent: aim, move, deploy or select.
+        /// </summary>
+        /// <remarks>
+        /// <b>With an ability selected, a click aims it.</b> A cell ability
+        /// snaps to the nearest legal cell, and a miss clears the aim rather
+        /// than guessing, so a stray click never silently re-aims a strike. A
+        /// target ability takes an amber-ringed piece. Clicking one of your own
+        /// pieces that is not a legal target switches the selection to it.
+        ///
+        /// <b>Otherwise a landing wins over a piece, but only for the selected
+        /// operator.</b> A landing can sit on an enemy (that is a collision) or
+        /// a friend, and the player aimed at the landing. With nothing
+        /// selected, a piece wins: clicking your own piece must never move a
+        /// different operator whose landing happens to share its cell.
+        ///
+        /// <b>A deployable yard piece deploys on click.</b> Deploy spends no
+        /// energy and lands on a safe cell, so it keeps the one-click rule
+        /// PRESENTATION §4 gives it.
+        /// </remarks>
+        private void HandleBoardClick()
+        {
+            if (_match.Engine.MatchOver || PointerOverPanel()) return;
+            if (!BoardPointer.TryWorldPoint(out var world)) return;
+
+            var piece = BoardPointer.PieceAt(world, _pieces, PieceClickRadius * cellSpacing);
+
+            if (_selectedOperator != null && _selectedAbility != null)
+            {
+                AimAt(world, piece);
+                return;
+            }
+
+            if (_selectedOperator != null && TryMoveAt(world, focusOnSelected: true)) return;
+
+            if (piece != null && IsCommandable(piece.Operator))
+            {
+                if (_match.Engine.CanDeploy(piece.Operator)) Host.Deploy(piece.Operator);
+                else Host.ToggleOperator(piece.Operator);
+
+                _controls?.MarkDirty();
+                return;
+            }
+
+            if (_selectedOperator == null)
+            {
+                TryMoveAt(world, focusOnSelected: false);
+                return;
+            }
+
+            // A click on empty board lets go of the selection.
+            Host.ToggleOperator(_selectedOperator);
+        }
+
+        private void AimAt(Vector3 world, OperatorPiece piece)
+        {
+            if (_selectedAbility.RequiresCell)
+            {
+                _selectedCell = BoardPointer.CellAt(world, _legalCells, _layout, CellSnapRadius * cellSpacing);
+                SelectionChanged();
+                return;
+            }
+
+            if (piece != null && _selectedAbility.RequiresTarget && _castTargets.Contains(piece.Operator))
+            {
+                Host.ToggleTarget(piece.Operator);
+                return;
+            }
+
+            if (piece != null && IsCommandable(piece.Operator))
+            {
+                Host.ToggleOperator(piece.Operator);
+                return;
+            }
+
+            if (_selectedAbility.RequiresTarget && _selectedTarget != null)
+            {
+                _selectedTarget = null;
+                SelectionChanged();
+            }
+        }
+
+        /// <summary>
+        /// Moves the operator whose landing is under the pointer, if exactly
+        /// one operator could land there.
+        /// </summary>
+        /// <remarks>
+        /// <b>When several dice land on the same cell, the fewest pips win.</b>
+        /// Rounding and HOME can make a single die and the whole roll arrive at
+        /// the same place; spending less for the same result is never worse, and
+        /// the label on the cell already shows the die this picks.
+        /// </remarks>
+        private bool TryMoveAt(Vector3 world, bool focusOnSelected)
+        {
+            var candidates = focusOnSelected
+                ? _moveOptions.Where(o => ReferenceEquals(o.Operator, _selectedOperator)).ToList()
+                : _moveOptions;
+
+            if (candidates.Count == 0) return false;
+
+            var cell = BoardPointer.CellAt(
+                world, candidates.Select(o => o.Cell).Distinct(), _layout, CellSnapRadius * cellSpacing);
+
+            if (cell == null) return false;
+
+            var here = candidates.Where(o => o.Cell.Equals(cell.Value)).ToList();
+            if (here.Select(o => o.Operator.Id).Distinct().Count() != 1) return false;
+
+            var best = here.OrderBy(o => o.Pips).First();
+            Host.Move(best.Operator, best.Die);
+            _controls?.MarkDirty();
+            return true;
+        }
+
+        private bool IsCommandable(OperatorState op) =>
+            !_match.Engine.MatchOver && op.Owner == _match.Engine.CurrentPlayer.Color;
 
         // ── Driving the engine ───────────────────────────────────────────
 
@@ -349,6 +544,16 @@ namespace NonaRoyale.Unity.Composition
             }
 
             if (_log.Count > 200) _log.RemoveRange(0, _log.Count - 200);
+
+            // The selection belongs to the seat that made it.
+            if (_selectedOperator != null &&
+                (_match.Engine.MatchOver || _selectedOperator.Owner != _match.Engine.CurrentPlayer.Color))
+            {
+                _selectedOperator = null;
+                _selectedAbility = null;
+                _selectedTarget = null;
+                _selectedCell = null;
+            }
 
             if (!immediate)
             {
@@ -387,13 +592,13 @@ namespace NonaRoyale.Unity.Composition
         bool IControlPanelHost.RandomSquads => randomSquads;
         IReadOnlyList<string> IControlPanelHost.Log => _log;
 
-        OperatorState IControlPanelHost.SelectedCaster => _selectedCaster;
+        OperatorState IControlPanelHost.SelectedOperator => _selectedOperator;
         AbilityDefinition IControlPanelHost.SelectedAbility => _selectedAbility;
         OperatorState IControlPanelHost.SelectedTarget => _selectedTarget;
         CellRef? IControlPanelHost.SelectedCell => _selectedCell;
 
         bool IControlPanelHost.CastReady =>
-            _selectedCaster != null &&
+            _selectedOperator != null &&
             _selectedAbility != null &&
             (!_selectedAbility.RequiresCell || _selectedCell != null) &&
             (!_selectedAbility.RequiresTarget || _selectedTarget != null);
@@ -418,12 +623,12 @@ namespace NonaRoyale.Unity.Composition
         /// </remarks>
         IReadOnlyList<OperatorState> IControlPanelHost.CastTargets()
         {
-            if (_match == null || _selectedCaster == null || _selectedAbility == null)
+            if (_match == null || _selectedOperator == null || _selectedAbility == null)
                 return new List<OperatorState>();
 
             return _match.Engine
-                .LegalTargetsFor(_selectedCaster, _selectedAbility)
-                .Where(o => !ReferenceEquals(o, _selectedCaster))
+                .LegalTargetsFor(_selectedOperator, _selectedAbility)
+                .Where(o => !ReferenceEquals(o, _selectedOperator))
                 .ToList();
         }
 
@@ -435,9 +640,9 @@ namespace NonaRoyale.Unity.Composition
 
         void IControlPanelHost.Move(OperatorState op, int? dieFace) => Send(new MoveCommand(op.Id, dieFace));
 
-        void IControlPanelHost.ToggleCaster(OperatorState op)
+        void IControlPanelHost.ToggleOperator(OperatorState op)
         {
-            _selectedCaster = ReferenceEquals(op, _selectedCaster) ? null : op;
+            _selectedOperator = ReferenceEquals(op, _selectedOperator) ? null : op;
             _selectedAbility = null;      // an ability belongs to its caster
             _selectedTarget = null;       // and a target belongs to its ability
             _selectedCell = null;         // as does a cell
@@ -447,12 +652,12 @@ namespace NonaRoyale.Unity.Composition
 
         void IControlPanelHost.ToggleAbility(AbilityDefinition ability)
         {
-            if (_match == null || _selectedCaster == null || ability == null) return;
+            if (_match == null || _selectedOperator == null || ability == null) return;
 
             bool chosen = _selectedAbility != null && _selectedAbility.Id == ability.Id;
 
             // Selecting needs the engine's say-so; clearing never does.
-            if (!chosen && _match.Engine.CheckAbility(_selectedCaster, ability) != AbilityAvailability.Ready)
+            if (!chosen && _match.Engine.CheckAbility(_selectedOperator, ability) != AbilityAvailability.Ready)
                 return;
 
             _selectedAbility = chosen ? null : ability;
@@ -473,7 +678,7 @@ namespace NonaRoyale.Unity.Composition
             if (!Host.CastReady) return;
 
             Send(new UseAbilityCommand(
-                _selectedCaster.Id, _selectedAbility.Id,
+                _selectedOperator.Id, _selectedAbility.Id,
                 _selectedAbility.RequiresTarget && _selectedTarget != null
                     ? _selectedTarget.Id
                     : (int?)null,
@@ -622,8 +827,8 @@ namespace NonaRoyale.Unity.Composition
         }
 
         /// <summary>
-        /// Rebuilds the landing ghosts and, if an ability is selected, the cells
-        /// it reaches.
+        /// Rebuilds the landing ghosts, the cells or pieces the selected ability
+        /// can aim at, and every piece's marks.
         /// </summary>
         /// <remarks>
         /// Landings come from the engine rather than being recomputed here.
@@ -635,35 +840,84 @@ namespace NonaRoyale.Unity.Composition
         /// operator. The pooled landing is drawn bold and each single-die landing
         /// faintly, so what splitting costs is visible on the board before a die
         /// is clicked rather than discovered after.
+        ///
+        /// <b>A selected operator gets its landings alone, labelled with the
+        /// pips each spends.</b> With nothing selected, every landing is shown
+        /// unlabelled: three operators' labels at once read as one menu when
+        /// they are three.
         /// </remarks>
         private void RefreshHighlights()
         {
             if (_highlights == null || _match == null) return;
 
             _highlights.Clear();
-            if (_match.Engine.MatchOver) return;
+            _cellLabels?.Clear();
+            _moveOptions.Clear();
+            _legalCells = new List<CellRef>();
+            _castTargets = new List<OperatorState>();
 
-            var pooled = new List<CellRef>();
-            var perDie = new List<CellRef>();
+            if (_match.Engine.MatchOver)
+            {
+                RefreshMarks();
+                return;
+            }
+
+            CollectMoveOptions();
+            DrawMoveOptions();
+
+            if (_selectedOperator != null && _selectedAbility != null && !_selectedOperator.IsInYard)
+                DrawAim();
+
+            RefreshMarks();
+        }
+
+        private void CollectMoveOptions()
+        {
+            int pooledPips = _match.Engine.UnspentDice.Sum();
 
             foreach (var landing in _match.Engine.PreviewLandings())
             {
                 var op = _match.Operators.FirstOrDefault(o => o.Id == landing.OperatorId);
                 if (op == null) continue;
 
-                var cell = _match.Map.CellAt(op.Owner, landing.Progress);
+                _moveOptions.Add(new MoveOption(
+                    op, landing.DieFace, landing.DieFace ?? pooledPips,
+                    _match.Map.CellAt(op.Owner, landing.Progress)));
+            }
+        }
 
-                if (landing.IsPooled) pooled.Add(cell);
-                else perDie.Add(cell);
+        private void DrawMoveOptions()
+        {
+            bool focus = _selectedOperator != null &&
+                         _moveOptions.Any(o => ReferenceEquals(o.Operator, _selectedOperator));
+
+            var shown = focus
+                ? _moveOptions.Where(o => ReferenceEquals(o.Operator, _selectedOperator))
+                : _moveOptions;
+
+            var pooled = new List<CellRef>();
+            var perDie = new List<CellRef>();
+
+            // One marker per operator per cell: the option a click would pick.
+            foreach (var group in shown.GroupBy(o => (o.Operator.Id, o.Cell)))
+            {
+                var best = group.OrderBy(o => o.Pips).First();
+                bool bold = group.Any(o => o.Die == null);
+
+                (bold ? pooled : perDie).Add(best.Cell);
+
+                if (focus && _cellLabels != null)
+                {
+                    var at = _layout.PositionOf(best.Cell) + new Vector3(0.3f, 0.3f, 0f) * cellSpacing;
+                    _cellLabels.Show(at, best.Pips.ToString(), strong: bold);
+                }
             }
 
             _highlights.ShowLandings(pooled, perDie);
+        }
 
-            _legalCells = new List<CellRef>();
-
-            if (_selectedCaster == null || _selectedAbility == null || _selectedCaster.IsInYard)
-                return;
-
+        private void DrawAim()
+        {
             // A cell-targeted ability shows the cells a cast would actually
             // accept instead of a bare range ring — range, home columns and
             // the camping rule (§4.4) come pre-applied from the engine, and
@@ -671,7 +925,7 @@ namespace NonaRoyale.Unity.Composition
             // energy is spent.
             if (_selectedAbility.RequiresCell)
             {
-                _legalCells = _match.Engine.LegalCellsFor(_selectedCaster, _selectedAbility);
+                _legalCells = _match.Engine.LegalCellsFor(_selectedOperator, _selectedAbility);
 
                 // A choice can stop being legal under the player's feet — the
                 // caster stepped onto a safe cell, say — so a stale cell is
@@ -683,14 +937,49 @@ namespace NonaRoyale.Unity.Composition
                 return;
             }
 
+            if (_selectedAbility.RequiresTarget)
+            {
+                _castTargets = Host.CastTargets();
+
+                if (_selectedTarget != null && !_castTargets.Contains(_selectedTarget))
+                    _selectedTarget = null;
+            }
+
             // An unlimited range has no ring to draw, and handing int.MaxValue to
             // a routine that iterates it is not a large highlight — it is a hang.
             if (!_selectedAbility.HasUnlimitedRange)
             {
                 _highlights.ShowRange(
                     _match.Map,
-                    _match.Map.CellAt(_selectedCaster.Owner, _selectedCaster.Progress),
+                    _match.Map.CellAt(_selectedOperator.Owner, _selectedOperator.Progress),
                     _selectedAbility.Range);
+            }
+        }
+
+        /// <summary>
+        /// Tells every piece how it is marked. Every mark is an engine answer
+        /// or the player's own selection.
+        /// </summary>
+        private void RefreshMarks()
+        {
+            if (_match == null) return;
+
+            var engine = _match.Engine;
+
+            foreach (var piece in _pieces)
+            {
+                if (piece == null) continue;
+
+                var op = piece.Operator;
+                var marks = PieceMark.None;
+
+                if (ReferenceEquals(op, _selectedOperator)) marks |= PieceMark.Selected;
+                if (ReferenceEquals(op, _selectedTarget)) marks |= PieceMark.Target;
+                else if (_castTargets.Contains(op)) marks |= PieceMark.Targetable;
+                if (!engine.MatchOver && IsCommandable(op) && engine.CanDeploy(op)) marks |= PieceMark.Deployable;
+                if (ReferenceEquals(piece, _hovered)) marks |= PieceMark.Hovered;
+
+                piece.SetMarks(marks);
             }
         }
 
@@ -839,14 +1128,14 @@ namespace NonaRoyale.Unity.Composition
                     DrawMoveButtons(op, dice);
                 }
 
-                bool selected = ReferenceEquals(op, _selectedCaster);
+                bool selected = ReferenceEquals(op, _selectedOperator);
                 if (GUILayout.Toggle(selected, "cast", GUI.skin.button, GUILayout.Width(42)) != selected)
-                    Host.ToggleCaster(op);
+                    Host.ToggleOperator(op);
 
                 GUILayout.EndHorizontal();
             }
 
-            if (_selectedCaster != null) DrawAbilities(seat);
+            if (_selectedOperator != null) DrawAbilities(seat);
 
             DrawLog();
         }
@@ -930,9 +1219,9 @@ namespace NonaRoyale.Unity.Composition
         private void DrawAbilities(PlayerState seat)
         {
             GUILayout.Space(8);
-            GUILayout.Label($"<b>{_selectedCaster.Name}</b>");
+            GUILayout.Label($"<b>{_selectedOperator.Name}</b>");
 
-            if (!_match.AbilitiesByOperator.TryGetValue(_selectedCaster.Id, out var abilities)) return;
+            if (!_match.AbilitiesByOperator.TryGetValue(_selectedOperator.Id, out var abilities)) return;
 
             // Select, then cast. The extra click buys a look at the range before
             // spending energy, which matters on a board where reach turned out
@@ -945,7 +1234,7 @@ namespace NonaRoyale.Unity.Composition
                 // energy and cooldowns itself (ADR-0004 amendment). Before this,
                 // a player found out an ability was on cooldown by pressing it
                 // and reading the rejection.
-                var availability = _match.Engine.CheckAbility(_selectedCaster, ability);
+                var availability = _match.Engine.CheckAbility(_selectedOperator, ability);
                 bool usable = availability == AbilityAvailability.Ready;
 
                 string reach = ability.HasUnlimitedRange ? "any" : $"r{ability.Range}";

@@ -197,7 +197,7 @@ namespace NonaRoyale.Unity.View
             hintText.fontSize = FontHint;
             hintText.color = TextDim;
             hintText.textWrappingMode = TextWrappingModes.NoWrap;
-            hintText.text = "<b>Tab</b> controls   <b>H</b> health   <b>F2</b> switch panel";
+            hintText.text = "<b>Tab</b> controls   <b>H</b> health   <b>F2</b> switch panel   <b>Esc</b> back";
 
             _hint = hint.gameObject;
             _hint.SetActive(false);
@@ -250,9 +250,14 @@ namespace NonaRoyale.Unity.View
                     size: FontSmall, colour: TextDim);
             }
 
+            AddLabel(_content,
+                "Click a piece, then where it lands.  <b>Space</b> roll · <b>E</b> end turn · " +
+                "<b>1–3</b> ability · <b>Enter</b> cast · <b>Esc</b> back",
+                size: FontSmall, colour: TextDim);
+
             DrawOperators(engine.CurrentPlayer, engine.UnspentDice);
 
-            if (_host.SelectedCaster != null) DrawAbilities(engine.CurrentPlayer);
+            if (_host.SelectedOperator != null) DrawAbilities(engine.CurrentPlayer);
 
             DrawLog();
         }
@@ -265,15 +270,15 @@ namespace NonaRoyale.Unity.View
             {
                 var row = Row(_content);
 
-                AddLabel(row, $"{op.Name} <color=#{Hex(TextDim)}>{op.Health}/{op.MaxHealth}</color>", width: 150f);
+                AddLabel(row, $"{op.Name} <color=#{Hex(TextDim)}>{op.Health}/{op.MaxHealth}</color>", width: 126f);
 
                 if (op.IsInYard) AddButton(row, "Deploy", () => _host.Deploy(op), width: 104f);
                 else DrawMoveButtons(row, op, dice);
 
                 Filler(row);
 
-                bool selected = ReferenceEquals(op, _host.SelectedCaster);
-                AddButton(row, "Cast", () => _host.ToggleCaster(op), selected: selected, width: 68f);
+                bool selected = ReferenceEquals(op, _host.SelectedOperator);
+                AddButton(row, selected ? "Selected" : "Select", () => _host.ToggleOperator(op), selected: selected, width: 92f);
             }
         }
 
@@ -308,7 +313,7 @@ namespace NonaRoyale.Unity.View
 
         private void DrawAbilities(PlayerState seat)
         {
-            var caster = _host.SelectedCaster;
+            var caster = _host.SelectedOperator;
             var engine = _host.Match.Engine;
 
             Heading(caster.Name);
@@ -317,8 +322,9 @@ namespace NonaRoyale.Unity.View
 
             // Select, then cast (PRESENTATION §4): selecting shows the reach
             // on the board before any energy is spent.
-            foreach (var ability in abilities)
+            for (int index = 0; index < abilities.Count; index++)
             {
+                var ability = abilities[index];
                 bool chosen = _host.SelectedAbility != null && _host.SelectedAbility.Id == ability.Id;
 
                 var availability = engine.CheckAbility(caster, ability);
@@ -326,9 +332,10 @@ namespace NonaRoyale.Unity.View
 
                 string reach = ability.HasUnlimitedRange ? "any range" : $"range {ability.Range}";
 
+                // Numbered to match the 1–3 keys.
                 string label = usable
-                    ? $"{ability.Name}  <color=#{Hex(TextDim)}>{ability.EnergyCost}e · {reach}</color>"
-                    : $"{ability.Name} — {Explain(availability)}";
+                    ? $"{index + 1}  {ability.Name}  <color=#{Hex(TextDim)}>{ability.EnergyCost}e · {reach}</color>"
+                    : $"{index + 1}  {ability.Name} — {Explain(availability)}";
 
                 AddButton(_content, label, () => _host.ToggleAbility(ability),
                     interactable: usable || chosen, selected: chosen, leftAlign: true);
@@ -372,6 +379,8 @@ namespace NonaRoyale.Unity.View
                 AddLabel(_content, "Nothing in reach.", size: FontSmall, colour: TextDim);
                 return;
             }
+
+            AddLabel(_content, "Click an amber-ringed piece, or pick below.", size: FontSmall, colour: TextDim);
 
             DrawTargetGroup("Enemies", legal.Where(o => o.Owner != seat.Color));
             DrawTargetGroup("Allies", legal.Where(o => o.Owner == seat.Color));

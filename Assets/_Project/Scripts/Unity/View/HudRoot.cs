@@ -78,9 +78,9 @@ namespace NonaRoyale.Unity.View
 
             // One EventSystem per scene, ever. Unity logs a warning and
             // disables duplicates, so check before creating.
-            // (FindFirstObjectByType is Unity 2023.1+/Unity 6; on an older
-            // editor this line becomes FindObjectOfType<EventSystem>().)
-            if (FindFirstObjectByType<EventSystem>() == null)
+            // FindAnyObjectByType: Unity 6.6 deprecated FindFirstObjectByType,
+            // and "is there one at all" does not care which one is found.
+            if (FindAnyObjectByType<EventSystem>() == null)
             {
                 var events = new GameObject("EventSystem");
                 events.transform.SetParent(transform, false);

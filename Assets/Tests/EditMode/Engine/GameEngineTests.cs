@@ -191,6 +191,49 @@ namespace NonaRoyale.Core.Tests.Engine
         }
 
         [Test]
+        public void CanDeploy_IsTrue_ForAYardOperator_WhenASixIsUnspent()
+        {
+            RollUntil(r => r.Contains(6) && !r.IsDouble);
+            var syla = Op(_engine.CurrentPlayer.Color, "Syla");
+            Assert.That(syla.IsInYard, Is.True, "precondition");
+
+            Assert.That(_engine.CanDeploy(syla), Is.True);
+            Assert.That(Has<OperatorDeployed>(_engine.Execute(new DeployCommand(syla.Id))), Is.True,
+                "the query and the command agree");
+            Assert.That(_engine.CanDeploy(syla), Is.False, "already on the board");
+        }
+
+        [Test]
+        public void CanDeploy_IsFalse_BeforeRolling_ForAnotherSeat_OrWithoutASix()
+        {
+            Assert.That(_engine.CanDeploy(Op(PlayerColor.Red, "Syla")), Is.False, "nothing rolled yet");
+
+            RollUntil(r => r.Contains(6) && !r.IsDouble);
+            var other = _engine.CurrentPlayer.Color == PlayerColor.Red ? PlayerColor.Blue : PlayerColor.Red;
+            Assert.That(_engine.CanDeploy(Op(other, "Syla")), Is.False, "not this seat's operator");
+
+            SpendRollAndEndTurn(_engine);
+            RollUntil(r => !r.Contains(6));
+
+            var waiting = Op(_engine.CurrentPlayer.Color, "Syla");
+            Assert.That(waiting.IsInYard, Is.True, "precondition");
+
+            Assert.That(_engine.CanDeploy(waiting), Is.False, "no unspent 6");
+            Assert.That(Has<CommandRejected>(_engine.Execute(new DeployCommand(waiting.Id))), Is.True,
+                "the query and the command agree");
+        }
+
+        [Test]
+        public void IsHome_IsTrue_OnlyForAnOperatorThatFinished()
+        {
+            var bouncer = Op(PlayerColor.Red, "Bouncer");
+            Assert.That(_engine.IsHome(bouncer), Is.False);
+
+            bouncer.MoveTo(BoardProfile.Standard.Journey);
+            Assert.That(_engine.IsHome(bouncer), Is.True);
+        }
+
+        [Test]
         public void AnOperatorInTheYard_CannotMove()
         {
             _engine.Execute(new RollDiceCommand());

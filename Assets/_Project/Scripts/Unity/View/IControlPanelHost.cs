@@ -12,7 +12,7 @@ namespace NonaRoyale.Unity.View
     /// composition root implements it.
     /// </summary>
     /// <remarks>
-    /// <b>The panel owns no state.</b> The selection (caster, ability, target,
+    /// <b>The panel owns no state.</b> The selection (operator, ability, target,
     /// cell) lives in MatchBootstrap, because the board click handler and the
     /// highlight layer need it too. The panel renders a snapshot and reports
     /// clicks as intents, the same shape as props and callbacks in a web UI.
@@ -28,7 +28,7 @@ namespace NonaRoyale.Unity.View
         bool RandomSquads { get; }
         IReadOnlyList<string> Log { get; }
 
-        OperatorState SelectedCaster { get; }
+        OperatorState SelectedOperator { get; }
         AbilityDefinition SelectedAbility { get; }
         OperatorState SelectedTarget { get; }
         CellRef? SelectedCell { get; }
@@ -49,8 +49,12 @@ namespace NonaRoyale.Unity.View
         /// <summary>Spends the whole roll when <paramref name="dieFace"/> is null, one die otherwise.</summary>
         void Move(OperatorState op, int? dieFace);
 
-        /// <summary>Selects the caster, or clears it if it was already selected.</summary>
-        void ToggleCaster(OperatorState op);
+        /// <summary>
+        /// Selects an operator to command (move or cast), or clears the
+        /// selection if it was already selected. The board and the panel both
+        /// select through this.
+        /// </summary>
+        void ToggleOperator(OperatorState op);
 
         /// <summary>Selects the ability if the engine says it is ready, or clears it if it was selected.</summary>
         void ToggleAbility(AbilityDefinition ability);

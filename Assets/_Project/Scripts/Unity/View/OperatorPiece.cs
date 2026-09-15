@@ -24,6 +24,12 @@ namespace NonaRoyale.Unity.View
     /// straight-line slide was fine on the old ring layout; on the cross it cuts
     /// diagonally through the board interior and reads as a teleport. Following
     /// the cells is also the only way a player can count a move and check it.
+    ///
+    /// <b>It draws the board-first marks it is given</b> (<see cref="PieceMark"/>):
+    /// a cyan ring when selected, a pulsing one when a click would deploy it,
+    /// an amber ring when it can be targeted, and a slight lift under the
+    /// pointer. Cyan is the tech register for live, interactive states
+    /// (ART_DIRECTION §8). Which marks apply is decided elsewhere.
     /// </remarks>
     public sealed class OperatorPiece : MonoBehaviour
     {
@@ -40,6 +46,12 @@ namespace NonaRoyale.Unity.View
         /// <summary>Opacity of an evasive operator's silhouette and outline.</summary>
         private const float EvasiveAlpha = 0.7f;
 
+        private const float HoverLift = 1.12f;
+        private const float PulseSpeed = 4f;
+
+        private static readonly Color SelectColour = new Color(0.37f, 0.88f, 0.91f);   // holo cyan, ART_DIRECTION §3
+        private static readonly Color TargetColour = new Color(0.98f, 0.72f, 0.28f);
+
         private readonly Queue<Vector3> _path = new Queue<Vector3>();
 
         private SpriteRenderer _body;
@@ -52,10 +64,20 @@ namespace NonaRoyale.Unity.View
         private float _flash;
         private float _hold;
 
+        private SpriteRenderer _selectRing;
+        private SpriteRenderer _targetRing;
+        private PieceMark _marks;
+        private float _baseScale = 1f;
+
         public OperatorState Operator { get; private set; }
 
         /// <summary>True while the piece is still travelling, so the view can wait before re-posing it.</summary>
         public bool IsWalking => _path.Count > 0;
+
+        /// <summary>The drawn radius in world units, for hit testing. Ignores the hover lift.</summary>
+        public float Radius => _baseScale * 0.5f;
+
+        public PieceMark Marks => _marks;
 
         public void Bind(OperatorState op, float cellSize, float cellSpacing)
         {
@@ -80,8 +102,32 @@ namespace NonaRoyale.Unity.View
             _outline.sortingOrder = 3;
 
             BuildHealthBar();
+            BuildRings(shape);
 
-            transform.localScale = Vector3.one * cellSize * PieceShape.SizeFor(op);
+            _baseScale = cellSize * PieceShape.SizeFor(op);
+            transform.localScale = Vector3.one * _baseScale;
+        }
+
+        /// <summary>
+        /// Sets the board-first marks. Cheap to call every refresh: nothing is
+        /// rebuilt, rings are only shown, hidden and tinted.
+        /// </summary>
+        public void SetMarks(PieceMark marks)
+        {
+            _marks = marks;
+
+            if (_selectRing == null) return;
+
+            bool selected = (marks & PieceMark.Selected) != 0;
+            bool deployable = (marks & PieceMark.Deployable) != 0;
+            _selectRing.enabled = selected || deployable;
+            _selectRing.color = SelectColour;
+
+            bool target = (marks & PieceMark.Target) != 0;
+            bool targetable = (marks & PieceMark.Targetable) != 0;
+            _targetRing.enabled = target || targetable;
+            _targetRing.color = new Color(TargetColour.r, TargetColour.g, TargetColour.b, target ? 1f : 0.45f);
+            _targetRing.transform.localScale = Vector3.one * (target ? 1.85f : 1.6f);
         }
 
         /// <summary>Places the piece with no animation. For the opening layout.</summary>
@@ -185,6 +231,21 @@ namespace NonaRoyale.Unity.View
             _healthFill.sortingOrder = 6;
         }
 
+        private void BuildRings(Sprite shape)
+        {
+            // Rings, not a second silhouette: a ring reads the same around a
+            // star and a disc, and it never hides the shape it marks.
+            _selectRing = Child("select_ring", 1.55f, Vector3.zero);
+            _selectRing.sprite = Primitives.Ring;
+            _selectRing.sortingOrder = 2;
+            _selectRing.enabled = false;
+
+            _targetRing = Child("target_ring", 1.6f, Vector3.zero);
+            _targetRing.sprite = Primitives.Ring;
+            _targetRing.sortingOrder = 2;
+            _targetRing.enabled = false;
+        }
+
         private SpriteRenderer Child(string childName, float scale, Vector3 localPosition)
         {
             var go = new GameObject(childName);
@@ -197,6 +258,8 @@ namespace NonaRoyale.Unity.View
 
         private void Update()
         {
+            AnimateMarks();
+
             if (_flash > 0f)
             {
                 _flash = Mathf.Max(0f, _flash - Time.deltaTime * 4f);
@@ -223,6 +286,26 @@ namespace NonaRoyale.Unity.View
             }
 
             transform.position = Vector3.Lerp(transform.position, _target, Time.deltaTime * SettleSpeed);
+        }
+
+        /// <summary>The hover lift, and the pulse that says "click to deploy".</summary>
+        private void AnimateMarks()
+        {
+            float wanted = _baseScale * ((_marks & PieceMark.Hovered) != 0 ? HoverLift : 1f);
+            float current = transform.localScale.x;
+
+            if (!Mathf.Approximately(current, wanted))
+                transform.localScale = Vector3.one * Mathf.MoveTowards(current, wanted, _baseScale * Time.deltaTime * 2f);
+
+            if (_selectRing == null || !_selectRing.enabled) return;
+
+            // Selected is steady; deployable-only pulses, so the two read apart.
+            bool pulsing = (_marks & PieceMark.Deployable) != 0 && (_marks & PieceMark.Selected) == 0;
+            float alpha = pulsing ? 0.35f + 0.45f * (0.5f + 0.5f * Mathf.Sin(Time.time * PulseSpeed)) : 0.95f;
+
+            var colour = SelectColour;
+            colour.a = alpha;
+            _selectRing.color = colour;
         }
     }
 }
