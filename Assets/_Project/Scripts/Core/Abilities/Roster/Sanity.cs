@@ -50,7 +50,7 @@ namespace NonaRoyale.Core.Abilities
         /// deliberate override (2026-09-15), bought back with the slowest
         /// speed ever fielded rather than with a lower number.
         /// </summary>
-        public const int MaxHealth = 12;
+        public const int MaxHealth = 9;
 
         /// <summary>
         /// Half the band's floor — the first operator outside 1.0–1.5
