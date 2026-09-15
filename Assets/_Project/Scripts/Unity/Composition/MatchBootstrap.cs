@@ -562,7 +562,12 @@ namespace NonaRoyale.Unity.Composition
                     if (immediate) piece.Place(position);
                     else piece.Settle(position);
 
-                    piece.Refresh(_match.Engine.ActiveStatusesOn(piece.Operator));
+                    piece.Refresh();
+
+                    // Statuses come from the engine, never from replaying
+                    // StatusApplied/StatusExpired (PRESENTATION §1).
+                    if (_pieceHud != null)
+                        _pieceHud.ShowStatuses(piece, _match.Engine.ActiveStatusesOn(piece.Operator));
                 }
             }
         }

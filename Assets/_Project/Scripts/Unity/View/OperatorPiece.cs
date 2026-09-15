@@ -1,16 +1,19 @@
 // Assets/_Project/Scripts/Unity/View/OperatorPiece.cs
 using System.Collections.Generic;
-using NonaRoyale.Core.Model;
 using UnityEngine;
 
 namespace NonaRoyale.Unity.View
 {
     /// <summary>
-    /// One operator on screen: silhouette, health bar, status badges, and the
-    /// walk between cells. Holds no game state — it is told what is true and
-    /// shows it.
+    /// One operator on screen: silhouette, health bar, and the walk between
+    /// cells. Holds no game state — it is told what is true and shows it.
     /// </summary>
     /// <remarks>
+    /// Status badges used to live here, as world-space squares. They moved to
+    /// <see cref="PieceHudLayer"/> as named screen-space tags (ADR-0008
+    /// increment C): at board scale a world-space badge was a few pixels
+    /// wide, and a word does not fit in that.
+    ///
     /// <b>It walks the track rather than sliding to the destination.</b> A
     /// straight-line slide was fine on the old ring layout; on the cross it cuts
     /// diagonally through the board interior and reads as a teleport. Following
@@ -20,10 +23,8 @@ namespace NonaRoyale.Unity.View
     {
         private const float CellsPerSecond = 11f;
         private const float SettleSpeed = 12f;
-        private const int MaxBadges = 6;
 
         private readonly Queue<Vector3> _path = new Queue<Vector3>();
-        private readonly List<SpriteRenderer> _badges = new List<SpriteRenderer>();
 
         private SpriteRenderer _body;
         private SpriteRenderer _healthFill;
@@ -60,7 +61,6 @@ namespace NonaRoyale.Unity.View
             outline.sortingOrder = 3;
 
             BuildHealthBar();
-            BuildBadges();
 
             transform.localScale = Vector3.one * cellSize * PieceShape.SizeFor(op);
         }
@@ -95,7 +95,7 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         public void Flash() => _flash = 1f;
 
-        public void Refresh(IReadOnlyList<StatusKind> statuses)
+        public void Refresh()
         {
             if (Operator == null || _body == null) return;
 
@@ -115,14 +115,6 @@ namespace NonaRoyale.Unity.View
                 _healthFill.transform.localPosition = new Vector3(-0.55f * (1f - health), 0.78f, 0f);
                 _healthFill.color = Color.Lerp(new Color(0.80f, 0.25f, 0.25f), tint, health);
             }
-
-            for (int i = 0; i < _badges.Count; i++)
-            {
-                bool used = statuses != null && i < statuses.Count;
-                _badges[i].enabled = used;
-
-                if (used) _badges[i].color = StatusPalette.For(statuses[i]);
-            }
         }
 
         private void BuildHealthBar()
@@ -136,22 +128,6 @@ namespace NonaRoyale.Unity.View
             _healthFill = Child("health_fill", 1f, new Vector3(0f, 0.78f, 0f));
             _healthFill.sprite = Primitives.Square;
             _healthFill.sortingOrder = 6;
-        }
-
-        private void BuildBadges()
-        {
-            for (int i = 0; i < MaxBadges; i++)
-            {
-                float x = -0.45f + 0.18f * i;
-
-                var badge = Child($"badge_{i}", 1f, new Vector3(x, -0.72f, 0f));
-                badge.sprite = Primitives.Square;
-                badge.sortingOrder = 6;
-                badge.transform.localScale = Vector3.one * 0.15f;
-                badge.enabled = false;
-
-                _badges.Add(badge);
-            }
         }
 
         private SpriteRenderer Child(string childName, float scale, Vector3 localPosition)
