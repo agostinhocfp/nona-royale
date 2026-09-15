@@ -26,8 +26,10 @@ namespace NonaRoyale.Core.Services
             int markedTargetBonus,
             IReadOnlyList<OperatorState> statused,
             StatusKind status,
-            int statusDuration)
+            int statusDuration,
+            OperatorState target = null)
         {
+            Target = target;
             Cell = cell;
             Owner = owner;
             SourceOperatorId = sourceOperatorId;
@@ -41,6 +43,13 @@ namespace NonaRoyale.Core.Services
             StatusDuration = statusDuration;
         }
 
+        /// <summary>
+        /// The operator the entry was set on — the charge's carrier, or the
+        /// follow-up's quarry. Carried because a follow-up that misses catches
+        /// nobody, and the view still has to say who got away.
+        /// </summary>
+        public OperatorState Target { get; }
+
         /// <summary>The cell the charge detonated on — the target's current cell, or its death cell.</summary>
         public CellRef Cell { get; }
 
@@ -50,7 +59,11 @@ namespace NonaRoyale.Core.Services
         /// <summary>The operator that attached it. May be in its yard by now.</summary>
         public int SourceOperatorId { get; }
 
-        /// <summary>"zero-day", for the view and for a kill's label.</summary>
+        /// <summary>
+        /// <see cref="DeferredOperatorEffects.ChargeCause"/> or
+        /// <see cref="DeferredOperatorEffects.FollowUpCause"/> — which shape
+        /// resolved, for the engine's reporting and for a kill's label.
+        /// </summary>
         public string Cause { get; }
 
         /// <summary>Every enemy the blast reached, in the order it struck them.</summary>
@@ -65,7 +78,8 @@ namespace NonaRoyale.Core.Services
         /// <summary>
         /// The extra the marked target took on top of <see cref="DamagePerTarget"/>.
         /// Zero on the resolution when the target died before detonation — the
-        /// bonus has no living recipient (§6.4).
+        /// bonus has no living recipient (§6.4). For a follow-up, the heavy
+        /// bonus; zero when the strike missed (§6.5).
         /// </summary>
         public int MarkedTargetBonus { get; }
 
@@ -85,10 +99,14 @@ namespace NonaRoyale.Core.Services
     }
 
     /// <summary>
-    /// Effects that name a victim and a later moment (§6.4). Zero-Day's grenade
-    /// is the first shape: a charge attached to an operator that follows it and
-    /// detonates at the caster's next upkeep, on whatever cell the target then
-    /// occupies.
+    /// Effects that name a victim and a later moment. Two shapes, both
+    /// resolving at the caster's next upkeep:
+    /// <list type="bullet">
+    /// <item>a <b>charge</b> (§6.4, Zero-Day) follows the target and detonates
+    /// on whatever cell it then occupies, catching everyone near it;</item>
+    /// <item>a <b>follow-up</b> (§6.5, Luka's L) strikes the target alone, and
+    /// only if the caster is still close enough to it.</item>
+    /// </list>
     /// </summary>
     /// <remarks>
     /// <b>Anchored to a victim, not to the board.</b> That is the deliberate
@@ -99,8 +117,9 @@ namespace NonaRoyale.Core.Services
     /// attachment, and a cleanse strips the marker and cancels it (§5.10).
     ///
     /// <b>The marker status is the source of truth for cancellation.</b> The
-    /// pending entry holds the payload; the <see cref="StatusKind.ZeroDayCharge"/>
-    /// on the target says the device is still attached. At fire time a target
+    /// pending entry holds the payload; the marker on the target
+    /// (<see cref="StatusKind.ZeroDayCharge"/> or <see cref="StatusKind.Hunted"/>)
+    /// says the entry is still live. At fire time a target
     /// standing in play without the marker was cleansed, and the entry is
     /// discarded unresolved — no notification plumbing between the status
     /// registry and this one, which would be the dependency cycle
@@ -108,23 +127,31 @@ namespace NonaRoyale.Core.Services
     ///
     /// <b>It resolves whatever has happened to the operator that attached
     /// it</b>, exactly as a beacon does (ADR-0006): a deployed device is not its
-    /// operator, and a kill still credits the recorded source.
+    /// operator, and a kill still credits the recorded source. A follow-up is
+    /// the exception by construction: its condition is measured from the
+    /// caster, so a caster that has left the board cannot land it.
     ///
     /// <b>The death cell is reported, not inferred.</b> <c>NeutralizeRules</c>
     /// calls <see cref="OperatorDied"/> before it yards the piece, because once
     /// the target is in its yard its last board cell is unrecoverable — progress
     /// is relative to a colour's own start, and the yard has no cell at all.
     ///
-    /// <b>Known limitation: two charges on one target share one marker.</b> The
-    /// registry stores one entry per status kind per operator, so two seats
-    /// attaching to the same victim leave a single badge; the first detonation
-    /// consumes it and the second charge then reads as cleansed. A four-seat
-    /// edge the design has not needed to answer; recorded rather than solved.
+    /// <b>Known limitation: two entries of one shape on one target share one
+    /// marker.</b> The registry stores one entry per status kind per operator,
+    /// so two seats attaching to the same victim leave a single badge; the
+    /// first resolution consumes it and the second then reads as cleansed. A
+    /// four-seat edge the design has not needed to answer; recorded rather
+    /// than solved. The two shapes use different markers
+    /// (<see cref="StatusKind.ZeroDayCharge"/>, <see cref="StatusKind.Hunted"/>),
+    /// so a charge and a follow-up on the same target never collide.
     /// </remarks>
     public sealed class DeferredOperatorEffects
     {
-        /// <summary>Cause recorded on the damage these produce, for the view (§2.1).</summary>
-        private const string ChargeCause = "zero-day";
+        /// <summary>Cause recorded on a charge's damage, for the view (§2.1).</summary>
+        public const string ChargeCause = "zero-day";
+
+        /// <summary>Cause recorded on a follow-up's damage, for the view (§2.1).</summary>
+        public const string FollowUpCause = "follow-up";
 
         /// <summary>
         /// How long the attachment marker lasts, in the target's own turns.
@@ -138,26 +165,46 @@ namespace NonaRoyale.Core.Services
         /// a cleanse: the charge would cancel itself. Duration 2 is the shortest
         /// span that always covers the window, and the marker is consumed by the
         /// detonation itself, so it never outlives its usefulness either.
+        ///
+        /// A follow-up resolves at the same moment and is consumed the same
+        /// way, so its marker uses the same value for the same reason.
         /// </remarks>
         public const int MarkerDurationTurns = 2;
 
+        private enum Shape
+        {
+            Charge,
+            FollowUp
+        }
+
         private sealed class Pending
         {
+            public Shape Shape;
+
+            /// <summary>The status whose absence at fire time means "cleansed".</summary>
+            public StatusKind Marker;
+
             public OperatorState Target;
             public PlayerColor Owner;
             public int SourceOperatorId;
             public int ResolvesOnOwnerTurn;
             public CellRef LastKnownCell;
 
+            /// <summary>
+            /// A charge: the blast radius around the target. A follow-up: how
+            /// close the caster must stand to the target for the strike to land.
+            /// </summary>
             public int Radius;
             public DamageType DamageType;
 
-            /// <summary>Dealt to every enemy in the radius.</summary>
+            /// <summary>Dealt to every enemy in the radius — for a follow-up, to the target alone.</summary>
             public int SplashDamage;
 
             /// <summary>Added for the marked target itself, on top of the splash.</summary>
             public int PrimaryBonus;
 
+            /// <summary>False for a follow-up, which applies no status.</summary>
+            public bool HasStatus;
             public StatusKind Status;
             public int StatusDuration;
         }
@@ -186,10 +233,15 @@ namespace NonaRoyale.Core.Services
         {
             if (target == null) throw new ArgumentNullException(nameof(target));
 
-            foreach (var entry in _pending)
-                if (entry.Owner == owner && ReferenceEquals(entry.Target, target)) return true;
+            return Find(target, owner, Shape.Charge) != null;
+        }
 
-            return false;
+        /// <summary>Whether a seat has a follow-up pending on this operator. For the view and for tests.</summary>
+        public bool HasFollowUpOn(OperatorState target, PlayerColor owner)
+        {
+            if (target == null) throw new ArgumentNullException(nameof(target));
+
+            return Find(target, owner, Shape.FollowUp) != null;
         }
 
         /// <summary>
@@ -218,8 +270,9 @@ namespace NonaRoyale.Core.Services
             if (owner == PlayerColor.None)
                 throw new ArgumentException("A charge needs a seat to pay its kills.", nameof(owner));
 
-            var entry = Find(target, owner) ?? NewEntry(target, owner);
+            var entry = Find(target, owner, Shape.Charge) ?? NewEntry(target, owner, Shape.Charge);
 
+            entry.Marker = StatusKind.ZeroDayCharge;
             entry.SourceOperatorId = sourceOperatorId;
             entry.ResolvesOnOwnerTurn = _clock.TurnIndexOf(owner) + 1;
             entry.LastKnownCell = _targeting.CellOf(target);
@@ -227,8 +280,58 @@ namespace NonaRoyale.Core.Services
             entry.DamageType = damageType;
             entry.SplashDamage = splashDamage;
             entry.PrimaryBonus = primaryBonus;
+            entry.HasStatus = true;
             entry.Status = status;
             entry.StatusDuration = statusDuration;
+        }
+
+        /// <summary>
+        /// Sets a follow-up strike on <paramref name="target"/>. At
+        /// <paramref name="owner"/>'s next upkeep, if the operator that set it
+        /// is within <paramref name="withinRange"/> of the target, the target
+        /// takes <paramref name="damage"/> plus <paramref name="heavyBonus"/>;
+        /// otherwise the strike is spent with nothing to show for it (§6.5).
+        /// </summary>
+        /// <remarks>
+        /// <b>Re-setting replaces rather than stacks</b>, as <see cref="Attach"/>
+        /// does. The heavy bonus arrives already settled — zero for a target
+        /// that is not heavy — because the caller holds the rule.
+        ///
+        /// <b>Unlike a charge, it does not outlive its caster.</b> The strike
+        /// is the caster's own blow and proximity is measured from the caster;
+        /// a caster in its yard is nowhere, so the strike misses. That is the
+        /// deliberate difference from a deployed device (ADR-0006), and it
+        /// needs no special case: a yarded operator has no distance to anyone.
+        /// </remarks>
+        public void SetFollowUp(
+            OperatorState target,
+            PlayerColor owner,
+            int sourceOperatorId,
+            int damage,
+            int heavyBonus,
+            int withinRange,
+            DamageType damageType)
+        {
+            if (target == null) throw new ArgumentNullException(nameof(target));
+            if (owner == PlayerColor.None)
+                throw new ArgumentException("A follow-up needs a seat to pay its kills.", nameof(owner));
+            if (damage < 0) throw new ArgumentOutOfRangeException(nameof(damage));
+            if (heavyBonus < 0) throw new ArgumentOutOfRangeException(nameof(heavyBonus));
+            if (withinRange < 0) throw new ArgumentOutOfRangeException(nameof(withinRange));
+
+            var entry = Find(target, owner, Shape.FollowUp) ?? NewEntry(target, owner, Shape.FollowUp);
+
+            entry.Marker = StatusKind.Hunted;
+            entry.SourceOperatorId = sourceOperatorId;
+            entry.ResolvesOnOwnerTurn = _clock.TurnIndexOf(owner) + 1;
+            entry.LastKnownCell = _targeting.CellOf(target);
+            entry.Radius = withinRange;
+            entry.DamageType = damageType;
+            entry.SplashDamage = damage;
+            entry.PrimaryBonus = heavyBonus;
+            entry.HasStatus = false;
+            entry.Status = default;
+            entry.StatusDuration = 0;
         }
 
         /// <summary>
@@ -279,16 +382,18 @@ namespace NonaRoyale.Core.Services
                 if (ownerTurn < entry.ResolvesOnOwnerTurn) continue;
 
                 // A target standing in play without its marker was cleansed:
-                // the attachment is gone and the charge never goes off.
+                // the attachment is gone and the entry never resolves.
                 if (_targeting.IsInPlay(entry.Target) &&
-                    !_statuses.Has(entry.Target, StatusKind.ZeroDayCharge))
+                    !_statuses.Has(entry.Target, entry.Marker))
                 {
                     _pending.RemoveAt(i);
                     continue;
                 }
 
                 if (fired == null) fired = new List<OperatorEffectResolution>();
-                fired.Add(Resolve(entry, allOperators));
+                fired.Add(entry.Shape == Shape.FollowUp
+                    ? ResolveFollowUp(entry, allOperators)
+                    : ResolveCharge(entry, allOperators));
                 _pending.RemoveAt(i);
             }
 
@@ -315,7 +420,7 @@ namespace NonaRoyale.Core.Services
 
         // ── Internals ────────────────────────────────────────────────────
 
-        private OperatorEffectResolution Resolve(Pending entry, IReadOnlyList<OperatorState> allOperators)
+        private OperatorEffectResolution ResolveCharge(Pending entry, IReadOnlyList<OperatorState> allOperators)
         {
             // The charge detonates where the target is now; a dead target's
             // charge detonates on its death cell, recorded by OperatorDied.
@@ -332,12 +437,15 @@ namespace NonaRoyale.Core.Services
                 // The status lands before the damage, the beacon's precedent: a
                 // victim the blast kills is slowed first and then cleared by the
                 // neutralize, rather than being slowed in its yard afterwards.
-                _statuses.Apply(
-                    victim, entry.Status, entry.StatusDuration,
-                    sourceOperatorId: entry.SourceOperatorId);
+                if (entry.HasStatus)
+                {
+                    _statuses.Apply(
+                        victim, entry.Status, entry.StatusDuration,
+                        sourceOperatorId: entry.SourceOperatorId);
 
-                if (statused == null) statused = new List<OperatorState>(caught.Count);
-                statused.Add(victim);
+                    if (statused == null) statused = new List<OperatorState>(caught.Count);
+                    statused.Add(victim);
+                }
 
                 int amount = entry.SplashDamage;
                 if (ReferenceEquals(victim, entry.Target)) amount += entry.PrimaryBonus;
@@ -354,20 +462,81 @@ namespace NonaRoyale.Core.Services
                 cell, entry.Owner, entry.SourceOperatorId, ChargeCause,
                 caught, results, entry.SplashDamage,
                 targetAlive ? entry.PrimaryBonus : 0,
-                statused, entry.Status, entry.StatusDuration);
+                statused, entry.Status, entry.StatusDuration, entry.Target);
         }
 
-        private Pending Find(OperatorState target, PlayerColor owner)
+        /// <summary>
+        /// Resolves a follow-up: the target alone, and only if the operator
+        /// that set it is within the entry's radius of it right now (§6.5).
+        /// </summary>
+        /// <remarks>
+        /// <b>A miss still reports</b>, with nobody caught — the target
+        /// outran the strike, which is the counterplay working, and a player
+        /// should see it. It resolves on the target's cell, or on its death
+        /// cell when something else finished it first; a dead target is never
+        /// in reach, because a yarded operator has no distance to anyone.
+        ///
+        /// <b>Proximity ignores safe cells and stealth</b>, as a charge's
+        /// blast does. Both are rules about <i>aiming</i>, and the aim was
+        /// taken — legally — when the strike was set. What the target can do
+        /// about it now is move.
+        /// </remarks>
+        private OperatorEffectResolution ResolveFollowUp(Pending entry, IReadOnlyList<OperatorState> allOperators)
         {
-            foreach (var entry in _pending)
-                if (entry.Owner == owner && ReferenceEquals(entry.Target, target)) return entry;
+            bool targetAlive = _targeting.IsInPlay(entry.Target);
+            var cell = targetAlive ? _targeting.CellOf(entry.Target) : entry.LastKnownCell;
+
+            var source = FindOperator(entry.SourceOperatorId, allOperators);
+            int? distance = targetAlive && source != null
+                ? _targeting.Distance(source, entry.Target)
+                : null;
+
+            bool inReach = distance != null && distance.Value <= entry.Radius;
+
+            var caught = new List<OperatorState>(1);
+            var results = new List<DamageResult>(1);
+
+            if (inReach)
+            {
+                caught.Add(entry.Target);
+                results.Add(_damage.Apply(entry.Target, new DamageInstance(
+                    entry.SplashDamage + entry.PrimaryBonus, entry.DamageType,
+                    entry.SourceOperatorId, FollowUpCause)));
+            }
+
+            // Spent either way: landed or outrun, the strike is over.
+            if (targetAlive) _statuses.Remove(entry.Target, StatusKind.Hunted);
+
+            return new OperatorEffectResolution(
+                cell, entry.Owner, entry.SourceOperatorId, FollowUpCause,
+                caught, results, entry.SplashDamage,
+                inReach ? entry.PrimaryBonus : 0,
+                statused: null, status: default, statusDuration: 0,
+                target: entry.Target);
+        }
+
+        private static OperatorState FindOperator(int id, IReadOnlyList<OperatorState> allOperators)
+        {
+            foreach (var op in allOperators)
+                if (op != null && op.Id == id) return op;
 
             return null;
         }
 
-        private Pending NewEntry(OperatorState target, PlayerColor owner)
+        private Pending Find(OperatorState target, PlayerColor owner, Shape shape)
         {
-            var entry = new Pending { Target = target, Owner = owner };
+            foreach (var entry in _pending)
+            {
+                if (entry.Owner == owner && entry.Shape == shape && ReferenceEquals(entry.Target, target))
+                    return entry;
+            }
+
+            return null;
+        }
+
+        private Pending NewEntry(OperatorState target, PlayerColor owner, Shape shape)
+        {
+            var entry = new Pending { Target = target, Owner = owner, Shape = shape };
             _pending.Add(entry);
             return entry;
         }

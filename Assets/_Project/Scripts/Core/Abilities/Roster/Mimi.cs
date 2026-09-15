@@ -14,11 +14,12 @@ namespace NonaRoyale.Core.Abilities
     /// mechanic exists (<c>OPERATORS.md</c>, In design). Shipping her partial
     /// beats shipping a stub that silently does nothing.
     ///
-    /// <b>Her damage is Normal, and should be Tech.</b> The type does not exist
-    /// yet and is blocked on shields having a real source. Until then Tech and
-    /// Normal behave identically, so the substitution changes no outcome — but
-    /// it does mean her whole identity as the anti-shield operator is currently
-    /// unexpressed.
+    /// <b>Her damage is Tech</b> (2026-09-15, §2.2). The type arrived with
+    /// Luka, whose Hermes' Ring blocks it. Tech is otherwise Normal — evasion
+    /// and shields still apply — so the change costs her only against a warded
+    /// Luka. Her old identity as the anti-shield operator is still
+    /// unexpressed: "Tech can be amplified" is the designer's stated direction,
+    /// and nothing amplifies it yet.
     ///
     /// <b>Reachable, and unmeasured.</b> Drafting made her fieldable, so a
     /// random-squad match or sweep can now execute both of these — neither of
@@ -75,7 +76,7 @@ namespace NonaRoyale.Core.Abilities
             effects: new[]
             {
                 AbilityEffect.Damage(EffectScope.EnemiesAroundPrimaryTargetInclusive, 2,
-                    DamageType.Normal, EffectAudience.EnemyOnly, radius: 2),
+                    DamageType.Tech, EffectAudience.EnemyOnly, radius: 2),
                 AbilityEffect.Status_(EffectScope.EnemiesAroundPrimaryTargetInclusive,
                     StatusKind.Bleed, duration: 1, radius: 2),
                 AbilityEffect.Status_(EffectScope.EnemiesAroundPrimaryTargetInclusive,

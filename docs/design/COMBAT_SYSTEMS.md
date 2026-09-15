@@ -72,35 +72,51 @@ A neutralized operator re-enters exactly as it originally deployed (ADR-0003):
 All damage — from abilities, collisions, bleed and marks alike — passes through one choke point in the core. Order is fixed:
 
 1. **Legality.** Targeting was already validated (§4). Damage against an illegal target never reaches the pipeline.
-2. **Evasion.** If the instance is **Normal** and the target has an unspent evasion charge this round, roll the seeded RNG at `EvasionChance`. On success: emit `DamageEvaded`, consume the charge, **stop**.
-3. **Shield.** If the instance is **Normal** and the target holds a shield, the shield absorbs the entire instance, is consumed, emits `DamageAbsorbed`, **stop**.
+   - **1b. Tech ward.** If the instance is **Tech** and the target holds a tech ward (§5.12), the whole instance is blocked: emit `DamageAbsorbed`, **stop**. Nothing is consumed — not the evasion charge, not any shield pool.
+2. **Evasion.** If the instance is **Normal or Tech** and the target has an unspent evasion charge this round, roll the seeded RNG at `EvasionChance`. On success: emit `DamageEvaded`, consume the charge, **stop**.
+3. **Shield.** If the instance is **Normal or Tech** and the target holds a shield, the pool subtracts what it can (§5.6). If it ate the whole instance, emit `DamageAbsorbed`, **stop**; otherwise the rest continues to step 4, with the absorbed part reported as mitigated.
 4. **Apply.** Subtract from HP, emit `DamageDealt`.
 5. **Neutralize check.** HP ≤ 0 → §1.2, emit `OperatorNeutralized`.
 
-**Atomic damage skips steps 2 and 3.**
+**Atomic damage skips steps 1b, 2 and 3.**
 
 Evasion resolves before Shield deliberately: evasion is a reflex and should not burn a consumable the operator may need later.
 
-**Every instance carries a cause** — "bleed", "mark", "collision", "ability", "execute", "self" — and no rule reads it. It exists so the view can say what happened. Upkeep damage is why: bleed and mark ticks land in a phase where nothing else moves, so without a stated cause an operator simply loses health and, if that was its last, vanishes with nothing on screen accounting for it.
+**Every instance carries a cause** — "bleed", "mark", "collision", "ability", "critical", "execute", "self", "zero-day", "follow-up" — and no rule reads it. It exists so the view can say what happened. Upkeep damage is why: bleed and mark ticks land in a phase where nothing else moves, so without a stated cause an operator simply loses health and, if that was its last, vanishes with nothing on screen accounting for it.
 
-### 2.2 Normal vs Atomic
+### 2.2 Normal, Tech and Atomic
 
 - **Normal** is subject to every mitigation layer: Evasion, Shield, and anything added later.
+- **Tech** is Normal in every respect, plus one counter: a **tech ward** (§5.12) blocks it outright, before evasion or a shield is consulted. The designer's stated direction is that Tech "can be amplified by specific abilities" — **nothing amplifies it yet**; the first amplifier is an amendment here and a step in the pipeline, placed before 1b so a ward blocks the amplified hit. _(Added 2026-09-15 with Luka.)_
 - **Atomic** ignores all of it.
 
 Atomic does **not** bypass _targeting_ protection. Safe cells, home columns, and Stealth are not defenses — they are reachability rules, and Atomic damage that cannot legally be aimed at an operator simply never enters the pipeline.
 
 > The one-sentence version, for the table: **Atomic can't be blocked, but it can't reach what it can't touch.**
 
-**Sources of Atomic:** Velvet Rope, bleed ticks, Ace Shards' bleed, mark ticks, all of Miracle Pull. Everything else — including collision — is Normal.
+**Sources of Atomic:** Velvet Rope, bleed ticks, Ace Shards' bleed, mark ticks, all of Miracle Pull, Vendetta. **Sources of Tech:** Cryo-Pulse. Everything else — including collision — is Normal.
 
-**Atomic is the roster's answer to Evasion, and it is deliberately concentrated.** Only two operators carry unblockable single-target damage: Bouncer with Velvet Rope at 6 energy, and Kurbyn with Miracle Pull at 9. Syla's route through Evasive Protocol is indirect — Ace Shards applies bleed, bleed ticks Atomic, and From the Hip pays a bonus against a bleeding target — which makes her anti-evasion play a two-ability sequence rather than a single cast. Mimi and Javi carry none at all.
+**Atomic is the roster's answer to Evasion, and it is deliberately concentrated.** Three operators carry unblockable single-target damage: Bouncer with Velvet Rope at 6 energy, Kurbyn with Miracle Pull at 9, and Luka with Vendetta at 6 (added 2026-09-15 — the concentration is looser than it was, which is worth knowing before the next Atomic source is written). Syla's route through Evasive Protocol is indirect — Ace Shards applies bleed, bleed ticks Atomic, and From the Hip pays a bonus against a bleeding target — which makes her anti-evasion play a two-ability sequence rather than a single cast. Mimi and Javi carry none at all.
 
 That concentration was fine while every player fielded all three of the alpha roster. **It is a live question now that squads are drafted three from the pool:** a legal draw can produce a squad with no way through an evasive target at all. Nothing in the draft checks for it.
 
 ### 2.3 Self-damage
 
 Self-inflicted damage (Bouncer's All-In Mauling) is applied **directly to HP**, bypassing the pipeline entirely. It cannot be evaded, shielded, or evaded-then-refunded, and it _can_ neutralize its own caster.
+
+### 2.4 Critical hits
+
+_(Added 2026-09-15 with Luka's Vendetta — the first damage roll in the game.)_
+
+- **A damage effect may carry a crit chance.** On a seeded roll under it, the hit's damage is **multiplied** — by the effect's multiplier, or by its heavy multiplier against a **heavy** target.
+- **Heavy means maximum health above a threshold the effect states** (Luka's is 6: today the Bouncer and Sanity). Maximum, not current — heavy is who an operator is, not how hurt it is.
+- **The roll is per effect and per recipient.** Three blows are three rolls.
+- **The multiplier applies before the pipeline**, to everything the hit would have dealt, bonuses included. A critical is a bigger hit, not one that ignores defences; Vendetta's blows ignore defences because they are Atomic.
+- **Self-damage never crits.** It bypasses the pipeline and is not an attack.
+- **Cause `"critical"`**, so the view can label the number (`-2 CRIT`).
+- **An effect with no crit chance never draws a random number**, so no existing ability's dice stream moved when this landed. A resolver built without a random source never crits — every fixture that predates this keeps its exact behaviour.
+
+**One cast never neutralizes a target twice.** A cast's effects resolve before the engine yards anyone, so a later damage or execute effect in the same cast skips a recipient an earlier one already brought to zero. Vendetta is the first ability that lands several hits on one target, and without this a first-blow kill would report three neutralizes and pay three bounties.
 
 ---
 
@@ -294,6 +310,31 @@ Not a status, and not a heal anyone casts — a passive rule for every operator.
 
 **Unmeasured.** The bet is testable: A/B `RegenEveryTurns` 0 against 3 in the policy sweep. If racers or bankers gain on the spender, or Javi's casts fall further, the gates are too loose — reach for 4 before touching the amount.
 
+---
+
+### 5.12 TechWard
+
+_(Added 2026-09-15.)_
+
+- **Effect:** Tech damage aimed at the holder is blocked outright (§2.1 step 1b, §2.2). Normal and Atomic pass through untouched.
+- **Consumes nothing.** A blocked hit spends no evasion charge and no shield pool — the ward is a duration, not a charge.
+- **Source:** Luka's Hermes' Ring, a self-cast for 3 turns: the cast turn and his next two, so it covers two full rounds of opponents' turns.
+- **Cleansable,** like every applied status (§5.8).
+- **Narrow today by the roster, not by the rule.** Cryo-Pulse is the only Tech source.
+
+---
+
+### 5.13 Hunted
+
+_(Added 2026-09-15.)_
+
+- **Effect:** none. A pure marker, exactly as §5.10 — the visible half of a pending follow-up strike (§6.5).
+- **A cleanse strips it, and the strike never resolves.** Same mechanism and same silence as a cleansed charge.
+- **Duration 2**, for §5.10's reason: the strike resolves at the same moment a charge detonates.
+- **Its own kind, not a reused ZeroDayCharge,** so a target carrying both a charge and a follow-up keeps both — one entry per status kind per operator would otherwise let the first resolution cancel the other.
+
+---
+
 ## 6. Turn structure and resolution order
 
 **Every die is consumed exactly once, by a deploy or by a move.** Dice spent on movement may be pooled onto one operator or dealt one to each of two — or spent on the same operator in two separate steps. A die is forfeit only when no legal consumer exists for it. Energy may be spent by any owned operator and consumes no dice.
@@ -353,6 +394,22 @@ A beacon is anchored to a **cell** (§9.1, `DeferredCellEffects`): it fires at t
 - **Kill credit follows the source.** Damage at detonation is attributed to the operator who attached the charge, through the same neutralize fold as everything else.
 
 **Known limitation:** charges from two different seats on one target share one marker — the registry stores one entry per status kind per operator. The first detonation consumes it, and the second charge then reads as cleansed. A four-seat edge the design has not needed to answer; recorded rather than solved.
+
+### 6.5 Follow-up strikes
+
+_(Added 2026-09-15 with Luka's L.)_
+
+A follow-up is the charge's conditional sibling: the same registry (`DeferredOperatorEffects`), the same timing, the same marker-and-cleanse counterplay — but a single blow the target can **outrun**.
+
+- **Timing is the caster's owner's next upkeep**, in the same window as charges and beacons, before the caster moves.
+- **It lands only if the caster is within its reach of the target** (L: 2), measured along the track in either direction (§4.1), between the two as they stand at that upkeep. Otherwise it is spent and reported as a miss.
+- **The target alone.** No splash, no status.
+- **Heavy targets take a bonus** (L: +1 on top of 1 when maximum health is above 6). Settled at cast time — maximum health never changes.
+- **Safe cells and stealth do not stop it.** Both are rules about aiming, and the aim was legal when the strike was set; what the target can do about it now is move.
+- **Unlike a charge, it does not outlive its caster.** Reach is measured from the caster, and a yarded operator has no distance to anyone — the strike misses. A target already neutralized is never in reach either.
+- **Telegraphed and cleansable.** Setting it applies the Hunted marker (§5.13) and emits `FollowUpMarked`; a cleanse strips the marker and cancels it silently.
+- **Re-setting replaces**, as with charges. A follow-up and a charge on the same target are separate entries with separate markers.
+- **A miss still reports** (`FollowUpResolved` with `Landed = false`), naming the target — the escape is the counterplay working, and the player should see it.
 
 ---
 
@@ -483,11 +540,11 @@ Noun-based, per `CONVENTIONS.md`. Each owns one rule family and nothing else.
 
 **`StatusRegistry` reports damage, it never applies it.** The pipeline consults the registry for evasion and shields, so a registry that called the pipeline would close a dependency cycle. Bleed and mark ticks are therefore _queried_ — the registry says what the tick owes and the caller pushes it through the pipeline as Atomic. The registry decides what damage is owed, the pipeline decides how damage lands, and neither knows the other exists.
 
-**An ability is a list of effects, and there are twelve kinds:** Damage, Heal, ApplyStatus, PullToCaster, Execute, SwapWithCaster, RemoveStatuses, PushFromCaster, PaintCell, DeployZone, AttachCharge, DashToTarget. The resolver never branches on which ability is being cast. A new operator that cannot be expressed in those twelve gets an amendment to this document and a new kind — never an `if`. Seven have been added in earnest: the swap for Mimi, the cleanse for Javi, the push and the two cell-anchored deferred kinds for Kian and Nuetu, and the operator-anchored charge and the dash for Sanity (§10.8).
+**An ability is a list of effects, and there are thirteen kinds:** Damage, Heal, ApplyStatus, PullToCaster, Execute, SwapWithCaster, RemoveStatuses, PushFromCaster, PaintCell, DeployZone, AttachCharge, DashToTarget, FollowUp. The resolver never branches on which ability is being cast. A new operator that cannot be expressed in those thirteen gets an amendment to this document and a new kind — never an `if`. Eight have been added in earnest: the swap for Mimi, the cleanse for Javi, the push and the two cell-anchored deferred kinds for Kian and Nuetu, the operator-anchored charge and the dash for Sanity (§10.8), and the follow-up for Luka (§10.9). Luka's critical hits are a field on the Damage kind (§2.4), not a kind of their own.
 
 **The engine reports every move a roll could make, not just one.** `PreviewLandings` returns, per operator, the pooled landing and one per distinct unspent face. A preview that showed only the pooled option would hide exactly the choice §6.3 prices, and the view must not compute any of it itself (`PRESENTATION.md` §1).
 
-Randomness reaches exactly two places: `MovementResolver` (dice) and `DamagePipeline` (evasion). Both take the injected seedable RNG. Nothing else in combat is random.
+Randomness reaches exactly three places: `MovementResolver` (dice), `DamagePipeline` (evasion) and `AbilityResolver` (critical hits, §2.4 — only for an effect that can crit). All take the injected seedable RNG. Nothing else in combat is random.
 
 ### 9.2 Commands (view → core)
 
@@ -497,7 +554,7 @@ Randomness reaches exactly two places: `MovementResolver` (dice) and `DamagePipe
 
 ### 9.3 Events (core → view)
 
-`CommandRejected` · `TurnBegan` · `DiceRolled` · `EnergyGranted` · `EnergySpent` · `OperatorDeployed` · `OperatorPityDeployed` · `OperatorMoved` · `CollisionResolved` · `DamageDealt` · `DamageEvaded` · `DamageAbsorbed` · `HealApplied` · `OperatorRegenerated` · `StatusApplied` · `StatusExpired` · `OperatorNeutralized` · `OperatorReachedHome` · `TurnEnded` · `GameWon` · `BeaconPlaced` · `BeaconFired` · `ZoneDeployed` · `ZoneTicked` · `ZeroDayAttached` · `ZeroDayDetonated`
+`CommandRejected` · `TurnBegan` · `DiceRolled` · `EnergyGranted` · `EnergySpent` · `OperatorDeployed` · `OperatorPityDeployed` · `OperatorMoved` · `CollisionResolved` · `DamageDealt` · `DamageEvaded` · `DamageAbsorbed` · `HealApplied` · `OperatorRegenerated` · `StatusApplied` · `StatusExpired` · `OperatorNeutralized` · `OperatorReachedHome` · `TurnEnded` · `GameWon` · `BeaconPlaced` · `BeaconFired` · `ZoneDeployed` · `ZoneTicked` · `ZeroDayAttached` · `ZeroDayDetonated` · `FollowUpMarked` · `FollowUpResolved`
 
 **`OperatorMoved` carries the attempted landing as well as the final one** (`AttemptedTo`, `Bounced`), so a bounced move can be drawn reaching the contested cell before it is thrown back (§7.2, `PRESENTATION.md` §3). For placement the two are equal.
 
@@ -507,7 +564,7 @@ Randomness reaches exactly two places: `MovementResolver` (dice) and `DamagePipe
 
 ## 10. The roster, re-expressed
 
-Eight operators are in the draft pool. **Seven are complete; Mimi (§10.4) is not** — Cryo Field is unbuilt, and her section carries a banner saying so. An operator the game can deal but this document does not describe is worse than an entry marked incomplete, and an incomplete one is tolerable only while it is the exception.
+Nine operators are in the draft pool. **Eight are complete; Mimi (§10.4) is not** — Cryo Field is unbuilt, and her section carries a banner saying so. An operator the game can deal but this document does not describe is worse than an entry marked incomplete, and an incomplete one is tolerable only while it is the exception.
 
 **The tables are copied from the roster files and the code wins any disagreement.** Numbers change there first (`Assets/_Project/Scripts/Core/Abilities/Roster/`), and a table that drifts is a second copy of a value that is now wrong. Last synced 2026-09-15.
 
@@ -585,11 +642,11 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 > **Incomplete, and in the draft pool.** Cryo Field is designed and not built: it needs a status that damages an area at its holder's upkeep, and no such mechanic exists. She is draftable now, so this section describes what she actually does.
 >
-> Her damage is declared **Normal** and should be **Tech** (§12). That type does not exist yet — its blocker, a real shield source, landed with Trauma Plate, but the type itself is unbuilt; until it is, Tech and Normal behave identically, so the substitution changes no outcome and expresses none of her identity.
+> Her damage is **Tech** (2026-09-15, §2.2). The type landed with Luka, whose Hermes' Ring blocks it; otherwise it behaves as Normal, so the change costs her only against a warded Luka. Her old identity as the anti-shield operator is still unexpressed — nothing amplifies Tech yet.
 
 | #   | Ability           | Type   | Cost | CD  | Range                                          | Effect                                                                                                           |
 | --- | ----------------- | ------ | ---- | --- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| 1   | **Cryo-Pulse**    | Active | 6    | 3   | 3 (AOE radius 2, target-origin, **inclusive**) | **2 Normal** to every enemy in the window, the target included; applies **1 Bleed** and **Slow 1 turn** to each. |
+| 1   | **Cryo-Pulse**    | Active | 6    | 3   | 3 (AOE radius 2, target-origin, **inclusive**) | **2 Tech** to every enemy in the window, the target included; applies **1 Bleed** and **Slow 1 turn** to each.   |
 | 2   | **Cryo Field**    | Active | 6    | 3   | radius 2, 2 turns                              | _Not implemented._ Damage at her own upkeep to enemies near her.                                                 |
 | 3   | **Translocation** | Active | 3    | 4   | 6                                              | **Swap** cells with the target, ally or enemy. Placement — collides with nothing, triggers nothing (§7.4).       |
 
@@ -692,6 +749,30 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 **Collision is the mobility his speed denies him, priced as an ultimate.** At 0.5 he moves three cells on a six; the dash moves him up to six — five to the target and one past it — in either direction. The ally mode is the escape the rest of the kit refuses to give him, and it is why the ability carries the camping rule (§4.4, second amendment). Priced under Miracle Pull's 9: three Normal and a stun on the anchor plus a rake along the path is less than a possible execute, and the dash cuts both ways — it delivers the slowest operator in the game to exactly where the fight is, which is sometimes where he wanted to be.
 
 **Costs 3 / 4 / 7 are the balance review's outcome (2026-09-15), argued against peers and unmeasured.** A basic priced like From the Hip, a delayed area priced under Drone Strike because it can be cleansed away, an ultimate priced under Miracle Pull because its damage is Normal and its target can be an ally. Adding him shifts the draft's dice stream besides, so nothing here can be compared to figures taken before him.
+
+### 10.9 Luka — Duelist
+
+**HP 6 · Speed 1.0× · Complete — all three abilities implemented** _(added 2026-09-15)_
+
+> **He arrived with three amendments:** the Tech type (§2.2), critical hits (§2.4) and the follow-up strike (§6.5), plus two statuses (§5.12, §5.13). The teleport is Collision's landing (§7.6) with no path damage, not a new mechanic.
+>
+> **"L" is the ability's name as dropped** and reads as a placeholder. **Hermes' Ring was dropped as a passive** and is built as a self-cast, because a passive with a cost, a duration and a cooldown is something the player triggers.
+
+| #   | Ability          | Type         | Cost | CD  | Range | Effect                                                                                                                                                                                                  |
+| --- | ---------------- | ------------ | ---- | --- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **L**            | Active       | 5    | 3   | 3     | **Teleport** to the enemy (§7.6 landing, no path damage); **2 Normal**. **Follow-up** (§6.5): at Luka's next upkeep, if he is within **2** of the target, **1 Normal** — **2** if its max HP is above 6. Hunted marker; cleansable. |
+| 2   | **Hermes' Ring** | Active, self | 3    | 4   | —     | **TechWard 3 turns** on Luka (§5.12): Tech damage blocked outright.                                                                                                                                     |
+| 3   | **Vendetta**     | Active (Ult) | 6    | 3   | 3     | **3 × 1 Atomic** to the target; each blow rolls a **10% critical** (§2.4): ×2, or **×3** if the target's max HP is above 6.                                                                            |
+
+**"Heavy" is maximum health above 6** — today the Bouncer and Sanity. Both of his damage riders read it.
+
+**L costs 5, one above Zero-Day, because it does more to one target** (dropped at 4, raised by the designer 2026-09-15). Same cooldown; two damage now where Zero-Day deals two a round later, up to two more if the target stays, and up to four cells of free mobility. Zero-Day pays for its certainty with a cleanse and a blast that reaches others; L pays with the escape — the teleport leaves Luka adjacent, so the target has to spend its move getting more than two cells clear — and the extra point. Both hits are Normal; no type was specified.
+
+**Hermes' Ring is worth what the Tech roster becomes.** Cryo-Pulse is the only Tech source, so today it counters one ability, at Ablative Plating's price. Three turns on a self-cast covers two full rounds of opponents' turns.
+
+**Vendetta costs 6** (dropped at 9, lowered by the designer 2026-09-15): expected 3.3 damage, 3.6 against a heavy target. At least one blow crits about 27% of the time; the ceiling is 6, or 9 against a heavy target. At 9 it lost to Miracle Pull at the same price; at 6 it sits beside Velvet Rope, the other single-target Atomic cast — 3 certain damage and a pull against 3.3 expected and a swing. A blow that finds its target already down is not thrown (§2.4), so a first-blow kill pays one bounty.
+
+**All numbers are the designer's, as dropped, and unmeasured.** Adding him shifts the draft's dice stream, so no figure taken before him compares with one after.
 
 ---
 
@@ -823,8 +904,9 @@ That makes 44/5 the only lever measured that buys pacing without giving up comba
 ### Open, undecided
 
 - **Whether the 15–20 minute budget still stands.** It was set in ADR-0002 before anyone had played the game, and every board except the two smallest now exceeds it. It may be the budget that is wrong rather than the board — but that is a decision somebody has to take, not a number to tune toward silently.
-- **The Tech and Force damage types.** A four-type matrix — Normal, Force, Tech, Atomic, across Evasion and Shield — is the agreed model. Its blocker, a real shield source, landed with Trauma Plate (2026-09-13); the types themselves are unbuilt. Until they are, Mimi's identity is unexpressed and Force and Tech would be indistinguishable from Atomic and Normal.
-- **A draft has no balance constraint.** Nothing checks that a squad has an answer to Evasion, a way to heal, or reliable damage. With Atomic in two operators (§2.2), a legal draw can produce a squad with no way through Kurbyn.
+- **The Force damage type, and what amplifies Tech.** A four-type matrix — Normal, Force, Tech, Atomic, across Evasion and Shield — was the agreed model. **Tech landed on 2026-09-15** (§2.2) as Normal plus a ward counter, with "can be amplified by specific abilities" as the stated direction and no amplifier yet. Force is unbuilt. Which operators deal Tech is open too: Cryo-Pulse is the only source, which makes Hermes' Ring a one-ability counter.
+- **A draft has no balance constraint.** Nothing checks that a squad has an answer to Evasion, a way to heal, or reliable damage. With Atomic in three operators (§2.2), a legal draw can produce a squad with no way through Kurbyn.
+- **Luka's numbers** (§10.9). L repriced 4 → 5 and Vendetta 9 → 6 by the designer on first review; reasoned, not measured.
 - **Whether the same operator may take both dice in two steps.** §6 allows it, and it is Ludo-standard. It is also strictly worse in cells and strictly better in landings, which makes it a deliberate two-collision play rather than a mistake.
 
 ### Open, unmeasured
@@ -1013,6 +1095,22 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - `ADraftedSquad_HoldsDistinctOperators`
 - `TheSameSeed_DraftsTheSameSquads`
 
+**Luka — `LukaTests`, and Tech in `DamagePipelineTests`**
+
+- `L_TeleportsOneCellPastTheTarget_AndStrikesItForTwo`
+- `L_StrikesNobodyOnTheWay`
+- `FollowUp_LandsForOne_WhenTheTargetStaysClose`
+- `FollowUp_DealsTwo_ToAHeavyTarget`
+- `FollowUp_Misses_WhenTheTargetGotClear`
+- `FollowUp_Misses_WhenLukaIsNoLongerOnTheBoard`
+- `FollowUp_CleanseCancelsIt`
+- `FollowUp_AndZeroDay_OnOneTarget_BothResolve`
+- `HermesRing_BlocksTech_ButNotNormalOrAtomic`
+- `CryoPulse_IsTech_AndAWardedLukaTakesNoneOfIt`
+- `Vendetta_ACritTriples_AgainstAHeavyTarget`
+- `Vendetta_StopsStriking_ATargetItAlreadyDowned`
+- `TechWard_SpendsNeitherTheEvasionChargeNorThePool`
+
 **Neutralize and win — `WinConditions`**
 
 - `NeutralizedOperator_ReturnsToYardAtFullHealth`
@@ -1045,3 +1143,5 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - 2026-09-15 — **Sanity added as §10.8**, complete, with two recorded designer overrides: speed 0.5 below the 1.0–1.5 band (the first exception, slow-immunity side effect accepted) and health 12 tying the roster maximum the Bouncer cut had vacated. `EffectKind` gains `AttachCharge` and `DashToTarget`, the eleventh and twelfth kinds; `StatusKind` gains `ZeroDayCharge`, the first marker status (§5.10 — no gameplay effect, duration 2 derived from the detonation window, a cleanse cancels the charge). §6.4 states operator-anchored deferred effects: follows the target, owner's-next-upkeep timing, a bonus for the marked target, death-cell detonation, keyed to the seat so the caster's own death changes nothing, telegraphed and cleanse-detachable. §7.6 states the dash: shortest-way-round with ties forwards, the path rakes without contesting, landing one step past the target with a one-short fallback, placement throughout so one operator clamps. §4.4's camping rule now names the dash alongside pull, swap and push. §9.1's effect-kind enumeration was stale at "seven" — it had already missed the push and the two cell-anchored kinds — and now lists all twelve; §9.3's event list gains the beacon, zone and Zero-Day events it had never recorded. Costs 3 / 4 / 7 are the balance review's outcome, argued against peers and unmeasured.
 - 2026-09-15 — **Synced to the code; the code was authoritative.** §5.6 rewritten for the shield pool that landed on 2026-09-13 (partial absorbs are `Dealt` with `AmountMitigated`; re-casting refills; the evasion half of the mitigation pass declined — `_HANDOFF_mitigation.md` retired). §5.11 added for gated regeneration, which shipped with a code remark citing §5.8 and no section of its own; §1.1 no longer says there is none. §10.5 marked complete with the code's numbers (ranges raised to 5 / 4 / 5, reason unrecorded). **§10.6 Kian and §10.7 Nuetu written** — both were in the draft pool with no section. §10.2 Tagged From Above cooldown 2 → 4 and §10.3 Evasive Protocol 50% → 30% corrected in the tables. §10.8 Sanity at 9 health. §9.3 gains the events it had not listed and notes `OperatorMoved.AttemptedTo`. §12's duplicated second half merged: its unique reasoning kept under "Unmeasured dials", its superseded figures dropped. **Stale code remarks noted, not edited:** `Javi.cs` (range 3), `Kian.cs` (a 6-point beam), `Sanity.cs` (health 12).
 - 2026-09-15 — **Balance pass confirmed as deliberate, and the code's remarks brought in line** with it: Javi's ranges 5 / 4 / 5, Sanity at 9 health (only the speed override stands), Kian's Inversion Matrix line 6 → 4 and Drone Strike beam 6 → 4. §10.5, §10.6, §10.8 and §11 updated to match; no rule or number changed here.
+- 2026-09-15 — **Luka added as §10.9**, complete, with three amendments. **§2.2: the Tech damage type** — Normal plus one counter, a ward that blocks it outright before evasion and the shield (§2.1 step 1b), with amplifiers the stated direction and none built; **Mimi's Cryo-Pulse is now Tech.** **§2.4: critical hits** — a per-effect, per-recipient roll that multiplies damage, with a heavier multiplier against targets whose maximum health is above a stated threshold; an effect without a chance never draws, so no existing dice stream moved. §2.4 also states that one cast never neutralizes a target twice. **§6.5: follow-up strikes** — `EffectKind.FollowUp`, the thirteenth kind, in the same registry as charges: resolves at the caster's next upkeep only if the caster is within reach, target alone, heavy bonus, a miss reported, and — unlike a charge — lost with its caster. `StatusKind` gains `TechWard` (§5.12) and `Hunted` (§5.13). §2.1 step 3 corrected to the shield pool (it still described the whole-instance shield). Atomic is now in three operators (§2.2, §12). §9.1 randomness reaches three places; §9.3 gains `FollowUpMarked` and `FollowUpResolved`. Luka's L and Vendetta flagged for the balance pass; all his numbers are the designer's, unmeasured.
+- 2026-09-15 — **Luka repriced on first review** (designer): L 4 → 5, one above Zero-Day, which it out-damages on one target; Vendetta 9 → 6, out of Miracle Pull's price and beside Velvet Rope's. §2.2, §10.9 and §12 updated. Unmeasured.

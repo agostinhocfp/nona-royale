@@ -19,6 +19,7 @@ namespace NonaRoyale.Core.Tests.Damage
     {
         public bool EvadeNext;
         public int ShieldPool;
+        public bool WardsTech;
         public int EvadeCalls;
         public int AbsorbCalls;
 
@@ -39,6 +40,8 @@ namespace NonaRoyale.Core.Tests.Damage
             ShieldPool -= absorbed;
             return absorbed;
         }
+
+        public bool BlocksTech(OperatorState target) => WardsTech;
     }
 
     [TestFixture]
@@ -62,6 +65,91 @@ namespace NonaRoyale.Core.Tests.Damage
 
         private static DamageInstance Atomic(int amount) =>
             new DamageInstance(amount, DamageType.Atomic, 99, "test");
+
+        private static DamageInstance Tech(int amount) =>
+            new DamageInstance(amount, DamageType.Tech, 99, "test");
+
+        // ── Tech (§2.2, §5.12) ───────────────────────────────────────────
+
+        [Test]
+        public void TechDamage_WithoutAWard_LandsLikeNormal()
+        {
+            var target = Assassin();
+
+            var result = _pipeline.Apply(target, Tech(2));
+
+            Assert.That(result.Outcome, Is.EqualTo(DamageOutcome.Dealt));
+            Assert.That(target.Health, Is.EqualTo(4));
+        }
+
+        [Test]
+        public void TechDamage_IsEvadable_LikeNormal()
+        {
+            _mitigation.EvadeNext = true;
+            var target = Assassin();
+
+            var result = _pipeline.Apply(target, Tech(2));
+
+            Assert.That(result.Outcome, Is.EqualTo(DamageOutcome.Evaded));
+            Assert.That(target.Health, Is.EqualTo(6));
+        }
+
+        [Test]
+        public void TechDamage_IsShielded_LikeNormal()
+        {
+            _mitigation.ShieldPool = 1;
+            var target = Assassin();
+
+            var result = _pipeline.Apply(target, Tech(3));
+
+            Assert.That(result.AmountMitigated, Is.EqualTo(1));
+            Assert.That(target.Health, Is.EqualTo(4));
+        }
+
+        [Test]
+        public void TechWard_BlocksTheWholeInstance_AsAbsorbed()
+        {
+            // "Blocked" and "reduced to nothing" are the same event to a
+            // player, and BLOCK is already drawn off Absorbed.
+            _mitigation.WardsTech = true;
+            var target = Assassin();
+
+            var result = _pipeline.Apply(target, Tech(3));
+
+            Assert.That(result.Outcome, Is.EqualTo(DamageOutcome.Absorbed));
+            Assert.That(result.AmountApplied, Is.EqualTo(0));
+            Assert.That(result.AmountMitigated, Is.EqualTo(3));
+            Assert.That(target.Health, Is.EqualTo(6));
+        }
+
+        [Test]
+        public void TechWard_SpendsNeitherTheEvasionChargeNorThePool()
+        {
+            // The ward is asked first, so a blocked hit never reaches the
+            // layers its holder may still need against Normal damage.
+            _mitigation.WardsTech = true;
+            _mitigation.EvadeNext = true;
+            _mitigation.ShieldPool = 2;
+
+            _pipeline.Apply(Assassin(), Tech(3));
+
+            Assert.That(_mitigation.EvadeCalls, Is.EqualTo(0));
+            Assert.That(_mitigation.AbsorbCalls, Is.EqualTo(0));
+            Assert.That(_mitigation.EvadeNext, Is.True);
+            Assert.That(_mitigation.ShieldPool, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void TechWard_DoesNotBlockNormalOrAtomic()
+        {
+            _mitigation.WardsTech = true;
+            var target = Assassin();
+
+            _pipeline.Apply(target, Normal(1));
+            _pipeline.Apply(target, Atomic(1));
+
+            Assert.That(target.Health, Is.EqualTo(4));
+        }
 
         // ── Unmitigated ──────────────────────────────────────────────────
 

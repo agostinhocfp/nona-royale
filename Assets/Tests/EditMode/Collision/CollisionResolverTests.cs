@@ -49,6 +49,9 @@ namespace NonaRoyale.Core.Tests.Collision
                 ShieldPool -= absorbed;
                 return absorbed;
             }
+
+            /// <summary>Collision damage is Normal, so a tech ward never matters here.</summary>
+            public bool BlocksTech(OperatorState target) => false;
         }
 
         [SetUp]

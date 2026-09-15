@@ -91,7 +91,21 @@ namespace NonaRoyale.Core.Services
         /// caster differently from a dragged victim, and the subject here is the
         /// caster rather than the ability's target.
         /// </remarks>
-        Dashed = 11
+        Dashed = 11,
+
+        /// <summary>
+        /// A follow-up strike was set on an operator. Nothing has struck yet —
+        /// it resolves at the caster's next upkeep, if the caster is still
+        /// close enough (§6.5).
+        /// </summary>
+        /// <remarks>
+        /// The <see cref="ChargeAttached"/> telegraph for Luka's L, and its own
+        /// kind for the same reason the two are separate events: a grenade
+        /// that will go off wherever the target runs and a strike the target
+        /// can outrun ask different things of the player who sees them.
+        /// <see cref="EffectOutcome.Recipient"/> is the marked operator.
+        /// </remarks>
+        FollowUpMarked = 12
     }
 
     /// <summary>
@@ -179,6 +193,10 @@ namespace NonaRoyale.Core.Services
         /// <summary>The caster placed at <paramref name="progress"/> by its own dash.</summary>
         public static EffectOutcome Dashed(OperatorState caster, int progress) =>
             new EffectOutcome(EffectOutcomeKind.Dashed, caster, default, 0, default, 0, progress);
+
+        /// <summary>A follow-up strike set on <paramref name="target"/>.</summary>
+        public static EffectOutcome FollowUpMarked(OperatorState target) =>
+            new EffectOutcome(EffectOutcomeKind.FollowUpMarked, target, default, 0, default, 0, 0);
 
         public static EffectOutcome Executed(OperatorState recipient) =>
             new EffectOutcome(EffectOutcomeKind.Executed, recipient, default, 0, default, 0, 0);

@@ -241,9 +241,21 @@ namespace NonaRoyale.Core
             // own status kind and duration — nothing here may hardcode them.
             foreach (var charge in upkeep.OperatorEffects)
             {
-                events.Add(new ZeroDayDetonated(
-                    charge.Owner, charge.Cell, charge.Caught.Count,
-                    charge.DamagePerTarget, charge.MarkedTargetBonus));
+                // A follow-up is the charge's sibling (§6.5) and reads
+                // differently: one blow that landed or was outrun, not a blast.
+                // Branching on the cause is the beacon/zone precedent above.
+                if (charge.Cause == DeferredOperatorEffects.FollowUpCause)
+                {
+                    events.Add(new FollowUpResolved(
+                        charge.Owner, charge.SourceOperatorId, charge.Target, charge.Cell,
+                        charge.HitSomething, charge.DamagePerTarget, charge.MarkedTargetBonus));
+                }
+                else
+                {
+                    events.Add(new ZeroDayDetonated(
+                        charge.Owner, charge.Cell, charge.Caught.Count,
+                        charge.DamagePerTarget, charge.MarkedTargetBonus));
+                }
 
                 foreach (var statused in charge.Statused)
                     events.Add(new StatusApplied(statused, charge.Status, charge.StatusDuration));
@@ -717,6 +729,10 @@ namespace NonaRoyale.Core
 
                 case EffectOutcomeKind.ChargeAttached:
                     events.Add(new ZeroDayAttached(caster, outcome.Recipient));
+                    break;
+
+                case EffectOutcomeKind.FollowUpMarked:
+                    events.Add(new FollowUpMarked(caster, outcome.Recipient));
                     break;
 
                 // Placement again, with the caster as the subject: reported as

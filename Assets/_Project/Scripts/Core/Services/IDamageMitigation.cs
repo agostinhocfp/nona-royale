@@ -5,9 +5,9 @@ using NonaRoyale.Core.Rng;
 namespace NonaRoyale.Core.Services
 {
     /// <summary>
-    /// The mitigation layers the pipeline consults before applying Normal
-    /// damage, in the fixed order of COMBAT_SYSTEMS §2.1: evasion, then shield,
-    /// then apply.
+    /// The mitigation layers the pipeline consults before applying Normal or
+    /// Tech damage, in the fixed order of COMBAT_SYSTEMS §2.1: tech ward (Tech
+    /// only), then evasion, then shield, then apply.
     /// </summary>
     /// <remarks>
     /// <b>The two layers are deliberately different shapes.</b> Evasion is
@@ -53,5 +53,16 @@ namespace NonaRoyale.Core.Services
         /// clamps defensively, but a violation there is a bug here.
         /// </remarks>
         int AbsorbFrom(OperatorState target, int amount);
+
+        /// <summary>
+        /// Whether the target blocks Tech damage outright right now (§5.12).
+        /// Consumes nothing — a ward is a duration, not a charge.
+        /// </summary>
+        /// <remarks>
+        /// Asked first, and only for Tech. A blocked instance never reaches
+        /// evasion or the shield, so a ward never costs its holder the round's
+        /// evasion charge or any of a pool it paid for separately.
+        /// </remarks>
+        bool BlocksTech(OperatorState target);
     }
 }

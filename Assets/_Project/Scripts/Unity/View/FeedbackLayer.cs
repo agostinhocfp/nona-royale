@@ -18,6 +18,8 @@ namespace NonaRoyale.Unity.View
     {
         private const string BleedCause = "bleed";
         private const string MarkCause = "mark";
+        private const string FollowUpCause = "follow-up";
+        private const string CriticalCause = "critical";
 
         private static readonly Color HitColour = new Color(1f, 0.45f, 0.40f);
         private static readonly Color OverTimeColour = new Color(0.85f, 0.35f, 0.75f);
@@ -44,14 +46,27 @@ namespace NonaRoyale.Unity.View
         /// </remarks>
         public void Damage(Vector3 at, int amount, string cause)
         {
-            bool overTime = cause == BleedCause || cause == MarkCause;
+            bool overTime = IsUpkeepCause(cause);
+
+            // A critical is labelled too, though it has a visible agent: the
+            // number alone cannot say why Vendetta's second blow hit three
+            // times as hard as its first.
+            string text = overTime ? $"-{amount} {cause}"
+                : cause == CriticalCause ? $"-{amount} CRIT"
+                : $"-{amount}";
 
             FloatingText.Spawn(
-                transform, at,
-                overTime ? $"-{amount} {cause}" : $"-{amount}",
+                transform, at, text,
                 overTime ? OverTimeColour : HitColour,
-                _scale);
+                cause == CriticalCause ? _scale * 1.25f : _scale);
         }
+
+        /// <summary>
+        /// Causes that land at upkeep, where nothing on the board moves to
+        /// explain them. Luka's follow-up joins bleed and marks.
+        /// </summary>
+        private static bool IsUpkeepCause(string cause) =>
+            cause == BleedCause || cause == MarkCause || cause == FollowUpCause;
 
         public void Heal(Vector3 at, int amount) =>
             FloatingText.Spawn(transform, at, $"+{amount}", HealColour, _scale);
@@ -81,7 +96,7 @@ namespace NonaRoyale.Unity.View
         /// </remarks>
         public void Neutralized(Vector3 at, Color seatColour, string cause)
         {
-            bool overTime = cause == BleedCause || cause == MarkCause;
+            bool overTime = IsUpkeepCause(cause);
 
             FloatingText.Spawn(
                 transform, at,

@@ -558,6 +558,22 @@ namespace NonaRoyale.Core.Services
             return absorbed;
         }
 
+        /// <summary>
+        /// Whether the target holds an active tech ward (§5.12). Luka's
+        /// Hermes' Ring.
+        /// </summary>
+        /// <remarks>
+        /// Reads passives too, through <see cref="Has"/>: a permanent ward would
+        /// be a permanent immunity, and nothing grants one today. Unlike the
+        /// shield nothing is decremented, so there is no store it could fail to
+        /// clean up.
+        /// </remarks>
+        public bool BlocksTech(OperatorState target)
+        {
+            if (target == null) throw new ArgumentNullException(nameof(target));
+            return Has(target, StatusKind.TechWard);
+        }
+
         // ── Internals ────────────────────────────────────────────────────
 
         private Dictionary<StatusKind, Entry> EntriesFor(int operatorId) =>

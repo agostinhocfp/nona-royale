@@ -95,7 +95,7 @@ Read at the table: _the one who is never where you left her._
 **One of three blockers is cleared:**
 
 - ~~**A swap effect.**~~ **Done.** It needed a sixth effect kind, and it forced the §7.4 amendment that had been overdue since Velvet Rope's clamp went undocumented. The arithmetic also exposed a case nobody had noticed — a placement running _forwards_ into a home column — and produced the rule that placement moving one operator clamps while placement moving two refuses.
-- **The Tech damage type.** Still deferred, still pending shields having a real source. Her damage ships as Normal, which behaves identically and expresses none of her identity. She remains the strongest argument for building both — now joined by Javi, who is the shield source it has been waiting for.
+- ~~**The Tech damage type.**~~ **Done (2026-09-15)**, with Luka. Her damage is now Tech, which Luka's Hermes' Ring blocks and nothing else does. Her identity as the answer to barriers is still unexpressed: Tech is Normal plus that one counter until something amplifies it (`COMBAT_SYSTEMS.md` §2.2).
 - **A field that damages on a duration.** Still missing. Auras are permanent and carry speed effects only, and no status damages an area at its holder's upkeep. **Cryo Field is not implemented and she plays without it.**
 
 Her fiction is also the strongest argument in the tech-level question below. Everyone else has a rope, a rig or a drone; she has a singularity core and tachyon targeting.
@@ -134,6 +134,20 @@ Read at the table: _the one the fight has to come to._
 
 **Complete and in the pool.** His live kit is in `COMBAT_SYSTEMS.md` §10.8, including the two recorded designer overrides — the sub-band speed and the roster-maximum health — that his fantasy was bought with.
 
+### Luka — Duelist _(archetype label provisional)_
+
+The one who picks a single person and does not stop. He closes the distance without crossing it — one moment across the room, the next beside his target — strikes, and stays close enough to strike again. When it turns personal he becomes enraged with unrelenting focus and simply keeps hitting, and every so often a blow lands far harder than it should, harder still against the big ones.
+
+His ring is his defence, and a narrow one: it turns aside tech, and nothing else.
+
+Read at the table: _the one you have to outrun, not outlast._
+
+The whole kit is a duel. The teleport puts him next to his target, and the threat of a second strike next turn forces the target to spend its own move getting clear — or pay for staying. He is the third operator with unblockable damage, and the first with a random swing.
+
+**Silhouette:** a four-pointed star turned to an X — a thrown blade. Distinct from Kian's five points and Javi's upright cross.
+
+**Complete and in the pool.** His live kit is in `COMBAT_SYSTEMS.md` §10.9. Open, and not his to settle alone: the **Duelist** tag is a seventh archetype, beside Brawler and Engineer; his look and fiction are unwritten; and **the teleport and Hermes' Ring need a device behind them** (a named ring and a blink are the closest thing on the roster to magic, and the constraint below is locked).
+
 ---
 
 ## Design constraints on future operators
@@ -144,7 +158,7 @@ Read at the table: _the one the fight has to come to._
 - **Expressible in the existing rules**, per Roster scope above.
 - **No operator carries a stat nobody can feel.** Energy Efficiency was cut for exactly this reason: one value on one operator, blank on two, and no rule ever attached to it.
 - **One damage type is an identity, not a default.** A kit built entirely around a single type says what that operator answers and what answers it. It only works while the types stay scarce — the moment most abilities pierce most defences, the defences stop existing and so does the identity.
-- **Watch where the counters are concentrated.** Only two operators carry unblockable single-target damage, which is fine while every squad fields all three of the alpha roster and becomes a drafting question at three-from-nine (`COMBAT_SYSTEMS.md` §2.2). Adding another operator who is hard to hit, without adding another way through, makes that worse.
+- **Watch where the counters are concentrated.** Three operators now carry unblockable single-target damage (Luka joined Bouncer and Kurbyn), which is fine while every squad fields all three of the alpha roster and becomes a drafting question at three-from-nine (`COMBAT_SYSTEMS.md` §2.2). Adding another operator who is hard to hit, without adding another way through, makes that worse.
 - **Every ability needs a line a player can read.** Not a restatement of its numbers — the view already shows those — but what the ability is _for_. The constructor refuses an ability without one, which is the only reason every operator has them.
 
 ---
@@ -152,7 +166,8 @@ Read at the table: _the one the fight has to come to._
 ## Open items
 
 - [ ] Resolve **Brawler**: define it as a fifth archetype, or re-tag Kurbyn. More pressing now the base four are filled.
-- [ ] **Finish Mimi** — the Tech damage type, and an area-damage-over-time status for Cryo Field.
+- [ ] **Finish Mimi** — an area-damage-over-time status for Cryo Field. (Tech landed 2026-09-15.)
+- [ ] **Write Luka** — look, fiction, the device behind the teleport and the ring, and whether "Duelist" is an archetype. The ability name "L" is a placeholder until the designer names it.
 - [ ] **Finish Javi** — a shield with a per-ability value, which lands with the mitigation pass.
 - [ ] **Measure both.** They are in the pool and nothing has ever dealt them: the harness still fields the alpha three, so not one of their four live abilities has run in a simulated match. Three questions wait on it — whether Cryo-Pulse outclasses its peer at the same cost, whether Translocation is as strong a denial tool as it looks, and whether a healer turns a combat game into a race.
 - [ ] **Ratify or break the house split.** Three of five work for the house. It emerged rather than being designed, and four unwritten operators will tip it either way.

@@ -155,8 +155,11 @@ namespace NonaRoyale.Core
             // NeutralizeRules reports death cells to them, so it is built
             // before all three.
             var operatorEffects = new DeferredOperatorEffects(clock, targeting, damage, statuses);
+            // The match RNG goes in for critical hits (§2.4). Only an effect
+            // with a crit chance draws from it, so a match without Luka rolls
+            // exactly the dice it rolled before he existed.
             var abilities = new AbilityResolver(
-                map, clock, energy, statuses, targeting, damage, cellEffects, operatorEffects);
+                map, clock, energy, statuses, targeting, damage, cellEffects, operatorEffects, random);
             var auraRules = new AuraRules(targeting, auras);
 
 

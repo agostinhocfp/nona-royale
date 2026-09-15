@@ -64,10 +64,25 @@ namespace NonaRoyale.Core.Services
             // Atomic ignores every mitigation layer (§2.2). Stated once, as an
             // explicit gate rather than as something each layer remembers to
             // check: a subtraction is far easier to apply universally by
-            // accident than the old pair of early returns was.
-            bool mitigable = damage.Type == DamageType.Normal;
+            // accident than the old pair of early returns was. Tech is
+            // mitigable exactly as Normal is; it only adds step 1b.
+            bool mitigable = damage.Type != DamageType.Atomic;
 
-            // 2. Evasion — Normal only, one charge per round, terminal.
+            // 1b. Tech ward — Tech only, terminal, consumes nothing (§5.12).
+            // Before evasion so a blocked hit never spends the round's charge,
+            // and reported as Absorbed because "blocked" is what a player sees
+            // (BLOCK). The whole amount is recorded as mitigated.
+            //
+            // Tech amplifiers, when the first one exists, belong above this
+            // line: the ward blocks the amplified hit, not the base one.
+            if (damage.Type == DamageType.Tech && _mitigation.BlocksTech(target))
+            {
+                return new DamageResult(
+                    DamageOutcome.Absorbed, 0, target.Health, target.Id,
+                    damage.SourceName, damage.Amount);
+            }
+
+            // 2. Evasion — Normal and Tech, one charge per round, terminal.
             if (mitigable && _mitigation.TryEvade(target, _random))
             {
                 return new DamageResult(
@@ -75,7 +90,7 @@ namespace NonaRoyale.Core.Services
                     damage.SourceName, damage.Amount);
             }
 
-            // 3. Shield — Normal only. Subtracts rather than stops (§5.6).
+            // 3. Shield — Normal and Tech. Subtracts rather than stops (§5.6).
             int mitigated = mitigable ? _mitigation.AbsorbFrom(target, damage.Amount) : 0;
 
             // Clamped rather than trusted. An implementation returning more than

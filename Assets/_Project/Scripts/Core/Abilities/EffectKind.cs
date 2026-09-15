@@ -161,6 +161,27 @@ namespace NonaRoyale.Core.Abilities
         /// filters them out for an ally target instead of the dash branching on
         /// it. <c>Amount</c> carries the per-enemy path damage.
         /// </remarks>
-        DashToTarget = 11
+        DashToTarget = 11,
+
+        /// <summary>
+        /// Marks the primary target for a follow-up strike. At the caster's
+        /// next upkeep, if the caster is still within <c>Radius</c> of the
+        /// target, the target takes <c>Amount</c> — plus
+        /// <c>HeavyBonus</c> against a heavy target. Otherwise nothing
+        /// happens (§6.5). Luka's L.
+        /// </summary>
+        /// <remarks>
+        /// <b>The sibling of <see cref="AttachCharge"/> with the blast taken
+        /// out and a condition put in.</b> A charge is a delayed certainty
+        /// that follows its victim; a follow-up is a delayed <i>threat</i> the
+        /// victim can walk away from. Same pending registry, same marker
+        /// pattern, same cleanse counterplay (§5.13) — the victim gets two
+        /// answers rather than one: run, or be cleansed.
+        ///
+        /// Proximity is measured along the track in either direction, the
+        /// same distance targeting uses (§4.1), between the two operators as
+        /// they stand at the caster's upkeep — before the caster moves.
+        /// </remarks>
+        FollowUp = 12
     }
 }

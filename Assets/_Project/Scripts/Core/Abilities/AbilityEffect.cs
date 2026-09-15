@@ -22,7 +22,9 @@ namespace NonaRoyale.Core.Abilities
             int amount, DamageType damageType, int radius,
             StatusKind status, int duration, int stacks, double magnitude,
             int bonusIfBleeding, int executeNumerator, int executeDenominator,
-            int bonusInOwnZone = 0)
+            int bonusInOwnZone = 0,
+            double critChance = 0.0, int critMultiplier = 1, int heavyCritMultiplier = 1,
+            int heavyAboveMaxHealth = 0, int heavyBonus = 0)
         {
             Kind = kind;
             Scope = scope;
@@ -38,6 +40,11 @@ namespace NonaRoyale.Core.Abilities
             ExecuteNumerator = executeNumerator;
             ExecuteDenominator = executeDenominator;
             BonusInOwnZone = bonusInOwnZone;
+            CritChance = critChance;
+            CritMultiplier = critMultiplier;
+            HeavyCritMultiplier = heavyCritMultiplier;
+            HeavyAboveMaxHealth = heavyAboveMaxHealth;
+            HeavyBonus = heavyBonus;
         }
 
         public EffectKind Kind { get; }
@@ -86,11 +93,84 @@ namespace NonaRoyale.Core.Abilities
         public int ExecuteNumerator { get; }
         public int ExecuteDenominator { get; }
 
+        /// <summary>
+        /// Chance, per recipient, that a damage effect lands as a critical hit
+        /// (§2.4). Zero — the default — never rolls, so no existing effect
+        /// consumes a random number it did not consume before.
+        /// </summary>
+        public double CritChance { get; }
+
+        /// <summary>What a critical hit multiplies the damage by.</summary>
+        public int CritMultiplier { get; }
+
+        /// <summary>
+        /// What a critical hit multiplies the damage by against a heavy target
+        /// (see <see cref="HeavyAboveMaxHealth"/>). Vendetta's triple.
+        /// </summary>
+        public int HeavyCritMultiplier { get; }
+
+        /// <summary>
+        /// A target whose <b>maximum</b> health is above this counts as heavy.
+        /// Zero means no target is ever heavy. Read by the critical multiplier
+        /// and by <see cref="HeavyBonus"/>.
+        /// </summary>
+        /// <remarks>
+        /// Maximum, not current: "heavy" is who an operator is, not how hurt it
+        /// is, so a wounded Bouncer is still heavy and the answer never changes
+        /// during a match.
+        /// </remarks>
+        public int HeavyAboveMaxHealth { get; }
+
+        /// <summary>
+        /// Extra damage a follow-up strike deals to a heavy target (§6.5).
+        /// L's "+2 instead of +1".
+        /// </summary>
+        public int HeavyBonus { get; }
+
+        /// <summary>Whether an operator with this maximum health counts as heavy for this effect.</summary>
+        public bool CountsAsHeavy(int maxHealth) =>
+            HeavyAboveMaxHealth > 0 && maxHealth > HeavyAboveMaxHealth;
+
         /// <summary>A copy with a different radius. For balance sweeps only.</summary>
         public AbilityEffect WithRadius(int radius) =>
             new AbilityEffect(Kind, Scope, Audience, Amount, DamageType, radius,
                 Status, Duration, Stacks, Magnitude, BonusIfBleeding,
-                ExecuteNumerator, ExecuteDenominator, BonusInOwnZone);
+                ExecuteNumerator, ExecuteDenominator, BonusInOwnZone,
+                CritChance, CritMultiplier, HeavyCritMultiplier, HeavyAboveMaxHealth, HeavyBonus);
+
+        /// <summary>
+        /// A copy of a damage effect that can land as a critical hit: on a roll
+        /// under <paramref name="chance"/> its damage is multiplied by
+        /// <paramref name="multiplier"/>, or by <paramref name="heavyMultiplier"/>
+        /// against a target whose maximum health is above
+        /// <paramref name="heavyAboveMaxHealth"/> (§2.4). Vendetta.
+        /// </summary>
+        /// <remarks>
+        /// A copy method rather than more parameters on <see cref="Damage"/>:
+        /// four optional arguments on the most-used factory would make every
+        /// existing call site harder to read for one ability's sake.
+        ///
+        /// The roll is per recipient and per effect, so three blows are three
+        /// independent rolls.
+        /// </remarks>
+        public AbilityEffect WithCritical(
+            double chance, int multiplier, int heavyMultiplier = 0, int heavyAboveMaxHealth = 0)
+        {
+            if (Kind != EffectKind.Damage)
+                throw new InvalidOperationException("Only a damage effect can land a critical hit.");
+            if (chance <= 0.0 || chance > 1.0) throw new ArgumentOutOfRangeException(nameof(chance));
+            if (multiplier < 1) throw new ArgumentOutOfRangeException(nameof(multiplier));
+            if (heavyAboveMaxHealth < 0) throw new ArgumentOutOfRangeException(nameof(heavyAboveMaxHealth));
+
+            // No heavy rule stated: a heavy target crits like anyone else.
+            if (heavyMultiplier == 0) heavyMultiplier = multiplier;
+            if (heavyMultiplier < 1) throw new ArgumentOutOfRangeException(nameof(heavyMultiplier));
+
+            return new AbilityEffect(Kind, Scope, Audience, Amount, DamageType, Radius,
+                Status, Duration, Stacks, Magnitude, BonusIfBleeding,
+                ExecuteNumerator, ExecuteDenominator, BonusInOwnZone,
+                chance, multiplier, heavyMultiplier, heavyAboveMaxHealth, HeavyBonus);
+        }
 
         public static AbilityEffect Damage(
             EffectScope scope, int amount, DamageType type,
@@ -329,6 +409,36 @@ namespace NonaRoyale.Core.Abilities
 
             return new AbilityEffect(EffectKind.DashToTarget, EffectScope.PrimaryTarget, audience,
                 pathDamage, damageType, 0, default, 0, 0, 0, 0, 0, 0);
+        }
+
+        /// <summary>
+        /// Marks the target for a follow-up strike at the caster's next
+        /// upkeep: <paramref name="damage"/>, plus <paramref name="heavyBonus"/>
+        /// if the target's maximum health is above
+        /// <paramref name="heavyAboveMaxHealth"/> — but only if the caster is
+        /// then within <paramref name="withinRange"/> of it (§6.5). Luka's L.
+        /// </summary>
+        /// <remarks>
+        /// Telegraphed the way a Zero-Day charge is: an event at cast time and
+        /// a <see cref="StatusKind.Hunted"/> marker on the target, which a
+        /// cleanse strips to cancel the strike (§5.13).
+        ///
+        /// <c>Amount</c> carries the damage and <c>Radius</c> the proximity
+        /// requirement — a radius around the target in which the caster must
+        /// stand, which is exactly what the field already means.
+        /// </remarks>
+        public static AbilityEffect FollowUp(
+            int damage, int heavyBonus, int heavyAboveMaxHealth, int withinRange,
+            DamageType damageType, EffectAudience audience = EffectAudience.EnemyOnly)
+        {
+            if (damage < 0) throw new ArgumentOutOfRangeException(nameof(damage));
+            if (heavyBonus < 0) throw new ArgumentOutOfRangeException(nameof(heavyBonus));
+            if (heavyAboveMaxHealth < 0) throw new ArgumentOutOfRangeException(nameof(heavyAboveMaxHealth));
+            if (withinRange < 0) throw new ArgumentOutOfRangeException(nameof(withinRange));
+
+            return new AbilityEffect(EffectKind.FollowUp, EffectScope.PrimaryTarget, audience,
+                damage, damageType, withinRange, default, 0, 0, 0, 0, 0, 0,
+                heavyAboveMaxHealth: heavyAboveMaxHealth, heavyBonus: heavyBonus);
         }
     }
 }

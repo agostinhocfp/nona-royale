@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using NonaRoyale.Core.Abilities;
 using NonaRoyale.Core.Board;
 using NonaRoyale.Core.Model;
+using NonaRoyale.Core.Rng;
 
 namespace NonaRoyale.Core.Services
 {
@@ -27,6 +28,15 @@ namespace NonaRoyale.Core.Services
     /// </remarks>
     public sealed class AbilityResolver
     {
+        /// <summary>The cause recorded on ordinary ability damage.</summary>
+        public const string AbilityCause = "ability";
+
+        /// <summary>
+        /// The cause recorded on a critical hit (§2.4). The view labels it; no
+        /// rule reads it.
+        /// </summary>
+        public const string CriticalCause = "critical";
+
         private readonly PathMap _map;
         private readonly ITurnClock _clock;
         private readonly EnergyLedger _energy;
@@ -35,6 +45,7 @@ namespace NonaRoyale.Core.Services
         private readonly DamagePipeline _damage;
         private readonly DeferredCellEffects _cellEffects;
         private readonly DeferredOperatorEffects _operatorEffects;
+        private readonly IRandom _random;
 
         /// <summary>operator id → ability id → the owner-turn on which it becomes usable again.</summary>
         private readonly Dictionary<int, Dictionary<int, int>> _readyOn =
@@ -48,7 +59,8 @@ namespace NonaRoyale.Core.Services
             TargetingRules targeting,
             DamagePipeline damage,
             DeferredCellEffects cellEffects,
-            DeferredOperatorEffects operatorEffects = null)
+            DeferredOperatorEffects operatorEffects = null,
+            IRandom random = null)
         {
             _map = map ?? throw new ArgumentNullException(nameof(map));
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
@@ -63,6 +75,12 @@ namespace NonaRoyale.Core.Services
             // them is frozen red. Only an AttachCharge effect can tell the
             // difference, and content that lists one is wired with one.
             _operatorEffects = operatorEffects;
+
+            // Optional for the same reason, and with the same mildest failure:
+            // without a random source no hit is ever critical (§2.4). Only an
+            // effect with a crit chance ever reads it, so every fixture built
+            // before Vendetta keeps its exact behaviour — and its dice stream.
+            _random = random;
         }
 
         /// <summary>Whether an ability is off cooldown for this operator.</summary>
@@ -312,6 +330,13 @@ namespace NonaRoyale.Core.Services
                 switch (effect.Kind)
                 {
                     case EffectKind.Damage:
+                        // A recipient already brought to zero by an earlier
+                        // effect of this same cast is not struck again. The
+                        // engine yards it only after the cast resolves, so a
+                        // second hit would report a second neutralize — and
+                        // pay a second bounty. Vendetta is the first ability
+                        // that lands more than one hit on one target.
+                        if (IsAlreadyDown(recipient)) break;
                         outcomes.Add(ApplyDamage(effect, caster, recipient));
                         break;
 
@@ -369,6 +394,7 @@ namespace NonaRoyale.Core.Services
                         break;
 
                     case EffectKind.Execute:
+                        if (IsAlreadyDown(recipient)) break;
                         outcomes.Add(RunExecute(effect, caster, recipient));
                         break;
 
@@ -378,6 +404,10 @@ namespace NonaRoyale.Core.Services
 
                     case EffectKind.DashToTarget:
                         RunDash(effect, caster, recipient, allOperators, outcomes);
+                        break;
+
+                    case EffectKind.FollowUp:
+                        RunFollowUp(effect, caster, recipient, outcomes);
                         break;
                 }
             }
@@ -480,6 +510,42 @@ namespace NonaRoyale.Core.Services
         }
 
         /// <summary>
+        /// Sets a follow-up strike on the target. Nothing strikes now — it
+        /// resolves at the caster's next upkeep, if the caster is still within
+        /// the effect's radius of the target (§6.5).
+        /// </summary>
+        /// <remarks>
+        /// <see cref="RunAttachCharge"/> with a different marker and payload:
+        /// the <see cref="StatusKind.Hunted"/> marker is applied here as an
+        /// ordinary status so the badge draws it and a cleanse strips it
+        /// (§5.13), and the registry reads it back at resolution.
+        ///
+        /// <b>The heavy bonus is settled now.</b> It reads maximum health,
+        /// which never changes during a match, so settling it at cast time is
+        /// the same answer as settling it later — and the pending entry then
+        /// carries a plain number, like every other deferred payload.
+        /// </remarks>
+        private void RunFollowUp(
+            AbilityEffect effect, OperatorState caster, OperatorState target, List<EffectOutcome> outcomes)
+        {
+            if (_operatorEffects == null) return;
+
+            _statuses.Apply(target, StatusKind.Hunted,
+                DeferredOperatorEffects.MarkerDurationTurns, sourceOperatorId: caster.Id);
+
+            _operatorEffects.SetFollowUp(
+                target, caster.Owner, caster.Id,
+                damage: effect.Amount,
+                heavyBonus: effect.CountsAsHeavy(target.MaxHealth) ? effect.HeavyBonus : 0,
+                withinRange: effect.Radius,
+                damageType: effect.DamageType);
+
+            outcomes.Add(EffectOutcome.FollowUpMarked(target));
+            outcomes.Add(EffectOutcome.StatusApplied(
+                target, StatusKind.Hunted, DeferredOperatorEffects.MarkerDurationTurns));
+        }
+
+        /// <summary>
         /// Dashes the caster along the track to the target, striking every enemy
         /// on the traversed cells, and places the caster one step past the
         /// target along the dash direction — one short of it, on the caster's
@@ -533,7 +599,11 @@ namespace NonaRoyale.Core.Services
             // The target itself is excluded: whatever it suffers is declared as
             // separate effects on the ability, and striking it here as well
             // would hit it twice.
-            for (int i = 1; i <= distance; i++)
+            //
+            // A dash with no path damage — Luka's teleport — strikes nobody on
+            // the way. Skipped rather than applied as zero, which would report a
+            // zero-damage hit on every enemy passed.
+            for (int i = 1; effect.Amount > 0 && i <= distance; i++)
             {
                 int index = ((casterCell + step * i) % circuit + circuit) % circuit;
 
@@ -589,14 +659,47 @@ namespace NonaRoyale.Core.Services
             if (effect.BonusIfBleeding > 0 && _statuses.IsBleeding(recipient))
                 amount += effect.BonusIfBleeding;
 
+            bool selfInflicted = ReferenceEquals(recipient, caster);
+            bool critical = !selfInflicted && RollsCritical(effect);
+
+            // The multiplier applies to everything the hit would have dealt,
+            // bonuses included, and before mitigation: a critical is a bigger
+            // hit, not a hit that ignores armour (§2.4).
+            if (critical)
+            {
+                amount *= effect.CountsAsHeavy(recipient.MaxHealth)
+                    ? effect.HeavyCritMultiplier
+                    : effect.CritMultiplier;
+            }
+
+            string cause = critical ? CriticalCause : AbilityCause;
+
             // Damage aimed at the caster is self-inflicted and goes straight to
             // health, around every mitigation layer (§2.3).
-            DamageResult result = ReferenceEquals(recipient, caster)
+            DamageResult result = selfInflicted
                 ? _damage.ApplyToSelf(caster, amount)
-                : _damage.Apply(recipient, new DamageInstance(amount, effect.DamageType, caster.Id, "ability"));
+                : _damage.Apply(recipient, new DamageInstance(amount, effect.DamageType, caster.Id, cause));
 
             return EffectOutcome.Damaged(recipient, result);
         }
+
+        /// <summary>
+        /// Rolls for a critical hit. Consumes a random number only when the
+        /// effect can crit and a source is wired — no other effect touches the
+        /// match's dice stream (§2.4, §9.1).
+        /// </summary>
+        private bool RollsCritical(AbilityEffect effect)
+        {
+            if (effect.CritChance <= 0.0 || _random == null) return false;
+            return _random.NextDouble() < effect.CritChance;
+        }
+
+        /// <summary>
+        /// An operator at zero health that the engine has not yarded yet —
+        /// struck down earlier in the cast now resolving.
+        /// </summary>
+        private bool IsAlreadyDown(OperatorState op) =>
+            op.Health <= 0 && _targeting.IsInPlay(op);
 
         private EffectOutcome RunExecute(AbilityEffect effect, OperatorState caster, OperatorState recipient)
         {
@@ -608,7 +711,7 @@ namespace NonaRoyale.Core.Services
             if (!belowThreshold)
             {
                 var dealt = _damage.Apply(recipient,
-                    new DamageInstance(effect.Amount, effect.DamageType, caster.Id, "ability"));
+                    new DamageInstance(effect.Amount, effect.DamageType, caster.Id, AbilityCause));
                 return EffectOutcome.Damaged(recipient, dealt);
             }
 

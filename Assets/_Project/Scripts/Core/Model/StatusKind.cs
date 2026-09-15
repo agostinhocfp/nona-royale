@@ -62,6 +62,31 @@ namespace NonaRoyale.Core.Model
         /// pending detonation lives in <c>DeferredOperatorEffects</c>, keyed on
         /// the operator, and this status is only its tell.
         /// </remarks>
-        ZeroDayCharge = 8
+        ZeroDayCharge = 8,
+
+        /// <summary>
+        /// Tech damage is blocked outright while this is active (§5.12).
+        /// Luka's Hermes' Ring. Normal and Atomic damage are unaffected.
+        /// </summary>
+        /// <remarks>
+        /// Checked before evasion and the shield, so a blocked Tech hit spends
+        /// neither the round's evasion charge nor any of the pool. Magnitude is
+        /// unused and left at zero, which keeps it out of the speed sum.
+        /// </remarks>
+        TechWard = 9,
+
+        /// <summary>
+        /// A marker with no gameplay effect of its own: Luka's follow-up strike
+        /// is pending on this operator (§5.13). The <see cref="ZeroDayCharge"/>
+        /// pattern exactly — the pending strike lives in
+        /// <c>DeferredOperatorEffects</c>, this is its tell, and a cleanse that
+        /// strips it cancels the strike.
+        /// </summary>
+        /// <remarks>
+        /// A separate kind rather than a reused <see cref="ZeroDayCharge"/>, so
+        /// a target carrying both keeps both: the registry holds one entry per
+        /// kind, and a shared kind would let one detonation cancel the other.
+        /// </remarks>
+        Hunted = 10
     }
 }

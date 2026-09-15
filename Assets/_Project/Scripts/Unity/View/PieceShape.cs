@@ -70,6 +70,11 @@ namespace NonaRoyale.Unity.View
                 // Bouncer's hexagon at the same end of the scale.
                 case "Sanity": return Primitives.Polygon(8, 0f);
 
+                // Luka, Duelist: a four-pointed star turned to an X — a
+                // thrown blade. Turned, because on the axes its points would
+                // read as Javi's cross; four points, because five is Kian's.
+                case "Luka": return Primitives.Star(4, 45f);
+
                 default: return Primitives.Disc;
             }
         }

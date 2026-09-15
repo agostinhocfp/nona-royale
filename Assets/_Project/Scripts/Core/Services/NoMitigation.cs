@@ -26,5 +26,7 @@ namespace NonaRoyale.Core.Services
         public bool TryEvade(OperatorState target, IRandom random) => false;
 
         public int AbsorbFrom(OperatorState target, int amount) => 0;
+
+        public bool BlocksTech(OperatorState target) => false;
     }
 }
