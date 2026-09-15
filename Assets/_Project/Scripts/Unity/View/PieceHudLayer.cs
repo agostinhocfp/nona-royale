@@ -57,6 +57,9 @@ namespace NonaRoyale.Unity.View
         private const int TagPadding = 5;
         private const float TagFontSize = 11f;
 
+        /// <summary>Canvas units between the readouts of stacked pieces: a label's width plus a gap.</summary>
+        private const float StackSpacing = 68f;
+
         /// <summary>Health switch. MatchBootstrap drives it from its inspector flag and the H key.</summary>
         public bool Visible { get; set; } = true;
 
@@ -77,6 +80,9 @@ namespace NonaRoyale.Unity.View
             public readonly List<TMP_Text> TagTexts = new List<TMP_Text>();
             public readonly List<StatusKind> Statuses = new List<StatusKind>();
             public bool StatusShown = true;
+
+            /// <summary>Canvas units to shift this piece's readouts sideways, when it shares a cell.</summary>
+            public float StackShift;
         }
 
         private readonly List<Entry> _entries = new List<Entry>();
@@ -159,6 +165,24 @@ namespace NonaRoyale.Unity.View
                 entry.TagTexts[i].color = ReadableOn(colour);
                 entry.TagTexts[i].text = label;
             }
+        }
+
+        /// <summary>
+        /// Tells the layer where a piece sits in a shared cell, so its readouts
+        /// can be spread apart.
+        /// </summary>
+        /// <remarks>
+        /// The pieces themselves fan by a third of a cell (<c>BoardLayout.Offset</c>),
+        /// but a health label is wider than that, so two labels on one cell
+        /// printed on top of each other ("9/6/6"). Readouts are spread by a
+        /// label's width instead, centred on the cell.
+        /// </remarks>
+        public void SetStack(OperatorPiece piece, int index, int count)
+        {
+            var entry = _entries.Find(e => ReferenceEquals(e.Piece, piece));
+            if (entry == null) return;
+
+            entry.StackShift = count <= 1 ? 0f : (index - (count - 1) * 0.5f) * StackSpacing;
         }
 
         private static bool SameAs(List<StatusKind> shown, IReadOnlyList<StatusKind> next, int count)
@@ -338,11 +362,13 @@ namespace NonaRoyale.Unity.View
                         entry.Text.text = $"{op.Health}/{op.MaxHealth}";
                     }
 
-                    entry.Rect.anchoredPosition = ToCanvas(camera, centre + Vector3.up * _worldOffset);
+                    entry.Rect.anchoredPosition = ToCanvas(camera, centre + Vector3.up * _worldOffset)
+                                                  + new Vector2(entry.StackShift, 0f);
                 }
 
                 if (showStatuses)
-                    entry.StatusRect.anchoredPosition = ToCanvas(camera, centre + Vector3.down * _worldOffset);
+                    entry.StatusRect.anchoredPosition = ToCanvas(camera, centre + Vector3.down * _worldOffset)
+                                                        + new Vector2(entry.StackShift, 0f);
             }
         }
 

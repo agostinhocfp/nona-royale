@@ -336,6 +336,26 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
+        public void TurnsUntilReady_CountsDownToTheTurnTheAbilityReturns()
+        {
+            Assert.That(_abilities.TurnsUntilReady(_luka, Luka.HermesRing), Is.EqualTo(0), "never cast");
+
+            _abilities.Use(_luka, Luka.HermesRing, null, _red, _board);   // cooldown 4
+            Assert.That(_abilities.TurnsUntilReady(_luka, Luka.HermesRing), Is.EqualTo(5),
+                "sits out four turns, ready on the fifth");
+
+            for (int expected = 4; expected >= 0; expected--)
+            {
+                _clock.BeginTurnFor(PlayerColor.Blue);
+                _clock.BeginTurnFor(PlayerColor.Red);
+
+                Assert.That(_abilities.TurnsUntilReady(_luka, Luka.HermesRing), Is.EqualTo(expected));
+                Assert.That(_abilities.IsReady(_luka, Luka.HermesRing), Is.EqualTo(expected == 0),
+                    "agrees with IsReady");
+            }
+        }
+
+        [Test]
         public void HermesRing_CoversTwoFullRounds_ThenExpires()
         {
             _abilities.Use(_luka, Luka.HermesRing, null, _red, _board);

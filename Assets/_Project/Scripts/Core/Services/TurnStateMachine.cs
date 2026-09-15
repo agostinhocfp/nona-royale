@@ -99,6 +99,31 @@ namespace NonaRoyale.Core.Services
 
         public int RollsRemaining => Math.Max(0, _config.MaxRollsPerTurn - _rollsThisTurn);
 
+        /// <summary>The energy cap every pool is held to (§3.1).</summary>
+        public int EnergyCap => _energy.Cap;
+
+        /// <summary>
+        /// The current round: 1 while the first seat's first turn has not yet
+        /// been followed by its second, and so on.
+        /// </summary>
+        /// <remarks>
+        /// The highest turn count any seat has reached. The first seat always
+        /// starts a round, so its count is the round, and taking the maximum
+        /// saves this from having to know which seat that is. 0 before the
+        /// match starts.
+        /// </remarks>
+        public int Round
+        {
+            get
+            {
+                int round = 0;
+                foreach (var player in _players)
+                    if (player.TurnIndex > round) round = player.TurnIndex;
+
+                return round;
+            }
+        }
+
         /// <summary>
         /// Whether the player may roll again. Doubles buy an extra movement
         /// roll, bounded by <see cref="GameConfig.MaxRollsPerTurn"/> so one hot

@@ -224,6 +224,42 @@ namespace NonaRoyale.Core.Tests.Engine
         }
 
         [Test]
+        public void EnergyCap_ReportsTheConfiguredCap()
+        {
+            Assert.That(_engine.EnergyCap, Is.EqualTo(Core.Config.EnergyConfig.Default.EnergyCap));
+        }
+
+        [Test]
+        public void Round_AdvancesWhenTheFirstSeatBeginsAgain()
+        {
+            Assert.That(_engine.Round, Is.EqualTo(1));
+
+            _engine.Execute(new RollDiceCommand());
+            SpendRollAndEndTurn(_engine);
+            Assert.That(_engine.CurrentPlayer.Color, Is.EqualTo(PlayerColor.Blue), "precondition");
+            Assert.That(_engine.Round, Is.EqualTo(1), "the second seat is still round 1");
+
+            _engine.Execute(new RollDiceCommand());
+            SpendRollAndEndTurn(_engine);
+            Assert.That(_engine.CurrentPlayer.Color, Is.EqualTo(PlayerColor.Red), "precondition");
+            Assert.That(_engine.Round, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void Winner_IsNullUntilTheMatchIsWon()
+        {
+            Assert.That(_engine.Winner, Is.Null);
+
+            foreach (var op in _match.Players[0].Operators)
+                op.MoveTo(BoardProfile.Standard.Journey);
+
+            _engine.Execute(new RollDiceCommand());
+            _engine.Execute(new EndTurnCommand());
+
+            Assert.That(_engine.Winner, Is.EqualTo(PlayerColor.Red));
+        }
+
+        [Test]
         public void IsHome_IsTrue_OnlyForAnOperatorThatFinished()
         {
             var bouncer = Op(PlayerColor.Red, "Bouncer");

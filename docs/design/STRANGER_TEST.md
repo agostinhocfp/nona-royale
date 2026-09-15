@@ -24,8 +24,9 @@ Set these on `MatchBootstrap` before pressing Play:
 
 | Field                | Value | Why                                                              |
 | -------------------- | ----- | ---------------------------------------------------------------- |
-| `useLegacyPanel`     | off   | The uGUI panel is what is being tested                           |
-| `showPanel`          | on    | The stranger should not have to find Tab to start playing        |
+| `showDevPanel`       | off   | The in-match HUD (top bar, squad rail, action tray, log) is what is being tested; the dev panel is a debugging tool |
+| `useLegacyPanel`     | off   | Only matters with the dev panel shown                            |
+| `showFullLog`        | off   | The history strip and toasts are what is being tested; the full log is an extra |
 | `showPieceHealth`    | on    | Whether always-on health is noise is one of the findings         |
 | `randomSquads`       | off   | The alpha three: same squads for both testers, easier to compare |
 | `players`            | 2     | The stranger plays **both seats**, as in hot-seat play           |
@@ -86,11 +87,10 @@ Fix, then run the test again with **new** strangers. A tester who has already se
 
 **Already known.** Watch for these rather than fix them beforehand, so the test shows whether they matter:
 
-- Move buttons are labelled with pip counts (`6`, `4`, `2`). Nothing says the bold one spends the whole roll.
+- Landing labels show pip counts (`6`, `4`, `10`). Nothing says the bold one spends the whole roll.
 - Status tags under a piece can overlap the health label of a piece on the cell directly below.
-- The key hint (Tab / H / F2) shows only while the panel is hidden.
 - Safe cells are coloured, but nothing on screen says what "safe" means.
-- The energy cap is not shown, because `GameEngine` does not expose it (see `TurnStrip`).
+- The board and the tray are two ways to do the same things. Testers may find that redundant, or confusing.
 
 ## 6. When it passes
 
@@ -100,7 +100,7 @@ The `OnGUI` path is deleted **in one commit**, and that commit is logged (ADR-00
   - the drawing code: `OnGUI`, `DrawPanel`, `DrawMoveButtons`, `SeenEarlier`, `Faces`, `DrawAbilities`, `DrawTargetList`, `DrawTargets`, `DrawLog` and `_panelScroll`;
   - the legacy switch: `useLegacyPanel`, the F2 key and `_framedLegacy`;
   - the pixel reservation: the `PanelWidth` constant and the panel-rect guard in `HandleBoardClick`. `FrameCamera` then reserves only `ControlPanel.ReservedWidth`.
-- **From `ControlPanel`:** the F2 part of the key hint.
+- **From `ControlPanel`:** nothing. It stays as the dev panel. The F2 mention is gone from the top bar's legend already.
 - **From the docs:**
   - `PRESENTATION.md` §6: the "`OnGUI` for controls" bullet is rewritten, and the class remark that says "controls" in `MatchBootstrap` is checked.
   - `PRESENTATION.md` §7: the "`OnGUI` does not scale" item is closed.

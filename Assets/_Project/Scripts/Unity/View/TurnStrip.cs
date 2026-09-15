@@ -1,4 +1,5 @@
 // Assets/_Project/Scripts/Unity/View/TurnStrip.cs
+using System.Text;
 using NonaRoyale.Core;
 using NonaRoyale.Core.Services;
 using TMPro;
@@ -8,161 +9,168 @@ using UnityEngine.UI;
 namespace NonaRoyale.Unity.View
 {
     /// <summary>
-    /// One always-on line at the top of the screen: whose turn it is, their
-    /// energy, and what the turn is waiting for.
+    /// The top bar: whose turn it is, their energy against the cap, the round,
+    /// what the turn is waiting for, and the key legend.
     /// </summary>
     /// <remarks>
     /// PRESENTATION §2 puts "whose turn, and their energy" in the always-visible
-    /// table, and until now it lived only in the OnGUI panel, so Tab took it
-    /// away. A stranger who hides the panel must still know whose move it is.
+    /// table. This started as a one-line strip centred over the board and
+    /// became a full-width bar in GUI increment F. The name stayed, to keep the
+    /// history readable.
     ///
-    /// <b>Every value comes from the engine</b> (PRESENTATION §1). The prompt
-    /// only reports the phase, the unspent dice and <c>MustSpendRoll</c>. It
-    /// never works out what a die could do. The energy cap is not shown,
-    /// because <c>GameEngine</c> does not expose it, and hard-coding 12 here
-    /// would be a second place to forget when the cap is tuned. If the
-    /// stranger test asks for "7/12", that is a new engine query, not a
-    /// literal in this file.
+    /// <b>Every value comes from the engine</b> (PRESENTATION §1): the cap is
+    /// <c>GameEngine.EnergyCap</c>, the round is <c>GameEngine.Round</c>, and
+    /// the prompt reports only the phase, the unspent dice,
+    /// <c>MustSpendRoll</c> and <c>CanRollAgain</c>. It never works out what a
+    /// die could do.
     ///
     /// <b>It owns the top edge.</b> <see cref="ReservedHeight"/> is what
-    /// FrameCamera keeps clear, so the top arm of the cross is never drawn
-    /// under the strip. The height is fixed rather than fitted to the text,
-    /// so the reservation is known before the first layout pass runs.
-    ///
-    /// <b>It is centred over the board, not over the screen.</b> While the
-    /// OnGUI panel is up, the board sits right of centre; a strip centred on
-    /// the screen would drift toward the panel at narrow widths.
+    /// FrameCamera keeps clear, so the board is never drawn under it. The
+    /// height is fixed, so the reservation is known before the first layout
+    /// pass runs.
     ///
     /// Nothing here is a raycast target (ADR-0008 consequence 9).
     /// </remarks>
     public sealed class TurnStrip : MonoBehaviour
     {
-        private const float TopOffset = 12f;
-        private const float Height = 44f;
-        private const float Gap = 8f;
+        private const float Height = 56f;
 
-        /// <summary>Canvas units, at 1080p, that the strip claims from the top edge.</summary>
-        public static float ReservedHeight => TopOffset + Height + Gap;
-
-        private static readonly Color Backing = new Color(0f, 0f, 0f, 0.55f);
-        private static readonly Color Neutral = new Color(0.55f, 0.55f, 0.58f);
+        /// <summary>Canvas units, at 1080p, that the bar claims from the top edge.</summary>
+        public static float ReservedHeight => Height;
 
         private RectTransform _rect;
         private Image _accent;
-        private TMP_Text _text;
+        private TMP_Text _seat;
+        private TMP_Text _energy;
+        private TMP_Text _round;
+        private TMP_Text _prompt;
+        private RectTransform _pips;
+        private readonly Image[] _pipImages = new Image[MaxPips];
         private string _shown;
 
+        private const int MaxPips = 20;
+
         /// <summary>
-        /// Builds the strip under the HUD canvas. Safe to call on every
-        /// NewMatch: the strip tracks no piece, so it survives a reseed.
+        /// Builds the bar under the HUD canvas. Safe to call on every NewMatch:
+        /// the bar tracks no piece, so it survives a reseed.
         /// </summary>
         public void Bind(RectTransform canvasRect)
         {
-            if (_rect != null) return;
+            if (_rect != null)
+            {
+                _shown = null;
+                return;
+            }
 
-            var go = new GameObject("turn_strip", typeof(RectTransform));
-            _rect = (RectTransform)go.transform;
-            _rect.SetParent(canvasRect, false);
-            _rect.anchorMin = new Vector2(0.5f, 1f);
-            _rect.anchorMax = new Vector2(0.5f, 1f);
+            _rect = UiKit.Rect("top_bar", canvasRect);
+            _rect.anchorMin = new Vector2(0f, 1f);
+            _rect.anchorMax = new Vector2(1f, 1f);
             _rect.pivot = new Vector2(0.5f, 1f);
-            _rect.anchoredPosition = new Vector2(0f, -TopOffset);
             _rect.sizeDelta = new Vector2(0f, Height);
+            _rect.anchoredPosition = Vector2.zero;
+            UiKit.Frame(_rect, UiKit.Panel, false, RectTransform.Edge.Bottom);
 
-            var backing = go.AddComponent<Image>();
-            backing.color = Backing;
-            backing.raycastTarget = false;
-
-            // Width follows the text; height stays fixed (see remarks).
-            var row = go.AddComponent<HorizontalLayoutGroup>();
-            row.padding = new RectOffset(0, 18, 0, 0);
-            row.spacing = 14f;
-            row.childAlignment = TextAnchor.MiddleLeft;
-            row.childControlWidth = true;
-            row.childControlHeight = true;
-            row.childForceExpandWidth = false;
+            var row = UiKit.Row(_rect, 16f);
+            row.padding = new RectOffset(0, 18, 0, 2);
             row.childForceExpandHeight = true;
 
-            var fit = go.AddComponent<ContentSizeFitter>();
-            fit.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
-            fit.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
+            // A block of seat colour on the left edge, readable from across the table.
+            var accent = UiKit.Rect("seat_colour", _rect);
+            _accent = UiKit.Fill(accent, Color.gray);
+            UiKit.Fixed(accent, 12f);
 
-            // A bar in the seat colour on the left edge. The name is coloured
-            // too, but a block of colour can be read from across the table.
-            var accentGo = new GameObject("seat", typeof(RectTransform));
-            accentGo.transform.SetParent(_rect, false);
+            _seat = UiKit.Label(_rect, "", UiKit.FontTitle, bold: true);
+            UiKit.Fixed(_seat, 230f);
 
-            _accent = accentGo.AddComponent<Image>();
-            _accent.color = Neutral;
-            _accent.raycastTarget = false;
+            var energyBox = UiKit.Rect("energy", _rect);
+            var energyRow = UiKit.Row(energyBox, 8f);
+            energyRow.childForceExpandHeight = false;
+            energyRow.childAlignment = TextAnchor.MiddleLeft;
+            UiKit.Fixed(energyBox, 330f);
 
-            var accentSize = accentGo.AddComponent<LayoutElement>();
-            accentSize.minWidth = 8f;
-            accentSize.preferredWidth = 8f;
+            UiKit.Label(energyBox, "ENERGY", UiKit.FontSmall, UiKit.TextDim, bold: true);
 
-            var textGo = new GameObject("text", typeof(RectTransform));
-            textGo.transform.SetParent(_rect, false);
+            _pips = UiKit.Rect("pips", energyBox);
+            var pipRow = UiKit.Row(_pips, 3f);
+            pipRow.childAlignment = TextAnchor.MiddleLeft;
 
-            var text = textGo.AddComponent<TextMeshProUGUI>();
-            text.raycastTarget = false;
-            text.fontSize = 22f;
-            text.alignment = TextAlignmentOptions.MidlineLeft;
-            text.textWrappingMode = TextWrappingModes.NoWrap;
-            text.richText = true;
+            for (int i = 0; i < MaxPips; i++)
+            {
+                var pip = UiKit.Rect($"pip_{i}", _pips);
+                _pipImages[i] = UiKit.Fill(pip, UiKit.Track);
+                UiKit.Size(pip, 10f, 18f);
+            }
 
-            _text = text;
+            _energy = UiKit.Label(energyBox, "", UiKit.FontBody, bold: true);
+
+            _round = UiKit.Label(_rect, "", UiKit.FontBody, UiKit.TextDim);
+            UiKit.Fixed(_round, 110f);
+
+            _prompt = UiKit.Label(_rect, "", UiKit.FontLarge, UiKit.GoldBright, TextAlignmentOptions.Center);
+            UiKit.Size(_prompt, flexibleWidth: 1f);
+
+            UiKit.Label(_rect,
+                "<b>Space</b> roll  <b>E</b> end  <b>1–3</b> ability  <b>Enter</b> cast  <b>Esc</b> back  <b>L</b> log  <b>H</b> health  <b>Tab</b> dev",
+                UiKit.FontSmall, UiKit.TextDim, TextAlignmentOptions.MidlineRight);
+
             _shown = null;
         }
 
         /// <summary>
-        /// Rewrites the line from the engine. Called after every batch of
-        /// events. The text is set only when it changes, because TMP lays
-        /// the text out again on every assignment.
+        /// Rewrites the bar from the engine. Called after every batch of
+        /// events; text is set only when something changed, because TMP lays
+        /// text out again on every assignment.
         /// </summary>
         public void Refresh(GameEngine engine)
         {
-            if (_text == null || engine == null) return;
+            if (_rect == null || engine == null) return;
 
-            string line;
-            Color seatColour;
+            string key = engine.MatchOver
+                ? $"over|{engine.Winner}|{engine.Round}"
+                : $"{engine.CurrentPlayer.Color}|{engine.CurrentPlayer.Energy}|{engine.EnergyCap}|{engine.Round}|{Prompt(engine)}";
+
+            if (key == _shown) return;
+            _shown = key;
+
+            _round.text = $"Round <b>{engine.Round}</b>";
 
             if (engine.MatchOver)
             {
-                line = "<b>MATCH OVER</b>";
-                seatColour = Neutral;
-            }
-            else
-            {
-                var seat = engine.CurrentPlayer;
-                seatColour = BoardLayout.ColourOf(seat.Color);
+                var winner = engine.Winner;
+                var colour = winner.HasValue ? BoardLayout.ColourOf(winner.Value) : Color.gray;
 
-                // Nudged toward white for the same reason as the piece
-                // labels: raw seat blue is nearly invisible on a dark backing.
-                var nameColour = ColorUtility.ToHtmlStringRGB(Color.Lerp(seatColour, Color.white, 0.35f));
-
-                line = $"<color=#{nameColour}><b>{seat.Color.ToString().ToUpperInvariant()}</b></color>" +
-                       $"   turn {seat.TurnIndex}   ·   energy <b>{seat.Energy}</b>   ·   {Prompt(engine)}";
+                _accent.color = colour;
+                _seat.text = winner.HasValue
+                    ? $"<color=#{UiKit.Hex(UiKit.Readable(colour))}>{winner.Value.ToString().ToUpperInvariant()}</color> WINS"
+                    : "MATCH OVER";
+                _energy.text = "";
+                _prompt.text = "Match over — start a new one from the dev panel (Tab)";
+                SetPips(0, 0);
+                return;
             }
 
-            if (line == _shown) return;
+            var seat = engine.CurrentPlayer;
+            var seatColour = BoardLayout.ColourOf(seat.Color);
 
-            _shown = line;
-            _text.text = line;
             _accent.color = seatColour;
+            _seat.text = $"<color=#{UiKit.Hex(UiKit.Readable(seatColour))}>{seat.Color.ToString().ToUpperInvariant()}</color> <size=70%><color=#{UiKit.Hex(UiKit.TextDim)}>to play</color></size>";
+            _energy.text = $"{seat.Energy}<color=#{UiKit.Hex(UiKit.TextDim)}>/{engine.EnergyCap}</color>";
+            _prompt.text = Prompt(engine);
+
+            SetPips(seat.Energy, engine.EnergyCap);
         }
 
-        /// <summary>
-        /// Moves the strip so it sits centred over the part of the screen the
-        /// board uses.
-        /// </summary>
-        /// <param name="leftInsetPixels">Screen pixels reserved on the left (the OnGUI panel), or 0.</param>
-        /// <param name="scaleFactor">The HUD canvas scale factor, to turn pixels into canvas units.</param>
-        public void CentreOver(float leftInsetPixels, float scaleFactor)
+        /// <summary>One pip per point of the cap, lit up to the pool.</summary>
+        private void SetPips(int energy, int cap)
         {
-            if (_rect == null) return;
+            int shown = Mathf.Min(cap, MaxPips);
 
-            float x = leftInsetPixels * 0.5f / Mathf.Max(0.01f, scaleFactor);
-            _rect.anchoredPosition = new Vector2(x, -TopOffset);
+            for (int i = 0; i < MaxPips; i++)
+            {
+                var pip = _pipImages[i];
+                pip.gameObject.SetActive(i < shown);
+                pip.color = i < energy ? UiKit.Cyan : UiKit.Track;
+            }
         }
 
         private static string Prompt(GameEngine engine)
@@ -172,21 +180,35 @@ namespace NonaRoyale.Unity.View
             switch (engine.Phase)
             {
                 case TurnPhase.AwaitingRoll:
-                    return "roll the dice";
+                    return "Roll the dice";
 
                 case TurnPhase.Action:
-                    if (dice.Count == 0) return "dice spent — end turn when ready";
+                    if (dice.Count == 0)
+                        return engine.CanRollAgain ? "Doubles — roll again" : "Dice spent — cast, or press <b>E</b> to end the turn";
 
                     // MustSpendRoll is the engine's answer to "is there a legal
                     // move for these dice". While dice are left, false means
                     // none of them can be spent.
                     return engine.MustSpendRoll
-                        ? $"move <b>{string.Join(" + ", dice)}</b>"
-                        : $"no legal move for {string.Join(" + ", dice)} — end turn";
+                        ? $"Move <b>{Join(dice)}</b> — click a piece, then where it lands"
+                        : $"No legal move for {Join(dice)} — press <b>E</b> to end the turn";
 
                 default:
                     return "";
             }
+        }
+
+        private static string Join(System.Collections.Generic.IReadOnlyList<int> dice)
+        {
+            var text = new StringBuilder();
+
+            for (int i = 0; i < dice.Count; i++)
+            {
+                if (i > 0) text.Append(" + ");
+                text.Append(dice[i]);
+            }
+
+            return text.ToString();
         }
     }
 }

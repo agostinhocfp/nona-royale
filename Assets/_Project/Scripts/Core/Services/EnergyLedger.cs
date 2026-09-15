@@ -29,6 +29,9 @@ namespace NonaRoyale.Core.Services
             _config = config ?? throw new ArgumentNullException(nameof(config));
         }
 
+        /// <summary>The most a pool can hold (§3.1). Read-only, for display.</summary>
+        public int Cap => _config.EnergyCap;
+
         /// <summary>
         /// Grants this turn's energy: <c>floor(diceTotal / 2)</c>, capped, with
         /// the overflow burned rather than stored.

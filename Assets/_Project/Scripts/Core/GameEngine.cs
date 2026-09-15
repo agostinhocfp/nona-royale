@@ -93,6 +93,8 @@ namespace NonaRoyale.Core
 
         private bool _hasRolled;
 
+        private PlayerColor? _winner;
+
         public GameEngine(
             IReadOnlyList<OperatorState> operators,
             IReadOnlyDictionary<int, AbilityDefinition> abilityBook,
@@ -132,6 +134,18 @@ namespace NonaRoyale.Core
         public TurnPhase Phase => _turns.Phase;
         public PlayerState CurrentPlayer => _turns.CurrentPlayer;
         public bool MatchOver => _turns.Phase == TurnPhase.MatchOver;
+
+        /// <summary>Who won, once the match is over. Null until then.</summary>
+        public PlayerColor? Winner => _winner;
+
+        /// <summary>The current round (see <c>TurnStateMachine.Round</c>). Display only.</summary>
+        public int Round => _turns.Round;
+
+        /// <summary>The most energy a pool can hold (§3.1). Display only.</summary>
+        public int EnergyCap => _turns.EnergyCap;
+
+        /// <summary>Whether the current seat may roll again this turn (doubles, §6).</summary>
+        public bool CanRollAgain => _turns.CanRollAgain;
 
         /// <summary>
         /// The faces still unspent on the current roll, in the order they were
@@ -415,6 +429,7 @@ namespace NonaRoyale.Core
 
             if (report.MatchOver)
             {
+                _winner = report.Winner.Value;
                 events.Add(new GameWon(report.Winner.Value));
                 return;
             }
@@ -893,6 +908,18 @@ namespace NonaRoyale.Core
         /// </summary>
         public IReadOnlyList<CellRef> LegalCellsFor(OperatorState caster, AbilityDefinition ability) =>
             _abilities.LegalCells(caster, ability);
+
+        /// <summary>
+        /// How many of the caster's own turns until the ability is off
+        /// cooldown. 0 when it is ready now.
+        /// </summary>
+        /// <remarks>
+        /// Delegated for the reason <see cref="LegalTargetsFor"/> gives: the
+        /// resolver owns cooldowns. The tray shows this beside "cooling down",
+        /// which on its own tells a player nothing about when to plan the cast.
+        /// </remarks>
+        public int TurnsUntilReady(OperatorState caster, AbilityDefinition ability) =>
+            _abilities.TurnsUntilReady(caster, ability);
 
         /// <summary>
         /// Whether a <see cref="DeployCommand"/> for this operator would be

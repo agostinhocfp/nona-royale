@@ -100,6 +100,30 @@ _Added 2026-09-15, GUI phase increment E._ A stranger's first instinct is to cli
 - **Only clickable pieces lift under the pointer**: your own, and legal targets. A lift that promised nothing would teach the player to click at random.
 - **The selection belongs to the seat that made it** and is dropped when the turn passes.
 
+### 4.2 The in-match layout
+
+_Added 2026-09-15, GUI phase increment F._ The board sits in the rectangle the HUD leaves free, and each edge has one owner:
+
+| Edge   | Owner                      | Shows                                                                                                           |
+| ------ | -------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Top    | Top bar (`TurnStrip`)      | Seat, energy pips against the cap, round, what the turn is waiting for, key legend                              |
+| Left   | Squad rail (`SquadRail`)   | Every seat's squad: waiting, ready to deploy, on board or home; health; statuses. The current seat's rows are clickable |
+| Bottom | Action tray (`ActionTray`) | Dice, Roll, End turn, the selected operator, its abilities with cost, range and when each is ready, the aim, Cast |
+| Right  | History strip (`HistoryStrip`) | One chip per action, newest on top: who acted (the piece's shape), what kind, one number. Hover for the full card. Turns divided by seat colour and round |
+
+The dev panel (`ControlPanel`) takes the left edge instead of the rail while Tab is on. It is a debugging tool: reseed and pip buttons.
+
+**Over the board, not beside it** (increment F2):
+
+- **Turn button** (`TurnButton`). One button at the board's bottom-right corner always names the next step: ROLL, then MOVE FIRST with the dice left, then END TURN. It breathes when pressing it is that step. There is a single place to look, as in a card game's end-turn button.
+- **Turn pill** (`TurnBanner`). A slim line under the top bar at the start of every turn, "RED's turn · round 3 · Space to roll", which fades after the roll. It is the hot-seat hand-over cue. It started as a large centred card, which was too big.
+- **Toasts** (`EventToasts`). Up to three short lines under the top bar, for casts, hits, knockouts, upkeep effects and refused commands. Upkeep damage has no visible agent (§2), so the screen has to say it without the player looking for it.
+- **Full log** (`LogPanel`). An overlay beside the strip, opened with L or the strip's LOG button. It takes no width from the board.
+
+**One chip per action, not per event.** A cast is an energy spend, several hits and a status. The player did one thing, so the strip shows one chip and the card lists the rest. The engine does not report which ability was cast, so the chip's name comes from the command the view itself sent. That is bookkeeping about its own action, not a rule.
+
+**"Ready in N" counts your own turns to the one the ability returns on.** On the turn it is cast, a cooldown 2 ability reads 3. That answers the question a player plans with, and it comes from `GameEngine.TurnsUntilReady`, not from the view.
+
 ---
 
 ## 5. Unknown state still draws
@@ -119,7 +143,7 @@ The same applies to operators. A silhouette is chosen by name with a fallback sh
 The current build exists to answer whether the game is fun, and everything in it is disposable.
 
 - **No art assets, no prefabs.** Sprites are generated at runtime; the board, pieces and controls are built in code. One script on one empty GameObject.
-- **`OnGUI` for controls.** Ugly and immediate. Replaced by a real UI when there is something worth dressing.
+- **`OnGUI` for controls — superseded.** The in-match HUD (§4.2) replaced it. The `OnGUI` panel survives only behind Tab and F2 until the stranger test passes (ADR-0008 consequence 6).
 - **Silhouette carries identity.** Colour is taken by the seat, so operators are told apart by shape and size — the same constraint `ART_DIRECTION` §5 sets for the real art, arrived at early and crudely. A shape that is hard to read here is information for the art pass. Size tracks health against the frailest operator on the roster, not a round number, or the smallest piece stops reading as small.
 - **The board is drawn from `PathMap`, never hard-coded.** `BoardLayout` is the only place that knows where a cell is; the core knows only that cell 14 follows cell 13. That separation is what let the board change from a ring to a cross without touching a rule or a test.
 - **Drawability is enforced here, not in the core.** `BoardLayout` refuses a profile it cannot render as a continuous cross. The core tolerates any circuit divisible by four, because the rules do not care about arm geometry and nothing in the core should start caring — and the harness legitimately measures boards that will never be drawn. The cost of that separation is that an undrawable board can survive a long time in simulation, which is exactly what happened.

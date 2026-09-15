@@ -58,12 +58,19 @@ namespace NonaRoyale.Unity.Composition
         [Tooltip("World units per board cell.")]
         public float cellSpacing = 1f;
 
-        [Tooltip("Show the controls panel. Tab toggles it while playing.")]
-        public bool showPanel = true;
+        // Renamed from showDevPanel in GUI increment F, so the scene's saved
+        // value does not carry over: the dev panel now starts hidden.
+        [Tooltip("Show the dev panel (reseed, pip buttons) in place of the squad rail. Tab toggles it while playing.")]
+        public bool showDevPanel = false;
 
-        [Tooltip("Use the old OnGUI panel instead of the uGUI one. F2 switches while playing. " +
-                 "Both exist until the stranger test passes on the uGUI panel (ADR-0008 consequence 6).")]
+        [Tooltip("With the dev panel shown, use the old OnGUI panel instead of the uGUI one. F2 switches while playing. " +
+                 "Both exist until the stranger test passes (ADR-0008 consequence 6).")]
         public bool useLegacyPanel = false;
+
+        // Renamed from showFullLog in GUI increment F2, when the log became an
+        // overlay: it now starts closed, whatever the scene saved.
+        [Tooltip("Show the full text log over the board's right edge. L toggles it while playing.")]
+        public bool showFullLog = false;
 
         [Tooltip("Health readout above every deployed piece (ADR-0008). " +
                  "H toggles it while playing — the stranger test decides its fate.")]
@@ -110,6 +117,13 @@ namespace NonaRoyale.Unity.Composition
         private TurnStrip _turnStrip;
         private DeviceLayer _devices;
         private ControlPanel _controls;
+        private SquadRail _rail;
+        private ActionTray _tray;
+        private LogPanel _logPanel;
+        private HistoryStrip _history;
+        private EventToasts _toasts;
+        private TurnBanner _banner;
+        private TurnButton _turnButton;
         private Vector2 _panelScroll;
 
         private void Start() => NewMatch();
@@ -183,6 +197,22 @@ namespace NonaRoyale.Unity.Composition
             _turnStrip.Bind(_hudRoot.Root);
             _controls = GetComponent<ControlPanel>() ?? gameObject.AddComponent<ControlPanel>();
             _controls.Bind(_hudRoot.Root, this);
+            _rail = GetComponent<SquadRail>() ?? gameObject.AddComponent<SquadRail>();
+            _rail.Bind(_hudRoot.Root, this);
+            _tray = GetComponent<ActionTray>() ?? gameObject.AddComponent<ActionTray>();
+            _tray.Bind(_hudRoot.Root, this);
+            _logPanel = GetComponent<LogPanel>() ?? gameObject.AddComponent<LogPanel>();
+            _logPanel.Bind(_hudRoot.Root, this);
+            _logPanel.CloseRequested = () => showFullLog = false;
+            _history = GetComponent<HistoryStrip>() ?? gameObject.AddComponent<HistoryStrip>();
+            _history.Bind(_hudRoot.Root);
+            _history.LogRequested = () => showFullLog = !showFullLog;
+            _toasts = GetComponent<EventToasts>() ?? gameObject.AddComponent<EventToasts>();
+            _toasts.Bind(_hudRoot.Root);
+            _banner = GetComponent<TurnBanner>() ?? gameObject.AddComponent<TurnBanner>();
+            _banner.Bind(_hudRoot.Root);
+            _turnButton = GetComponent<TurnButton>() ?? gameObject.AddComponent<TurnButton>();
+            _turnButton.Bind(_hudRoot.Root, this);
             _cellLabels = GetComponent<CellLabelLayer>() ?? gameObject.AddComponent<CellLabelLayer>();
             _cellLabels.Bind(_hudRoot.Root);
 
@@ -202,27 +232,25 @@ namespace NonaRoyale.Unity.Composition
         private float _framedScale;
 
         /// <summary>
-        /// Sizes the camera and slides the board clear of the controls panel.
+        /// Sizes the camera and centres the board in the part of the screen the
+        /// HUD leaves free.
         /// </summary>
         /// <remarks>
-        /// <b>The camera moves away from the panel, not toward it.</b> Moving a
-        /// camera right pushes the world left on screen, so a positive shift
-        /// herded the board <i>under</i> the panel — which cost a quarter of a
-        /// cell at 1920 wide and buried nearly half the board at 1024.
+        /// <b>Four reservations since GUI increment F:</b> the squad rail or
+        /// the dev panel on the left, the log on the right, the top bar and the
+        /// action tray. The board is fitted into the rectangle between them,
+        /// and the camera moves so that rectangle's centre is the board's.
         ///
-        /// <b>Width is sized for, not just height.</b> The panel takes a fixed
-        /// width, so the fraction of the view it eats grows as the Game view
-        /// narrows. Framing on height alone was correct only at the aspect it
-        /// happened to be tuned at. The OnGUI panel's width is in pixels; the
-        /// uGUI panel's is in canvas units and is converted with the scale
-        /// factor (ADR-0008 consequence 5).
+        /// <b>The camera moves away from a panel, not toward it.</b> Moving a
+        /// camera right pushes the world left on screen, so the shift is the
+        /// negative of the free rectangle's offset. Getting this backwards once
+        /// herded the board under the panel.
         ///
-        /// <b>The top edge belongs to the turn strip.</b> The same idea, turned
-        /// on its side: the board is fitted into the height the strip leaves,
-        /// and the camera moves <i>up</i> so the board sits lower on screen.
-        /// The strip's height is in canvas units, so it is converted with the
-        /// canvas scale factor, never assumed to be pixels (ADR-0008
-        /// consequence 5).
+        /// <b>Width is sized for, not just height.</b> The side panels take a
+        /// fixed width, so the share of the view they eat grows as the window
+        /// narrows. HUD sizes are canvas units and are converted with the
+        /// canvas scale factor (ADR-0008 consequence 5). The OnGUI panel's
+        /// width is in pixels.
         /// </remarks>
         private void FrameCamera()
         {
@@ -239,51 +267,67 @@ namespace NonaRoyale.Unity.Composition
 
             float extent = _layout?.Extent ?? 8f;
             float aspect = Mathf.Max(0.1f, camera.aspect);
-
             float scale = _hudRoot != null ? _hudRoot.ScaleFactor : 1f;
 
-            float panelPixels = !showPanel ? 0f
-                : useLegacyPanel ? PanelWidth
-                : ControlPanel.ReservedWidth * scale;
+            float width = Mathf.Max(1f, Screen.width);
+            float height = Mathf.Max(1f, Screen.height);
 
-            float panelFraction = Mathf.Clamp01(panelPixels / Mathf.Max(1f, Screen.width));
+            float leftUnits = LeftReservedUnits(scale);
+            float rightUnits = HistoryStrip.ReservedWidth;
 
-            // Never let the panel claim so much of a tiny window that the board
+            float left = Mathf.Clamp(leftUnits * scale / width, 0f, 0.45f);
+            float right = Mathf.Clamp(rightUnits * scale / width, 0f, 0.45f);
+            float top = Mathf.Clamp(TurnStrip.ReservedHeight * scale / height, 0f, 0.3f);
+            float bottom = Mathf.Clamp(ActionTray.ReservedHeight * scale / height, 0f, 0.35f);
+
+            // Never let the panels claim so much of a tiny window that the board
             // is sized into nothing.
-            float usable = Mathf.Max(0.25f, 1f - panelFraction);
+            float usableWidth = Mathf.Max(0.25f, 1f - left - right);
+            float usableHeight = Mathf.Max(0.25f, 1f - top - bottom);
 
-            float stripFraction = _turnStrip != null
-                ? Mathf.Clamp(TurnStrip.ReservedHeight * scale / Mathf.Max(1f, Screen.height), 0f, 0.25f)
-                : 0f;
-
-            float usableHeight = 1f - stripFraction;
-
-            // Fit vertically in what the strip leaves, and horizontally in
-            // what the panel leaves.
             camera.orthographicSize = Mathf.Max(
                 extent * FrameMargin / usableHeight,
-                extent * FrameMargin / (aspect * usable));
+                extent * FrameMargin / (aspect * usableWidth));
 
             float halfWidth = camera.orthographicSize * aspect;
             float halfHeight = camera.orthographicSize;
 
+            // Centre of the free rectangle, as an offset from the screen centre
+            // in viewport units (bottom-left origin).
+            float centreX = left + usableWidth * 0.5f - 0.5f;
+            float centreY = bottom + usableHeight * 0.5f - 0.5f;
+
             camera.transform.position = new Vector3(
-                -halfWidth * panelFraction,
-                halfHeight * stripFraction,
+                -centreX * 2f * halfWidth,
+                -centreY * 2f * halfHeight,
                 -10f);
 
-            if (_turnStrip != null) _turnStrip.CentreOver(panelPixels, scale);
+            if (_tray != null) _tray.SetInsets(leftUnits, rightUnits);
+            if (_toasts != null) _toasts.SetArea(leftUnits, rightUnits, TurnStrip.ReservedHeight);
+            if (_banner != null) _banner.SetArea(leftUnits, rightUnits, TurnStrip.ReservedHeight);
+            if (_turnButton != null) _turnButton.SetArea(leftUnits, rightUnits, TurnStrip.ReservedHeight, ActionTray.ReservedHeight);
 
             _framedWidth = Screen.width;
             _framedHeight = Screen.height;
-            _framedWithPanel = showPanel;
+            _framedWithPanel = showDevPanel;
             _framedLegacy = useLegacyPanel;
             _framedScale = scale;
         }
 
+        /// <summary>
+        /// Canvas units taken on the left: the dev panel, the OnGUI panel
+        /// (converted from pixels), or the squad rail.
+        /// </summary>
+        private float LeftReservedUnits(float scale)
+        {
+            if (!showDevPanel) return SquadRail.ReservedWidth;
+            if (useLegacyPanel) return PanelWidth / Mathf.Max(0.01f, scale);
+            return ControlPanel.ReservedWidth;
+        }
+
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.Tab)) showPanel = !showPanel;
+            if (Input.GetKeyDown(KeyCode.Tab)) showDevPanel = !showDevPanel;
 
             if (Input.GetKeyDown(KeyCode.F2)) useLegacyPanel = !useLegacyPanel;
 
@@ -293,11 +337,18 @@ namespace NonaRoyale.Unity.Composition
             // inspector checkbox works too.
             if (_pieceHud != null) _pieceHud.Visible = showPieceHealth;
 
+            if (Input.GetKeyDown(KeyCode.L)) showFullLog = !showFullLog;
+
             if (_controls != null)
             {
-                _controls.Visible = showPanel && !useLegacyPanel;
-                _controls.HintVisible = !showPanel;
+                _controls.Visible = showDevPanel && !useLegacyPanel;
+
+                // The key legend moved to the top bar (GUI increment F).
+                _controls.HintVisible = false;
             }
+
+            if (_rail != null) _rail.Visible = !showDevPanel;
+            if (_logPanel != null) _logPanel.Expanded = showFullLog;
 
             // Game view resizing is routine while prototyping, and both the size
             // and the shift depend on aspect and on whether the panel is up.
@@ -305,7 +356,7 @@ namespace NonaRoyale.Unity.Composition
             // frame after a resize, so the strip reservation catches up then.
             if (Screen.width != _framedWidth ||
                 Screen.height != _framedHeight ||
-                showPanel != _framedWithPanel ||
+                showDevPanel != _framedWithPanel ||
                 useLegacyPanel != _framedLegacy ||
                 (_hudRoot != null && !Mathf.Approximately(_hudRoot.ScaleFactor, _framedScale)))
             {
@@ -353,7 +404,7 @@ namespace NonaRoyale.Unity.Composition
             if (index < 0 || index >= abilities.Count) return;
 
             Host.ToggleAbility(abilities[index]);
-            _controls?.MarkDirty();
+            MarkHudDirty();
         }
 
         /// <summary>
@@ -361,6 +412,7 @@ namespace NonaRoyale.Unity.Composition
         /// </summary>
         private void StepBack()
         {
+
             if (_selectedTarget != null || _selectedCell != null)
             {
                 _selectedTarget = null;
@@ -380,7 +432,7 @@ namespace NonaRoyale.Unity.Composition
         /// </summary>
         private bool PointerOverPanel()
         {
-            if (showPanel && useLegacyPanel)
+            if (showDevPanel && useLegacyPanel)
             {
                 var gui = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
                 if (new Rect(10, 10, PanelWidth - 20f, Screen.height - 20).Contains(gui)) return true;
@@ -451,7 +503,7 @@ namespace NonaRoyale.Unity.Composition
                 if (_match.Engine.CanDeploy(piece.Operator)) Host.Deploy(piece.Operator);
                 else Host.ToggleOperator(piece.Operator);
 
-                _controls?.MarkDirty();
+                MarkHudDirty();
                 return;
             }
 
@@ -521,7 +573,7 @@ namespace NonaRoyale.Unity.Composition
 
             var best = here.OrderBy(o => o.Pips).First();
             Host.Move(best.Operator, best.Die);
-            _controls?.MarkDirty();
+            MarkHudDirty();
             return true;
         }
 
@@ -530,9 +582,12 @@ namespace NonaRoyale.Unity.Composition
 
         // ── Driving the engine ───────────────────────────────────────────
 
-        private void Send(ICommand command) => Handle(_match.Engine.Execute(command), immediate: false);
+        private void Send(ICommand command, OperatorState castBy = null, AbilityDefinition cast = null) =>
+            Handle(_match.Engine.Execute(command), immediate: false, castBy, cast);
 
-        private void Handle(IReadOnlyList<IGameEvent> events, bool immediate)
+        private void Handle(
+            IReadOnlyList<IGameEvent> events, bool immediate,
+            OperatorState castBy = null, AbilityDefinition cast = null)
         {
             foreach (var e in events)
             {
@@ -569,14 +624,51 @@ namespace NonaRoyale.Unity.Composition
             if (_devices != null) _devices.Show(_match.Engine.ActiveCellEffects());
 
             if (_turnStrip != null) _turnStrip.Refresh(_match.Engine);
-            if (_controls != null) _controls.MarkDirty();
+            if (_turnButton != null) _turnButton.Refresh(_match.Engine);
+
+            ShowHistory(events, castBy, cast);
+            MarkHudDirty();
+        }
+
+        /// <summary>
+        /// Feeds a batch to the history strip, the toasts and the turn banner
+        /// (GUI increment F2).
+        /// </summary>
+        /// <remarks>
+        /// The banner opens when a batch begins a turn and fades as soon as the
+        /// engine is past the roll, however the roll was made.
+        /// </remarks>
+        private void ShowHistory(IReadOnlyList<IGameEvent> events, OperatorState castBy, AbilityDefinition cast)
+        {
+            var engine = _match.Engine;
+            var batch = HistoryFeed.Build(events, castBy, cast, engine.Round);
+
+            if (_history != null) _history.Add(batch);
+            if (_toasts != null) _toasts.Show(batch);
+
+            if (_banner == null) return;
+
+            if (batch.TurnBegan != null && !engine.MatchOver)
+                _banner.Show(batch.TurnBegan.Player, engine.Round);
+
+            if (engine.MatchOver || engine.Phase != TurnPhase.AwaitingRoll)
+                _banner.Hide();
         }
 
         /// <summary>Redraws everything that depends on the selection.</summary>
         private void SelectionChanged()
         {
             RefreshHighlights();
+            MarkHudDirty();
+        }
+
+        /// <summary>Asks every rebuilt HUD panel to redraw at the end of the frame.</summary>
+        private void MarkHudDirty()
+        {
             if (_controls != null) _controls.MarkDirty();
+            if (_rail != null) _rail.MarkDirty();
+            if (_tray != null) _tray.MarkDirty();
+            if (_logPanel != null) _logPanel.MarkDirty();
         }
 
         // ── Intents (IControlPanelHost) ──────────────────────────────────
@@ -682,7 +774,8 @@ namespace NonaRoyale.Unity.Composition
                 _selectedAbility.RequiresTarget && _selectedTarget != null
                     ? _selectedTarget.Id
                     : (int?)null,
-                _selectedAbility.RequiresCell ? _selectedCell : null));
+                _selectedAbility.RequiresCell ? _selectedCell : null),
+                _selectedOperator, _selectedAbility);
 
             _selectedAbility = null;
             _selectedTarget = null;
@@ -1027,7 +1120,13 @@ namespace NonaRoyale.Unity.Composition
 
                     piece.Refresh(evasive: statuses.Contains(StatusKind.Evasion));
 
-                    if (_pieceHud != null) _pieceHud.ShowStatuses(piece, statuses);
+                    if (_pieceHud != null)
+                    {
+                        _pieceHud.ShowStatuses(piece, statuses);
+
+                        // Yard pieces show no readouts, so only stacks on the track spread.
+                        _pieceHud.SetStack(piece, i, pair.Value.Count);
+                    }
                 }
             }
         }
@@ -1044,7 +1143,7 @@ namespace NonaRoyale.Unity.Composition
 
             // The key hint moved to the uGUI panel, which shows it in both
             // modes whenever the panel is hidden.
-            if (!showPanel || !useLegacyPanel) return;
+            if (!showDevPanel || !useLegacyPanel) return;
 
             GUILayout.BeginArea(new Rect(10, 10, PanelWidth - 20f, Screen.height - 20), GUI.skin.box);
 

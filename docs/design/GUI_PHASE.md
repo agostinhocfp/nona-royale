@@ -1,7 +1,7 @@
 # Nona Royale — GUI Phase
 
 > Location in repo: `docs/design/GUI_PHASE.md`
-> Status: **In progress.** Started 2026-09-15. Increment E is written and waiting for a Play Mode check.
+> Status: **In progress.** Started 2026-09-15. E is done; F is written and waiting for a Play Mode check.
 > Related: ADR-0008 (uGUI; its removal order stays binding), `PRESENTATION.md` (what the view may do and must show), `ART_DIRECTION.md` §3 and §8 (palette, UI registers), `STRANGER_TEST.md` (the gate before `OnGUI` is deleted)
 
 ## Goal
@@ -42,3 +42,34 @@ Each increment ends with a Play Mode check and a commit.
   - `IControlPanelHost` renamed `SelectedCaster`/`ToggleCaster` to `SelectedOperator`/`ToggleOperator`: one selection now serves moving and casting.
   - Core: `GameEngine.CanDeploy` and `IsHome`; `Deploy` now shares its checks with `CanDeploy`. Three new tests; 425 passing in the stand-in run.
   - Nuetu's piece is the disc, on purpose.
+- 2026-09-15 — **Increment E passed Play Mode** and was committed (`678c8db`).
+- 2026-09-15 — **Increment F written.**
+  - New files:
+    - `UiKit`: shared widgets and provisional palette colours, which G will skin.
+    - `SquadRail`: every seat's squad, with state, health and statuses. A click on a row selects or deploys, like a click on the piece.
+    - `ActionTray`: dice, Roll and End turn, the operator card, ability cards showing "ready in N" or the energy needed, the aim hint, and Cast.
+    - `LogPanel`: newest first, rejections tinted, L collapses it to a tab.
+  - `TurnStrip` became the full-width top bar: seat, energy pips against the cap, round, prompt and key legend.
+  - `ControlPanel` is now the dev panel. Tab shows it in place of the rail.
+  - `MatchBootstrap` fits the board between all four reservations.
+  - **`showPanel` renamed `showDevPanel`** (default off), so the value saved in the scene does not carry over.
+  - Core: `EnergyCap`, `Round`, `TurnsUntilReady`, `Winner` and `CanRollAgain` on `GameEngine`, backed by `EnergyLedger.Cap`, `TurnStateMachine.Round` and `AbilityResolver.TurnsUntilReady`. Four new tests; 429 passing in the stand-in run.
+- 2026-09-15 — **F, first Play Mode look.** The layout reads well. The bottom and top edges looked cut off because the Game view was set to a fixed 1920×1080 in a shorter window, and Unity crops a fixed resolution that does not fit. The top bar was entirely off screen. Use a 16:9 aspect or zoom out. Fixes from the same screenshot:
+  - Tray sections and top-bar items grew past their widths. A layout group that force-expands its children reports itself as flexible, so fixed sections are now pinned with `UiKit.Fixed`.
+  - Rail names were cut off ("Boun…"). The name now has its own line, with state and statuses on the second, and the health column is fixed.
+  - Health labels of pieces sharing a cell printed on top of each other ("9/6/6"). `PieceHudLayer.SetStack` now spreads them by a label's width.
+- 2026-09-15 — **Increment F2, from designer feedback on F.**
+  - **The text log gave way to a history strip** (Hearthstone-style): a 78-unit column with one chip per action, where it used to be 360 units of text. Each chip shows the acting piece's shape, a word (MOVE, HIT, CAST, DEPLOY, UPKEEP, HOME, WIN) and one number, with a KO mark when someone fell. Hovering shows the full card. Turns are divided by seat colour and round.
+  - **Toasts:** up to three short-lived lines at the top of the board for casts, hits, KOs, upkeep and refusals.
+  - **The full log became an overlay** (L, or LOG at the top of the strip). `showLog` was renamed `showFullLog`, off by default.
+  - **Turn banner:** "RED'S TURN" plus upkeep lines and a pulsing ROLL button at the start of every turn. Rolling closes it; Esc hides it. The tray's Roll button pulses whenever a roll is due.
+  - **Ability card text is smaller** (names 15, details 13), and the operator name is 22.
+  - New files: `HistoryFeed` (events into items, one per action), `HistoryStrip`, `HistoryChip` (hover), `EventToasts`, `TurnBanner`, `UiPulse`. `UiKit.Border` now returns its strips, and `UiKit.Pulse` was added.
+  - No core changes.
+- 2026-09-15 — **Ending a turn made obvious** (designer: "how do I end a turn?"). The tray's End turn button and E already did it, but the button sat greyed out with no reason while moves were owed.
+  - The dice header now says what the dice are waiting for: roll to start, move to spend them, doubles, no legal move, or all spent.
+  - Once End turn is the next thing to press, the button turns teal and pulses.
+  - The top bar's prompt names the E key.
+- 2026-09-15 — **Turn flow made subtle and clear** (designer: ending a turn still unclear, and the turn card too big).
+  - **`TurnButton`: one button at the board's bottom-right corner**, in the card-game end-turn style. It reads ROLL or ROLL AGAIN (gold, breathing), then MOVE FIRST with the dice left (dim, disabled), then END TURN (teal, breathing). Roll and End turn left the tray, whose dice section now shows only the dice and a one-line hint.
+  - **`TurnBanner` became a slim pill** under the top bar: a seat-colour dot, "RED's turn", the round and "Space to roll". It stays until the roll, then fades. It no longer catches the pointer, and Esc no longer touches it. Upkeep effects are left to the toasts.

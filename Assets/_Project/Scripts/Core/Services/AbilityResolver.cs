@@ -96,6 +96,27 @@ namespace NonaRoyale.Core.Services
         }
 
         /// <summary>
+        /// How many of the caster's own turns until the ability is ready: 0 if
+        /// it is ready now, 1 if it is ready on the caster's next turn.
+        /// </summary>
+        /// <remarks>
+        /// Counts to the turn the ability comes back, not the turns it sits
+        /// out. On the turn it was cast, a cooldown 2 ability reads 3: it
+        /// misses two turns and is ready on the third. The tray shows "ready in
+        /// 3", which is the question a player is asking.
+        /// </remarks>
+        public int TurnsUntilReady(OperatorState caster, AbilityDefinition ability)
+        {
+            if (caster == null) throw new ArgumentNullException(nameof(caster));
+            if (ability == null) throw new ArgumentNullException(nameof(ability));
+
+            if (!_readyOn.TryGetValue(caster.Id, out var byAbility)) return 0;
+            if (!byAbility.TryGetValue(ability.Id, out int readyTurn)) return 0;
+
+            return Math.Max(0, readyTurn - _clock.TurnIndexOf(caster.Owner));
+        }
+
+        /// <summary>
         /// Every operator this ability could legally be aimed at right now.
         /// Empty for an ability that takes no target.
         /// </summary>

@@ -17,6 +17,12 @@ namespace NonaRoyale.Unity.View
     /// passes (ADR-0008 increment D).
     /// </summary>
     /// <remarks>
+    /// <b>Now the dev panel.</b> Since GUI increment F the in-match HUD is the
+    /// top bar, squad rail, action tray and log. This panel stays behind Tab
+    /// as a debugging tool, taking the squad rail's place on the left: it
+    /// shows the pip buttons and the reseed, which the HUD does not.
+    /// </remarks>
+    /// <remarks>
     /// <b>Rebuilt, not updated.</b> The panel's contents change shape with
     /// the game (a caster selected adds an ability list, a target ability adds
     /// a target list), so it is rebuilt from the host's state whenever
@@ -144,7 +150,8 @@ namespace NonaRoyale.Unity.View
             _panel.anchorMax = new Vector2(0f, 1f);
             _panel.pivot = new Vector2(0f, 0.5f);
             _panel.offsetMin = new Vector2(Margin, Margin);
-            _panel.offsetMax = new Vector2(Margin + Width, -Margin);
+            // Below the top bar, which owns the top edge (GUI increment F).
+            _panel.offsetMax = new Vector2(Margin + Width, -TurnStrip.ReservedHeight - Margin);
 
             var background = _panel.gameObject.AddComponent<Image>();
             background.color = Background;
