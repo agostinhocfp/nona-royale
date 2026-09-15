@@ -29,7 +29,8 @@ namespace NonaRoyale.Unity.View
     /// height is fixed, so the reservation is known before the first layout
     /// pass runs.
     ///
-    /// Nothing here is a raycast target (ADR-0008 consequence 9).
+    /// Nothing here is a raycast target (ADR-0008 consequence 9) except the
+    /// MENU button at the right end (increment H).
     /// </remarks>
     public sealed class TurnStrip : MonoBehaviour
     {
@@ -47,6 +48,7 @@ namespace NonaRoyale.Unity.View
         private RectTransform _pips;
         private readonly Image[] _pipImages = new Image[MaxPips];
         private string _shown;
+        private System.Action _menuRequested;
 
         private const int MaxPips = 20;
 
@@ -54,8 +56,11 @@ namespace NonaRoyale.Unity.View
         /// Builds the bar under the HUD canvas. Safe to call on every NewMatch:
         /// the bar tracks no piece, so it survives a reseed.
         /// </summary>
-        public void Bind(RectTransform canvasRect)
+        /// <param name="menuRequested">Called by the MENU button at the bar's right end.</param>
+        public void Bind(RectTransform canvasRect, System.Action menuRequested = null)
         {
+            _menuRequested = menuRequested;
+
             if (_rect != null)
             {
                 _shown = null;
@@ -111,6 +116,21 @@ namespace NonaRoyale.Unity.View
 
             UiKit.Label(_rect, KeyLegend(), UiTheme.FontSmall, UiTheme.TextDim, TextAlignmentOptions.MidlineRight);
 
+            // The pause menu's button (GUI increment H), for pointer and touch
+            // players. Held in a fixed box so the bar's height does not
+            // stretch it. The only thing on the bar that catches the pointer.
+            var menuBox = UiKit.Rect("menu", _rect);
+            UiKit.Fixed(menuBox, 104f);
+
+            var menu = UiKit.Button(menuBox, $"MENU  <size=70%><color=#{UiTheme.Hex(UiTheme.Gold)}>Esc</color></size>",
+                () => _menuRequested?.Invoke(), size: UiTheme.FontSmall);
+            var menuRect = (RectTransform)menu.transform;
+            menuRect.anchorMin = new Vector2(0f, 0.5f);
+            menuRect.anchorMax = new Vector2(1f, 0.5f);
+            menuRect.pivot = new Vector2(0.5f, 0.5f);
+            menuRect.sizeDelta = new Vector2(0f, 34f);
+            menuRect.anchoredPosition = new Vector2(0f, 3f);
+
             _shown = null;
         }
 
@@ -142,7 +162,7 @@ namespace NonaRoyale.Unity.View
                     ? $"<color=#{UiTheme.Hex(UiTheme.Readable(colour))}>{winner.Value.ToString().ToUpperInvariant()}</color> WINS"
                     : "MATCH OVER";
                 _energy.text = "";
-                _prompt.text = "Match over — start a new one from the dev panel (Tab)";
+                _prompt.text = "Match over — press <b>Esc</b> for a new match";
                 SetPips(0, 0);
                 return;
             }
@@ -182,7 +202,7 @@ namespace NonaRoyale.Unity.View
 
             return string.Join("   ",
                 Key("Space", "roll"), Key("E", "end"), Key("1–3", "ability"), Key("Enter", "cast"),
-                Key("Esc", "back"), Key("L", "log"), Key("H", "health"), Key("Tab", "dev"));
+                Key("Esc", "back / menu"), Key("L", "log"));
         }
 
         private static string Prompt(GameEngine engine)

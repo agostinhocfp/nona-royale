@@ -95,6 +95,7 @@ _Added 2026-09-15, GUI phase increment E._ A stranger's first instinct is to cli
 - **Click a pulsing yard piece** to deploy it. The pulse comes from `GameEngine.CanDeploy`, the same check the command runs.
 - **With an ability selected, a click aims it.** A cell ability snaps to the nearest legal cell. A target ability takes an amber-ringed piece, and the rings come from `LegalTargetsFor`. Clicking your own non-target piece switches the selection.
 - **Right-click or Esc steps back:** first the aim, then the ability, then the piece.
+- **Esc with nothing left to step back from opens the pause menu** (increment H): resume, restart, settings, quit. The MENU button on the top bar opens it too. While it is open the clock stops and the board ignores input.
 - **Keys:** Space rolls, E ends the turn, 1–3 pick an ability, Enter casts.
 - **A landing beats a piece only for the selected operator.** With nothing selected, a piece wins, so clicking your own piece never moves a different operator whose landing shares its cell.
 - **Only clickable pieces lift under the pointer**: your own, and legal targets. A lift that promised nothing would teach the player to click at random.

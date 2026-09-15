@@ -1,7 +1,7 @@
 # Nona Royale — GUI Phase
 
 > Location in repo: `docs/design/GUI_PHASE.md`
-> Status: **In progress.** Started 2026-09-15. E, F, F2 and G are committed; G2 (the board to the designer's reference) is written and waiting for a Play Mode check.
+> Status: **In progress.** Started 2026-09-15. E through G2 are committed; H (pause) is written and waiting for a Play Mode check.
 > Related: ADR-0008 (uGUI; its removal order stays binding), `PRESENTATION.md` (what the view may do and must show), `ART_DIRECTION.md` §3 and §8 (palette, UI registers), `STRANGER_TEST.md` (the gate before `OnGUI` is deleted)
 
 ## Goal
@@ -94,3 +94,12 @@ Each increment ends with a Play Mode check and a commit.
   - `MatchBootstrap`: yard pieces go to their seats; piece readouts sit 0.8 of a cell from the piece (was 0.55) to clear a standing head.
   - `UiTheme`: board tokens replaced for the new floor; `SeatViolet`; `PieceEmblem`, `FigureLift`.
   - Previewed before Play Mode by porting the sprite maths to numpy and composing the board (`board_preview.png` in the chat).
+- 2026-09-15 — **G2 passed Play Mode and was committed** (designer: "such a great job with the board").
+- 2026-09-15 — **Increment H written: the pause menu.**
+  - New `PauseMenu` and `IPauseHost`. A full-screen scrim (catches the pointer) under a framed card. Main page: RESUME (cyan, Esc), RESTART, SETTINGS, QUIT, and the round and seat to play (or the result) under the title. Settings page: toggles for health above pieces (H), the event log (L) and the dev panel (Tab), each with its key and an ON/OFF chip, and BACK.
+  - **Opening.** Esc when nothing is selected, or the new MENU button at the top bar's right end. With a selection, Esc still steps back first. While open, Esc goes back a page, then resumes.
+  - **Pausing stops the clock** (`Time.timeScale` 0, restored on close and if the component is disabled). Board clicks, hover, game keys and the H, L, Tab and F2 toggles are ignored while open; the HUD's unscaled pulses keep breathing. The menu takes the top sibling back if an overlay opens above it.
+  - **RESTART and QUIT ask twice**: the first press turns the button amber with a one-line warning. RESTART deals a new match with the next seed and the same settings (a same-seed replay repeats the dice; that stays a dev tool). QUIT stops Play Mode in the editor and quits a build; the title menu arrives with J.
+  - `TurnStrip`: MENU button; legend now "Esc back / menu" and drops H and Tab (they live in settings); the match-over prompt points at Esc instead of the dev panel.
+  - `MatchBootstrap` implements `IPauseHost`. No core changes; view compile-checked.
+  - Known: the legacy OnGUI dev panel (Tab then F2) still draws over the scrim. It is deleted in K.

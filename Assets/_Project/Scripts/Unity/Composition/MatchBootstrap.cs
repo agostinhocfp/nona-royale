@@ -35,8 +35,11 @@ namespace NonaRoyale.Unity.Composition
     /// piece to deploy it, click a ringed piece or cell to aim. Right-click or
     /// Esc steps back. Every mark and every clickable thing comes from an
     /// engine query; the click only picks between the engine's answers.
+    ///
+    /// <b>Esc with nothing selected pauses</b> (GUI increment H). While the
+    /// pause menu is open, the board and the game keys are ignored.
     /// </remarks>
-    public sealed class MatchBootstrap : MonoBehaviour, IControlPanelHost
+    public sealed class MatchBootstrap : MonoBehaviour, IControlPanelHost, IPauseHost
     {
         [Header("Match")]
         [Tooltip("Draft three distinct operators per seat from the whole roster. " +
@@ -124,6 +127,7 @@ namespace NonaRoyale.Unity.Composition
         private EventToasts _toasts;
         private TurnBanner _banner;
         private TurnButton _turnButton;
+        private PauseMenu _pause;
         private Vector2 _panelScroll;
 
         private void Start() => NewMatch();
@@ -199,7 +203,7 @@ namespace NonaRoyale.Unity.Composition
             // Clear of a standing figure's head and its bar (increment G2).
             _pieceHud.Bind(_hudRoot.Root, _pieces, cellSpacing * 0.8f);
             _turnStrip = GetComponent<TurnStrip>() ?? gameObject.AddComponent<TurnStrip>();
-            _turnStrip.Bind(_hudRoot.Root);
+            _turnStrip.Bind(_hudRoot.Root, OpenPause);
             _controls = GetComponent<ControlPanel>() ?? gameObject.AddComponent<ControlPanel>();
             _controls.Bind(_hudRoot.Root, this);
             _rail = GetComponent<SquadRail>() ?? gameObject.AddComponent<SquadRail>();
@@ -220,6 +224,10 @@ namespace NonaRoyale.Unity.Composition
             _turnButton.Bind(_hudRoot.Root, this);
             _cellLabels = GetComponent<CellLabelLayer>() ?? gameObject.AddComponent<CellLabelLayer>();
             _cellLabels.Bind(_hudRoot.Root);
+
+            // Last, so the menu draws over every other HUD layer.
+            _pause = GetComponent<PauseMenu>() ?? gameObject.AddComponent<PauseMenu>();
+            _pause.Bind(_hudRoot.Root, this);
 
             FrameCamera();
             Handle(_match.Engine.Start(), immediate: true);
@@ -332,17 +340,21 @@ namespace NonaRoyale.Unity.Composition
 
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.Tab)) showDevPanel = !showDevPanel;
+            bool paused = _pause != null && _pause.IsOpen;
 
-            if (Input.GetKeyDown(KeyCode.F2)) useLegacyPanel = !useLegacyPanel;
-
-            if (Input.GetKeyDown(KeyCode.H)) showPieceHealth = !showPieceHealth;
+            // The menu mirrors these flags, so their keys stay dead while it
+            // is open rather than changing what it shows under the pointer.
+            if (!paused)
+            {
+                if (Input.GetKeyDown(KeyCode.Tab)) showDevPanel = !showDevPanel;
+                if (Input.GetKeyDown(KeyCode.F2)) useLegacyPanel = !useLegacyPanel;
+                if (Input.GetKeyDown(KeyCode.H)) showPieceHealth = !showPieceHealth;
+                if (Input.GetKeyDown(KeyCode.L)) showFullLog = !showFullLog;
+            }
 
             // Driven every frame rather than on the keypress, so flipping the
             // inspector checkbox works too.
             if (_pieceHud != null) _pieceHud.Visible = showPieceHealth;
-
-            if (Input.GetKeyDown(KeyCode.L)) showFullLog = !showFullLog;
 
             if (_controls != null)
             {
@@ -370,6 +382,12 @@ namespace NonaRoyale.Unity.Composition
 
             if (_match == null) return;
 
+            if (paused)
+            {
+                if (Input.GetKeyDown(KeyCode.Escape)) _pause.Back();
+                return;
+            }
+
             HandleKeys();
             UpdateHover();
 
@@ -388,7 +406,13 @@ namespace NonaRoyale.Unity.Composition
         /// </summary>
         private void HandleKeys()
         {
-            if (Input.GetKeyDown(KeyCode.Escape)) StepBack();
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                // Esc backs out of a choice first; with nothing left to back
+                // out of, it pauses.
+                if (HasSelection) StepBack();
+                else OpenPause();
+            }
 
             if (_match.Engine.MatchOver) return;
 
@@ -410,6 +434,24 @@ namespace NonaRoyale.Unity.Composition
 
             Host.ToggleAbility(abilities[index]);
             MarkHudDirty();
+        }
+
+        private bool HasSelection =>
+            _selectedOperator != null || _selectedAbility != null ||
+            _selectedTarget != null || _selectedCell != null;
+
+        /// <summary>Opens the pause menu, dropping the hover lift so nothing stays raised behind it.</summary>
+        private void OpenPause()
+        {
+            if (_pause == null || _pause.IsOpen) return;
+
+            if (_hovered != null)
+            {
+                _hovered = null;
+                RefreshMarks();
+            }
+
+            _pause.Open();
         }
 
         /// <summary>
@@ -795,6 +837,53 @@ namespace NonaRoyale.Unity.Composition
         {
             seed++;
             NewMatch();
+        }
+
+        // ── Pause menu ───────────────────────────────────────────────────
+
+        string IPauseHost.PauseSummary
+        {
+            get
+            {
+                if (_match == null) return "";
+
+                var engine = _match.Engine;
+                if (engine.MatchOver)
+                {
+                    var winner = engine.Winner;
+                    return winner.HasValue
+                        ? $"Round {engine.Round}  ·  {winner.Value.ToString().ToUpperInvariant()} won"
+                        : $"Round {engine.Round}  ·  match over";
+                }
+
+                return $"Round {engine.Round}  ·  {engine.CurrentPlayer.Color.ToString().ToUpperInvariant()} to play";
+            }
+        }
+
+        bool IPauseHost.ShowPieceHealth { get => showPieceHealth; set => showPieceHealth = value; }
+        bool IPauseHost.ShowFullLog { get => showFullLog; set => showFullLog = value; }
+        bool IPauseHost.ShowDevPanel { get => showDevPanel; set => showDevPanel = value; }
+
+        /// <summary>
+        /// A fresh deal with the same settings: the next seed, like the dev
+        /// panel's reseed. A replay of the same seed would repeat the same
+        /// dice, which is a debugging tool, not a restart.
+        /// </summary>
+        void IPauseHost.Restart()
+        {
+            _pause.Close();
+            Host.Reseed();
+        }
+
+        void IPauseHost.Quit()
+        {
+            _pause.Close();
+
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
         }
 
         /// <summary>
