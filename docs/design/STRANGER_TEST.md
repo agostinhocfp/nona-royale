@@ -1,7 +1,7 @@
 # Nona Royale — Stranger Test
 
 > Location in repo: `docs/design/STRANGER_TEST.md`
-> Status: **Proposed.** The pass bar in §4 is a proposal until Agostinho confirms it.
+> Status: **Ready.** Pass bar (§4) confirmed 2026-09-15. Sessions planned for the week of 2026-09-21.
 > Related: ADR-0008 (consequence 6 makes this test the gate before the `OnGUI` panel is deleted), `PRESENTATION.md` §2 (what must be visible), §4 (select, then commit)
 
 ## Why this document exists
@@ -46,7 +46,7 @@ Set these on `MatchBootstrap` before pressing Play:
    - a misread: acting on something the screen did not say (clicking a piece to move it, expecting a cast to fire on selection, playing the wrong seat's operators).
 5. **Debrief (5 minutes).** Pause a match in progress and ask the questions in §4, pointing at the screen. Write down the answers word for word.
 
-## 4. Pass bar (proposed)
+## 4. Pass bar
 
 The test passes when **both** testers meet all three conditions:
 
