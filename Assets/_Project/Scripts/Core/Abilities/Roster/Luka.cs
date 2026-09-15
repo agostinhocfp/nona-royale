@@ -102,10 +102,13 @@ namespace NonaRoyale.Core.Abilities
         /// never spends either (§5.12). Normal and Atomic pass straight
         /// through.
         ///
-        /// <b>Narrow today, by the roster rather than by the ring.</b> Mimi's
-        /// Cryo-Pulse is the only Tech source, so this is currently a counter
-        /// to one ability. It is worth what the Tech roster becomes; cost 3,
-        /// cooldown 4 is the Ablative Plating price for a narrower answer.
+        /// <b>Three Tech sources, one per operator</b> (2026-09-15): Mimi's
+        /// Cryo-Pulse, Sanity's Zero-Day and Kian's Drone Strike, the
+        /// roster's guided and remote-operated devices (§2.2). Sanity and Kian
+        /// keep Normal damage elsewhere in their kits, so against them the
+        /// ring is a counter, not an immunity. Mimi's only built damage is
+        /// Cryo-Pulse, so a warded Luka is immune to her until Cryo Field
+        /// lands. Cost 3, cooldown 4 is the Ablative Plating price.
         /// Cleansable like any applied status.
         /// </remarks>
         public static AbilityDefinition HermesRing { get; } = new AbilityDefinition(

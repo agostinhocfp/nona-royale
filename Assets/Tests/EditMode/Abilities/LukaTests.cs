@@ -376,6 +376,82 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(_statuses.IsBleeding(_luka), Is.True, "the bleed still lands");
         }
 
+        [Test]
+        public void TechSources_AreCryoPulseZeroDayAndDroneStrike()
+        {
+            // The ring is worth exactly this list (§2.2). A change to it is a
+            // design decision, so it has to show up as a failing test.
+            var tech = Roster.AllAbilities
+                .Where(a => a.Effects.Any(e => e.DamageType == DamageType.Tech))
+                .Select(a => a.Name)
+                .OrderBy(n => n)
+                .ToList();
+
+            Assert.That(tech, Is.EqualTo(new[] { "Cryo-Pulse", "Drone Strike", "Zero-Day" }));
+        }
+
+        [Test]
+        public void ZeroDay_IsTech_AndAWardedLukaTakesNoneOfTheBlast()
+        {
+            // An enemy engineer rides a charge on Luka himself: neither the
+            // splash nor the marked-target bonus gets through the ward. The
+            // unwarded ally beside him takes the splash, and the slow still
+            // lands on both, as Cryo-Pulse's bleed does.
+            var engineer = AtTrack(7, "Engineer", PlayerColor.Blue, Sanity.MaxHealth, 16);
+            var blue = new PlayerState(PlayerColor.Blue, new[] { engineer });
+            var board = new List<OperatorState>(_board) { engineer };
+
+            _abilities.Use(_luka, Luka.HermesRing, null, _red, board);
+
+            _clock.BeginTurnFor(PlayerColor.Blue);
+            blue.BeginTurn();
+            _energy.GrantForTurn(blue, new DiceRoll(6, 6));
+
+            var attach = _abilities.Use(engineer, Sanity.ZeroDay, _luka, blue, board);
+            Assert.That(attach.Approved, Is.True, "precondition");
+
+            _clock.BeginTurnFor(PlayerColor.Red);
+            _clock.BeginTurnFor(PlayerColor.Blue);
+            var fired = _operatorEffects.Fire(PlayerColor.Blue, board);
+
+            Assert.That(fired.Count, Is.EqualTo(1));
+            Assert.That(fired[0].Caught, Does.Contain(_luka), "he is in the blast");
+            Assert.That(_luka.Health, Is.EqualTo(6), "the ward ate splash and bonus");
+            Assert.That(_ally.Health, Is.EqualTo(5), "an unwarded ally took the splash");
+
+            _clock.BeginTurnFor(PlayerColor.Red);
+            Assert.That(_statuses.Has(_luka, StatusKind.Slow), Is.True, "the slow still lands");
+        }
+
+        [Test]
+        public void DroneStrike_IsTech_AndAWardedLukaStillCountsTowardTheSplit()
+        {
+            // The beam divides before any hit reaches the pipeline, so Luka's
+            // share is blocked rather than passed on to the ally beside him.
+            var kian = AtTrack(7, "Kian", PlayerColor.Blue, Kian.MaxHealth, 30);
+            var blue = new PlayerState(PlayerColor.Blue, new[] { kian });
+            var board = new List<OperatorState>(_board) { kian };
+
+            _abilities.Use(_luka, Luka.HermesRing, null, _red, board);
+
+            _clock.BeginTurnFor(PlayerColor.Blue);
+            blue.BeginTurn();
+            _energy.GrantForTurn(blue, new DiceRoll(6, 6));
+
+            var paint = _abilities.Use(kian, Kian.DroneStrike, null, blue, board, CellRef.Track(15));
+            Assert.That(paint.Approved, Is.True, "precondition");
+
+            _clock.BeginTurnFor(PlayerColor.Red);
+            _clock.BeginTurnFor(PlayerColor.Blue);
+            var fired = _cellEffects.Fire(PlayerColor.Blue, board);
+
+            Assert.That(fired.Count, Is.EqualTo(1));
+            Assert.That(fired[0].Caught.Count, Is.EqualTo(2), "Luka on the square, his ally beside it");
+            Assert.That(fired[0].DamagePerTarget, Is.EqualTo(2), "four split two ways, ward or no ward");
+            Assert.That(_luka.Health, Is.EqualTo(6), "his share is blocked");
+            Assert.That(_ally.Health, Is.EqualTo(4), "and not passed on");
+        }
+
         // ── Vendetta ─────────────────────────────────────────────────────
 
         [Test]

@@ -122,10 +122,13 @@ namespace NonaRoyale.Core.Abilities
         /// still takes the blast with it — it goes off on the death cell, with
         /// no living recipient for the bonus.
         ///
-        /// <b>Normal, so it can be answered twice over.</b> A plate absorbs it
-        /// and an evasion charge can dodge it, on top of the cleanse. Atomic
-        /// would make the counterplay one-dimensional, and Atomic is
-        /// deliberately concentrated (§2.2).
+        /// <b>Tech, so it can be answered three ways</b> (2026-09-15). Tech is
+        /// damage from a guided or remote-operated device (§2.2), and a homing
+        /// grenade is the plainest case. It is otherwise Normal: a plate
+        /// absorbs it and an evasion charge can dodge it. A warded Luka takes
+        /// none of the blast (§5.12), though the slow still lands, and the
+        /// cleanse cancels the whole thing. Atomic would make the counterplay
+        /// one-dimensional, and Atomic is deliberately concentrated.
         ///
         /// <b>Cost 4, cooldown 3.</b> Priced under Drone Strike's 6 because
         /// that cannot be cleansed and this can; the cooldown is the real
@@ -142,7 +145,7 @@ namespace NonaRoyale.Core.Abilities
             {
                 AbilityEffect.AttachCharge(
                     splashDamage: 1, primaryBonus: 1, radius: 1,
-                    damageType: DamageType.Normal,
+                    damageType: DamageType.Tech,
                     detonationStatus: StatusKind.Slow, statusDuration: 1)
             });
 

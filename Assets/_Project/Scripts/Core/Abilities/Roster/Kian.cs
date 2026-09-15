@@ -179,9 +179,16 @@ namespace NonaRoyale.Core.Abilities
         /// tool. It also means the beacon is his contribution to a fight he is
         /// nowhere near, which is what an artillery operator should be doing.
         ///
-        /// <b>Normal damage, so the plate and the charge both blunt it.</b>
-        /// Atomic is deliberately concentrated (§2.2), and a 4-damage strike that
-        /// ignored every defence would make Javi pointless against him.
+        /// <b>Tech, so the plate and the charge still blunt it</b> (2026-09-15).
+        /// A drone is a remote-operated device, which is §2.2's Tech rule, and
+        /// a warded Luka takes none of the beam (§5.12). Atomic is deliberately
+        /// concentrated, and a 4-damage strike that ignored every defence would
+        /// make Javi pointless against him.
+        ///
+        /// <b>A warded Luka still counts toward the split.</b> The beam divides
+        /// among everyone caught before any hit reaches the pipeline, so his
+        /// share is blocked rather than passed on. An ally standing under the
+        /// beam with him takes half of what it would alone.
         ///
         /// <b>Beam walked 6 → 4 on 2026-09-15</b> (<c>245a60b</c>). At 6 a
         /// correct guess killed four of the roster's operators from full; at 4 it
@@ -206,7 +213,7 @@ namespace NonaRoyale.Core.Abilities
             targeting: AbilityTargeting.Cell,
             effects: new[]
             {
-                AbilityEffect.PaintCell(totalDamage: 4, radius: 1, DamageType.Normal)
+                AbilityEffect.PaintCell(totalDamage: 4, radius: 1, DamageType.Tech)
             });
 
         public static IReadOnlyList<AbilityDefinition> All { get; } =
