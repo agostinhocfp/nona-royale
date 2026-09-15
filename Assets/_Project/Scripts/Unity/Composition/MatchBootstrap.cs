@@ -575,16 +575,22 @@ namespace NonaRoyale.Unity.Composition
         /// Turns each move into a sequence of cells to walk through.
         /// </summary>
         /// <remarks>
-        /// Only forward travel is walked. A pull reports the same progress twice
-        /// and a bounce-back reports a lower one; both are placement rather than
-        /// movement (§7.4, §7.2), and animating them as a walk would show the
-        /// player a journey the rules say never happened.
+        /// Only forward travel is walked. A pull or swap reports the same
+        /// progress twice and is placement rather than movement (§7.4);
+        /// animating it as a walk would show the player a journey the rules say
+        /// never happened. The step back of a bounce (§7.2) is placement too,
+        /// which is why it settles rather than walks.
         ///
         /// This is the only place the view enumerates intermediate cells, which
         /// makes it the one thing that can expose a discontinuous layout: if two
         /// consecutive progress values are not adjacent on screen, the piece
         /// visibly leaps. That is how the arm-tip gap in the old 48-cell board
         /// was caught (ADR-0002 Amendment 6). Keep it walking one cell at a time.
+        ///
+        /// <b>A bounced move walks to the cell it attempted</b>, rests there,
+        /// and then settles back to where the collision left it (PRESENTATION
+        /// §3). The attempted landing comes from the event; the view does not
+        /// work it out.
         ///
         /// <b>A split roll produces two walks, one per command</b> (§6). On two
         /// different pieces they run side by side and read fine. On the same
@@ -597,17 +603,21 @@ namespace NonaRoyale.Unity.Composition
             foreach (var e in events)
             {
                 var moved = e as OperatorMoved;
-                if (moved == null || moved.To <= moved.From) continue;
+                if (moved == null || moved.AttemptedTo <= moved.From) continue;
 
                 var piece = _pieces.Find(p => ReferenceEquals(p.Operator, moved.Operator));
                 if (piece == null) continue;
 
                 var path = new List<Vector3>();
 
-                for (int progress = moved.From + 1; progress <= moved.To; progress++)
+                for (int progress = moved.From + 1; progress <= moved.AttemptedTo; progress++)
                     path.Add(_layout.PositionOf(_match.Map.CellAt(moved.Operator.Owner, progress)));
 
-                piece.Walk(path);
+                Vector3? bouncedTo = moved.Bounced
+                    ? _layout.PositionOf(_match.Map.CellAt(moved.Operator.Owner, moved.To))
+                    : (Vector3?)null;
+
+                piece.Walk(path, bouncedTo);
             }
         }
 

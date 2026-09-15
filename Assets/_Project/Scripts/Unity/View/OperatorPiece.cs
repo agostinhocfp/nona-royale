@@ -30,6 +30,13 @@ namespace NonaRoyale.Unity.View
         private const float CellsPerSecond = 11f;
         private const float SettleSpeed = 12f;
 
+        /// <summary>
+        /// How long a bounced piece rests on the contested cell before it is
+        /// thrown back (PRESENTATION §3). Long enough to read, short enough not
+        /// to drag a match already over its length budget.
+        /// </summary>
+        private const float BounceHoldSeconds = 0.3f;
+
         /// <summary>Opacity of an evasive operator's silhouette and outline.</summary>
         private const float EvasiveAlpha = 0.7f;
 
@@ -43,6 +50,7 @@ namespace NonaRoyale.Unity.View
         private Vector3 _target;
         private float _stepDistance = 1f;
         private float _flash;
+        private float _hold;
 
         public OperatorState Operator { get; private set; }
 
@@ -85,12 +93,33 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>Walks a sequence of cells, ending at the last.</summary>
-        public void Walk(IReadOnlyList<Vector3> waypoints)
+        public void Walk(IReadOnlyList<Vector3> waypoints) => Walk(waypoints, null);
+
+        /// <summary>
+        /// Walks a sequence of cells, then — if <paramref name="bouncedTo"/> is
+        /// given — pauses on the last one and slides back to it.
+        /// </summary>
+        /// <remarks>
+        /// <b>The slide back is placement, not a walk</b> (PRESENTATION §3): it
+        /// uses the same settle as a pull, so it never reads as a second move.
+        /// The pause is what makes the contested cell visible at all.
+        /// </remarks>
+        public void Walk(IReadOnlyList<Vector3> waypoints, Vector3? bouncedTo)
         {
             _path.Clear();
 
             foreach (var point in waypoints) _path.Enqueue(point);
-            if (waypoints.Count > 0) _target = waypoints[waypoints.Count - 1];
+
+            if (bouncedTo.HasValue)
+            {
+                _target = bouncedTo.Value;
+                _hold = BounceHoldSeconds;
+            }
+            else if (waypoints.Count > 0)
+            {
+                _target = waypoints[waypoints.Count - 1];
+                _hold = 0f;
+            }
         }
 
         /// <summary>Sets the destination without a path — placement, not movement.</summary>
@@ -183,6 +212,13 @@ namespace NonaRoyale.Unity.View
                 transform.position = Vector3.MoveTowards(transform.position, next, step);
 
                 if (Vector3.Distance(transform.position, next) < 0.01f) _path.Dequeue();
+                return;
+            }
+
+            // A bounced piece rests on the contested cell before settling back.
+            if (_hold > 0f)
+            {
+                _hold -= Time.deltaTime;
                 return;
             }
 
