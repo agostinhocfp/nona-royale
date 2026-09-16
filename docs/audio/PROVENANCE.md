@@ -1,6 +1,7 @@
 # Nona Royale — Audio provenance
 
 > Location in repo: `docs/audio/PROVENANCE.md`
+> Prompts: `docs/audio/MUSIC_PROMPTS.md`; its section numbers are the ones cited below.
 > Rule (`AUDIO.md`): nothing ships with a sound whose licence is unrecorded. One row per file that ships.
 
 ## Generated in code (original, no third-party material)

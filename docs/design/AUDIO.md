@@ -130,7 +130,7 @@ Stage 4 (art hookup) was skipped for now: no finished Meshy renders are in hand.
     - The loop renders in about 0.9–1.5 s on a worker thread, with no NaNs and a loop seam of 0.002.
     - The designer has a WAV preview (the loop played twice) and a MIDI file: 12/8 with a tempo of 189 per quarter (126 per dotted quarter), key signature C minor, and six parts. General MIDI has no mandolin, so the mandolin part uses the banjo program.
   - **Honest limit:** the synthesized mandolin and accordion are convincing placeholders, not real players. For release, the MIDI goes to a musician or a proper sample library, and the result is dropped in as `Resources/Audio/Music/Match`.
-- 2026-09-16 — **AU1c: the Lyria score.** The designer generated tracks with Lyria from `claude/MUSIC_PROMPTS.md` and chose the slots: `Big Band Version` for Match, `Title` for Title, `Win` for the sting, `Showdown` for a match's final stretch, and a waltz kept as an alternate title.
+- 2026-09-16 — **AU1c: the Lyria score.** The designer generated tracks with Lyria from `docs/audio/MUSIC_PROMPTS.md` and chose the slots: `Big Band Version` for Match, `Title` for Title, `Win` for the sting, `Showdown` for a match's final stretch, and a waltz kept as an alternate title.
   - **Loop cutting** (cloud, librosa):
     - Beat tracking, then a recurrence matrix over 4-bar windows to find passages the take genuinely repeats. Both the 4 bars before and the 4 bars after the join must match.
     - Then a frame-level alignment of chroma, onsets and spectrum places the join, a sample-level waveform match fine-tunes it, and an equal-power crossfade of 15 ms (40 ms for the waltzes) smooths it.
