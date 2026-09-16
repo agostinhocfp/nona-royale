@@ -41,8 +41,12 @@ namespace NonaRoyale.Core.Abilities
         /// roster <i>and</i> longest-ranged, which left him paying for nothing.
         /// At 6 he sits with Syla and Javi, and unlike either of them he cannot
         /// run.
+        ///
+        /// Seven since the roster-wide +1 of 2026-09-16 (COMBAT_SYSTEMS §1.1).
+        /// The sketched 7 is not back: everyone moved, so he still sits with
+        /// Syla and Javi.
         /// </summary>
-        public const int MaxHealth = 6;
+        public const int MaxHealth = 7;
 
         /// <summary>
         /// The floor of the 1.0–1.5 band (ADR-0002 Amendment 4), shared with

@@ -41,7 +41,11 @@ namespace NonaRoyale.Core.Abilities
     /// </remarks>
     public static class Javi
     {
-        public const int MaxHealth = 6;
+        /// <summary>
+        /// Seven: 6 plus the roster-wide +1 of 2026-09-16 (COMBAT_SYSTEMS
+        /// §1.1), which cut knockouts, and so match length, in the bots sweep.
+        /// </summary>
+        public const int MaxHealth = 7;
 
         /// <summary>
         /// His abilities reach 5, 4 and 5. A support who cannot reach the fight

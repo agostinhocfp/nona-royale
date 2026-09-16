@@ -61,6 +61,8 @@ namespace NonaRoyale.Core.Config
             HasteBonusCellCap = hasteBonusCellCap;
             NeutralizeEnergyBounty = neutralizeEnergyBounty;
             ShieldPoolDefault = shieldPoolDefault;
+            RegenEveryTurns = regenEveryTurns;
+            RegenAmount = regenAmount;
         }
 
         /// <summary>
@@ -253,10 +255,19 @@ namespace NonaRoyale.Core.Config
         /// passive regeneration ticks (COMBAT_SYSTEMS §5.11). Zero disables it.
         /// </summary>
         /// <remarks>
-        /// <b>Eligible means all three at once</b>: in play, below half health
-        /// (<c>health × 2 &lt; maxHealth</c>, integers — a 9-health operator
-        /// regens at ≤4, a 5-health at ≤2), and not on a safe cell. An
-        /// ineligible upkeep resets the streak.
+        /// <b>Eligible means all three at once</b>: in play (on the outer
+        /// track), wounded, and not on a safe cell. An ineligible upkeep
+        /// resets the streak.
+        ///
+        /// <b>Amended 2026-09-16 (designer): any wound, not below half.</b>
+        /// The gated version below ticked about four times a match in the bots
+        /// sweep, too little to matter, and it had never actually run: this
+        /// constructor did not assign the field, so it read 0. Now assigned.
+        /// Together with the roster-wide +1 health it is the match-length
+        /// pass (COMBAT_SYSTEMS §5.11, §12). The designer chose 1 every 3
+        /// turns over 1 every 2 as the less drastic step. The safe-cell
+        /// exclusion stays, for the free-parking reason below. The history
+        /// that follows is the argument for the gates as first shipped.
         ///
         /// <b>3, walked back from a rejected 2, walked back from a rejected
         /// unconditional version.</b> Global always-on regen at +1/2 turns was

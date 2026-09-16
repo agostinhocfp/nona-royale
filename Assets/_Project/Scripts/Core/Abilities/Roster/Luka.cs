@@ -20,7 +20,7 @@ namespace NonaRoyale.Core.Abilities
     ///
     /// <b>"Heavy" means maximum health above <see cref="HeavyAbove"/></b>, a
     /// fact about who the target is rather than how hurt it is. Today that is
-    /// the Bouncer and Sanity, both at 9. Both of his damage riders read it.
+    /// the Bouncer and Sanity, both at 10. Both of his damage riders read it.
     ///
     /// <b>Numbers are the designer's, as dropped, and unmeasured.</b> The
     /// remarks on each ability record what they look like against their
@@ -29,8 +29,8 @@ namespace NonaRoyale.Core.Abilities
     /// </remarks>
     public static class Luka
     {
-        /// <summary>Six, the roster's common figure.</summary>
-        public const int MaxHealth = 6;
+        /// <summary>Seven, the roster's common figure since the +1 of 2026-09-16.</summary>
+        public const int MaxHealth = 7;
 
         /// <summary>1.0, the band's floor (ADR-0002 Amendment 4). His mobility is the teleport.</summary>
         public const double Speed = 1.0;
@@ -39,7 +39,11 @@ namespace NonaRoyale.Core.Abilities
         /// A target whose maximum health is above this is heavy, and both of
         /// his damage riders hit it harder.
         /// </summary>
-        public const int HeavyAbove = 6;
+        /// <remarks>
+        /// 7 since the roster-wide +1 of 2026-09-16. Left at 6 it would have
+        /// made every 7-health operator heavy, which is most of the roster.
+        /// </remarks>
+        public const int HeavyAbove = 7;
 
         /// <summary>How close he must still be to Blind Spot's target at his next upkeep.</summary>
         public const int FollowUpReach = 2;

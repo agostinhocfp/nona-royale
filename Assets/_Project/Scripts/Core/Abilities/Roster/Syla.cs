@@ -17,7 +17,11 @@ namespace NonaRoyale.Core.Abilities
     /// </remarks>
     public static class Syla
     {
-        public const int MaxHealth = 6;
+        /// <summary>
+        /// Seven: 6 plus the roster-wide +1 of 2026-09-16 (COMBAT_SYSTEMS
+        /// §1.1), which cut knockouts, and so match length, in the bots sweep.
+        /// </summary>
+        public const int MaxHealth = 7;
 
         /// <summary>The roster's fastest operator. ADR-0002 Amendment 4.</summary>
         public const double Speed = 1.5;

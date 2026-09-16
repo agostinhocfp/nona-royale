@@ -40,6 +40,8 @@ namespace NonaRoyale.Core.Abilities
         /// <summary>
         /// Six, walked 9 → 7 → 6. Nine tied Bouncer, and a second operator at the
         /// tank's health with a shield on top is not a bruiser but a better tank.
+        /// Seven since the roster-wide +1 of 2026-09-16 (COMBAT_SYSTEMS §1.1),
+        /// still level with the common figure.
         /// </summary>
         /// <remarks>
         /// <b>Health stopped being what prices him.</b> At 6 he is level with
@@ -61,7 +63,7 @@ namespace NonaRoyale.Core.Abilities
         /// separable afterwards. If he reads weak, put the detonation back first —
         /// it is the one whose effect is easiest to see at the table.
         /// </remarks>
-        public const int MaxHealth = 6;
+        public const int MaxHealth = 7;
 
         /// <summary>
         /// The band's floor, shared with Bouncer, Mimi and Kian. He closes slowly

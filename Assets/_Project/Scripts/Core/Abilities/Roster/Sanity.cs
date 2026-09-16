@@ -46,14 +46,16 @@ namespace NonaRoyale.Core.Abilities
     /// <b>Designer balance pass, 2026-09-16: 3 / 4 / 6, and more reach.</b>
     /// Zero-Day range 2 → 3. Collision cost 7 → 6, cooldown 4 → 3, range
     /// 5 → 6. Both changes push the same way: the slowest operator gets to the
-    /// fight sooner and from further out. The designer's call; the reasoning
-    /// was not recorded with it. COMBAT_SYSTEMS §10.8 has the before/after
-    /// sim.
+    /// fight sooner and from further out. Why: the bots sweep and human games
+    /// agreed he was among the weakest (19% win share) while the fast
+    /// operators led, so this pass buffs him as the haste cap trims them.
+    /// COMBAT_SYSTEMS §10.8 has the before/after sim.
     /// </remarks>
     public static class Sanity
     {
         /// <summary>
-        /// Nine, level with the Bouncer at the top of the roster.
+        /// Ten, level with the Bouncer at the top of the roster (9 until the
+        /// roster-wide +1 of 2026-09-16, COMBAT_SYSTEMS §1.1).
         /// </summary>
         /// <remarks>
         /// <b>Walked 12 → 9 on 2026-09-15.</b> He shipped at twelve as a
@@ -63,7 +65,7 @@ namespace NonaRoyale.Core.Abilities
         /// survives two collisions, not three, and the slowest speed ever
         /// fielded is the one override left.
         /// </remarks>
-        public const int MaxHealth = 9;
+        public const int MaxHealth = 10;
 
         /// <summary>
         /// Half the band's floor — the first operator outside 1.0–1.5

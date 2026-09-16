@@ -28,7 +28,11 @@ namespace NonaRoyale.Core.Abilities
     /// </remarks>
     public static class Mimi
     {
-        public const int MaxHealth = 5;
+        /// <summary>
+        /// Six, still the lowest on the roster: 5 plus the roster-wide +1 of 2026-09-16 (COMBAT_SYSTEMS
+        /// §1.1), which cut knockouts, and so match length, in the bots sweep.
+        /// </summary>
+        public const int MaxHealth = 6;
 
         /// <summary>
         /// The only operator below 6 health, which is what prices her kit.

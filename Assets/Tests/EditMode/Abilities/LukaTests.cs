@@ -328,11 +328,11 @@ namespace NonaRoyale.Core.Tests.Abilities
 
             var tech = _damage.Apply(_luka, new DamageInstance(2, DamageType.Tech, _target.Id, "ability"));
             Assert.That(tech.Outcome, Is.EqualTo(DamageOutcome.Absorbed));
-            Assert.That(_luka.Health, Is.EqualTo(6));
+            Assert.That(_luka.Health, Is.EqualTo(Luka.MaxHealth));
 
             _damage.Apply(_luka, new DamageInstance(1, DamageType.Normal, _target.Id, "ability"));
             _damage.Apply(_luka, new DamageInstance(1, DamageType.Atomic, _target.Id, "ability"));
-            Assert.That(_luka.Health, Is.EqualTo(4));
+            Assert.That(_luka.Health, Is.EqualTo(Luka.MaxHealth - 2));
         }
 
         [Test]
@@ -389,7 +389,7 @@ namespace NonaRoyale.Core.Tests.Abilities
             var result = _abilities.Use(mimi, Mimi.CryoPulse, _luka, blue, board);
 
             Assert.That(result.Approved, Is.True, "precondition");
-            Assert.That(_luka.Health, Is.EqualTo(6), "the ward ate the Tech hit");
+            Assert.That(_luka.Health, Is.EqualTo(Luka.MaxHealth), "the ward ate the Tech hit");
             Assert.That(_ally.Health, Is.EqualTo(4), "an unwarded ally in the field did not");
 
             _clock.BeginTurnFor(PlayerColor.Red);
@@ -436,7 +436,7 @@ namespace NonaRoyale.Core.Tests.Abilities
 
             Assert.That(fired.Count, Is.EqualTo(1));
             Assert.That(fired[0].Caught, Does.Contain(_luka), "he is in the blast");
-            Assert.That(_luka.Health, Is.EqualTo(6), "the ward ate splash and bonus");
+            Assert.That(_luka.Health, Is.EqualTo(Luka.MaxHealth), "the ward ate splash and bonus");
             Assert.That(_ally.Health, Is.EqualTo(5), "an unwarded ally took the splash");
 
             _clock.BeginTurnFor(PlayerColor.Red);
@@ -468,7 +468,7 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(fired.Count, Is.EqualTo(1));
             Assert.That(fired[0].Caught.Count, Is.EqualTo(2), "Luka on the square, his ally beside it");
             Assert.That(fired[0].DamagePerTarget, Is.EqualTo(2), "four split two ways, ward or no ward");
-            Assert.That(_luka.Health, Is.EqualTo(6), "his share is blocked");
+            Assert.That(_luka.Health, Is.EqualTo(Luka.MaxHealth), "his share is blocked");
             Assert.That(_ally.Health, Is.EqualTo(4), "and not passed on");
         }
 
@@ -547,7 +547,7 @@ namespace NonaRoyale.Core.Tests.Abilities
         {
             var luka = Roster.ByName("Luka");
 
-            Assert.That(luka.MaxHealth, Is.EqualTo(6));
+            Assert.That(luka.MaxHealth, Is.EqualTo(7), "6 until the roster-wide +1 of 2026-09-16");
             Assert.That(luka.BaseSpeed, Is.EqualTo(1.0));
 
             Assert.That(Luka.BlindSpot.EnergyCost, Is.EqualTo(5));

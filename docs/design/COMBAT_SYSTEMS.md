@@ -25,12 +25,18 @@ This is the decision the rest of the document falls out of. It is also where the
 ### 1.1 Health
 
 - Each operator has `MaxHealth` and a current HP.
-- Damage **persists across turns**. The one exception is a slow, gated regeneration (§5.11), which only ever tops up a badly wounded operator standing in the open.
+- Damage **persists across turns**. The one exception is slow regeneration (§5.11): +1 every third turn for any wounded operator standing in the open.
 - HP is restored to full **only** on neutralize (§1.2). A wounded operator two cells from HOME is intended tension, not a problem to be smoothed.
 
 Healing exists in two places and they are deliberately different. Bouncer's All-In Mauling heals an ally as the friendly half of a hostile ability; Javi's Nanite Infusion heals as its whole purpose. The tank's is incidental, the support's is a role.
 
-The old `[Range(3, 9)]` cap on `Operator.maxHealth` is **dead**. The stat is unbounded in the core; presentation-layer sliders, if any, use 3–15. Note that the roster now happens to sit inside that old range again — Bouncer and Sanity at 9 are the ceiling — which is coincidence, not a rule returning.
+The old `[Range(3, 9)]` cap on `Operator.maxHealth` is **dead**. The stat is unbounded in the core; presentation-layer sliders, if any, use 3–15. Since the +1 below, Bouncer and Sanity at 10 sit just above that old cap, which is also no rule.
+
+**Roster-wide +1 health (2026-09-16, designer).** Every operator gained one: the common figure is 7, Mimi is 6, Bouncer and Sanity are 10. The reason is match length. Knockouts drive it (§12), and more health means fewer knockouts. Shipped together with the regen amendment (§5.11).
+
+- **What moved with it:** Luka's heavy line went 6 → 7 (§2.4), so "heavy" still means the two tanks and not most of the roster.
+- **What did not:** damage, collision damage (3), the mark (2 a turn) and the execute threshold (a ratio, so it scales on its own). A 7-health operator now survives two collisions, and a full mark leaves it at 3 rather than 2.
+- **Reasoning written against the old figures** (5, 6 and 9) still stands in §10 and in several code remarks, `CombatConfig.MarkDamagePerTurn` among them. Read those numbers as one lower than today.
 
 ### 1.2 Neutralized
 
@@ -112,7 +118,7 @@ Self-inflicted damage (Bouncer's All-In Mauling) is applied **directly to HP**, 
 _(Added 2026-09-15 with Luka's Vendetta — the first damage roll in the game.)_
 
 - **A damage effect may carry a crit chance.** On a seeded roll under it, the hit's damage is **multiplied** — by the effect's multiplier, or by its heavy multiplier against a **heavy** target.
-- **Heavy means maximum health above a threshold the effect states** (Luka's is 6: today the Bouncer and Sanity). Maximum, not current — heavy is who an operator is, not how hurt it is.
+- **Heavy means maximum health above a threshold the effect states** (Luka's is 7, raised from 6 with the roster-wide +1 health on 2026-09-16: today the Bouncer and Sanity). Maximum, not current — heavy is who an operator is, not how hurt it is.
 - **The roll is per effect and per recipient.** Three blows are three rolls.
 - **The multiplier applies before the pipeline**, to everything the hit would have dealt, bonuses included. A critical is a bigger hit, not one that ignores defences; Vendetta's blows ignore defences because they are Atomic.
 - **Self-damage never crits.** It bypasses the pipeline and is not an attack.
@@ -291,7 +297,7 @@ Not a status — the absence of them. Javi's Neural Purge removes every **applie
 - **Capped at `HasteBonusCellCap` (3) extra cells per operator per turn** (amendment, 2026-09-16). The move is worked out with and without the haste, and at most 3 of the extra cells are kept. The rest of the move, including a passive speed bonus like Evasive Protocol's, is not capped.
 - Granted only by Tagged From Above's payout, to the marker's whole squad (§10.2).
 
-**Amendment (2026-09-16, designer): the bonus is capped at 3 cells.** At +0.5 the bonus grows with the roll. A pooled 12 gained 6 cells at 1.0× and 6 again at 1.5×, so the payout's value depended on how high the dice came up. With the cap it stays a tempo nudge the player can count on the board: a pooled 12 at 1.0× now moves 15, not 18.
+**Amendment (2026-09-16, designer): the bonus is capped at 3 cells.** It is part of the pass that nerfs the fast operators (§10.8): Syla and Kurbyn read strongest in the bots sweep and in human games. At +0.5 the bonus grows with the roll. A pooled 12 gained 6 cells at 1.0× and 6 again at 1.5×, so the payout's value depended on how high the dice came up. With the cap it stays a tempo nudge the player can count on the board: a pooled 12 at 1.0× now moves 15, not 18.
 
 **Per operator, per turn, not per move.** Movement rounds per move (§6.3), so a per-move cap could be collected twice by splitting. A 6 and a 4 at 1.0× gain 3 + 2 when spent separately, and neither move reaches the cap, which would make splitting better than pooling for a hastened operator. So the engine keeps one budget per operator for the whole turn:
 
@@ -317,13 +323,23 @@ Not a status — the absence of them. Javi's Neural Purge removes every **applie
 Not a status, and not a heal anyone casts — a passive rule for every operator.
 
 - **Effect:** `RegenAmount = 1` health at the operator's owner's upkeep, after `RegenEveryTurns = 3` **consecutive eligible** upkeeps. Reported as `OperatorRegenerated`.
-- **Eligible means all three at once:** in play, **below half health** (`health × 2 < maxHealth`, integers — a 9-health operator regenerates at 4 or less, a 5-health one at 2 or less), and **not on a safe cell**. An ineligible upkeep resets the streak.
+- **Eligible means all three at once:** in play, **wounded** (below maximum health), and **not on a safe cell**. An ineligible upkeep resets the streak, so a heal needs three straight turns in the open.
 - **Evaluated after the upkeep's damage**, so regeneration never shields an operator from a bleed or mark tick that same upkeep.
 - Capped at `MaxHealth`, like every heal. `RegenEveryTurns = 0` disables it.
 
+**Amendment (2026-09-16, designer): any wound, not below half, and now actually live.**
+
+- **Why:** match length. Knockouts drive it (§12), and gated regen ticked about four times a match in the bots sweep, too little to matter.
+- **Never ran before this date.** `CombatConfig`'s constructor took both regen values and never assigned them, so they read 0 and regen never fired. Now assigned and covered by `RegenTests`.
+- **1 every 3 turns, not 1 every 2.** The designer picked the less drastic step; 1 every 2 was measured at −15% turns on its own.
+- **The safe-cell exclusion stays**, for the free-parking reason below.
+- **Shipped with the roster-wide +1 health** (§1.1). The measured before/after is in §12.
+
+What follows is the argument for the gates as first shipped. The below-half gate is gone; the rest stands.
+
 **It is a comeback spring, not a second health bar.** An always-on +1 every 2 turns was argued down before it shipped: against pools of 5–9 and damage of 1s and 2s it refunds the chip damage that taxes racing, it answers "why pay for Trauma Plate" with "don't", and on a safe cell it re-opens free parking. The below-half gate turns it into income for the losing side only; the safe-cell exclusion keeps the shelter offering nothing but shelter; every 3 keeps it slower than every damage clock in the game.
 
-**Unmeasured.** The bet is testable: A/B `RegenEveryTurns` 0 against 3 in the policy sweep. If racers or bankers gain on the spender, or Javi's casts fall further, the gates are too loose — reach for 4 before touching the amount.
+**Measured only in the bots sweep so far** (§12). The original bet is still testable: A/B `RegenEveryTurns` 0 against 3 in the policy sweep. If racers or bankers gain on the spender, or Javi's casts fall further, the gates are too loose — reach for 4 before touching the amount.
 
 ---
 
@@ -423,7 +439,7 @@ A follow-up is the charge's conditional sibling: the same registry (`DeferredOpe
 - **Timing is the caster's owner's next upkeep**, in the same window as charges and beacons, before the caster moves.
 - **It lands only if the caster is within its reach of the target** (Blind Spot: 2), measured along the track in either direction (§4.1), between the two as they stand at that upkeep. Otherwise it is spent and reported as a miss.
 - **The target alone.** No splash, no status.
-- **Heavy targets take a bonus** (Blind Spot: +1 on top of 1 when maximum health is above 6). Settled at cast time — maximum health never changes.
+- **Heavy targets take a bonus** (Blind Spot: +1 on top of 1 when maximum health is above 7). Settled at cast time — maximum health never changes.
 - **Safe cells and stealth do not stop it.** Both are rules about aiming, and the aim was legal when the strike was set; what the target can do about it now is move.
 - **Unlike a charge, it does not outlive its caster.** Reach is measured from the caster, and a yarded operator has no distance to anyone — the strike misses. A target already neutralized is never in reach either.
 - **Telegraphed and cleansable.** Setting it applies the Hunted marker (§5.13) and emits `FollowUpMarked`; a cleanse strips the marker and cancels it silently.
@@ -587,6 +603,8 @@ Nine operators are in the draft pool. **Eight are complete; Mimi (§10.4) is not
 
 **The tables are copied from the roster files and the code wins any disagreement.** Numbers change there first (`Assets/_Project/Scripts/Core/Abilities/Roster/`), and a table that drifts is a second copy of a value that is now wrong. Last synced 2026-09-15.
 
+**Health went up by 1 across the roster on 2026-09-16** (§1.1). The HP lines below show the new values. Reasoning in this section that cites 5, 6 or 9 health was written before it; read those as one lower than today.
+
 **Every ability carries a player-facing description** in the core, required by the constructor, and it contains no numbers. Cost, range, cooldown and damage all live on the same object; a figure repeated in prose is a second copy of a value that will be wrong the first time anyone tunes it.
 
 **An ability with a hostile and a friendly mode picks its mode once, from who was targeted.** All-In Mauling's self-damage belongs to the _hostile_ cast: used on an ally it heals and costs the Bouncer nothing. The same rule governs Velvet Rope and Nanite Infusion. Deciding per _recipient_ rather than per _cast_ gives a nonsense answer for any effect aimed at the caster's own side, since the caster is always friendly to himself.
@@ -595,7 +613,7 @@ Nine operators are in the draft pool. **Eight are complete; Mimi (§10.4) is not
 
 ### 10.1 Bouncer — Tank
 
-**HP 9 · Speed 1.0× · Range in path steps**
+**HP 10 · Speed 1.0× · Range in path steps**
 
 | #   | Ability                   | Type    | Cost | CD  | Range | Effect                                                                                               |
 | --- | ------------------------- | ------- | ---- | --- | ----- | ---------------------------------------------------------------------------------------------------- |
@@ -617,7 +635,7 @@ Bouncer's kit is priced on **positioning, not energy** — the roster's slowest 
 
 ### 10.2 Syla, The Blood Hound — Assassin
 
-**HP 6 · Speed 1.5×**
+**HP 7 · Speed 1.5×**
 
 | #   | Ability               | Type         | Cost | CD  | Range                | Effect                                                                                                                                                                                                                                                  |
 | --- | --------------------- | ------------ | ---- | --- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -639,7 +657,7 @@ Two numbers here have been walked back under measurement. The squad buff was **+
 
 ### 10.3 Kurbyn, DarkGrave — Brawler
 
-**HP 6 · Speed 1.0× base (1.5× with passive)**
+**HP 7 · Speed 1.0× base (1.5× with passive)**
 
 | #   | Ability              | Type         | Cost | CD  | Range                | Effect                                                                                                                                                                                              |
 | --- | -------------------- | ------------ | ---- | --- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -653,11 +671,13 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 **Miracle Pull went from range 1 to 2** in the same pass that cut Bouncer. At range 1 the finisher needed him on the cell beside his target, which on a board where placement is mostly dice meant the ult was often unspendable at the moment it was worth spending. It also widens the splash's practical reach without touching its radius.
 
+**Evasion 50% → 30% (2026-09-15, designer).** Kurbyn is fast (1.5 with the passive) and evasive, and human games and the bots sweep (35% win share) agreed the pair was too much. The speed stays; the evasion roll came down.
+
 **Evasion made Kurbyn dominant in the first human sessions**, which is what prompted Velvet Rope becoming Atomic rather than any change here. Note that the tuning pass then shortened that counter and lengthened his ultimate — every change moved power the same way. Whether that is one correction or an overcorrection is a measurement, not an argument.
 
 ### 10.4 Mimi — Controller
 
-**HP 5 · Speed 1.0× · Two of three abilities implemented**
+**HP 6 · Speed 1.0× · Two of three abilities implemented**
 
 > **Incomplete, and in the draft pool.** Cryo Field is designed and not built: it needs a status that damages an area at its holder's upkeep, and no such mechanic exists. She is draftable now, so this section describes what she actually does.
 >
@@ -679,7 +699,7 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 ### 10.5 Javi — Support
 
-**HP 6 · Speed 1.5× · Complete — all three abilities implemented**
+**HP 7 · Speed 1.5× · Complete — all three abilities implemented**
 
 | #   | Ability             | Type   | Cost | CD  | Range | Effect                                                                                                             |
 | --- | ------------------- | ------ | ---- | --- | ----- | ------------------------------------------------------------------------------------------------------------------ |
@@ -707,7 +727,7 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 ### 10.6 Kian — Artillery
 
-**HP 6 · Speed 1.0× · Complete — all three abilities implemented**
+**HP 7 · Speed 1.0× · Complete — all three abilities implemented**
 
 | #   | Ability              | Type   | Cost | CD  | Range                     | Effect                                                                                                                                                |
 | --- | -------------------- | ------ | ---- | --- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -729,7 +749,7 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 ### 10.7 Nuetu — Bruiser
 
-**HP 6 · Speed 1.0× · Complete — all three abilities implemented**
+**HP 7 · Speed 1.0× · Complete — all three abilities implemented**
 
 | #   | Ability              | Type   | Cost | CD  | Range    | Effect                                                                                                                                                                                                                                     |
 | --- | -------------------- | ------ | ---- | --- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -749,7 +769,7 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 ### 10.8 Sanity — Engineer
 
-**HP 9 · Speed 0.5× · Complete — all three abilities implemented**
+**HP 10 · Speed 0.5× · Complete — all three abilities implemented**
 
 > **He transgresses a precedent, knowingly, recorded here as a designer override (2026-09-15), not drift.** Speed 0.5 sits below the 1.0–1.5 band (ADR-0002 Amendment 4, §6.3) — the first operator outside it — signed off as the price of the "immovable object" fantasy. He shipped at health 12, tying the maximum the Bouncer cut had vacated, as a second override; a later balance pass the same day took him to **9**, level with the Bouncer.
 >
@@ -769,7 +789,7 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 **Costs 3 / 4 / 7 were the balance review's outcome (2026-09-15), argued against peers and unmeasured.** A basic priced like From the Hip, a delayed area priced under Drone Strike because it can be cleansed away, an ultimate priced under Miracle Pull because its damage is Normal and its target can be an ally. Adding him shifts the draft's dice stream besides, so nothing here can be compared to figures taken before him. They are now 3 / 4 / 6 (below).
 
-**Balance pass (2026-09-16, designer).** The reasoning was not recorded with the change.
+**Balance pass (2026-09-16, designer): buff Sanity, nerf the speedsters.** The bots sweep had Syla (36%) and Kurbyn (35%) clearly strongest and Kian and Sanity weakest (19%), and human games agreed. Syla and Kurbyn felt too fast, and Kurbyn's evasion on top of his speed was too much, which is why Evasive Protocol went 50% → 30% the day before (§10.3). This pass is the other half: the haste cap (§5.9) trims the speed Syla's payout hands her squad, and Sanity gets more reach and a cheaper, more frequent Collision.
 
 | Ability   | Cost  | CD    | Range |
 | --------- | ----- | ----- | ----- |
@@ -798,7 +818,7 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 ### 10.9 Luka — Duelist
 
-**HP 6 · Speed 1.0× · Complete — all three abilities implemented** _(added 2026-09-15)_
+**HP 7 · Speed 1.0× · Complete — all three abilities implemented** _(added 2026-09-15)_
 
 > **He arrived with three amendments:** the Tech type (§2.2), critical hits (§2.4) and the follow-up strike (§6.5), plus two statuses (§5.12, §5.13). The teleport is Collision's landing (§7.6) with no path damage, not a new mechanic.
 >
@@ -810,7 +830,7 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 | 2   | **Hermes' Ring** | Active, self | 3    | 4   | —     | **TechWard 3 turns** on Luka (§5.12): Tech damage blocked outright.                                                                                                                                                                 |
 | 3   | **Vendetta**     | Active (Ult) | 6    | 3   | 3     | **3 × 1 Atomic** to the target; each blow rolls a **10% critical** (§2.4): ×2, or **×3** if the target's max HP is above 6.                                                                                                         |
 
-**"Heavy" is maximum health above 6** — today the Bouncer and Sanity. Both of his damage riders read it.
+**"Heavy" is maximum health above 7** (6 until the roster-wide +1 of 2026-09-16) — today the Bouncer and Sanity. Both of his damage riders read it.
 
 **Blind Spot costs 5, one above Zero-Day, because it does more to one target** (dropped at 4, raised by the designer 2026-09-15). Same cooldown; two damage now where Zero-Day deals two a round later, up to two more if the target stays, and up to four cells of free mobility. Zero-Day pays for its certainty with a cleanse and a blast that reaches others; L pays with the escape — the teleport leaves Luka adjacent, so the target has to spend its move getting more than two cells clear — and the extra point. Both hits are Normal; no type was specified.
 
@@ -982,6 +1002,54 @@ Carried from the pre-2026-09-14 version of this section, which the table above s
 - **`RegenEveryTurns = 3`, `RegenAmount = 1`** (§5.11) — A/B 0 against 3 before trusting either. **Not live in code:** the `CombatConfig` constructor never assigns either field, so both read 0 and regeneration never fires. Found 2026-09-16; enabling it is a balance change and waits for a decision.
 - **Sanity's Collision at 6 / 3 / 6** (§10.8, 2026-09-16) — the bots sweep puts about 1.7 turns per seat and 2 knockouts per match on the four-seat game. Watch match length in human games before touching anything else.
 
+### Match length and knockouts (adopted in part, 2026-09-16)
+
+**Adopted:** +1 health across the roster (§1.1) and regen at 1 every 3 turns for any wound, off safe cells (§5.11). The designer chose that over 0.5 per round as the less drastic step. The exploration that led there follows the result.
+
+| Shipped vs before, 800 matches            | Before | After |
+| ----------------------------------------- | ------ | ----- |
+| Bots against bots: turns per seat         | 34.2   | 28.0  |
+| Bots against bots: knockouts per match    | 22.0   | 13.4  |
+| Bots against bots: casts per match        | 72.0   | 59.8  |
+| Standard sweep (alpha three): turns       | 20.3   | 19.2  |
+| Standard sweep (alpha three): p90         | 25     | 22    |
+| Standard sweep (alpha three): neutralizes | 5.5    | 3.4   |
+
+- **Matches are 18% shorter for the bots, and knockouts fall 39%.** That is a large cut in a game whose stated priority is 70% combat. Human games decide whether it went too far. If they feel toothless, take regen back first: `RegenEveryTurns = 0` switches it off.
+- **Win shares moved by 3 points at most:** Kurbyn 33% → 31%, Syla 30% → 31%, Javi 28% → 29%, Bouncer 27% → 25%, Nuetu 24% → 24%, Luka 22% → 23%, Kian 20% → 21%, Mimi 18% → 21%, Sanity 22% → 20%. Sanity gives back most of his 2026-09-16 buff.
+- **Bots now beat the scripted players 70% of the time**, up from 65–68%.
+- **The standard sweep's baseline row moved.** Use the "after" row (19.2 turns, 3.4 neutralizes, 41% 3-up) when the `tools/sim` README tripwire is set.
+- The exploratory rows below ran health +1 with Luka's heavy line still at 6. The shipped version raised it to 7, which is one reason the shipped win shares differ from row "Health +1".
+
+#### How it was explored
+
+The designer's read: games take too long, possibly because there are a lot of kills. Two ideas: the roster's health may be too low, or regenerate 0.5 health per round. **Nothing is adopted.** Measured with 4 bots, 800 matches, the same seeds, on the code after the Sanity pass. Lower health was run too, as a check on direction. Regen needed the §5.11 wiring fixed in a scratch copy. "0.5 per round" means +1 every 2 upkeeps for any wounded operator in play; "ungated" heals on safe cells too, "off safe cells" keeps §5.11's safe-cell exclusion.
+
+| Scenario                        | Turns per seat | p90  | Knockouts | Re-walked cells | Regen ticks |
+| ------------------------------- | -------------- | ---- | --------- | --------------- | ----------- |
+| As shipped (no regen)           | 34.2           | 50.5 | 22.0      | 50%             | 0           |
+| Regen as designed (+1/3, gated) | 33.9           | 48.5 | 21.5      | 50%             | 3.8         |
+| Regen 0.5 per round, ungated    | 28.9           | 39.3 | 15.4      | 40%             | 36.8        |
+| Regen 0.5 per round, off safe cells | 29.9       | 41.0 | 16.6      | 42%             | 30.2        |
+| Health −1 everywhere            | 39.5           | 57.3 | 29.5      | 57%             | 0           |
+| Health −2 everywhere (floor 2)  | 45.5           | 69.3 | 40.0      | 63%             | 0           |
+| Health +1 everywhere            | 30.5           | 42.8 | 16.5      | 44%             | 0           |
+| Health +2 everywhere            | 27.9           | 38.8 | 12.7      | 38%             | 0           |
+
+"Re-walked cells" is the share of all forward movement that re-covers ground an operator lost to a knockout.
+
+- **The designer's read holds: knockouts drive match length.** Across matches, turns and knockouts correlate at 0.94, and each knockout adds about one turn per seat. Half of all movement is re-walking lost ground.
+- **Both ideas shorten matches.** More health or more healing means fewer knockouts and less re-walked ground. Lower health does the opposite: −1 adds 5 turns per seat, −2 adds 11.
+- **Regeneration as designed barely matters.** About 4 ticks a match. It is also not live in code (above).
+- **+1 health is the cleanest option measured:** −11% turns per seat, −25% knockouts, and every win share within 2 points (Bouncer 27% → 25%, Mimi 18% → 20%). It needs no new rule. The catch is that several §10 numbers were reasoned against 6 health: at 7, a 6-health operator survives two collisions instead of one, and the mark's 4 damage leaves it at 3 instead of 2. Those remarks would need a pass.
+- **Regen off safe cells keeps most of the ungated effect** (−13% turns) without the free parking, but it costs Bouncer 4 points (27% → 23%) while Sanity and Javi gain 2.
+- **Ungated 0.5 per round and +2 health go further:** −15% and −18% turns per seat, with the long tail cut by about a quarter. They differ in who they help:
+  - +2 health lifts Kurbyn to 36% and Mimi from 18% to 23%, and drops Bouncer to 21% and Sanity to 20%. The tanks lose their relative edge. Kurbyn likely gains because a kill takes more hits, and his evasion gets more chances to cancel one.
+  - Ungated regen moves every win share by 2 points or less: Bouncer 27% → 25%, Sanity and Luka 22% → 24%.
+- **Ungated regen reopens what §5.11 closed:** it heals on safe cells (free parking), refunds chip damage such as bleed, and undercuts Javi's heal. The gates answered those, and the measurement shows the gates are also why regen does almost nothing.
+- **The Sanity pass pushes the other way:** +1.7 turns per seat (§10.8).
+- **Not measured yet:** lower collision damage; +1 health on the 5- and 6-health operators only.
+
 ### Struck
 
 Historical. `CollisionDamage` has since been restored and demoted — see item 3 of the dials table above for its current standing.
@@ -1016,6 +1084,15 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - `SlowedOperatorAtOneTimesSpeed_FloorsAtHalfMultiplier`
 - `KurbynMovesAtHisPassiveSpeed_NotHisBaseSpeed`
 - `TheTank_MovesAtItsBaseSpeed_WithNoPassiveToAdd`
+
+**Regeneration — `RegenTests`** (§5.11)
+
+- `TheDefaults_AreReallyAssigned`
+- `ALightlyWoundedOperator_HealsOneAfterThreeOfItsTurns`
+- `ADeeplyWoundedOperator_KeepsHealingEveryThirdTurn`
+- `AnOperatorOnASafeCell_DoesNotHeal`
+- `SteppingOntoASafeCell_RestartsTheClock`
+- `AnUnwoundedOperator_NeverReportsARegen`
 
 **Haste cap — `HasteCapTests`, `MovementResolverTests`, `StatusRegistryTests`** (§5.9)
 
@@ -1212,3 +1289,5 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - 2026-09-15 — **"L" named Blind Spot** (designer). The device behind it and Hermes' Ring is one signal-spoofing ring: turned outward it hides him from every lens (the teleport), turned inward it jams guided tech (the ward). The fiction lives in `OPERATORS.md`. Ability id 901 unchanged. No rule or number changed.
 - 2026-09-16 — **Haste bonus capped at 3 cells** (designer balance note). §5.9 and §6.3 amended. Hastened still adds +0.5 speed, but at most 3 extra cells per operator per turn. The cap is per turn, not per move, so splitting a roll cannot collect it twice. It is a new config value, `CombatConfig.HasteBonusCellCap`, and `GameEngine` keeps the per-turn budget. `Move`, `PreviewLandings` and `HasLegalMove` now share one distance helper. `MatchFactory.Match` now exposes `Statuses` for tests. Sim before/after is noise-level (§12). Tests 496 → 512.
 - 2026-09-16 — **Sanity balance pass** (designer, landed in the haste-cap commit). Zero-Day range 2 → 3. Collision cost 7 → 6, cooldown 4 → 3, range 5 → 6, so it is no longer priced as an ultimate. §10.8 updated with a before/after bots sweep: Sanity's win share 21% → 22%, but bot matches run about 1.7 turns per seat longer with 2 more knockouts, and Collision is the cause. `Sanity.cs` remarks brought in line. §12 records the watch item, and that regeneration is not live in code.
+- 2026-09-16 — **Designer's reasoning recorded** for the haste cap and the Sanity pass (§5.9, §10.8), and for the 2026-09-15 evasion cut (§10.3): buff the weakest, nerf the fast operators that the bots sweep and human games both had on top. §12 gains the match-length measurement behind the designer's ideas (health may be too low; 0.5 regen per round): knockouts drive length, and +1 health, +2 health or 0.5 regen shorten matches by 11–18%, while lower health lengthens them. +1 health moves win shares least. Nothing adopted.
+- 2026-09-16 — **Match-length pass adopted** (designer): +1 health across the roster (common 7, Mimi 6, Bouncer and Sanity 10) and regen at +1 every 3 turns for any wound, off safe cells (§1.1, §5.11). Regen had never run: `CombatConfig` did not assign its fields, now fixed. Luka's heavy line 6 → 7 so it still means the tanks. Bots: 34.2 → 28.0 turns per seat, 22.0 → 13.4 knockouts, win shares within 3 points (§12). Standard sweep: 20.3 → 19.2 turns. §10 HP lines updated; older reasoning that cites 5, 6 or 9 health is flagged, not rewritten. Tests 512 → 518.

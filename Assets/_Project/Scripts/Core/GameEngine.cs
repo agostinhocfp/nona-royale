@@ -330,8 +330,8 @@ namespace NonaRoyale.Core
 
         /// <summary>
         /// Passive regeneration (§5.11): +<c>RegenAmount</c> after
-        /// <c>RegenEveryTurns</c> straight owner-upkeeps spent in play, below
-        /// half health, and off any safe cell.
+        /// <c>RegenEveryTurns</c> straight owner-upkeeps spent in play, wounded,
+        /// and off any safe cell.
         /// </summary>
         /// <remarks>
         /// <b>Engine-side for the pity deploy's reason</b>: eligibility reads
@@ -341,9 +341,15 @@ namespace NonaRoyale.Core
         /// operator regenerates only if it survived its wounds. Regen is never
         /// a bleed shield.
         ///
-        /// <b>Below half in integers</b>: <c>health × 2 &lt; maxHealth</c>.
-        /// The tick can carry an operator to the threshold, where the next
-        /// evaluation resets it — the spring compresses once.
+        /// <b>Any wound counts (2026-09-16).</b> The below-half gate is gone:
+        /// the designer wanted steady healing to cut knockouts, and gated
+        /// regen ticked about four times a match in the bots sweep, which is
+        /// next to nothing. Full health is ineligible and resets the streak, so
+        /// the clock starts from the upkeep after the first wound.
+        ///
+        /// <b>This never ran before 2026-09-16.</b> <c>CombatConfig</c>'s
+        /// constructor did not assign the two regen fields, so both read 0 and
+        /// the early return below fired every time.
         ///
         /// <b>An ineligible upkeep resets the streak</b> (see
         /// <c>OperatorState.TurnsTowardRegen</c>): sheltering costs the clock
@@ -362,7 +368,7 @@ namespace NonaRoyale.Core
             {
                 bool eligible =
                     _map.IsOnOuterTrack(op.Progress) &&
-                    op.Health * 2 < op.MaxHealth &&
+                    op.Health < op.MaxHealth &&
                     !_map.IsSafe(_map.CellAt(op.Owner, op.Progress));
 
                 if (!eligible)
@@ -992,6 +998,33 @@ namespace NonaRoyale.Core
         {
             if (op == null) throw new ArgumentNullException(nameof(op));
             return _win.HasFinished(op);
+        }
+
+        /// <summary>
+        /// Whether the match is in its final stretch: some seat has every
+        /// operator but one home, so one more arrival wins it.
+        /// </summary>
+        /// <remarks>
+        /// A presentation query, never a rule: it switches the music to the
+        /// showdown (AUDIO.md). It lives here rather than in the view because
+        /// "how close is anyone to winning" is the win condition's business,
+        /// and the view computes nothing (PRESENTATION §1). A one-operator
+        /// squad has no stretch to speak of.
+        /// </remarks>
+        public bool IsFinalStretch
+        {
+            get
+            {
+                if (MatchOver) return false;
+
+                foreach (var player in _turns.Players)
+                {
+                    int squad = player.Operators.Count;
+                    if (squad > 1 && squad - _win.FinishedCount(player) == 1) return true;
+                }
+
+                return false;
+            }
         }
 
 

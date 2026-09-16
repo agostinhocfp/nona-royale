@@ -33,8 +33,11 @@ namespace NonaRoyale.Core.Abilities
         /// the six-damage sequence every other operator dies to; at 9 he takes
         /// three collisions and dies to two full exchanges. Still the only
         /// operator above 6, which is what a tank is.
+        ///
+        /// Ten since the roster-wide +1 of 2026-09-16 (COMBAT_SYSTEMS §1.1):
+        /// four collisions now, and the tank line moved to "above 7".
         /// </summary>
-        public const int MaxHealth = 9;
+        public const int MaxHealth = 10;
 
         /// <summary>
         /// ADR-0002 Amendment 4. He briefly sat at 1.5 for a pacing reason — a

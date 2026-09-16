@@ -64,7 +64,7 @@ namespace NonaRoyale.Core.Model
 
         /// <summary>
         /// Consecutive owner-upkeeps this operator has spent regen-eligible:
-        /// in play, below half health, and not on a safe cell (§5.8). Only
+        /// in play, wounded, and not on a safe cell (§5.11). Only
         /// <c>GameEngine.EvaluateRegen</c> writes it.
         /// </summary>
         /// <remarks>

@@ -173,7 +173,12 @@ In setup, any seat can be HUMAN or CPU. CPU seats draft and play on their own, a
 - 2026-09-16 — **The designer's balance edits, documented** (both landed in `balance(haste): cap the haste bonus at 3 cells per operator per turn`). Details and tables live in COMBAT_SYSTEMS.
   - **Haste cap** (§5.9): Hastened adds at most 3 extra cells per operator per turn. Bots sweep: noise only (Syla 31% → 30%).
   - **Sanity** (§10.8): Zero-Day range 2 → 3. Collision cost 7 → 6, cooldown 4 → 3, range 5 → 6.
+    - Why: this stage's balance read had Syla 36% and Kurbyn 35% on top and Sanity 19% at the bottom, and human games agreed. The pass buffs Sanity and, with the haste cap and the 2026-09-15 evasion cut, nerfs the fast operators.
     - Sanity's win share 21% → 22%, about one standard error.
     - Bot-vs-bot matches got longer: 32.5 → 34.2 turns per seat, 19.9 → 22.0 knockouts, Collision cast 4.81 → 6.80 times a match. A Collision-only run shows it is the cause.
     - Watch match length in human games.
   - This closes the pending balance item above.
+  - **Match length, adopted (COMBAT_SYSTEMS §1.1, §5.11, §12):** +1 health across the roster and regen at +1 every 3 turns for any wound, off safe cells. Regen had never run because of a config bug, now fixed.
+    - Bots against bots: 34.2 → 28.0 turns per seat, 22.0 → 13.4 knockouts. Win shares moved 3 points at most; Sanity 22% → 20%.
+    - Bots beat the scripted players 70% of the time, up from 65–68%.
+    - Watch in human games whether combat now feels too soft. Regen is the first thing to take back.

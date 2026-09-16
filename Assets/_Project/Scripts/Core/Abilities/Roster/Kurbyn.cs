@@ -16,7 +16,11 @@ namespace NonaRoyale.Core.Abilities
     /// </remarks>
     public static class Kurbyn
     {
-        public const int MaxHealth = 6;
+        /// <summary>
+        /// Seven: 6 plus the roster-wide +1 of 2026-09-16 (COMBAT_SYSTEMS
+        /// §1.1), which cut knockouts, and so match length, in the bots sweep.
+        /// </summary>
+        public const int MaxHealth = 7;
 
         /// <summary>Before Evasive Protocol, which adds its bonus on top.</summary>
         public const double BaseSpeed = 1.0;
