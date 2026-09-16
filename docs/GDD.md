@@ -32,11 +32,18 @@ The board is standard Ludo geometry. **The originality is the combat layer built
 
 ### 2.2 Draft
 
-Each player fields **three operators**, chosen before the match from a pool of **nine**. Four exist — three complete and one partial — and the rest are future work (`OPERATORS.md`).
+Each player fields **three operators**, chosen before the match from a pool of **nine**. All nine are in the roster. One is incomplete: Mimi has two of her three abilities, because Cryo Field is not written yet (`OPERATORS.md`).
 
 **Each seat fields three distinct operators.** Two players may field the same operator; one player may not field the same operator twice. Global uniqueness — no two players sharing an operator — is _not_ the rule and cannot be: four seats at three operators each would need twelve, and the pool is nine.
 
-Whether picks are simultaneous or in turn order is still **open**. For the alpha, squads are drafted at random from the pool.
+**How picks are made is settled** (2026-09-16, `DRAFT.md`). Setup offers four squad modes:
+
+- **All Pick** (default): one shared 30-second clock. Any seat picks at any time, in view of everyone. When the clock runs out, every empty slot is filled at random.
+- **Snake**: turn order reversing each round (R, B, G, V, V, G, B, R, …), 10 seconds per pick; a pick that times out is made at random.
+- **Random**: every squad is drawn at random.
+- **Alpha Three**: every seat fields Bouncer, Syla and Kurbyn (the measurement squad).
+
+Random picks draw from a draft RNG derived from the match seed, never from the match's own RNG.
 
 ### 2.3 Board
 
@@ -103,8 +110,7 @@ Recorded so they are not silently forgotten, and so nobody mistakes them for pla
 
 Small, and none of them block implementation.
 
-- Draft **order** — simultaneous or in turn order. Whether a player may field duplicates is settled: they may not (§2.2).
 - 2v2 team semantics — what "ally" means across two players.
 - Whether Sprint is exposed to players or stays a development tool (§2.3). Measurement has made this a live question rather than a rhetorical one.
 - Whether a session that runs past the length budget is a problem or simply what this game is. ADR-0002 Amendment 6.
-- Out-of-match flow: main menu, match creation, post-match screen. Undesigned.
+- ~~Out-of-match flow: main menu, match creation, post-match screen.~~ Designed and built in the GUI phase (`GUI_PHASE.md`, increments H–J).
