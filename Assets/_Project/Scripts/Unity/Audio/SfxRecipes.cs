@@ -28,10 +28,19 @@ namespace NonaRoyale.Unity.Audio
 
     /// <summary>
     /// The synthesized placeholder for each <see cref="SoundCue"/>
-    /// (AUDIO.md decision 1): ivory dice, soft steps, thumps, a cyan zap for
-    /// casts, a glassy shatter for knockouts, and a casino bell for the turn.
+    /// (AUDIO.md decision 1).
     /// </summary>
     /// <remarks>
+    /// <b>The palette is the table, not a toy box</b> (AU1d). Every cue is a
+    /// physical thing heard in a quiet room: weighted pieces set down on felt,
+    /// clay chips, a card dealt across the cloth, a switch, a body blow, a
+    /// pressure swell. Bodies come from noise ringing a resonant filter
+    /// (<see cref="Synth.Resonate"/>), so nothing has a clean pitch, and no cue
+    /// plays a melody or an interval. Sine tones appear only below about
+    /// 120 Hz, as weight you feel rather than a note you hear. Most cues are
+    /// darkened (<see cref="Synth.Darken"/>) so they sit under the music and
+    /// the voices.
+    ///
     /// Plain C#. Each cue has a few variants built from different seeds, so
     /// repeats don't sound identical. Buffers are mono at
     /// <see cref="Synth.SampleRate"/>, peak-normalized per cue; the per-cue
@@ -47,7 +56,8 @@ namespace NonaRoyale.Unity.Audio
                 case SoundCue.DiceShake:
                 case SoundCue.DiceLand:
                 case SoundCue.Hit:
-                case SoundCue.HitBig: return 3;
+                case SoundCue.HitBig:
+                case SoundCue.UiClick: return 3;
                 case SoundCue.Step: return 4;
                 default: return 1;
             }
@@ -61,30 +71,74 @@ namespace NonaRoyale.Unity.Audio
             {
                 case SoundCue.DiceShake: return DiceShake(random);
                 case SoundCue.DiceLand: return DiceLand(random);
-                case SoundCue.Doubles: return Doubles();
+                case SoundCue.Doubles: return Doubles(random);
                 case SoundCue.Step: return Step(random, variant);
                 case SoundCue.Rise: return Rise(random);
-                case SoundCue.CastTell: return CastTell(random, falling: false);
-                case SoundCue.CastCell: return CastTell(random, falling: true);
+                case SoundCue.CastTell: return CastTell(random);
+                case SoundCue.CastCell: return CastCell(random);
                 case SoundCue.Hit: return Hit(random, big: false);
                 case SoundCue.HitBig: return Hit(random, big: true);
-                case SoundCue.Heal: return Heal();
+                case SoundCue.Heal: return Heal(random);
                 case SoundCue.Miss: return Miss(random);
                 case SoundCue.Block: return Block(random);
                 case SoundCue.Knockout: return Knockout(random);
-                case SoundCue.TurnStart: return TurnStart();
-                case SoundCue.UiClick: return UiClick(random);
+                case SoundCue.TurnStart: return TurnStart(random);
+                case SoundCue.UiClick: return UiClick(random, variant);
                 default: throw new ArgumentOutOfRangeException(nameof(cue), cue, null);
             }
         }
 
-        /// <summary>One ivory-on-felt clack: a short band of noise and a hard, quickly damped tone.</summary>
+        // ── Building blocks ──────────────────────────────────────────────
+
+        /// <summary>
+        /// Something with weight meeting a soft surface: a low body pressed
+        /// rather than struck (felt spreads the impact), a knock above it that
+        /// small speakers can still carry, and a muffled contact.
+        /// </summary>
+        /// <param name="ring">Scales how long the body rings.</param>
+        /// <param name="weight">Sub-bass under the body, for heavy things only (0 for none).</param>
+        private static void Thud(float[] b, float at, float gain, float bodyHz, SynthRandom r,
+            float ring = 1f, float weight = 0f)
+        {
+            Synth.Resonate(b, at, 0.1f * ring, gain * 7f, 0.001f, 0.009f * ring, bodyHz, bodyHz * 0.9f, 5f, r);
+            Synth.Resonate(b, at, 0.05f * ring, gain * 3.5f, 0.0005f, 0.005f * ring,
+                bodyHz * 2.6f, bodyHz * 2.5f, 3.5f, r);
+            Synth.Noise(b, at, 0.03f, gain * 0.35f, 0.0005f, 0.005f, 1600f, 250f, r);
+
+            if (weight > 0f)
+            {
+                float sub = MathF.Min(bodyHz * 0.7f, 90f);
+                Synth.Tone(b, at, 0.1f * ring, sub, sub * 0.7f, Wave.Sine, gain * weight, 0.002f, 0.025f * ring);
+            }
+        }
+
+        /// <summary>
+        /// A small, hard contact: two dull modes excited by a click. The pair
+        /// never forms an interval, so it reads as material, not a note.
+        /// </summary>
+        private static void Tick(float[] b, float at, float gain, float centerHz, SynthRandom r)
+        {
+            Synth.Resonate(b, at, 0.03f, gain * 2.2f, 0.0003f, 0.0015f, centerHz, centerHz * 0.97f, 3.5f, r);
+            Synth.Resonate(b, at, 0.025f, gain * 1.1f, 0.0003f, 0.0012f,
+                centerHz * 1.73f, centerHz * 1.7f, 4f, r);
+        }
+
+        /// <summary>A body moving through air, or cloth over cloth: a swelling, gliding band of noise.</summary>
+        private static void Swish(float[] b, float at, float duration, float gain, float fromHz, float toHz,
+            float attack, float decay, SynthRandom r, float q = 0.9f)
+        {
+            Synth.Resonate(b, at, duration, gain, attack, decay, fromHz, toHz, q, r);
+        }
+
+        /// <summary>A clay chip or a die against another: a short, dense knock.</summary>
         private static void Clack(float[] b, float at, float gain, float pitch, SynthRandom r)
         {
-            Synth.Noise(b, at, 0.03f, gain, 0.0005f, 0.006f, 7000f, 1800f, r);
-            Synth.Tone(b, at, 0.05f, pitch, pitch * 0.92f, Wave.Triangle, gain * 0.6f, 0.0005f, 0.012f);
-            Synth.Tone(b, at, 0.04f, pitch * 2.63f, pitch * 2.5f, Wave.Sine, gain * 0.25f, 0.0005f, 0.006f);
+            Synth.Resonate(b, at, 0.03f, gain * 2f, 0.0003f, 0.002f, pitch, pitch * 0.96f, 5f, r);
+            Synth.Resonate(b, at, 0.025f, gain * 1.2f, 0.0003f, 0.0015f, pitch * 2.31f, pitch * 2.25f, 6f, r);
+            Synth.Noise(b, at, 0.015f, gain * 0.3f, 0.0003f, 0.002f, 6000f, 1500f, r);
         }
+
+        // ── Dice (fallbacks: the Kenney files replace these) ─────────────
 
         private static float[] DiceShake(SynthRandom r)
         {
@@ -94,204 +148,234 @@ namespace NonaRoyale.Unity.Audio
 
             while (t < 0.52f)
             {
-                Clack(b, t, r.Range(0.35f, 1f) * (1f - t), r.Range(1700f, 2600f), r);
+                Clack(b, t, r.Range(0.35f, 1f) * (1f - t), r.Range(1500f, 2200f), r);
                 t += r.Range(0.035f, 0.07f) * (1f + t * 2f);
             }
 
+            Synth.Darken(b, 7000f);
             Synth.Normalize(b, 0.9f);
             return b;
         }
 
         private static float[] DiceLand(SynthRandom r)
         {
-            // Two dice settling: two firm knocks and a small bounce each.
+            // Two dice settling on felt: two firm knocks and a small bounce each.
             var b = Synth.Buffer(0.4f);
 
-            Knock(b, 0.0f, 1f, r.Range(1150f, 1350f), r);
-            Knock(b, r.Range(0.05f, 0.08f), 0.85f, r.Range(950f, 1150f), r);
-            Clack(b, r.Range(0.16f, 0.2f), 0.25f, 1500f, r);
-            Clack(b, r.Range(0.22f, 0.26f), 0.15f, 1300f, r);
+            Clack(b, 0f, 1f, r.Range(1100f, 1300f), r);
+            Thud(b, 0f, 0.6f, 230f, r);
+            float second = r.Range(0.05f, 0.08f);
+            Clack(b, second, 0.85f, r.Range(950f, 1100f), r);
+            Thud(b, second, 0.5f, 210f, r);
+            Clack(b, r.Range(0.16f, 0.2f), 0.25f, 1400f, r);
+            Clack(b, r.Range(0.22f, 0.26f), 0.15f, 1250f, r);
 
+            Synth.Darken(b, 7000f);
             Synth.Normalize(b, 0.95f);
             return b;
         }
 
-        private static void Knock(float[] b, float at, float gain, float pitch, SynthRandom r)
+        // ── Board ────────────────────────────────────────────────────────
+
+        private static float[] Doubles(SynthRandom r)
         {
-            Clack(b, at, gain, pitch, r);
+            // Two chips knocked together on the rail: a quiet nod, not a fanfare.
+            var b = Synth.Buffer(0.32f);
 
-            // The table's body under the die.
-            Synth.Tone(b, at, 0.09f, 240f, 150f, Wave.Sine, gain * 0.5f, 0.001f, 0.03f);
-            Synth.Noise(b, at, 0.05f, gain * 0.35f, 0.0005f, 0.015f, 2500f, 0f, r);
-        }
+            Clack(b, 0f, 1f, 2300f, r);
+            Clack(b, 0.075f, 0.75f, 2050f, r);
+            Thud(b, 0.075f, 0.12f, 260f, r);
 
-        private static float[] Doubles()
-        {
-            // A bright two-note chime, up a fourth.
-            var b = Synth.Buffer(0.8f);
-            float[] partials = { 1f, 2.0f, 3.01f };
-
-            Synth.Bell(b, 0.0f, 0.5f, Synth.Midi(88), partials, 0.6f, 0.18f);
-            Synth.Bell(b, 0.12f, 0.68f, Synth.Midi(93), partials, 0.7f, 0.28f);
-
-            Synth.Normalize(b, 0.8f);
+            Synth.Darken(b, 6500f);
+            Synth.Normalize(b, 0.9f);
             return b;
         }
 
         private static float[] Step(SynthRandom r, int variant)
         {
-            // A soft shoe on marble: a low tick and a breath of noise. Quiet by design.
-            var b = Synth.Buffer(0.09f);
-            float pitch = 420f * (1f + 0.06f * (variant - 1.5f));
+            // A weighted piece set down on felt: a low body, a muffled edge, a scuff of cloth.
+            var b = Synth.Buffer(0.13f);
+            float body = 165f * (1f + 0.07f * (variant - 1.5f));
 
-            Synth.Tone(b, 0f, 0.06f, pitch, pitch * 0.7f, Wave.Sine, 0.7f, 0.001f, 0.014f);
-            Synth.Noise(b, 0f, 0.05f, 0.45f, 0.001f, 0.01f, 3200f, 400f, r);
+            Thud(b, 0f, 1f, body, r);
+            Tick(b, 0.001f, 0.18f, r.Range(850f, 1050f), r);
+            Swish(b, 0f, 0.05f, 0.12f, 700f, 500f, 0.006f, 0.015f, r);
 
-            Synth.Normalize(b, 0.8f);
+            Synth.Darken(b, 3200f);
+            Synth.Normalize(b, 0.75f);
             return b;
         }
 
         private static float[] Rise(SynthRandom r)
         {
-            // Standing up from the table: a rising swell over a soft thump.
-            var b = Synth.Buffer(0.42f);
+            // A piece slid out onto the cloth and set down.
+            var b = Synth.Buffer(0.5f);
 
-            Synth.Tone(b, 0f, 0.4f, 260f, 620f, Wave.Triangle, 0.45f, 0.08f, 0.2f, lowpassHz: 2200f);
-            Synth.Tone(b, 0.02f, 0.38f, 390f, 930f, Wave.Sine, 0.25f, 0.1f, 0.18f);
-            Synth.Tone(b, 0.24f, 0.16f, 110f, 70f, Wave.Sine, 0.8f, 0.002f, 0.05f);
-            Synth.Noise(b, 0.24f, 0.06f, 0.2f, 0.001f, 0.015f, 1800f, 0f, r);
+            Swish(b, 0f, 0.3f, 0.55f, 450f, 850f, 0.14f, 0.08f, r);
+            Thud(b, 0.27f, 1f, 130f, r, ring: 1.3f);
+            Tick(b, 0.271f, 0.15f, 780f, r);
 
+            Synth.Darken(b, 3500f);
             Synth.Normalize(b, 0.8f);
             return b;
         }
 
-        private static float[] CastTell(SynthRandom r, bool falling)
+        private static float[] TurnStart(SynthRandom r)
         {
-            // The cyan register: a filtered zap with a shimmer on top. A cell
-            // cast falls and ends on a ping where it lands.
-            var b = Synth.Buffer(0.55f);
+            // A card dealt across the cloth to the next seat, and a tap as it stops.
+            var b = Synth.Buffer(0.4f);
 
-            float from = falling ? 1500f : 380f;
-            float to = falling ? 320f : 1400f;
+            Swish(b, 0f, 0.2f, 0.45f, 3000f, 2100f, 0.08f, 0.05f, r, q: 0.8f);
+            Swish(b, 0.02f, 0.16f, 0.25f, 900f, 700f, 0.06f, 0.05f, r);
+            Tick(b, 0.17f, 0.4f, 1500f, r);
+            Thud(b, 0.17f, 0.45f, 210f, r);
 
-            Synth.Tone(b, 0f, 0.3f, from, to, Wave.Triangle, 0.5f, 0.005f, 0.14f, lowpassHz: 3200f);
-            Synth.Tone(b, 0f, 0.35f, from * 2f, to * 2f, Wave.Sine, 0.25f, 0.02f, 0.12f,
-                vibratoHz: 24f, vibratoDepth: 0.03f);
-            Synth.Noise(b, 0f, 0.25f, 0.12f, 0.03f, 0.08f, 9000f, 4000f, r);
+            Synth.Darken(b, 4500f);
+            Synth.Normalize(b, 0.6f);
+            return b;
+        }
 
-            float ping = falling ? Synth.Midi(84) : Synth.Midi(91);
-            Synth.Bell(b, 0.3f, 0.25f, ping, new[] { 1f, 2.76f }, 0.35f, 0.07f);
+        // ── Abilities ────────────────────────────────────────────────────
 
+        private static float[] CastTell(SynthRandom r)
+        {
+            // Pressure gathering: a low, breathing swell with weight under it.
+            var b = Synth.Buffer(0.62f);
+
+            Swish(b, 0f, 0.55f, 1f, 260f, 700f, 0.2f, 0.14f, r, q: 1.4f);
+            Synth.Tone(b, 0f, 0.5f, 60f, 95f, Wave.Sine, 0.08f, 0.16f, 0.14f);
+            Synth.Noise(b, 0.05f, 0.45f, 0.06f, 0.18f, 0.1f, 6000f, 2500f, r);
+
+            Synth.Darken(b, 2800f);
             Synth.Normalize(b, 0.75f);
             return b;
         }
 
-        private static float[] Hit(SynthRandom r, bool big)
+        private static float[] CastCell(SynthRandom r)
         {
-            // A body blow: a pitched-down thump and a crack of noise. The big
-            // one is lower, longer and driven.
-            float length = big ? 0.45f : 0.22f;
-            var b = Synth.Buffer(length);
-            float jitter = r.Range(0.92f, 1.08f);
+            // Something thrown: it cuts the air, falls, and lands with a dull thump.
+            var b = Synth.Buffer(0.6f);
 
-            Synth.Tone(b, 0f, length, (big ? 150f : 190f) * jitter, (big ? 45f : 70f) * jitter,
-                Wave.Sine, 1f, 0.001f, big ? 0.12f : 0.05f);
-            Synth.Noise(b, 0f, big ? 0.12f : 0.05f, big ? 0.7f : 0.5f, 0.0005f, big ? 0.03f : 0.012f,
-                big ? 3000f : 4500f, 150f, r);
+            Swish(b, 0f, 0.34f, 0.8f, 1300f, 320f, 0.1f, 0.12f, r, q: 1.2f);
+            Thud(b, 0.3f, 1f, 105f, r, ring: 1.5f);
+            Synth.Noise(b, 0.3f, 0.2f, 0.12f, 0.004f, 0.06f, 1400f, 200f, r);
 
-            if (big)
-            {
-                Synth.Tone(b, 0.005f, 0.3f, 75f, 40f, Wave.Triangle, 0.5f, 0.002f, 0.1f, lowpassHz: 400f);
-                Synth.Drive(b, 2.2f);
-            }
-
-            Synth.Normalize(b, big ? 0.95f : 0.85f);
+            Synth.Darken(b, 3200f);
+            Synth.Normalize(b, 0.75f);
             return b;
         }
 
-        private static float[] Heal()
+        private static float[] Heal(SynthRandom r)
         {
-            // A rising, soft arpeggio: C, E, G, C.
-            var b = Synth.Buffer(0.7f);
-            int[] notes = { 84, 88, 91, 96 };
+            // A long exhale over a low, soft fifth: the tension going out.
+            var b = Synth.Buffer(0.9f);
 
-            for (int i = 0; i < notes.Length; i++)
-                Synth.Tone(b, i * 0.07f, 0.45f, Synth.Midi(notes[i]), Synth.Midi(notes[i]), Wave.Sine,
-                    0.35f, 0.01f, 0.15f, vibratoHz: 6f, vibratoDepth: 0.004f);
+            Swish(b, 0f, 0.8f, 1.4f, 380f, 950f, 0.3f, 0.25f, r, q: 0.8f);
+            Synth.Tone(b, 0.05f, 0.8f, Synth.Midi(50), Synth.Midi(50), Wave.Triangle, 0.22f, 0.22f, 0.35f,
+                vibratoHz: 4.5f, vibratoDepth: 0.003f, lowpassHz: 600f);
+            Synth.Tone(b, 0.05f, 0.8f, Synth.Midi(57), Synth.Midi(57), Wave.Triangle, 0.14f, 0.26f, 0.32f,
+                vibratoHz: 5f, vibratoDepth: 0.003f, lowpassHz: 600f);
 
-            Synth.Normalize(b, 0.7f);
+            Synth.Darken(b, 2400f);
+            Synth.Normalize(b, 0.6f);
+            return b;
+        }
+
+        // ── Combat ───────────────────────────────────────────────────────
+
+        private static float[] Hit(SynthRandom r, bool big)
+        {
+            // A body blow: a slap on top, a chest underneath. The big one is
+            // lower, longer, and carries some debris.
+            float length = big ? 0.45f : 0.22f;
+            var b = Synth.Buffer(length);
+            float j = r.Range(0.92f, 1.08f);
+            float body = (big ? 88f : 125f) * j;
+
+            Synth.Noise(b, 0f, 0.025f, 0.7f, 0.0003f, big ? 0.008f : 0.006f, 3800f, 600f, r);
+            Thud(b, 0f, 1.2f, body, r, ring: big ? 2f : 1.2f);
+            Synth.Resonate(b, 0.001f, 0.08f, 3f, 0.0005f, big ? 0.012f : 0.008f, body * 2.7f, body * 2.3f, 2f, r);
+            Synth.Tone(b, 0f, big ? 0.35f : 0.16f, body * 0.75f, body * 0.45f, Wave.Sine, big ? 0.3f : 0.15f, 0.001f,
+                big ? 0.09f : 0.045f);
+
+            if (big) Synth.Noise(b, 0.01f, 0.2f, 0.25f, 0.002f, 0.06f, 1200f, 90f, r);
+
+            Synth.Drive(b, big ? 3f : 1.8f);
+
+            Synth.Darken(b, big ? 4000f : 5000f);
+            Synth.Normalize(b, big ? 0.95f : 0.85f);
             return b;
         }
 
         private static float[] Miss(SynthRandom r)
         {
-            // A whoosh past the target: noise swelling and fading, high-passed.
-            var b = Synth.Buffer(0.32f);
+            // A blow that finds only air: a close, low whoosh.
+            var b = Synth.Buffer(0.3f);
 
-            Synth.Noise(b, 0f, 0.3f, 1f, 0.12f, 0.08f, 5000f, 900f, r);
-            Synth.Noise(b, 0.05f, 0.22f, 0.5f, 0.08f, 0.06f, 2500f, 500f, r);
+            Swish(b, 0f, 0.28f, 1f, 1500f, 450f, 0.09f, 0.07f, r, q: 1.1f);
+            Swish(b, 0.03f, 0.22f, 0.4f, 700f, 300f, 0.07f, 0.06f, r, q: 0.8f);
 
-            Synth.Normalize(b, 0.7f);
+            Synth.Darken(b, 4500f);
+            Synth.Normalize(b, 0.65f);
             return b;
         }
 
         private static float[] Block(SynthRandom r)
         {
-            // Plate armour: an inharmonic clank over a click.
-            var b = Synth.Buffer(0.5f);
+            // A guard taking the blow: a dull plate knock over a braced thump. No ring.
+            var b = Synth.Buffer(0.3f);
 
-            Synth.Noise(b, 0f, 0.02f, 0.8f, 0.0005f, 0.004f, 9000f, 2000f, r);
-            Synth.Bell(b, 0f, 0.48f, 523f, new[] { 1f, 2.49f, 3.99f, 6.41f }, 0.6f, 0.12f);
-            Synth.Tone(b, 0f, 0.1f, 200f, 120f, Wave.Sine, 0.4f, 0.001f, 0.03f);
+            Synth.Noise(b, 0f, 0.015f, 0.6f, 0.0003f, 0.003f, 5000f, 1200f, r);
+            Synth.Resonate(b, 0f, 0.12f, 2.4f, 0.0005f, 0.003f, 1250f, 1200f, 9f, r);
+            Synth.Resonate(b, 0f, 0.09f, 1.3f, 0.0005f, 0.002f, 2080f, 2040f, 10f, r);
+            Thud(b, 0f, 0.9f, 150f, r);
 
-            Synth.Normalize(b, 0.8f);
+            Synth.Drive(b, 1.6f);
+            Synth.Darken(b, 4500f);
+            Synth.Normalize(b, 0.95f);
             return b;
         }
 
         private static float[] Knockout(SynthRandom r)
         {
-            // Glass giving way over a low boom: a spray of tiny bright shards.
-            var b = Synth.Buffer(0.9f);
+            // A body going down hard, and a glass going with it: a heavy drop
+            // and a short, dark break. The shards are noise, not notes.
+            var b = Synth.Buffer(1f);
 
-            Synth.Tone(b, 0f, 0.7f, 90f, 32f, Wave.Sine, 1f, 0.002f, 0.22f);
-            Synth.Noise(b, 0f, 0.2f, 0.6f, 0.001f, 0.06f, 2000f, 60f, r);
+            Thud(b, 0f, 1.2f, 72f, r, ring: 3f);
+            Synth.Tone(b, 0f, 0.7f, 62f, 34f, Wave.Sine, 0.3f, 0.002f, 0.2f);
+            Synth.Noise(b, 0f, 0.35f, 0.35f, 0.002f, 0.09f, 450f, 40f, r);
 
-            for (int i = 0; i < 26; i++)
+            Synth.Noise(b, 0.015f, 0.2f, 0.6f, 0.0005f, 0.05f, 7000f, 1800f, r);
+            for (int i = 0; i < 16; i++)
             {
-                float at = r.Range(0f, 0.45f) * r.Range(0.3f, 1f);
-                float pitch = r.Range(2400f, 6200f);
-                float gain = r.Range(0.12f, 0.35f) * (1f - at);
-                Synth.Tone(b, at, 0.12f, pitch, pitch * 1.02f, Wave.Sine, gain, 0.0005f, 0.025f);
-                Synth.Noise(b, at, 0.02f, gain * 0.6f, 0.0005f, 0.005f, 11000f, 3500f, r);
+                float at = 0.015f + r.Range(0f, 0.3f) * r.Range(0.2f, 1f);
+                float hz = r.Range(2200f, 5200f);
+                float gain = r.Range(0.6f, 1.4f) * (1f - at * 1.5f);
+                Synth.Resonate(b, at, 0.04f, gain * 2f, 0.0003f, r.Range(0.004f, 0.012f), hz, hz * 0.98f,
+                    r.Range(10f, 16f), r);
             }
 
-            Synth.Drive(b, 1.4f);
+            Synth.Drive(b, 1.3f);
+            Synth.Darken(b, 6000f);
             Synth.Normalize(b, 0.95f);
             return b;
         }
 
-        private static float[] TurnStart()
+        // ── Interface ────────────────────────────────────────────────────
+
+        private static float[] UiClick(SynthRandom r, int variant)
         {
-            // The casino floor bell, soft: two strikes a third apart.
-            var b = Synth.Buffer(1.1f);
-            float[] partials = { 1f, 2.4f, 3.0f, 4.5f };
+            // A bakelite switch: a dull click and the faint return of the lever.
+            var b = Synth.Buffer(0.1f);
+            float center = 1250f * (1f + 0.05f * (variant - 1));
 
-            Synth.Bell(b, 0f, 0.9f, Synth.Midi(76), partials, 0.5f, 0.35f);
-            Synth.Bell(b, 0.11f, 0.95f, Synth.Midi(79), partials, 0.4f, 0.4f);
+            Tick(b, 0f, 1f, center, r);
+            Thud(b, 0f, 0.3f, 240f, r);
+            Tick(b, 0.014f, 0.22f, center * 1.2f, r);
 
-            Synth.Normalize(b, 0.6f);
-            return b;
-        }
-
-        private static float[] UiClick(SynthRandom r)
-        {
-            // A small brass tick.
-            var b = Synth.Buffer(0.05f);
-
-            Synth.Tone(b, 0f, 0.04f, 2100f, 1800f, Wave.Triangle, 0.6f, 0.0005f, 0.006f);
-            Synth.Noise(b, 0f, 0.012f, 0.3f, 0.0005f, 0.003f, 8000f, 2500f, r);
-
-            Synth.Normalize(b, 0.6f);
+            Synth.Darken(b, 4200f);
+            Synth.Normalize(b, 0.55f);
             return b;
         }
     }

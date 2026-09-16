@@ -164,6 +164,69 @@ namespace NonaRoyale.Unity.Audio
         }
 
         /// <summary>
+        /// Adds noise through a resonant band-pass whose centre glides
+        /// exponentially from <paramref name="fromHz"/> to <paramref name="toHz"/>:
+        /// the body of a physical thing (felt, wood, leather, a plate).
+        /// </summary>
+        /// <remarks>
+        /// A very short excitation (a few milliseconds) rings the filter the way
+        /// a knock rings an object: the ring lasts about Q / (π · f), so low Q
+        /// gives a dull thump and high Q a hard knock. A longer, swelling
+        /// excitation with low Q gives a whoosh. Unlike <see cref="Tone"/>, the
+        /// result has no clean pitch, which keeps effects from sounding like
+        /// notes. The filter is a trapezoidal state-variable one, stable under
+        /// any glide; its output is scaled to unity gain at the centre.
+        /// </remarks>
+        public static void Resonate(float[] buffer, float start, float duration, float gain,
+            float attack, float decay, float fromHz, float toHz, float q, SynthRandom random, bool loop = false)
+        {
+            int first = (int)(start * SampleRate);
+            int count = Samples(duration);
+            float k = 1f / MathF.Max(0.3f, q);
+            float ratio = toHz / MathF.Max(1f, fromHz);
+            float ic1 = 0f, ic2 = 0f;
+
+            for (int i = 0; i < count; i++)
+            {
+                float t = i / (float)SampleRate;
+                float env = Envelope(t, duration, attack, decay);
+
+                float hz = MathF.Min(fromHz * MathF.Pow(ratio, t / duration), SampleRate * 0.45f);
+                float g = MathF.Tan(MathF.PI * hz / SampleRate);
+                float a1 = 1f / (1f + g * (g + k));
+                float a2 = g * a1;
+                float a3 = g * a2;
+
+                float v3 = random.Signed() * env - ic2;
+                float v1 = a1 * ic1 + a2 * v3;
+                float v2 = ic2 + a2 * ic1 + a3 * v3;
+                ic1 = 2f * v1 - ic1;
+                ic2 = 2f * v2 - ic2;
+
+                float tail = count - i < Declick * SampleRate ? (count - i) / (Declick * SampleRate) : 1f;
+                Write(buffer, first + i, k * v1 * gain * tail, loop);
+            }
+        }
+
+        /// <summary>
+        /// Rolls the highs off the whole buffer (two one-pole stages, 12 dB per
+        /// octave above <paramref name="hz"/>): the difference between a sound
+        /// heard across a room and one held to the ear.
+        /// </summary>
+        public static void Darken(float[] buffer, float hz)
+        {
+            float coef = Coefficient(hz);
+            float a = 0f, b = 0f;
+
+            for (int i = 0; i < buffer.Length; i++)
+            {
+                a += coef * (buffer[i] - a);
+                b += coef * (a - b);
+                buffer[i] = b;
+            }
+        }
+
+        /// <summary>
         /// Adds a metallic ring: inharmonic partials, each decaying on its own.
         /// </summary>
         public static void Bell(float[] buffer, float start, float duration, float fundamental,

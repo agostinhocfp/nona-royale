@@ -9,6 +9,7 @@
 | Asset | Source | Notes |
 | --- | --- | --- |
 | Every `SoundCue` effect | `Unity/Audio/SfxRecipes.cs` | Synthesized at runtime by the game |
+| Placeholder voice lines for operators with no recordings | `Unity/Audio/VoiceBlips.cs` | Synthesized at runtime; no speech, no voice source |
 | Fallback `Title` and `Match` loops, `Win` sting | `Unity/Audio/MusicRecipes.cs`, `TarantellaScore.cs` | `Match` is arranged from "Deborah", written and produced by the designer (artist name Stutt-) |
 
 ## Generated with Google Lyria
@@ -30,6 +31,10 @@ Every Lyria output carries a SynthID watermark.
 
 Alternates in `Claude outputs/lyria/processed/` don't ship unless moved into `Resources`; add a row if one is.
 
+## Voice recordings
+
+None yet. Add one row per file in `Resources/Audio/Voice/`: who voiced it (or which tool and voice generated it), the date, and the licence or consent. Spec and naming: `docs/audio/VOICE_LINES.md`.
+
 ## Third-party libraries
 
 For each pack added, record its name, vendor, URL, licence (for example the Unity Asset Store EULA, CC0, or the Sonniss GDC licence), purchase date, and the files used.
@@ -42,3 +47,4 @@ For each pack added, record its name, vendor, URL, licence (for example the Unit
 | --- | --- | --- |
 | `Audio/Resources/Audio/SFX/DiceShake.wav`, `_2`, `_3` | Casino Audio `dice-shake-1/2/3.ogg` | Mono, 44.1 kHz; start at the first sound; cut to 0.68 s with a 160 ms fade-out; peak-limited to −1 dBFS |
 | `Audio/Resources/Audio/SFX/DiceLand.wav`, `_2`, `_3` | Casino Audio `dice-throw-1/2/3.ogg` | Mono, 44.1 kHz; start at the first sound; 80 ms fade-out; peak-limited to −1 dBFS |
+| `Audio/Resources/Audio/SFX/Step.wav`, `_2`, `_3` | Casino Audio `chip-lay-1/2/3.ogg` | Mono, 44.1 kHz; start 2 ms before the first sound; cut to 110 ms (`chip-lay-3`: 65 ms, before its bounce) with a squared fade-out of 40 ms (25 ms); 12 dB/octave low-pass at 6 kHz; matched to one A-weighted level, loudest peak −1 dBFS |
