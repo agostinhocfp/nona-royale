@@ -23,6 +23,12 @@ namespace NonaRoyale.Unity.Audio
     ///
     /// <b>Effects are panned by where they happen</b>, lightly, from the
     /// world position the caller passes. Nothing here is spatial audio.
+    ///
+    /// <b>Voices (AU2)</b> play one at a time on their own source, through
+    /// <see cref="VoiceRules"/>, and pause with the game like effects. The
+    /// rules run on a clock that stops while paused, so a line frozen mid-way
+    /// still counts as speaking when play resumes. The music ducks to
+    /// <see cref="AudioLevels.DuckedMusic"/> while a line plays.
     /// </remarks>
     public sealed class AudioDirector : MonoBehaviour
     {
@@ -31,6 +37,11 @@ namespace NonaRoyale.Unity.Audio
         private const float CrossfadeSeconds = 1.2f;
         private const float StingFadeSeconds = 0.25f;
         private const float StingReturnSeconds = 1.5f;
+        private const float DuckSeconds = 0.12f;
+        private const float UnduckSeconds = 0.5f;
+
+        /// <summary>Gain of a voice line on top of the Voice bus.</summary>
+        private const float VoiceGain = 1f;
 
         /// <summary>How far an effect at the edge of the view is panned.</summary>
         private const float PanWidth = 0.4f;
@@ -50,6 +61,12 @@ namespace NonaRoyale.Unity.Audio
         private AudioSource _musicA;
         private AudioSource _musicB;
         private AudioSource _sting;
+        private AudioSource _voice;
+        private VoiceRules _voiceRules;
+        private double _voiceClock;
+        private float _duck = 1f;
+        private AudioClip _heldClip;
+        private Vector3? _heldAt;
         private MusicCue? _playing;
         private float _fadeIn = 1f;
         private float _fadeOut;
@@ -80,6 +97,8 @@ namespace NonaRoyale.Unity.Audio
             _musicA = Source("music_a", ignorePause: true);
             _musicB = Source("music_b", ignorePause: true);
             _sting = Source("sting", ignorePause: true);
+            _voice = Source("voice", ignorePause: false);
+            _voiceRules = new VoiceRules(_random.NextDouble);
 
             _bank.Warm();
         }
@@ -119,6 +138,48 @@ namespace NonaRoyale.Unity.Audio
             source.Play();
         }
 
+        /// <summary>
+        /// Asks for a voice line from <paramref name="speaker"/> (an operator's
+        /// name). Whether it plays is up to <see cref="VoiceRules"/>.
+        /// </summary>
+        public void Speak(VoiceSlot slot, string speaker, Vector3? at = null)
+        {
+            if (!_built || string.IsNullOrEmpty(speaker)) return;
+
+            var clip = _bank.Voice(speaker, slot, _random);
+            if (clip == null) return;
+
+            switch (_voiceRules.Request(slot, speaker, clip.length, _voiceClock))
+            {
+                case VoiceVerdict.Play:
+                case VoiceVerdict.Interrupt:
+                    StartVoice(clip, at);
+                    break;
+
+                case VoiceVerdict.Hold:
+                    _heldClip = clip;
+                    _heldAt = at;
+                    break;
+            }
+        }
+
+        /// <summary>Loads (or starts synthesizing) the voices of the operators about to play.</summary>
+        public void WarmVoices(System.Collections.Generic.IEnumerable<string> names)
+        {
+            if (!_built || names == null) return;
+            foreach (var name in names) _bank.WarmVoice(name);
+        }
+
+        /// <summary>Cuts off any voice line, playing or waiting.</summary>
+        public void StopVoice()
+        {
+            if (!_built) return;
+
+            _voiceRules.Stop();
+            _voice.Stop();
+            _heldClip = null;
+        }
+
         /// <summary>Plays the win sting over the music, which dips and returns after it.</summary>
         public void Sting()
         {
@@ -143,8 +204,37 @@ namespace NonaRoyale.Unity.Audio
             if (AudioListener.pause != Paused) AudioListener.pause = Paused;
 
             float dt = Time.unscaledDeltaTime;
+            UpdateVoice(dt);
             UpdateMusic(dt);
             UpdateVolumes();
+        }
+
+        private void UpdateVoice(float dt)
+        {
+            if (!Paused) _voiceClock += dt;
+
+            if (_heldClip != null && _voiceRules.TryRelease(_voiceClock, out _, out _))
+            {
+                StartVoice(_heldClip, _heldAt);
+                _heldClip = null;
+            }
+
+            // Clip lengths are what the rules were told, so these agree; the
+            // source is checked too, in case a line was cut off from outside.
+            bool speaking = _voiceRules.Speaking(_voiceClock) && _voice.isPlaying;
+            _duck = speaking
+                ? Mathf.MoveTowards(_duck, AudioLevels.DuckedMusic, dt * (1f - AudioLevels.DuckedMusic) / DuckSeconds)
+                : Mathf.MoveTowards(_duck, 1f, dt * (1f - AudioLevels.DuckedMusic) / UnduckSeconds);
+        }
+
+        private void StartVoice(AudioClip clip, Vector3? at)
+        {
+            _voice.Stop();
+            _voice.clip = clip;
+            _voice.pitch = 1f;
+            _voice.panStereo = at.HasValue ? PanOf(at.Value) : 0f;
+            _voice.volume = VoiceGain * _levels.Gain(AudioBus.Voice);
+            _voice.Play();
         }
 
         private void UpdateMusic(float dt)
@@ -183,7 +273,8 @@ namespace NonaRoyale.Unity.Audio
 
         private void UpdateVolumes()
         {
-            float music = _levels.Gain(AudioBus.Music) * _stingLevel * (Paused ? AudioLevels.PausedMusic : 1f);
+            float music = _levels.Gain(AudioBus.Music) * _stingLevel * _duck *
+                          (Paused ? AudioLevels.PausedMusic : 1f);
             _musicA.volume = music * _fadeIn;
             _musicB.volume = music * _fadeOut;
             _sting.volume = _levels.Gain(AudioBus.Music);
@@ -192,6 +283,8 @@ namespace NonaRoyale.Unity.Audio
             float sfx = _levels.Gain(AudioBus.Sfx);
             for (int i = 0; i < _sfx.Length; i++)
                 if (_sfx[i].isPlaying) _sfx[i].volume = _sfxBase[i] * sfx;
+
+            if (_voice.isPlaying) _voice.volume = VoiceGain * _levels.Gain(AudioBus.Voice);
 
             float ui = _levels.Gain(AudioBus.Ui);
             for (int i = 0; i < _ui.Length; i++)

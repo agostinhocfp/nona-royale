@@ -580,6 +580,12 @@ namespace NonaRoyale.Unity.Composition
 
             _bots = BuildBots(seats);
 
+            if (_audio != null)
+            {
+                _audio.StopVoice();
+                _audio.WarmVoices(_match.Operators.Select(o => o.Name));
+            }
+
             FrameCamera();
             Handle(_match.Engine.Start(), immediate: true);
         }
@@ -655,6 +661,44 @@ namespace NonaRoyale.Unity.Composition
         }
 
         private void OnUiButton() => Sound(SoundCue.UiClick);
+
+        /// <summary>
+        /// Asks for a voice line from <paramref name="op"/>, panned to its
+        /// piece (AUDIO.md increment AU2). The rules decide whether it plays.
+        /// </summary>
+        private void Speak(VoiceSlot slot, OperatorState op)
+        {
+            if (_audio == null || op == null) return;
+
+            var piece = PieceFor(op);
+            _audio.Speak(slot, op.Name, piece != null ? piece.transform.position : (Vector3?)null);
+        }
+
+        /// <summary>
+        /// The quit line, when a live match is abandoned from the pause menu:
+        /// one of the squad of the seat at the keyboard (the current seat if
+        /// it is human, else the first human seat).
+        /// </summary>
+        private void SpeakQuit()
+        {
+            if (_match == null || _match.Engine.MatchOver) return;
+
+            var seat = _match.Engine.CurrentPlayer.Color;
+            if (_seatPlan.KindOf(seat) != SeatKind.Human)
+            {
+                foreach (var player in _match.Players)
+                {
+                    if (_seatPlan.KindOf(player.Color) != SeatKind.Human) continue;
+                    seat = player.Color;
+                    break;
+                }
+            }
+
+            var squad = _match.Operators.Where(o => o.Owner == seat).ToList();
+            if (squad.Count == 0) return;
+
+            Speak(VoiceSlot.Quit, squad[Random.Range(0, squad.Count)]);
+        }
 
         private void OnDestroy() => UiKit.ButtonPressed -= OnUiButton;
 
@@ -1339,7 +1383,12 @@ namespace NonaRoyale.Unity.Composition
             if (command is UseAbilityCommand use && !refused) QueueCastTell(use, castBy);
 
             if (walks)
-                _queue.Enqueue(PresentationBeat.Walk, () => WalkMoves(events), () => !AnyPieceMoving());
+                _queue.Enqueue(PresentationBeat.Walk, () =>
+                    {
+                        WalkMoves(events);
+                        Speak(VoiceSlot.Move, VoiceCasting.Mover(events));
+                    },
+                    () => !AnyPieceMoving());
 
             if (rises.Count > 0)
             {
@@ -1353,16 +1402,17 @@ namespace NonaRoyale.Unity.Composition
                         var at = _layout.PositionOf(rise.Value);
                         piece.Rise(at);
                         Sound(SoundCue.Rise, at);
+                        Speak(VoiceSlot.Deploy, rise.Key);
                     }
                 }, hold: _motion.Tween(RiseHoldSeconds));
             }
 
             if (hits)
-                _queue.Enqueue(PresentationBeat.Hit, () => PlayFeedback(events, knockouts: false),
+                _queue.Enqueue(PresentationBeat.Hit, () => PlayFeedback(events, castBy, knockouts: false),
                     hold: _motion.Tween(HitHoldSeconds));
 
             if (knockouts)
-                _queue.Enqueue(PresentationBeat.Knockout, () => PlayFeedback(events, knockouts: true),
+                _queue.Enqueue(PresentationBeat.Knockout, () => PlayFeedback(events, castBy, knockouts: true),
                     hold: _motion.Tween(KnockoutHoldSeconds));
 
             _queue.Enqueue(PresentationBeat.Settle,
@@ -1398,6 +1448,7 @@ namespace NonaRoyale.Unity.Composition
                         target != null ? target.transform.position : (Vector3?)null,
                         cell.HasValue ? _layout.PositionOf(cell.Value) : (Vector3?)null);
                     Sound(cell.HasValue ? SoundCue.CastCell : SoundCue.CastTell, caster.transform.position);
+                    Speak(VoiceSlot.Cast, caster.Operator);
                 },
                 hold: hold);
         }
@@ -1436,6 +1487,10 @@ namespace NonaRoyale.Unity.Composition
 
                 // The settle of the winning action, walked or instant (a CPU at Instant speed).
                 if (_audio != null) _audio.Sting();
+
+                var winner = _match.Engine.Winner;
+                if (winner.HasValue)
+                    Speak(VoiceSlot.Victory, VoiceCasting.Victor(events, winner.Value, _match.Operators));
             }
         }
 
@@ -1667,9 +1722,17 @@ namespace NonaRoyale.Unity.Composition
         AnimationSpeed ISettingsHost.AnimationSpeed { get => animationSpeed; set => animationSpeed = value; }
         AudioLevels ISettingsHost.Audio => _levels;
 
-        void IPauseHost.MainMenu() => ShowTitle();
+        void IPauseHost.MainMenu()
+        {
+            SpeakQuit();
+            ShowTitle();
+        }
 
-        void IPauseHost.OpenSetup() => OpenSetup();
+        void IPauseHost.OpenSetup()
+        {
+            SpeakQuit();
+            OpenSetup();
+        }
 
         private void OpenSetup()
         {
@@ -1789,6 +1852,7 @@ namespace NonaRoyale.Unity.Composition
         /// already the yard by the time the event arrives, and the burst belongs
         /// on the cell it fell on.
         /// </remarks>
+        /// <param name="castBy">The batch's caster, if any: who takes the kill line.</param>
         /// <param name="knockouts">True for the knockout bursts only, false for everything else.</param>
         /// <remarks>
         /// <b>MO2:</b> a hit also shows the health the event reports on the
@@ -1796,8 +1860,12 @@ namespace NonaRoyale.Unity.Composition
         /// big hit (<see cref="BigHitFraction"/> or a finishing blow) and every
         /// knockout get a hit-stop and a camera nudge; a knocked-out piece
         /// shatters. Reduced motion drops the stop and the nudge.
+        ///
+        /// <b>AU2:</b> a hit that leaves the target standing asks for its
+        /// hit-taken line; a knockout asks for the victim's death line, then
+        /// the kill line of whoever the batch credits (<see cref="VoiceCasting.Killer"/>).
         /// </remarks>
-        private void PlayFeedback(IReadOnlyList<IGameEvent> events, bool knockouts)
+        private void PlayFeedback(IReadOnlyList<IGameEvent> events, OperatorState castBy, bool knockouts)
         {
             if (_feedback == null) return;
 
@@ -1821,6 +1889,7 @@ namespace NonaRoyale.Unity.Composition
                                damaged.Amount >= BigHitFraction * damaged.Target.MaxHealth;
                     if (big) impact = piece;
                     Sound(big ? SoundCue.HitBig : SoundCue.Hit, piece.transform.position);
+                    if (damaged.RemainingHealth > 0) Speak(VoiceSlot.HitTaken, damaged.Target);
                     continue;
                 }
 
@@ -1888,6 +1957,9 @@ namespace NonaRoyale.Unity.Composition
                         piece.Shatter();
                         impact = piece;
                     }
+
+                    Speak(VoiceSlot.Death, down.Operator);
+                    Speak(VoiceSlot.Kill, VoiceCasting.Killer(events, castBy, down));
                 }
             }
 

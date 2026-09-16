@@ -33,6 +33,11 @@ namespace NonaRoyale.Unity.Audio
     /// <b>Playback shaping lives here</b>: each cue's volume, pitch jitter and
     /// the least gap between two plays, so a walk of four pieces doesn't
     /// become a drum roll.
+    ///
+    /// <b>Voices (AU2)</b> are loaded per operator on first use, or ahead of
+    /// time with <see cref="WarmVoice"/> when a match is dealt, from
+    /// <c>…/Resources/Audio/Voice/</c> (<see cref="VoiceSet"/>). An operator
+    /// with no files gets synthesized <see cref="VoiceBlips"/>.
     /// </remarks>
     public sealed class SoundBank
     {
@@ -67,6 +72,7 @@ namespace NonaRoyale.Unity.Audio
 
         private readonly Dictionary<SoundCue, List<AudioClip>> _sfx = new Dictionary<SoundCue, List<AudioClip>>();
         private readonly Dictionary<MusicCue, AudioClip> _music = new Dictionary<MusicCue, AudioClip>();
+        private readonly Dictionary<string, VoiceSet> _voices = new Dictionary<string, VoiceSet>();
         private readonly List<Job> _jobs = new List<Job>();
 
         private sealed class Job
@@ -82,19 +88,23 @@ namespace NonaRoyale.Unity.Audio
             {
                 case SoundCue.DiceShake: return new CueSpec(0.8f, 0.04f, 0.1f);
                 case SoundCue.DiceLand: return new CueSpec(0.9f, 0.03f, 0.1f);
-                case SoundCue.Doubles: return new CueSpec(0.6f, 0f, 0.2f);
-                case SoundCue.Step: return new CueSpec(0.35f, 0.06f, 0.045f);
-                case SoundCue.Rise: return new CueSpec(0.6f, 0.03f, 0.08f);
-                case SoundCue.CastTell:
-                case SoundCue.CastCell: return new CueSpec(0.55f, 0.02f, 0.1f);
-                case SoundCue.Hit: return new CueSpec(0.75f, 0.06f, 0.04f);
-                case SoundCue.HitBig: return new CueSpec(0.9f, 0.04f, 0.06f);
-                case SoundCue.Heal: return new CueSpec(0.5f, 0.02f, 0.1f);
-                case SoundCue.Miss: return new CueSpec(0.55f, 0.08f, 0.06f);
-                case SoundCue.Block: return new CueSpec(0.6f, 0.04f, 0.06f);
-                case SoundCue.Knockout: return new CueSpec(0.9f, 0.03f, 0.1f);
-                case SoundCue.TurnStart: return new CueSpec(0.4f, 0f, 0.3f);
-                case SoundCue.UiClick: return new CueSpec(0.45f, 0.05f, 0.03f);
+                // AU1d, the grounded palette: balanced by A-weighted loudness.
+                // Knockouts and big hits on top, casts and hits next, the
+                // board below them, steps and the interface lowest.
+                case SoundCue.Doubles: return new CueSpec(0.8f, 0.03f, 0.2f);
+                // Step plays the Kenney chip files (AU1e); 0.41 matches the synthesized step's level.
+                case SoundCue.Step: return new CueSpec(0.41f, 0.06f, 0.045f);
+                case SoundCue.Rise: return new CueSpec(0.5f, 0.03f, 0.08f);
+                case SoundCue.CastTell: return new CueSpec(0.8f, 0.03f, 0.1f);
+                case SoundCue.CastCell: return new CueSpec(0.7f, 0.03f, 0.1f);
+                case SoundCue.Hit: return new CueSpec(0.85f, 0.06f, 0.04f);
+                case SoundCue.HitBig: return new CueSpec(1f, 0.04f, 0.06f);
+                case SoundCue.Heal: return new CueSpec(0.75f, 0.02f, 0.1f);
+                case SoundCue.Miss: return new CueSpec(0.5f, 0.08f, 0.06f);
+                case SoundCue.Block: return new CueSpec(0.95f, 0.04f, 0.06f);
+                case SoundCue.Knockout: return new CueSpec(1f, 0.03f, 0.1f);
+                case SoundCue.TurnStart: return new CueSpec(0.45f, 0.03f, 0.3f);
+                case SoundCue.UiClick: return new CueSpec(0.56f, 0.04f, 0.03f);
                 default: return new CueSpec(0.6f, 0f, 0.05f);
             }
         }
@@ -171,6 +181,39 @@ namespace NonaRoyale.Unity.Audio
 
         /// <summary>The music clip, or null while it is still being built.</summary>
         public AudioClip Music(MusicCue cue) => _music.TryGetValue(cue, out var clip) ? clip : null;
+
+        /// <summary>
+        /// Loads an operator's voice, or starts synthesizing its placeholder
+        /// lines. Does nothing for an operator already loaded.
+        /// </summary>
+        public void WarmVoice(string name)
+        {
+            if (string.IsNullOrEmpty(name) || _voices.ContainsKey(name)) return;
+
+            var set = VoiceSet.Load(name, out bool placeholder);
+            _voices[name] = set;
+            if (!placeholder) return;
+
+            foreach (VoiceSlot slot in Enum.GetValues(typeof(VoiceSlot)))
+            {
+                for (int v = 0; v < VoiceBlips.VariantsOf(slot); v++)
+                {
+                    var s = slot;
+                    int variant = v;
+                    Start($"voice_{VoiceBlips.FileKey(name)}_{slot}_{v}",
+                        () => VoiceBlips.Build(name, s, variant), clip => set.Add(s, clip));
+                }
+            }
+        }
+
+        /// <summary>A line for the operator and slot, or null while none is ready (or the set has none).</summary>
+        public AudioClip Voice(string name, VoiceSlot slot, System.Random random)
+        {
+            if (string.IsNullOrEmpty(name)) return null;
+
+            WarmVoice(name);
+            return _voices[name].Pick(slot, random);
+        }
 
         private void Start(string name, Func<float[]> build, Action<AudioClip> done) =>
             _jobs.Add(new Job { Name = name, Work = Task.Run(build), Done = done });
