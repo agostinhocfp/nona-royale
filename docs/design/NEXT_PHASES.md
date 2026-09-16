@@ -7,6 +7,9 @@
 ## Where things stand
 
 - **Stage 1 (draft): closed 2026-09-16.** DR1 and DR2 are committed and passed Play Mode. Its log, and notes for Stage 2, are in `DRAFT.md`. The decisions changed the plan below: ALL PICK became a free, simultaneous 30 s draft, and SNAKE became a second mode with 10 s per pick.
+- **Stage 2 (CPU opponents): closed 2026-09-16.** See `BOTS.md`.
+- **Stage 3 (motion and feedback): closed 2026-09-16.** See `MOTION.md`.
+- **Stage 5 (audio): closed 2026-09-16.** AU1 to AU1f and AU2 are committed and passed Play Mode. See `AUDIO.md`. Stage 4 (art hookup) is the one left open.
 - **GUI phase: done through J** (title, setup, pause, end, in-match HUD). Everything up to and including J is committed (`feat(flow): title menu, main-menu return and remembered settings`).
 - **K is parked.** The formal stranger test has no date. The designer ran an informal test at home: the GUI passed easily. The one note was that **the dice roll could be more obvious**, either by catching the eye or by sitting more centrally. That note goes to Stage 3.
 - **The OnGUI dev panel stays** behind Tab (off by default) until a formal stranger test passes (ADR-0008 consequence 6). Known issue: when opened, it draws over the modal cards. Nobody needs it outside debugging.
@@ -23,7 +26,7 @@
 | 4   | **Art hookup + ADR-0009**      | Can jump the queue whenever Meshy output is ready. It is independent of 1–3.                                        | none                          | 1 increment   |
 | 5   | **Audio**                      | Sounds fire on the animation beats from Stage 3, and voice lines need the operators' final identities.              | none                          | 1–2 increments |
 
-**Increment ids:** `DR1`, `DR2` (draft), `BOT1`–`BOT3`, `MO1`–`MO2` (motion), `ART1`, `AU1`–`AU2` (audio). These don't clash with the GUI letters.
+**Increment ids:** `DR1`, `DR2` (draft), `BOT1`–`BOT3`, `MO1`–`MO2` (motion), `ART1`, `AU1`–`AU2` (audio; AU1 grew follow-ups `AU1b`–`AU1f`). These don't clash with the GUI letters.
 
 **Each stage keeps its own log** in a new design doc (named in each stage below), in the style of `GUI_PHASE.md`: goal, increments table, rules, then a dated log. Record each decision in that doc when it is made. Keep a copy in the project as `claude/<NAME>.md`, because the next stage's start prompt reads it from there.
 
@@ -137,7 +140,7 @@ Before the match, the seats take turns picking their three operators from the fu
 
 ---
 
-## Stage 2 — CPU opponents
+## Stage 2 — CPU opponents (closed 2026-09-16; see `BOTS.md`)
 
 **Stage doc:** `docs/design/BOTS.md`
 
@@ -230,7 +233,7 @@ In setup, any seat can be HUMAN or CPU. CPU seats draft and play on their own, a
 
 ---
 
-## Stage 3 — Motion and feedback
+## Stage 3 — Motion and feedback (closed 2026-09-16; see `MOTION.md`)
 
 **Stage doc:** `docs/design/MOTION.md`
 
@@ -365,7 +368,7 @@ Real operator art replaces the procedural figures one operator at a time, and th
 
 ---
 
-## Stage 5 — Audio
+## Stage 5 — Audio (closed 2026-09-16; see `AUDIO.md`)
 
 **Stage doc:** `docs/design/AUDIO.md`
 
