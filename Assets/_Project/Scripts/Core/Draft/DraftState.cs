@@ -199,6 +199,20 @@ namespace NonaRoyale.Core.Draft
             return picks;
         }
 
+        /// <summary>
+        /// The seats that field <paramref name="op"/>, in seat order. A card on
+        /// the draft screen shows them, so duplicates across seats are visible.
+        /// </summary>
+        public IReadOnlyList<PlayerColor> SeatsHolding(OperatorDefinition op)
+        {
+            if (op == null) throw new ArgumentNullException(nameof(op));
+
+            var holders = new List<PlayerColor>(_seats.Count);
+            for (int i = 0; i < _seats.Count; i++)
+                if (IndexByName(_slots[i], op.Name) >= 0) holders.Add(_seats[i]);
+            return holders;
+        }
+
         /// <summary>The slot the seat's next pick fills, or -1 if the seat is full.</summary>
         public int NextEmptySlot(PlayerColor seat) => FirstEmpty(IndexOf(seat));
 

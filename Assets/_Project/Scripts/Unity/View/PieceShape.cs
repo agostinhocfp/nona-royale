@@ -33,9 +33,12 @@ namespace NonaRoyale.Unity.View
         private const float SmallestHealth = 5f;
         private const float LargestHealth = 12f;
 
-        public static Sprite For(OperatorState op)
+        public static Sprite For(OperatorState op) => For(op.Name);
+
+        /// <summary>By operator name, for places with no piece on the board yet (the draft screen).</summary>
+        public static Sprite For(string name)
         {
-            switch (op.Name)
+            switch (name)
             {
                 // Bouncer, Tank: broad and blunt. Hardest silhouette to move past.
                 case "Bouncer": return Primitives.Polygon(6, 0f);
@@ -88,7 +91,10 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>Scale relative to a board cell, taken from maximum health.</summary>
-        public static float SizeFor(OperatorState op) =>
-            Mathf.Lerp(0.52f, 0.84f, Mathf.InverseLerp(SmallestHealth, LargestHealth, op.MaxHealth));
+        public static float SizeFor(OperatorState op) => SizeFor(op.MaxHealth);
+
+        /// <inheritdoc cref="SizeFor(OperatorState)"/>
+        public static float SizeFor(int maxHealth) =>
+            Mathf.Lerp(0.52f, 0.84f, Mathf.InverseLerp(SmallestHealth, LargestHealth, maxHealth));
     }
 }

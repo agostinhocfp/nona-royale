@@ -127,15 +127,21 @@ The dev panel (`ControlPanel`) takes the left edge instead of the rail while Tab
 
 ### 4.3 Match flow
 
-_Added 2026-09-16, GUI phase increment I._
+_Added 2026-09-16, GUI phase increment I. Draft screen added 2026-09-16, increment DR2._
 
 - **Play opens the title screen** (increment J): the NONA ROYALE wordmark over the empty room, on a light scrim so the tables and the vault read through, with PLAY, SETTINGS and QUIT. It is the only screen that quits the app, and QUIT asks twice. The inspector's Skip Setup deals straight into a match.
-- **PLAY opens the setup screen**: seats (any two to four of the four colours), squads (the alpha three or drafted), the seed (shown, with SHUFFLE), DEAL. BACK returns to the match, or to the title when there is none.
+- **PLAY opens the setup screen**: seats (any two to four of the four colours), squads (ALL PICK, SNAKE, RANDOM or ALPHA THREE; since DR2), the seed (shown, with SHUFFLE), and DEAL, which reads DRAFT for the two drafted modes. BACK returns to the match, or to the title when there is none.
+- **The drafted modes open the draft screen** (DR2, `DRAFT.md`). It is a full-canvas screen over a dark scrim.
+  - **Layout:** the nine operators as a 3×3 grid of cards on the left. Each card shows the shape, name, role, health, speed, passive and aura tags, and the three abilities with cost, reach and cooldown; a missing ability is shown as not yet written. Small seat diamonds on a card mark the seats that already hold that operator. On the right: each seat's three slots, and a detail panel with the full ability descriptions of the last card hovered. At the top: the title, a status line and the clock; SNAKE adds a pick-order strip.
+  - **Refused cards** fade and carry the core's reason (IN SQUAD, SQUAD FULL, NOT YOUR PICK).
+  - **ALL PICK:** a seat row (or keys 1–4) chooses who is picking, and a seat that fills up passes the pointer on. Clicking a filled slot clears it. RANDOM, FILL & START, and START (Enter, once every slot is full) are available. At zero the table holds for a beat, then deals.
+  - **SNAKE:** cards pick for the seat on the clock. RANDOM, UNDO (Backspace), RANDOM REST, and START (Enter, once complete).
+  - **BACK (Esc)** with any pick made asks first, and stops the clock while it asks. Leaving returns to setup with the same choices, and the match on the table (if any) is untouched until a draft finishes.
 - **MAIN MENU** in the pause menu (asks twice) and on the end screen returns to the title and removes the match. The in-match HUD lives on its own canvas layer and is hidden there.
 - **Display settings are remembered** between sessions (PlayerPrefs): health labels, the log, the dev panel. The inspector values are the first-run defaults.
-- **A finished match opens the end screen** a beat after the winning move: the winner, the round, the seed, and a tally per seat of operators home, knockouts and operators lost. REMATCH deals the same table with the next seed; NEW MATCH opens setup; VIEW BOARD hides the screen until Esc; MAIN MENU returns to the title.
+- **A finished match opens the end screen** a beat after the winning move: the winner, the round, the seed, and a row per seat with its squad (shapes and names, since DR2), operators home, knockouts and operators lost. REMATCH deals the same table with the next seed, keeping drafted squads (RANDOM draws again); NEW MATCH opens setup; VIEW BOARD hides the screen until Esc; MAIN MENU returns to the title.
 - **Every tally is an engine answer.** Knockout credit is a core rule (COMBAT_SYSTEMS §1.2), not something the view infers from who was nearby.
-- While setup or the end screen is open, the board and the game keys are ignored. Enter deals or rematches; Esc goes back.
+- While setup, the draft or the end screen is open, the board and the game keys are ignored. Enter deals, starts or rematches; Esc goes back.
 
 ---
 

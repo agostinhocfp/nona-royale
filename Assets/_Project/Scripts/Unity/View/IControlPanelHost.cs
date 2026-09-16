@@ -25,7 +25,8 @@ namespace NonaRoyale.Unity.View
     public interface IControlPanelHost
     {
         MatchFactory.Match Match { get; }
-        bool RandomSquads { get; }
+        /// <summary>How the squads on the table were chosen, as setup names it (DR2).</summary>
+        string SquadSummary { get; }
         IReadOnlyList<string> Log { get; }
 
         OperatorState SelectedOperator { get; }

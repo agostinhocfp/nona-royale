@@ -1,7 +1,7 @@
 # Nona Royale — All Pick Draft (Stage 1)
 
 > Location in repo: `docs/design/DRAFT.md` · Project copy: `claude/DRAFT.md`
-> Status: **Open, 2026-09-16.** DR1 (core) built; DR2 (screen) next.
+> Status: **Open, 2026-09-16.** DR1 committed; DR2 (screen) built, awaiting Play Mode.
 > Related: `NEXT_PHASES.md` (Stage 1), `GDD.md` §2.2, `PRESENTATION.md` §4.3, ADR-0004 (core has no Unity types), ADR-0008 (uGUI)
 
 ## Goal
@@ -64,3 +64,23 @@ Before the match, the seats choose their three operators from the full roster in
   - 41 new tests (`Draft/DraftStateTests.cs`). **475 passing.** View and sim compile. A mutation check (breaking the snake reversal and the in-squad duplicate rule) was caught by 3 tests.
   - `MatchSettings` is unchanged; the squad-mode enum moves to DR2.
   - GDD §2.2 closed: draft modes recorded, the open-question entry removed. Two stale lines fixed along the way: "four operators exist" became nine (Mimi incomplete), and the out-of-match flow is marked as built.
+- 2026-09-16 — **DR1 committed** (`feat(draft): core draft model with all-pick and snake modes`). The designer's Unity run: 475 passing.
+- 2026-09-16 — **DR2 built: the draft screen.**
+  - **Core:**
+    - Added `DraftState.SeatsHolding(op)`, so a card can show which seats hold it without the view searching the slots. One test; **476 passing**.
+  - **Settings and flow:**
+    - `MatchSettings.Drafted` became `MatchSettings.Squads` (`SquadMode`: AllPick, Snake, Random, Alpha).
+    - The inspector's `randomSquads` became `squadMode`, default ALL PICK. The scene's saved value does not carry over. Skip Setup with a drafted mode opens the draft.
+    - `IMatchFlowHost.Deal` opens the draft for the drafted modes and commits nothing until `FinishDraft`. `CancelDraft` reopens setup with the same choices, so backing out of a draft over a live match leaves that match, its seats and its squads untouched.
+    - `MatchBootstrap` keeps the drafted squads for REMATCH. `AppScreen.Draft` added; the draft takes Esc, Enter, Backspace and 1–4.
+    - `IControlPanelHost.RandomSquads` became `SquadSummary`.
+  - **New views:**
+    - `View/DraftScreen.cs`: a full canvas in a fixed 1840×1020 frame that scales down to fit. It has the 3×3 cards, seat rows with slots, the detail panel, the clock (amber at 5 s), the snake strip, and the footer controls, with a 1.2 s hold after time runs out. The clock step is capped at 0.25 s a frame.
+    - `View/OperatorCopy.cs` (roles).
+    - `View/HoverRelay.cs` (pointer enter/exit callback).
+    - `PieceShape` gained name and health overloads.
+  - **Setup and end screens:**
+    - Setup shows four squad modes with a note for each, and its confirm button reads DRAFT for the drafted modes. The card is 700 wide.
+    - The end screen shows each seat's squad (shapes and names) and says whether REMATCH keeps squads. The card is 860 wide.
+  - **Checks:** the view compiles against the editor DLLs, and the sim compiles. PRESENTATION §4.3 updated.
+  - **Not yet checked:** Play Mode.

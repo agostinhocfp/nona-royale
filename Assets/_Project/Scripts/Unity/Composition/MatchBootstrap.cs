@@ -59,9 +59,11 @@ namespace NonaRoyale.Unity.Composition
         public bool skipSetup = false;
 
         [Header("Match")]
-        [Tooltip("Draft three distinct operators per seat from the whole roster. " +
-                 "Off means the alpha three, which is what every measurement in ADR-0002 used.")]
-        public bool randomSquads = false;
+        // Replaced randomSquads in DR2, so the scene's saved value does not
+        // carry over: the first deal now defaults to ALL PICK.
+        [Tooltip("How squads are chosen at the first deal; the setup screen overrides it. " +
+                 "All Pick and Snake open the draft screen. Alpha Three is what every measurement in ADR-0002 used.")]
+        public SquadMode squadMode = SquadMode.AllPick;
 
         [Tooltip("Compact 28x2 has a longer journey than Standard since ADR-0002 " +
                  "Amendment 6 (59 against 58). Kept switchable for comparison only.")]
@@ -149,10 +151,17 @@ namespace NonaRoyale.Unity.Composition
         private SetupScreen _setup;
         private EndScreen _end;
         private TitleScreen _title;
+        private DraftScreen _draftScreen;
         private bool _endQueued;
 
+        /// <summary>
+        /// The squads the last draft produced, kept for REMATCH (DRAFT.md
+        /// decision 7). Null outside the drafted modes.
+        /// </summary>
+        private IReadOnlyDictionary<PlayerColor, IReadOnlyList<OperatorDefinition>> _squads;
+
         /// <summary>The screens the app moves between (GUI increment J).</summary>
-        public enum AppScreen { Title, Setup, Match, Paused, Results }
+        public enum AppScreen { Title, Setup, Draft, Match, Paused, Results }
 
         /// <summary>
         /// Which screen is showing, read from the open cards, topmost first.
@@ -161,6 +170,7 @@ namespace NonaRoyale.Unity.Composition
         public AppScreen CurrentScreen =>
             _title != null && _title.IsOpen ? AppScreen.Title :
             _setup != null && _setup.IsOpen ? AppScreen.Setup :
+            _draftScreen != null && _draftScreen.IsOpen ? AppScreen.Draft :
             _pause != null && _pause.IsOpen ? AppScreen.Paused :
             _end != null && _end.IsOpen ? AppScreen.Results :
             AppScreen.Match;
@@ -183,7 +193,8 @@ namespace NonaRoyale.Unity.Composition
 
             if (skipSetup)
             {
-                NewMatch();
+                // A drafted mode still opens the draft; the others deal at once.
+                ((IMatchFlowHost)this).Deal(new MatchSettings(_seats, squadMode, seed));
                 return;
             }
 
@@ -224,6 +235,7 @@ namespace NonaRoyale.Unity.Composition
         {
             if (_pause != null) _pause.Close();
             if (_setup != null) _setup.Close();
+            if (_draftScreen != null) _draftScreen.Close();
             if (_end != null) _end.Close();
 
             TearDownMatch();
@@ -286,6 +298,8 @@ namespace NonaRoyale.Unity.Composition
             _title.Bind(_hudRoot.Root, this);
             _setup = GetComponent<SetupScreen>() ?? gameObject.AddComponent<SetupScreen>();
             _setup.Bind(_hudRoot.Root, this);
+            _draftScreen = GetComponent<DraftScreen>() ?? gameObject.AddComponent<DraftScreen>();
+            _draftScreen.Bind(_hudRoot.Root, this);
             _end = GetComponent<EndScreen>() ?? gameObject.AddComponent<EndScreen>();
             _end.Bind(_hudRoot.Root, this);
         }
@@ -315,16 +329,33 @@ namespace NonaRoyale.Unity.Composition
             if (_seats.Count == 0) _seats.AddRange(MatchSettings.AllSeats.Take(players));
             var seats = _seats.ToList();
 
-            _match = randomSquads
-                ? MatchFactory.Create(
-                    seats, seed,
-                    squads: null,                      // null drafts every seat
-                    board: board,
-                    openingDeployments: openingDeployments)
-                : MatchFactory.CreateAlphaMatch(
-                    seats, seed,
-                    board: board,
-                    openingDeployments: openingDeployments);
+            switch (squadMode)
+            {
+                case SquadMode.Alpha:
+                    _match = MatchFactory.CreateAlphaMatch(
+                        seats, seed,
+                        board: board,
+                        openingDeployments: openingDeployments);
+                    break;
+
+                case SquadMode.Random:
+                    _match = MatchFactory.Create(
+                        seats, seed,
+                        squads: null,                  // null draws every seat at random
+                        board: board,
+                        openingDeployments: openingDeployments);
+                    break;
+
+                default:
+                    // The drafted squads. A seat the draft did not cover (there
+                    // should be none) is drawn at random by the factory.
+                    _match = MatchFactory.Create(
+                        seats, seed,
+                        squads: _squads,
+                        board: board,
+                        openingDeployments: openingDeployments);
+                    break;
+            }
 
             _layout = new BoardLayout(board, cellSpacing);
 
@@ -626,6 +657,10 @@ namespace NonaRoyale.Unity.Composition
                 case AppScreen.Setup:
                     if (escape) _setup.Back();
                     else if (enter) _setup.Confirm();
+                    return;
+
+                case AppScreen.Draft:
+                    _draftScreen.HandleKeys();
                     return;
             }
 
@@ -940,7 +975,7 @@ namespace NonaRoyale.Unity.Composition
         private IControlPanelHost Host => this;
 
         MatchFactory.Match IControlPanelHost.Match => _match;
-        bool IControlPanelHost.RandomSquads => randomSquads;
+        string IControlPanelHost.SquadSummary => squadMode.Label();
         IReadOnlyList<string> IControlPanelHost.Log => _log;
 
         OperatorState IControlPanelHost.SelectedOperator => _selectedOperator;
@@ -1086,6 +1121,7 @@ namespace NonaRoyale.Unity.Composition
             if (_pause != null) _pause.Close();
             if (_end != null) _end.Close();
             if (_title != null) _title.Close();
+            if (_draftScreen != null) _draftScreen.Close();
 
             _hovered = null;
             if (_match != null) RefreshMarks();
@@ -1095,25 +1131,58 @@ namespace NonaRoyale.Unity.Composition
 
         // ── Match flow (GUI increment I) ─────────────────────────────────
 
-        MatchSettings IMatchFlowHost.Settings => new MatchSettings(_seats, randomSquads, seed);
+        MatchSettings IMatchFlowHost.Settings => new MatchSettings(_seats, squadMode, seed);
 
         MatchFactory.Match IMatchFlowHost.Match => _match;
 
+        /// <remarks>
+        /// A drafted mode commits nothing here. The match on the table (if
+        /// any) keeps its seats and squads until the draft finishes, so
+        /// leaving the draft and then leaving setup returns to that match
+        /// unchanged.
+        /// </remarks>
         void IMatchFlowHost.Deal(MatchSettings settings)
+        {
+            if (_setup != null) _setup.Close();
+
+            if (settings.Squads.IsDraft())
+            {
+                _draftScreen.Open(settings);
+                return;
+            }
+
+            Commit(settings, squads: null);
+            NewMatch();
+        }
+
+        void IMatchFlowHost.FinishDraft(MatchSettings settings,
+            IReadOnlyDictionary<PlayerColor, IReadOnlyList<OperatorDefinition>> squads)
+        {
+            Commit(settings, squads);
+            NewMatch();
+        }
+
+        void IMatchFlowHost.CancelDraft(MatchSettings settings)
+        {
+            if (_draftScreen != null) _draftScreen.Close();
+            _setup.Open(settings);
+        }
+
+        private void Commit(MatchSettings settings,
+            IReadOnlyDictionary<PlayerColor, IReadOnlyList<OperatorDefinition>> squads)
         {
             _seats.Clear();
             _seats.AddRange(settings.Seats);
-            randomSquads = settings.Drafted;
+            squadMode = settings.Squads;
             seed = settings.Seed;
-
-            if (_setup != null) _setup.Close();
-            NewMatch();
+            _squads = squads;
         }
 
         /// <summary>
         /// The same table with the next seed, like the dev panel's reseed. A
         /// replay of the same seed would repeat the same dice, which is a
-        /// debugging tool, not a rematch.
+        /// debugging tool, not a rematch. Drafted squads are kept (DRAFT.md
+        /// decision 7); RANDOM draws again from the new seed.
         /// </summary>
         void IMatchFlowHost.Rematch()
         {
@@ -1545,7 +1614,7 @@ namespace NonaRoyale.Unity.Composition
             // which is how "Standard 48x1" would have outlived the 48-cell board.
             GUILayout.Label($"{_match.Map.Profile}   phase {engine.Phase}");
 
-            GUILayout.Label($"<i>{(randomSquads ? "drafted squads" : "alpha three")} — Tab hides this, H toggles health, F2 switches panel</i>");
+            GUILayout.Label($"<i>{squadMode.Label()} — Tab hides this, H toggles health, F2 switches panel</i>");
 
             GUILayout.Space(6);
 

@@ -172,6 +172,22 @@ namespace NonaRoyale.Core.Tests.Draft
             Assert.That(red, Has.Member(Op(1)));
         }
 
+        [Test]
+        public void SeatsHolding_ListsEverySeatFieldingTheOperator()
+        {
+            var draft = NewDraft(Four, DraftMode.AllPick);
+
+            draft.Pick(PlayerColor.Violet, Op(2));
+            draft.Pick(PlayerColor.Blue, Op(2));
+            draft.Pick(PlayerColor.Red, Op(3));
+
+            Assert.That(draft.SeatsHolding(Op(2)), Is.EqualTo(new[] { PlayerColor.Blue, PlayerColor.Violet }));
+            Assert.That(draft.SeatsHolding(Op(5)), Is.Empty);
+
+            draft.Clear(PlayerColor.Blue, 0);
+            Assert.That(draft.SeatsHolding(Op(2)), Is.EqualTo(new[] { PlayerColor.Violet }));
+        }
+
         // ── Completion and squads ────────────────────────────────────────
 
         [Test]

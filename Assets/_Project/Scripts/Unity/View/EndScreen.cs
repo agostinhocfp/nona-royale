@@ -1,5 +1,7 @@
 // Assets/_Project/Scripts/Unity/View/EndScreen.cs
+using System.Collections.Generic;
 using NonaRoyale.Core.Board;
+using NonaRoyale.Core.Model;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,7 +10,7 @@ namespace NonaRoyale.Unity.View
 {
     /// <summary>
     /// The end-of-match screen: who won, how long it took, and each seat's
-    /// tally (GUI increment I).
+    /// squad and tally (GUI increment I; squads since DR2).
     /// </summary>
     /// <remarks>
     /// <b>It waits a beat.</b> The winning move is still walking home when the
@@ -33,7 +35,7 @@ namespace NonaRoyale.Unity.View
         private IMatchFlowHost _host;
         private float _pending = -1f;
 
-        protected override float CardWidth => 640f;
+        protected override float CardWidth => 860f;
         protected override float ScrimAlpha => 0.7f;
 
         public void Bind(RectTransform canvasRect, IMatchFlowHost host)
@@ -87,14 +89,14 @@ namespace NonaRoyale.Unity.View
             }
 
             // ── The tally ──
-            TableRow("header", null, "SEAT", "HOME", "KNOCKOUTS", "LOST", header: true);
+            TableRow("header", null, null, "SEAT", "HOME", "KNOCKOUTS", "LOST", header: true);
 
             foreach (var player in match.Players)
             {
                 int home = 0;
                 foreach (var op in player.Operators) if (engine.IsHome(op)) home++;
 
-                TableRow($"seat_{player.Color}", player.Color,
+                TableRow($"seat_{player.Color}", player.Color, player.Operators,
                     player.Color.ToString().ToUpperInvariant(),
                     $"{home}/{player.Operators.Count}",
                     engine.KnockoutsScoredBy(player.Color).ToString(),
@@ -114,11 +116,15 @@ namespace NonaRoyale.Unity.View
             UiKit.Button(row, WithKey("VIEW BOARD", "Esc"), Close, size: UiTheme.FontBody);
             UiKit.Button(row, "MAIN MENU", () => { Close(); _host.MainMenu(); }, size: UiTheme.FontBody);
 
-            Note("Same table, next seed.", UiTheme.TextOff);
+            Note(_host.Settings.Squads.IsDraft() || _host.Settings.Squads == SquadMode.Alpha
+                    ? "Same table and squads, next seed."
+                    : "Same table, next seed; squads are drawn again.",
+                UiTheme.TextOff);
         }
 
-        /// <summary>One row of the tally: a seat diamond, its name and three numbers.</summary>
-        private void TableRow(string name, PlayerColor? seat, string label, string home, string kos, string lost,
+        /// <summary>One row of the tally: a seat diamond, its name, its squad's shapes and three numbers.</summary>
+        private void TableRow(string name, PlayerColor? seat, IReadOnlyList<OperatorState> squad,
+            string label, string home, string kos, string lost,
             bool header = false, bool winner = false)
         {
             var row = Slot(name, header ? 26f : 40f);
@@ -149,10 +155,42 @@ namespace NonaRoyale.Unity.View
                 : seat.HasValue ? UiTheme.Readable(UiTheme.Seat(seat.Value)) : UiTheme.Text;
 
             Cell(row, label, size, nameColour, TextAlignmentOptions.MidlineLeft, 0f, 1f, header || winner);
+            Squad(row, seat, squad, header);
             Cell(row, home, size, dim, TextAlignmentOptions.Center, 110f, 0f, header);
             Cell(row, kos, size, header ? dim : UiTheme.Threat, TextAlignmentOptions.Center, 130f, 0f, true);
             Cell(row, lost, size, header ? dim : UiTheme.TextDim, TextAlignmentOptions.Center, 90f, 0f, header);
         }
+
+        /// <summary>The seat's operators as small shapes in its colour, their names beside them.</summary>
+        private static void Squad(Transform row, PlayerColor? seat, IReadOnlyList<OperatorState> squad, bool header)
+        {
+            if (header || squad == null || !seat.HasValue)
+            {
+                var title = UiKit.Label(row, header ? "SQUAD" : "", 12f, UiTheme.Heading,
+                    TextAlignmentOptions.MidlineLeft, bold: true);
+                title.characterSpacing = UiTheme.HeadingSpacing * 0.5f;
+                UiKit.Fixed(title, SquadWidth);
+                return;
+            }
+
+            var box = UiKit.Rect("squad", row);
+            UiKit.Fixed(box, SquadWidth);
+            var icons = UiKit.Row(box, 6f);
+            icons.childAlignment = TextAnchor.MiddleLeft;
+
+            var colour = UiTheme.Seat(seat.Value);
+            var names = new List<string>(squad.Count);
+            foreach (var op in squad)
+            {
+                UiKit.Icon(box, PieceShape.For(op), colour, 20f);
+                names.Add(op.Name);
+            }
+
+            var label = UiKit.Label(box, string.Join(" · ", names), 12f, UiTheme.TextDim);
+            UiKit.Size(label, flexibleWidth: 1f);
+        }
+
+        private const float SquadWidth = 250f;
 
         private static void Cell(Transform row, string text, float size, Color colour,
             TextAlignmentOptions align, float width, float flexible, bool bold)

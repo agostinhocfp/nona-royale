@@ -228,7 +228,7 @@ namespace NonaRoyale.Unity.View
 
             // The profile's own description, not restated numbers: a
             // hard-coded label is one more place to forget.
-            AddLabel(_content, $"{match.Map.Profile} · {(_host.RandomSquads ? "drafted squads" : "alpha three")}",
+            AddLabel(_content, $"{match.Map.Profile} · {_host.SquadSummary.ToLowerInvariant()}",
                 size: FontSmall, colour: TextDim);
 
             AddButton(_content, "New match", _host.Reseed);

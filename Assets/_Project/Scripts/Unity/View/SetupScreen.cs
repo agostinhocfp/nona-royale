@@ -7,31 +7,41 @@ using UnityEngine.UI;
 namespace NonaRoyale.Unity.View
 {
     /// <summary>
-    /// The match setup screen: seats, squads, seed, deal (GUI increment I).
+    /// The match setup screen: seats, squads, seed, deal (GUI increment I;
+    /// squad modes since DR2).
     /// </summary>
     /// <remarks>
     /// <b>Shown from the title's PLAY</b> over the empty table, and from the
     /// pause menu's and end screen's NEW MATCH. It edits a copy of the host's
     /// settings; DEAL hands the copy back, BACK throws it away and returns to
-    /// the match, or to the title when there is no match (increment J).
+    /// the match, or to the title when there is no match (increment J). The
+    /// draft's BACK reopens it with the settings the draft was given, so a
+    /// player who backs out of a draft finds their choices still set.
     ///
     /// <b>Seats are four tiles, any two to four on</b>, so a two-player game
     /// can sit opposite (Red and Green), as in classic Ludo. The last two
     /// seats refuse to switch off, and say why.
     ///
+    /// <b>Squads are one of four modes</b> (DRAFT.md): ALL PICK and SNAKE go
+    /// through the draft screen, so the confirm button reads DRAFT; RANDOM
+    /// and ALPHA THREE deal at once.
+    ///
     /// <b>The seed is shown, not typed.</b> SHUFFLE draws a new one. Picking a
     /// seed is the view's own business, not a rule; the dice it produces come
     /// from the core.
     ///
-    /// Enter deals; Esc goes back.
+    /// Enter deals (or drafts); Esc goes back.
     /// </remarks>
     public sealed class SetupScreen : ModalCard
     {
+        private static readonly SquadMode[] Modes =
+            { SquadMode.AllPick, SquadMode.Snake, SquadMode.Random, SquadMode.Alpha };
+
         private IMatchFlowHost _host;
-        private MatchSettings _draft;
+        private MatchSettings _edit;
         private string _notice;
 
-        protected override float CardWidth => 640f;
+        protected override float CardWidth => 700f;
 
         // Over an empty table at first launch; the board shows faintly through.
         protected override float ScrimAlpha => 0.72f;
@@ -46,11 +56,19 @@ namespace NonaRoyale.Unity.View
             if (IsOpen) Close();
         }
 
+        /// <summary>Opens on the host's current settings.</summary>
         public void Open()
         {
             if (_host == null) return;
+            Open(_host.Settings);
+        }
 
-            _draft = _host.Settings.Clone();
+        /// <summary>Opens on the given settings (the draft's BACK).</summary>
+        public void Open(MatchSettings settings)
+        {
+            if (_host == null || settings == null) return;
+
+            _edit = settings.Clone();
             _notice = null;
             Show();
         }
@@ -72,7 +90,7 @@ namespace NonaRoyale.Unity.View
 
         private void Deal()
         {
-            var settings = _draft;
+            var settings = _edit;
             Close();
             _host.Deal(settings);
         }
@@ -82,7 +100,7 @@ namespace NonaRoyale.Unity.View
             Title("New match", "Choose the table.");
 
             // ── Seats ──
-            Heading($"Seats · {_draft.Seats.Count} playing");
+            Heading($"Seats · {_edit.Seats.Count} playing");
 
             var seats = ButtonRow("seats", 92f);
             foreach (var seat in MatchSettings.AllSeats) SeatTile(seats, seat);
@@ -95,49 +113,62 @@ namespace NonaRoyale.Unity.View
             Heading("Squads");
 
             var squads = ButtonRow("squads");
-            SquadOption(squads, "ALPHA THREE", false);
-            SquadOption(squads, "DRAFTED", true);
+            foreach (var mode in Modes) SquadOption(squads, mode);
 
-            Note(_draft.Drafted
-                    ? "Three distinct operators per seat, drawn from the whole roster by the seed."
-                    : "Every seat plays Bouncer, Syla and Kurbyn: the measured baseline.",
-                UiTheme.TextOff);
+            Note(SquadNote(_edit.Squads), UiTheme.TextOff, 38f);
 
             // ── Seed ──
             Gap(4f);
             Heading("Seed");
 
             var seedRow = ButtonRow("seed", 44f);
-            var seedLabel = UiKit.Label(seedRow, $"<b>{_draft.Seed}</b>", UiTheme.FontLarge, UiTheme.Text,
+            var seedLabel = UiKit.Label(seedRow, $"<b>{_edit.Seed}</b>", UiTheme.FontLarge, UiTheme.Text,
                 TextAlignmentOptions.MidlineLeft);
             UiKit.Size(seedLabel, flexibleWidth: 2f);
 
             var shuffle = UiKit.Button(seedRow, "SHUFFLE", () =>
             {
-                _draft.Seed = Random.Range(1, 100000000);
+                _edit.Seed = Random.Range(1, 100000000);
                 _notice = null;
             }, Rebuild, size: UiTheme.FontSmall);
             UiKit.Size(shuffle, flexibleWidth: 1f);
 
-            Note("The seed fixes the dice and the draft. Same seed, same match.", UiTheme.TextOff);
+            Note("The seed fixes the dice and any random picks. Same seed, same dice.", UiTheme.TextOff);
 
             // ── Go ──
             Gap(10f);
 
-            Choice("DEAL", "Enter", Deal, UiTheme.CyanDeep, UiTheme.Cyan);
+            Choice(_edit.Squads.IsDraft() ? "DRAFT" : "DEAL", "Enter", Deal, UiTheme.CyanDeep, UiTheme.Cyan);
 
             Choice(HasMatch ? "BACK TO THE MATCH" : "BACK", "Esc", Back);
+        }
+
+        private static string SquadNote(SquadMode mode)
+        {
+            switch (mode)
+            {
+                case SquadMode.AllPick:
+                    return "A shared 30-second draft: any seat picks at any time. Empty slots are filled at random when time runs out.";
+                case SquadMode.Snake:
+                    return "Picks in turn, reversing each round, 10 seconds a pick. A missed pick is made at random.";
+                case SquadMode.Random:
+                    return "Three distinct operators per seat, drawn from the whole roster by the seed.";
+                case SquadMode.Alpha:
+                    return "Every seat plays Bouncer, Syla and Kurbyn: the measured baseline.";
+                default:
+                    return "";
+            }
         }
 
         /// <summary>A seat: its diamond and name, lit cyan when playing.</summary>
         private void SeatTile(Transform row, PlayerColor seat)
         {
-            bool on = _draft.Has(seat);
+            bool on = _edit.Has(seat);
             var colour = UiTheme.Seat(seat);
 
             var button = UiKit.Button(row, "", () =>
             {
-                bool changed = _draft.SetSeat(seat, !on);
+                bool changed = _edit.SetSeat(seat, !on);
                 _notice = changed ? null : "A match needs at least two seats.";
             }, Rebuild, selected: on);
 
@@ -158,10 +189,10 @@ namespace NonaRoyale.Unity.View
             UiKit.Size(state, 120f, 16f);
         }
 
-        private void SquadOption(Transform row, string label, bool drafted)
+        private void SquadOption(Transform row, SquadMode mode)
         {
-            UiKit.Button(row, label, () => _draft.Drafted = drafted, Rebuild,
-                selected: _draft.Drafted == drafted, size: UiTheme.FontBody);
+            UiKit.Button(row, mode.Label(), () => _edit.Squads = mode, Rebuild,
+                selected: _edit.Squads == mode, size: UiTheme.FontSmall);
         }
     }
 }
