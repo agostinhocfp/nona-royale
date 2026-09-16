@@ -3,10 +3,18 @@ using System.Collections.Generic;
 using NonaRoyale.Core;
 using NonaRoyale.Core.Abilities;
 using NonaRoyale.Core.Board;
+using NonaRoyale.Core.Bots;
 using NonaRoyale.Core.Draft;
 
 namespace NonaRoyale.Unity.View
 {
+    /// <summary>Who plays a seat (BOTS.md, increment BOT3).</summary>
+    public enum SeatKind
+    {
+        Human = 0,
+        Cpu = 1
+    }
+
     /// <summary>How the seats get their squads: setup's squad row (DRAFT.md).</summary>
     public enum SquadMode
     {
@@ -32,6 +40,9 @@ namespace NonaRoyale.Unity.View
         public static DraftMode ToDraftMode(this SquadMode mode) =>
             mode == SquadMode.Snake ? DraftMode.Snake : DraftMode.AllPick;
 
+        public static string Label(this BotPersonality personality) =>
+            personality.ToString().ToUpperInvariant();
+
         public static string Label(this SquadMode mode)
         {
             switch (mode)
@@ -46,8 +57,9 @@ namespace NonaRoyale.Unity.View
     }
 
     /// <summary>
-    /// How a match is set up: which seats play, how squads are chosen, which
-    /// seed (GUI increment I; squad modes since DR2).
+    /// How a match is set up: which seats play and who plays them, how squads
+    /// are chosen, which seed (GUI increment I; squad modes since DR2; CPU
+    /// seats since BOT3).
     /// </summary>
     /// <remarks>
     /// View-side configuration, not rules: it is what the composition root
@@ -64,6 +76,9 @@ namespace NonaRoyale.Unity.View
         };
 
         private readonly List<PlayerColor> _seats = new List<PlayerColor>();
+        private readonly Dictionary<PlayerColor, SeatKind> _kinds = new Dictionary<PlayerColor, SeatKind>();
+        private readonly Dictionary<PlayerColor, BotPersonality> _personalities =
+            new Dictionary<PlayerColor, BotPersonality>();
 
         /// <summary>The seats playing, always in table order (Red, Blue, Green, Violet).</summary>
         public IReadOnlyList<PlayerColor> Seats => _seats;
@@ -82,6 +97,41 @@ namespace NonaRoyale.Unity.View
 
         public bool Has(PlayerColor seat) => _seats.Contains(seat);
 
+        /// <summary>Who plays the seat. Remembered for an empty seat too, so switching it back on keeps it.</summary>
+        public SeatKind KindOf(PlayerColor seat) => _kinds.TryGetValue(seat, out var kind) ? kind : SeatKind.Human;
+
+        public void SetKind(PlayerColor seat, SeatKind kind) => _kinds[seat] = kind;
+
+        public bool IsCpu(PlayerColor seat) => Has(seat) && KindOf(seat) == SeatKind.Cpu;
+
+        /// <summary>The seat's CPU style. Defaults differ by seat, so a table of CPUs is mixed.</summary>
+        public BotPersonality PersonalityOf(PlayerColor seat) =>
+            _personalities.TryGetValue(seat, out var personality) ? personality : DefaultPersonality(seat);
+
+        public void SetPersonality(PlayerColor seat, BotPersonality personality) => _personalities[seat] = personality;
+
+        /// <summary>Playing seats that a human plays.</summary>
+        public int HumanCount
+        {
+            get
+            {
+                int count = 0;
+                foreach (var seat in _seats) if (KindOf(seat) == SeatKind.Human) count++;
+                return count;
+            }
+        }
+
+        public static BotPersonality DefaultPersonality(PlayerColor seat) =>
+            (BotPersonality)(((int)seat % 3 + 3) % 3);
+
+        /// <summary>Copies who plays each seat, and how, from another settings object.</summary>
+        public void CopySeatsFrom(MatchSettings other)
+        {
+            if (other == null) return;
+            foreach (var pair in other._kinds) _kinds[pair.Key] = pair.Value;
+            foreach (var pair in other._personalities) _personalities[pair.Key] = pair.Value;
+        }
+
         /// <summary>Turns a seat on or off. Refuses to go below <see cref="MinSeats"/>; returns whether it changed.</summary>
         public bool SetSeat(PlayerColor seat, bool on)
         {
@@ -95,7 +145,12 @@ namespace NonaRoyale.Unity.View
             return true;
         }
 
-        public MatchSettings Clone() => new MatchSettings(_seats, Squads, Seed);
+        public MatchSettings Clone()
+        {
+            var copy = new MatchSettings(_seats, Squads, Seed);
+            copy.CopySeatsFrom(this);
+            return copy;
+        }
     }
 
     /// <summary>

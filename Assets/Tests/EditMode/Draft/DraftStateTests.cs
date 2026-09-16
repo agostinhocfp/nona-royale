@@ -354,6 +354,24 @@ namespace NonaRoyale.Core.Tests.Draft
         }
 
         [Test]
+        public void LastPickSeat_NamesWhoUndoWouldRevert()
+        {
+            var snake = NewDraft(Four, DraftMode.Snake);
+            Assert.That(snake.LastPickSeat, Is.EqualTo(PlayerColor.None));
+
+            snake.Pick(PlayerColor.Red, Op(0));
+            snake.RandomPick(PlayerColor.Blue);
+            Assert.That(snake.LastPickSeat, Is.EqualTo(PlayerColor.Blue));
+
+            snake.Undo();
+            Assert.That(snake.LastPickSeat, Is.EqualTo(PlayerColor.None));
+
+            var allPick = NewDraft(Four, DraftMode.AllPick);
+            allPick.Pick(PlayerColor.Green, Op(0));
+            Assert.That(allPick.LastPickSeat, Is.EqualTo(PlayerColor.None), "no undo in ALL PICK");
+        }
+
+        [Test]
         public void Undo_BeforeAnyPick_HasNothingToRevert()
         {
             var draft = NewDraft(Four, DraftMode.Snake);

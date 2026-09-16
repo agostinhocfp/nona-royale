@@ -4,6 +4,7 @@ using System.Linq;
 using NonaRoyale.Core;
 using NonaRoyale.Core.Abilities;
 using NonaRoyale.Core.Board;
+using NonaRoyale.Core.Bots;
 using NonaRoyale.Core.Commands;
 using NonaRoyale.Core.Events;
 using NonaRoyale.Core.Model;
@@ -71,6 +72,12 @@ namespace NonaRoyale.Unity.Composition
 
         [Tooltip("Seats at the first deal, filled Red, Blue, Green, Violet. The setup screen overrides it.")]
         [Range(2, 4)] public int players = 4;
+
+        [Tooltip("Seats the CPU plays at the first deal (useful with Skip Setup). The setup screen overrides it.")]
+        public PlayerColor[] cpuSeats = new PlayerColor[0];
+
+        [Tooltip("How fast CPU seats act. Remembered between sessions; this is the first-run default.")]
+        public BotSpeed cpuSpeed = BotSpeed.Normal;
 
         [Tooltip("Operators already on the board at the start. 2 is the adopted value.")]
         [Range(0, 3)] public int openingDeployments = 2;
@@ -160,6 +167,12 @@ namespace NonaRoyale.Unity.Composition
         /// </summary>
         private IReadOnlyDictionary<PlayerColor, IReadOnlyList<OperatorDefinition>> _squads;
 
+        /// <summary>Who plays each seat, and each CPU's style. Only the kinds and personalities are read.</summary>
+        private readonly MatchSettings _seatPlan = new MatchSettings(new PlayerColor[0], SquadMode.AllPick, 0);
+
+        /// <summary>Plays the CPU seats of the match on the table (BOT2). Null without a match.</summary>
+        private BotDriver _bots;
+
         /// <summary>The screens the app moves between (GUI increment J).</summary>
         public enum AppScreen { Title, Setup, Draft, Match, Paused, Results }
 
@@ -176,6 +189,7 @@ namespace NonaRoyale.Unity.Composition
             AppScreen.Match;
 
         private bool _savedHealth, _savedLog, _savedDev;
+        private BotSpeed _savedSpeed;
 
         /// <summary>The seats the next deal uses. Squads and seed live in the inspector fields.</summary>
         private readonly List<PlayerColor> _seats = new List<PlayerColor>();
@@ -185,6 +199,9 @@ namespace NonaRoyale.Unity.Composition
         {
             _seats.Clear();
             _seats.AddRange(MatchSettings.AllSeats.Take(players));
+
+            if (cpuSeats != null)
+                foreach (var seat in cpuSeats) _seatPlan.SetKind(seat, SeatKind.Cpu);
 
             LoadSettings();
 
@@ -209,14 +226,23 @@ namespace NonaRoyale.Unity.Composition
             showFullLog = SettingsStore.Load(SettingsStore.FullLog, showFullLog);
             showDevPanel = SettingsStore.Load(SettingsStore.DevPanel, showDevPanel);
 
+            cpuSpeed = SettingsStore.LoadSpeed(cpuSpeed);
+
             _savedHealth = showPieceHealth;
             _savedLog = showFullLog;
             _savedDev = showDevPanel;
+            _savedSpeed = cpuSpeed;
         }
 
         /// <summary>Saves when a flag changed, however it changed: a key, a menu toggle, the inspector.</summary>
         private void SaveSettingsIfChanged()
         {
+            if (cpuSpeed != _savedSpeed)
+            {
+                _savedSpeed = cpuSpeed;
+                SettingsStore.SaveSpeed(cpuSpeed);
+            }
+
             if (showPieceHealth == _savedHealth && showFullLog == _savedLog && showDevPanel == _savedDev) return;
 
             _savedHealth = showPieceHealth;
@@ -255,6 +281,7 @@ namespace NonaRoyale.Unity.Composition
             _pieces.Clear();
             _log.Clear();
             _match = null;
+            _bots = null;
             _hovered = null;
             _selectedOperator = null;
             _selectedTarget = null;
@@ -424,8 +451,28 @@ namespace NonaRoyale.Unity.Composition
             _pause.Bind(_hudRoot.Root, this);
             BindScreens();
 
+            _bots = BuildBots(seats);
+
             FrameCamera();
             Handle(_match.Engine.Start(), immediate: true);
+        }
+
+        /// <summary>
+        /// One brain per CPU seat, sharing the bots' own stream for this seed
+        /// (BOTS.md decision 4). A table with no CPU seats gets an empty driver.
+        /// </summary>
+        private BotDriver BuildBots(IReadOnlyList<PlayerColor> seats)
+        {
+            var brains = new Dictionary<PlayerColor, BotBrain>();
+            var random = BotConfig.Default.RandomFor(seed);
+
+            foreach (var seat in seats)
+            {
+                if (_seatPlan.KindOf(seat) != SeatKind.Cpu) continue;
+                brains[seat] = new BotBrain(_seatPlan.PersonalityOf(seat), random);
+            }
+
+            return new BotDriver(brains);
         }
 
         /// <summary>Screen width the OnGUI panel occupies, including its margin. Pixels.</summary>
@@ -591,11 +638,72 @@ namespace NonaRoyale.Unity.Composition
 
             if (_match == null) return;
 
+            DriveBots();
+
             HandleKeys();
             UpdateHover();
 
             if (Input.GetMouseButtonDown(0)) HandleBoardClick();
             if (Input.GetMouseButtonDown(1)) StepBack();
+        }
+
+        // ── CPU seats (BOT2) ─────────────────────────────────────────────
+
+        /// <summary>Whether the seat to play is a CPU's. Human input is ignored while it is.</summary>
+        private bool CpuTurn => _bots != null && _match != null && _bots.IsCpuTurn(_match.Engine);
+
+        /// <summary>
+        /// Lets the CPU seat act, one command at a time, through the same
+        /// handling a human command gets. Called only while no card is open,
+        /// on scaled time, so pause freezes it. Space held hurries it.
+        /// </summary>
+        private void DriveBots()
+        {
+            if (_bots == null || !_bots.HasBots) return;
+
+            bool walking = false;
+            foreach (var piece in _pieces)
+            {
+                if (piece != null && piece.IsWalking)
+                {
+                    walking = true;
+                    break;
+                }
+            }
+
+            var command = _bots.Tick(_match, Time.deltaTime, mayAct: true, piecesBusy: walking,
+                cpuSpeed, hurry: Input.GetKey(KeyCode.Space));
+            if (command == null) return;
+
+            var seat = _match.Engine.CurrentPlayer.Color;
+
+            // Name the cast for the history strip, as a human cast is named.
+            OperatorState castBy = null;
+            AbilityDefinition cast = null;
+            if (command is UseAbilityCommand use)
+            {
+                castBy = _match.Operators.FirstOrDefault(o => o.Id == use.CasterOperatorId);
+                if (castBy != null && _match.AbilitiesByOperator.TryGetValue(castBy.Id, out var abilities))
+                    cast = abilities.FirstOrDefault(a => a.Id == use.AbilityId);
+            }
+
+            var events = _match.Engine.Execute(command);
+
+            foreach (var e in events)
+                if (e is CommandRejected rejected)
+                    _log.Add($"[CPU {seat}] refused {command.GetType().Name}: {rejected.Reason}");
+
+            var guard = _bots.Observe(seat, command, events);
+            if (guard != null) _log.Add(guard);
+
+            Handle(events, immediate: cpuSpeed == BotSpeed.Instant, castBy, cast, fromBot: true);
+        }
+
+        /// <summary>"CPU · BRAWLER" for a CPU seat of the match on the table, else null.</summary>
+        private string SeatTag(PlayerColor seat)
+        {
+            if (_bots == null || !_bots.IsCpu(seat)) return null;
+            return $"CPU · {_bots.BrainFor(seat).Personality.Label()}";
         }
 
         // ── Board-first input ────────────────────────────────────────────
@@ -866,7 +974,7 @@ namespace NonaRoyale.Unity.Composition
         }
 
         private bool IsCommandable(OperatorState op) =>
-            !_match.Engine.MatchOver && op.Owner == _match.Engine.CurrentPlayer.Color;
+            !_match.Engine.MatchOver && !CpuTurn && op.Owner == _match.Engine.CurrentPlayer.Color;
 
         // ── Driving the engine ───────────────────────────────────────────
 
@@ -875,7 +983,7 @@ namespace NonaRoyale.Unity.Composition
 
         private void Handle(
             IReadOnlyList<IGameEvent> events, bool immediate,
-            OperatorState castBy = null, AbilityDefinition cast = null)
+            OperatorState castBy = null, AbilityDefinition cast = null, bool fromBot = false)
         {
             foreach (var e in events)
             {
@@ -911,10 +1019,11 @@ namespace NonaRoyale.Unity.Composition
             // (ADR-0006 decision 6), so a spent one disappears on its own.
             if (_devices != null) _devices.Show(_match.Engine.ActiveCellEffects());
 
-            if (_turnStrip != null) _turnStrip.Refresh(_match.Engine);
+            string tag = _match.Engine.MatchOver ? null : SeatTag(_match.Engine.CurrentPlayer.Color);
+            if (_turnStrip != null) _turnStrip.Refresh(_match.Engine, tag);
             if (_turnButton != null) _turnButton.Refresh(_match.Engine);
 
-            ShowHistory(events, castBy, cast);
+            ShowHistory(events, castBy, cast, fromBot);
             MarkHudDirty();
 
             if (_match.Engine.MatchOver && !_endQueued && _end != null)
@@ -932,10 +1041,14 @@ namespace NonaRoyale.Unity.Composition
         /// The banner opens when a batch begins a turn and fades as soon as the
         /// engine is past the roll, however the roll was made.
         /// </remarks>
-        private void ShowHistory(IReadOnlyList<IGameEvent> events, OperatorState castBy, AbilityDefinition cast)
+        private void ShowHistory(
+            IReadOnlyList<IGameEvent> events, OperatorState castBy, AbilityDefinition cast, bool fromBot)
         {
             var engine = _match.Engine;
             var batch = HistoryFeed.Build(events, castBy, cast, engine.Round);
+
+            // A CPU's refusal is the bot's business, not the table's: logged, never toasted (BOTS.md decision 1).
+            if (fromBot) batch.Rejections.Clear();
 
             if (_history != null) _history.Add(batch);
             if (_toasts != null) _toasts.Show(batch);
@@ -1018,16 +1131,36 @@ namespace NonaRoyale.Unity.Composition
                 .ToList();
         }
 
-        void IControlPanelHost.Roll() => Send(new RollDiceCommand());
+        bool IControlPanelHost.CpuTurn => CpuTurn;
 
-        void IControlPanelHost.EndTurn() => Send(new EndTurnCommand());
+        string IControlPanelHost.SeatTag(PlayerColor seat) => SeatTag(seat);
 
-        void IControlPanelHost.Deploy(OperatorState op) => Send(new DeployCommand(op.Id));
+        // Every intent below is ignored on a CPU's turn: the seat is not the pointer's to command.
 
-        void IControlPanelHost.Move(OperatorState op, int? dieFace) => Send(new MoveCommand(op.Id, dieFace));
+        void IControlPanelHost.Roll()
+        {
+            if (!CpuTurn) Send(new RollDiceCommand());
+        }
+
+        void IControlPanelHost.EndTurn()
+        {
+            if (!CpuTurn) Send(new EndTurnCommand());
+        }
+
+        void IControlPanelHost.Deploy(OperatorState op)
+        {
+            if (!CpuTurn) Send(new DeployCommand(op.Id));
+        }
+
+        void IControlPanelHost.Move(OperatorState op, int? dieFace)
+        {
+            if (!CpuTurn) Send(new MoveCommand(op.Id, dieFace));
+        }
 
         void IControlPanelHost.ToggleOperator(OperatorState op)
         {
+            if (CpuTurn) return;
+
             _selectedOperator = ReferenceEquals(op, _selectedOperator) ? null : op;
             _selectedAbility = null;      // an ability belongs to its caster
             _selectedTarget = null;       // and a target belongs to its ability
@@ -1038,6 +1171,7 @@ namespace NonaRoyale.Unity.Composition
 
         void IControlPanelHost.ToggleAbility(AbilityDefinition ability)
         {
+            if (CpuTurn) return;
             if (_match == null || _selectedOperator == null || ability == null) return;
 
             bool chosen = _selectedAbility != null && _selectedAbility.Id == ability.Id;
@@ -1055,13 +1189,14 @@ namespace NonaRoyale.Unity.Composition
 
         void IControlPanelHost.ToggleTarget(OperatorState op)
         {
+            if (CpuTurn) return;
             _selectedTarget = ReferenceEquals(op, _selectedTarget) ? null : op;
             SelectionChanged();
         }
 
         void IControlPanelHost.Cast()
         {
-            if (!Host.CastReady) return;
+            if (CpuTurn || !Host.CastReady) return;
 
             Send(new UseAbilityCommand(
                 _selectedOperator.Id, _selectedAbility.Id,
@@ -1111,6 +1246,7 @@ namespace NonaRoyale.Unity.Composition
         bool ISettingsHost.ShowPieceHealth { get => showPieceHealth; set => showPieceHealth = value; }
         bool ISettingsHost.ShowFullLog { get => showFullLog; set => showFullLog = value; }
         bool ISettingsHost.ShowDevPanel { get => showDevPanel; set => showDevPanel = value; }
+        BotSpeed ISettingsHost.CpuSpeed { get => cpuSpeed; set => cpuSpeed = value; }
 
         void IPauseHost.MainMenu() => ShowTitle();
 
@@ -1131,7 +1267,15 @@ namespace NonaRoyale.Unity.Composition
 
         // ── Match flow (GUI increment I) ─────────────────────────────────
 
-        MatchSettings IMatchFlowHost.Settings => new MatchSettings(_seats, squadMode, seed);
+        MatchSettings IMatchFlowHost.Settings
+        {
+            get
+            {
+                var settings = new MatchSettings(_seats, squadMode, seed);
+                settings.CopySeatsFrom(_seatPlan);
+                return settings;
+            }
+        }
 
         MatchFactory.Match IMatchFlowHost.Match => _match;
 
@@ -1176,6 +1320,7 @@ namespace NonaRoyale.Unity.Composition
             squadMode = settings.Squads;
             seed = settings.Seed;
             _squads = squads;
+            _seatPlan.CopySeatsFrom(settings);
         }
 
         /// <summary>
@@ -1378,8 +1523,12 @@ namespace NonaRoyale.Unity.Composition
                 return;
             }
 
-            CollectMoveOptions();
-            DrawMoveOptions();
+            // A CPU's landings are its own business: the board shows where its pieces go, not where they could.
+            if (!CpuTurn)
+            {
+                CollectMoveOptions();
+                DrawMoveOptions();
+            }
 
             if (_selectedOperator != null && _selectedAbility != null && !_selectedOperator.IsInYard)
                 DrawAim();

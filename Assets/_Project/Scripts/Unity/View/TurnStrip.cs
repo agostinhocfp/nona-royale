@@ -139,13 +139,14 @@ namespace NonaRoyale.Unity.View
         /// events; text is set only when something changed, because TMP lays
         /// text out again on every assignment.
         /// </summary>
-        public void Refresh(GameEngine engine)
+        /// <param name="seatTag">"CPU · BRAWLER" when a CPU seat is playing, else null (BOT2).</param>
+        public void Refresh(GameEngine engine, string seatTag = null)
         {
             if (_rect == null || engine == null) return;
 
             string key = engine.MatchOver
                 ? $"over|{engine.Winner}|{engine.Round}"
-                : $"{engine.CurrentPlayer.Color}|{engine.CurrentPlayer.Energy}|{engine.EnergyCap}|{engine.Round}|{Prompt(engine)}";
+                : $"{engine.CurrentPlayer.Color}|{engine.CurrentPlayer.Energy}|{engine.EnergyCap}|{engine.Round}|{Prompt(engine)}|{seatTag}";
 
             if (key == _shown) return;
             _shown = key;
@@ -171,9 +172,14 @@ namespace NonaRoyale.Unity.View
             var seatColour = BoardLayout.ColourOf(seat.Color);
 
             _accent.color = seatColour;
-            _seat.text = $"<color=#{UiTheme.Hex(UiTheme.Readable(seatColour))}>{seat.Color.ToString().ToUpperInvariant()}</color> <size=70%><color=#{UiTheme.Hex(UiTheme.TextDim)}>to play</color></size>";
+            string who = seatTag == null
+                ? "to play"
+                : $"<color=#{UiTheme.Hex(UiTheme.Cyan)}>({seatTag})</color>";
+            _seat.text = $"<color=#{UiTheme.Hex(UiTheme.Readable(seatColour))}>{seat.Color.ToString().ToUpperInvariant()}</color> <size=70%><color=#{UiTheme.Hex(UiTheme.TextDim)}>{who}</color></size>";
             _energy.text = $"{seat.Energy}<color=#{UiTheme.Hex(UiTheme.TextDim)}>/{engine.EnergyCap}</color>";
-            _prompt.text = Prompt(engine);
+            _prompt.text = seatTag == null
+                ? Prompt(engine)
+                : "The CPU is playing — hold <b>Space</b> to hurry it, <b>Esc</b> to pause";
 
             SetPips(seat.Energy, engine.EnergyCap);
         }

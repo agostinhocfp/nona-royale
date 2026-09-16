@@ -127,19 +127,26 @@ The dev panel (`ControlPanel`) takes the left edge instead of the rail while Tab
 
 ### 4.3 Match flow
 
-_Added 2026-09-16, GUI phase increment I. Draft screen added 2026-09-16, increment DR2._
+_Added 2026-09-16, GUI phase increment I. Draft screen added 2026-09-16, increment DR2. CPU seats added 2026-09-16, increments BOT2–BOT3._
 
 - **Play opens the title screen** (increment J): the NONA ROYALE wordmark over the empty room, on a light scrim so the tables and the vault read through, with PLAY, SETTINGS and QUIT. It is the only screen that quits the app, and QUIT asks twice. The inspector's Skip Setup deals straight into a match.
-- **PLAY opens the setup screen**: seats (any two to four of the four colours), squads (ALL PICK, SNAKE, RANDOM or ALPHA THREE; since DR2), the seed (shown, with SHUFFLE), and DEAL, which reads DRAFT for the two drafted modes. BACK returns to the match, or to the title when there is none.
+- **PLAY opens the setup screen**: seats (any two to four of the four colours; each tile cycles EMPTY → HUMAN → CPU, and a CPU tile has a chip that cycles its style: BRAWLER, RUNNER, BANKER), squads (ALL PICK, SNAKE, RANDOM or ALPHA THREE; since DR2), the seed (shown, with SHUFFLE), and DEAL, which reads DRAFT for the two drafted modes. BACK returns to the match, or to the title when there is none.
 - **The drafted modes open the draft screen** (DR2, `DRAFT.md`). It is a full-canvas screen over a dark scrim.
   - **Layout:** the nine operators as a 3×3 grid of cards on the left. Each card shows the shape, name, role, health, speed, passive and aura tags, and the three abilities with cost, reach and cooldown; a missing ability is shown as not yet written. Small seat diamonds on a card mark the seats that already hold that operator. On the right: each seat's three slots, and a detail panel with the full ability descriptions of the last card hovered. At the top: the title, a status line and the clock; SNAKE adds a pick-order strip.
   - **Refused cards** fade and carry the core's reason (IN SQUAD, SQUAD FULL, NOT YOUR PICK).
   - **ALL PICK:** a seat row (or keys 1–4) chooses who is picking, and a seat that fills up passes the pointer on. Clicking a filled slot clears it. RANDOM, FILL & START, and START (Enter, once every slot is full) are available. At zero the table holds for a beat, then deals.
   - **SNAKE:** cards pick for the seat on the clock. RANDOM, UNDO (Backspace), RANDOM REST, and START (Enter, once complete).
+  - **CPU seats pick on their own.** In ALL PICK, one CPU pick lands about every 1.5 s, taking turns across the CPU seats. In SNAKE, a CPU picks 0.8 s into its turn. Their seat rows read "CPU · STYLE", can't be chosen as the picker, and their slots can't be cleared. UNDO is refused after a CPU's pick. FILL & START and RANDOM REST let the CPUs choose their own remaining picks.
   - **BACK (Esc)** with any pick made asks first, and stops the clock while it asks. Leaving returns to setup with the same choices, and the match on the table (if any) is untouched until a draft finishes.
 - **MAIN MENU** in the pause menu (asks twice) and on the end screen returns to the title and removes the match. The in-match HUD lives on its own canvas layer and is hidden there.
-- **Display settings are remembered** between sessions (PlayerPrefs): health labels, the log, the dev panel. The inspector values are the first-run defaults.
-- **A finished match opens the end screen** a beat after the winning move: the winner, the round, the seed, and a row per seat with its squad (shapes and names, since DR2), operators home, knockouts and operators lost. REMATCH deals the same table with the next seed, keeping drafted squads (RANDOM draws again); NEW MATCH opens setup; VIEW BOARD hides the screen until Esc; MAIN MENU returns to the title.
+- **Display settings are remembered** between sessions (PlayerPrefs): health labels, the log, the dev panel, and CPU speed (Normal, Fast, Instant; since BOT3). The inspector values are the first-run defaults.
+- **CPU turns play themselves** (BOT2, `BOTS.md`).
+  - **Pacing:** each action waits for walking pieces and a short think delay (0.9 s before the roll, 0.55 s between actions at Normal; ×0.35 at Fast). Instant has no delay and no walk animations. Holding Space hurries the CPU. Pause freezes it.
+  - **Input:** while a CPU plays, board clicks, keys and HUD buttons don't act, and the board shows no landing hints.
+  - **HUD:** the turn button reads "BLUE IS THINKING". The top bar names the seat "(CPU · STYLE)" and says how to hurry or pause. The squad rail tags CPU seats.
+  - **Refusals:** a CPU's refused command goes to the full log only, never to a toast.
+  - **Watch mode:** a table with no human seats is allowed.
+- **A finished match opens the end screen** a beat after the winning move: the winner, the round, the seed, and a row per seat with its squad (shapes and names, since DR2) and a CPU tag where it applies, operators home, knockouts and operators lost. REMATCH deals the same table with the next seed, keeping drafted squads (RANDOM draws again); NEW MATCH opens setup; VIEW BOARD hides the screen until Esc; MAIN MENU returns to the title.
 - **Every tally is an engine answer.** Knockout credit is a core rule (COMBAT_SYSTEMS §1.2), not something the view infers from who was nearby.
 - While setup, the draft or the end screen is open, the board and the game keys are ignored. Enter deals, starts or rematches; Esc goes back.
 

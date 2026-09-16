@@ -1,5 +1,6 @@
 // Assets/_Project/Scripts/Unity/View/SetupScreen.cs
 using NonaRoyale.Core.Board;
+using NonaRoyale.Core.Bots;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -19,8 +20,10 @@ namespace NonaRoyale.Unity.View
     /// player who backs out of a draft finds their choices still set.
     ///
     /// <b>Seats are four tiles, any two to four on</b>, so a two-player game
-    /// can sit opposite (Red and Green), as in classic Ludo. The last two
-    /// seats refuse to switch off, and say why.
+    /// can sit opposite (Red and Green), as in classic Ludo. A tile cycles
+    /// EMPTY → HUMAN → CPU (BOT3); a CPU tile carries a chip that cycles its
+    /// style. The last two seats refuse to switch off, and say why. A table of
+    /// CPUs only is allowed: it is watch mode.
     ///
     /// <b>Squads are one of four modes</b> (DRAFT.md): ALL PICK and SNAKE go
     /// through the draft screen, so the confirm button reads DRAFT; RANDOM
@@ -102,11 +105,10 @@ namespace NonaRoyale.Unity.View
             // ── Seats ──
             Heading($"Seats · {_edit.Seats.Count} playing");
 
-            var seats = ButtonRow("seats", 92f);
+            var seats = ButtonRow("seats", 124f);
             foreach (var seat in MatchSettings.AllSeats) SeatTile(seats, seat);
 
-            Note(_notice ?? "Any two to four. Opposite seats make a fair two-player table.",
-                _notice != null ? UiTheme.Threat : UiTheme.TextOff);
+            Note(_notice ?? SeatNote(), _notice != null ? UiTheme.Threat : UiTheme.TextOff, 38f);
 
             // ── Squads ──
             Gap(4f);
@@ -143,6 +145,15 @@ namespace NonaRoyale.Unity.View
             Choice(HasMatch ? "BACK TO THE MATCH" : "BACK", "Esc", Back);
         }
 
+        private string SeatNote()
+        {
+            if (_edit.HumanCount == 0)
+                return "No human seats: watch mode. Esc pauses; hold Space to hurry the CPUs.";
+
+            return "Click a seat: empty, human, CPU. The chip under a CPU sets its style. " +
+                   "Opposite seats make a fair two-player table.";
+        }
+
         private static string SquadNote(SquadMode mode)
         {
             switch (mode)
@@ -160,22 +171,19 @@ namespace NonaRoyale.Unity.View
             }
         }
 
-        /// <summary>A seat: its diamond and name, lit cyan when playing.</summary>
+        /// <summary>A seat: its diamond, name and who plays it; a CPU seat adds its style chip.</summary>
         private void SeatTile(Transform row, PlayerColor seat)
         {
             bool on = _edit.Has(seat);
+            bool cpu = on && _edit.KindOf(seat) == SeatKind.Cpu;
             var colour = UiTheme.Seat(seat);
 
-            var button = UiKit.Button(row, "", () =>
-            {
-                bool changed = _edit.SetSeat(seat, !on);
-                _notice = changed ? null : "A match needs at least two seats.";
-            }, Rebuild, selected: on);
+            var button = UiKit.Button(row, "", () => CycleSeat(seat), Rebuild, selected: on);
 
             var column = UiKit.Column((RectTransform)button.transform, 4f, 8);
             column.childAlignment = TextAnchor.MiddleCenter;
             column.childForceExpandWidth = false;
-            column.padding.top = 12;
+            column.padding.top = 10;
 
             UiKit.Diamond(button.transform, on ? colour : UiTheme.WithAlpha(colour, 0.3f), 16f, 24f);
 
@@ -183,11 +191,55 @@ namespace NonaRoyale.Unity.View
                 on ? UiTheme.Readable(colour) : UiTheme.TextOff, TextAlignmentOptions.Center, bold: true);
             UiKit.Size(name, 120f, 24f);
 
-            var state = UiKit.Label(button.transform, on ? "PLAYING" : "EMPTY", 11f,
-                on ? UiTheme.Cyan : UiTheme.TextOff, TextAlignmentOptions.Center);
+            string kind = !on ? "EMPTY" : cpu ? "CPU" : "HUMAN";
+            var state = UiKit.Label(button.transform, kind, 11f,
+                on ? UiTheme.Cyan : UiTheme.TextOff, TextAlignmentOptions.Center, bold: cpu);
             state.characterSpacing = UiTheme.HeadingSpacing * 0.5f;
             UiKit.Size(state, 120f, 16f);
+
+            if (!cpu)
+            {
+                UiKit.Space(button.transform, 120f, 26f);
+                return;
+            }
+
+            // The style chip: its own button inside the tile, so it cycles without touching the seat.
+            var personality = _edit.PersonalityOf(seat);
+            var chip = UiKit.Button(button.transform, personality.Label(), () =>
+                _edit.SetPersonality(seat, NextPersonality(personality)), Rebuild,
+                size: 12f, tint: UiTheme.GoldDeep, edge: UiTheme.Gold);
+            UiKit.Size(chip, 120f, 26f);
         }
+
+        /// <summary>EMPTY → HUMAN → CPU → EMPTY. The last two seats skip EMPTY and say why.</summary>
+        private void CycleSeat(PlayerColor seat)
+        {
+            _notice = null;
+
+            if (!_edit.Has(seat))
+            {
+                _edit.SetSeat(seat, true);
+                _edit.SetKind(seat, SeatKind.Human);
+                return;
+            }
+
+            if (_edit.KindOf(seat) == SeatKind.Human)
+            {
+                _edit.SetKind(seat, SeatKind.Cpu);
+                return;
+            }
+
+            if (!_edit.SetSeat(seat, false))
+            {
+                _edit.SetKind(seat, SeatKind.Human);
+                _notice = "A match needs at least two seats.";
+            }
+        }
+
+        private static BotPersonality NextPersonality(BotPersonality personality) =>
+            personality == BotPersonality.Brawler ? BotPersonality.Runner
+            : personality == BotPersonality.Runner ? BotPersonality.Banker
+            : BotPersonality.Brawler;
 
         private void SquadOption(Transform row, SquadMode mode)
         {

@@ -96,8 +96,12 @@ namespace NonaRoyale.Unity.View
                 int home = 0;
                 foreach (var op in player.Operators) if (engine.IsHome(op)) home++;
 
+                string cpu = _host.Settings.IsCpu(player.Color)
+                    ? $" <size=65%><color=#{UiTheme.Hex(UiTheme.Cyan)}>CPU</color></size>"
+                    : "";
+
                 TableRow($"seat_{player.Color}", player.Color, player.Operators,
-                    player.Color.ToString().ToUpperInvariant(),
+                    player.Color.ToString().ToUpperInvariant() + cpu,
                     $"{home}/{player.Operators.Count}",
                     engine.KnockoutsScoredBy(player.Color).ToString(),
                     engine.OperatorsLostBy(player.Color).ToString(),

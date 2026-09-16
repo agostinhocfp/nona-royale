@@ -120,8 +120,10 @@ namespace NonaRoyale.Unity.View
                 bool playing = !engine.MatchOver && seat.Color == engine.CurrentPlayer.Color;
                 SeatHeader(seat, playing, engine.EnergyCap, engine);
 
+                // A CPU seat's rows are never buttons, even on its own turn (BOT2).
+                bool commandable = playing && !_host.CpuTurn;
                 foreach (var op in seat.Operators)
-                    OperatorRow(op, playing, engine);
+                    OperatorRow(op, commandable, engine);
 
                 UiKit.Space(_content, height: 8f);
             }
@@ -160,8 +162,10 @@ namespace NonaRoyale.Unity.View
             int home = 0;
             foreach (var op in seat.Operators) if (engine.IsHome(op)) home++;
 
+            string tag = _host.SeatTag(seat.Color);
             var name = UiKit.Label(header,
                 $"<color=#{UiTheme.Hex(UiTheme.Readable(colour))}>{seat.Color.ToString().ToUpperInvariant()}</color>" +
+                (tag != null ? $" <size=62%><color=#{UiTheme.Hex(UiTheme.Cyan)}>{tag}</color></size>" : "") +
                 (playing ? $"  <size=75%><color=#{UiTheme.Hex(UiTheme.GoldBright)}>PLAYING</color></size>" : ""),
                 UiTheme.FontBody, bold: true);
             UiKit.Size(name, flexibleWidth: 1f);

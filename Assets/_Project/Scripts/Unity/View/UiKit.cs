@@ -463,6 +463,36 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
+        /// A setting with more than two values, as one wide button that cycles
+        /// them: its name, a hint in gold, and a chip naming the current value
+        /// (BOT3). Lit cyan when <paramref name="lit"/>.
+        /// </summary>
+        public static UnityEngine.UI.Button ChoiceRow(Transform parent, string label, string hint, string value,
+            bool lit, Action press)
+        {
+            var button = Button(parent, "", press, selected: lit);
+            var rect = (RectTransform)button.transform;
+
+            var row = Row(rect, 10f);
+            row.padding = new RectOffset(18, 14, 0, 0);
+            row.childAlignment = TextAnchor.MiddleLeft;
+
+            var name = Label(rect, label, UiTheme.FontBody);
+            Size(name, flexibleWidth: 1f);
+
+            if (!string.IsNullOrEmpty(hint))
+                Label(rect, hint, 13f, UiTheme.Gold, TextAlignmentOptions.MidlineRight);
+
+            var chip = Rect("value", rect);
+            Sliced(chip, DecoSprites.ChipFill, lit ? UiTheme.Cyan : UiTheme.PanelInset);
+            Fixed(chip, 96f, 24f);
+            Caption(chip, value, 13f, lit ? UiTheme.DieInk : UiTheme.Text,
+                TextAlignmentOptions.Center).fontStyle = FontStyles.Bold;
+
+            return button;
+        }
+
+        /// <summary>
         /// A chamfered button with a brass edge. The click runs
         /// <paramref name="onClick"/> and then <paramref name="afterClick"/>,
         /// usually the owner's MarkDirty.

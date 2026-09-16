@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using NonaRoyale.Core.Abilities;
 using NonaRoyale.Core.Board;
+using NonaRoyale.Core.Bots;
 using NonaRoyale.Core.Draft;
 using TMPro;
 using UnityEngine;
@@ -36,6 +37,14 @@ namespace NonaRoyale.Unity.View
     ///
     /// <b>Leaving is never silent.</b> BACK (Esc) with picks made asks first,
     /// and the clock stops while it asks.
+    ///
+    /// <b>CPU seats pick on their own</b> (BOTS.md decisions 6 and 7). In ALL
+    /// PICK, one CPU pick lands every <see cref="CpuPickInterval"/> seconds,
+    /// taking turns across the CPU seats; in SNAKE a CPU seat picks
+    /// <see cref="CpuThink"/> seconds into its turn. The pointer never picks
+    /// for a CPU seat, its slots cannot be cleared, and UNDO is refused when
+    /// the last pick was a CPU's. FILL &amp; START and RANDOM REST let the CPUs
+    /// choose their own remaining picks first.
     /// </remarks>
     public sealed class DraftScreen : MonoBehaviour
     {
@@ -53,6 +62,15 @@ namespace NonaRoyale.Unity.View
 
         private const float ClockDigitSize = 64f;
         private const float ClockWordSize = 40f;
+
+        /// <summary>ALL PICK: seconds between CPU picks, across all CPU seats.</summary>
+        private const float CpuPickInterval = 1.5f;
+
+        /// <summary>ALL PICK: seconds before the first CPU pick.</summary>
+        private const float CpuFirstPick = 1.0f;
+
+        /// <summary>SNAKE: seconds a CPU seat takes over its pick.</summary>
+        private const float CpuThink = 0.8f;
 
         /// <summary>The most clock time one frame may spend, in seconds.</summary>
         private const float MaxClockStep = 0.25f;
@@ -81,6 +99,10 @@ namespace NonaRoyale.Unity.View
         private bool _dirty;
         private bool _detailDirty;
 
+        private readonly Dictionary<PlayerColor, BotBrain> _cpu = new Dictionary<PlayerColor, BotBrain>();
+        private float _cpuClock;
+        private int _cpuTurn;
+
         public bool IsOpen => _root != null && _root.gameObject.activeSelf;
 
         public void Bind(RectTransform canvasRect, IMatchFlowHost host)
@@ -96,7 +118,17 @@ namespace NonaRoyale.Unity.View
 
             _settings = settings.Clone();
             _draft = DraftState.ForMatch(_settings.Seats, _settings.Squads.ToDraftMode(), _settings.Seed);
-            _active = _settings.Seats[0];
+
+            // One brain per CPU seat, on the bots' draft stream (BOTS.md decision 4).
+            _cpu.Clear();
+            var random = BotConfig.Default.DraftRandomFor(_settings.Seed);
+            foreach (var seat in _settings.Seats)
+                if (_settings.IsCpu(seat)) _cpu[seat] = new BotBrain(_settings.PersonalityOf(seat), random);
+
+            _cpuClock = _draft.Mode == DraftMode.AllPick ? CpuFirstPick : CpuThink;
+            _cpuTurn = 0;
+
+            _active = FirstHuman();
             _focus = null;
             _leaveArmed = false;
             _hold = -1f;
@@ -141,8 +173,18 @@ namespace NonaRoyale.Unity.View
             }
         }
 
-        /// <summary>The seat a card click picks for: the chosen seat in ALL PICK, the seat on the clock in SNAKE.</summary>
-        private PlayerColor Picker => _draft.Mode == DraftMode.AllPick ? _active : _draft.CurrentSeat;
+        /// <summary>
+        /// The seat a card click picks for: the chosen seat in ALL PICK, the
+        /// seat on the clock in SNAKE. Never a CPU seat: the pointer is a human's.
+        /// </summary>
+        private PlayerColor Picker
+        {
+            get
+            {
+                var seat = _draft.Mode == DraftMode.AllPick ? _active : _draft.CurrentSeat;
+                return IsCpu(seat) ? PlayerColor.None : seat;
+            }
+        }
 
         private bool Locked => _leaveArmed || _hold >= 0f;
 
@@ -173,7 +215,14 @@ namespace NonaRoyale.Unity.View
         {
             if (Locked) return;
 
-            _draft.FillRandom();
+            // In turn order: a CPU pick is the CPU's choice, a human pick is random.
+            while (!_draft.IsComplete)
+            {
+                var seat = _draft.CurrentSeat;
+                if (IsCpu(seat)) CpuPick(seat);
+                else _draft.RandomPick(seat);
+            }
+
             MarkDirty();
         }
 
@@ -181,13 +230,16 @@ namespace NonaRoyale.Unity.View
         {
             if (Locked) return;
 
+            foreach (var seat in _cpu.Keys)
+                while (_draft.CanPickAny(seat) == DraftRefusal.None) CpuPick(seat);
+
             _draft.FillRandom();
             StartMatch();
         }
 
         private void Undo()
         {
-            if (Locked) return;
+            if (Locked || !UndoAllowed) return;
 
             _draft.Undo();
             MarkDirty();
@@ -195,7 +247,7 @@ namespace NonaRoyale.Unity.View
 
         private void ClearSlot(PlayerColor seat, int slot)
         {
-            if (Locked) return;
+            if (Locked || IsCpu(seat)) return;
 
             if (_draft.Clear(seat, slot) == DraftRefusal.None) _active = seat;
             MarkDirty();
@@ -203,7 +255,7 @@ namespace NonaRoyale.Unity.View
 
         private void SetActive(PlayerColor seat)
         {
-            if (Locked || _draft.Mode != DraftMode.AllPick) return;
+            if (Locked || _draft.Mode != DraftMode.AllPick || IsCpu(seat)) return;
 
             _active = seat;
             MarkDirty();
@@ -220,7 +272,7 @@ namespace NonaRoyale.Unity.View
             for (int step = 1; step < seats.Count; step++)
             {
                 var next = seats[(start + step) % seats.Count];
-                if (_draft.NextEmptySlot(next) < 0) continue;
+                if (IsCpu(next) || _draft.NextEmptySlot(next) < 0) continue;
 
                 _active = next;
                 return;
@@ -268,6 +320,75 @@ namespace NonaRoyale.Unity.View
             _host.CancelDraft(settings);
         }
 
+        // ── CPU seats ────────────────────────────────────────────────────
+
+        private bool IsCpu(PlayerColor seat) => seat != PlayerColor.None && _cpu.ContainsKey(seat);
+
+        /// <summary>UNDO takes back a human's pick only; a CPU would simply pick again (decision 7).</summary>
+        private bool UndoAllowed =>
+            _draft.CanUndo() == DraftRefusal.None && !IsCpu(_draft.LastPickSeat);
+
+        private PlayerColor FirstHuman()
+        {
+            foreach (var seat in _draft.Seats)
+                if (!IsCpu(seat)) return seat;
+            return PlayerColor.None;
+        }
+
+        /// <summary>The seat's CPU chooses and picks. Falls back to a random pick if it offers nothing.</summary>
+        private void CpuPick(PlayerColor seat)
+        {
+            var choice = _cpu[seat].PickDraft(_draft, seat);
+            if (choice == null || _draft.Pick(seat, choice) != DraftRefusal.None)
+                _draft.RandomPick(seat);
+
+            // The human pointer may have been on a seat that is now full.
+            if (_draft.Mode == DraftMode.AllPick && _active != PlayerColor.None && _draft.NextEmptySlot(_active) < 0)
+                AfterPick(_active);
+
+            MarkDirty();
+        }
+
+        /// <summary>Runs the CPU seats' clock and makes their picks when it is time.</summary>
+        private void DriveCpus(float elapsed)
+        {
+            if (_cpu.Count == 0 || _draft.IsComplete || _draft.IsTimeUp) return;
+
+            if (_draft.Mode == DraftMode.Snake)
+            {
+                var seat = _draft.CurrentSeat;
+                if (!IsCpu(seat))
+                {
+                    _cpuClock = CpuThink;
+                    return;
+                }
+
+                _cpuClock -= elapsed;
+                if (_cpuClock > 0f) return;
+
+                CpuPick(seat);
+                _cpuClock = CpuThink;
+                return;
+            }
+
+            _cpuClock -= elapsed;
+            if (_cpuClock > 0f) return;
+            _cpuClock = CpuPickInterval;
+
+            // The next CPU seat, in turn, that still has room.
+            var seats = new List<PlayerColor>(_cpu.Keys);
+            seats.Sort();
+            for (int step = 0; step < seats.Count; step++)
+            {
+                var seat = seats[(_cpuTurn + step) % seats.Count];
+                if (_draft.CanPickAny(seat) != DraftRefusal.None) continue;
+
+                _cpuTurn = (_cpuTurn + step + 1) % seats.Count;
+                CpuPick(seat);
+                return;
+            }
+        }
+
         private void Focus(OperatorDefinition op)
         {
             if (_focus == op) return;
@@ -300,6 +421,7 @@ namespace NonaRoyale.Unity.View
                 // Unscaled: the draft happens outside the match, whatever the pause menu left behind.
                 // Capped, so a stalled frame (editor pause, lost focus) cannot eat the clock at once.
                 float elapsed = Mathf.Min(Time.unscaledDeltaTime, MaxClockStep);
+                DriveCpus(elapsed);
                 if (_draft.Tick(elapsed) > 0) MarkDirty();
 
                 if (_draft.IsTimeUp)
@@ -490,9 +612,10 @@ namespace NonaRoyale.Unity.View
 
             if (allPick)
             {
+                string cpus = _cpu.Count > 0 ? " CPU seats pick on their own." : "";
                 UiKit.Caption(Content(_header, "hint", 22f),
                     $"Choose a seat (click it or press 1–{_draft.Seats.Count}), then click operators. " +
-                    "Click a filled slot to clear it.",
+                    "Click a filled slot to clear it." + cpus,
                     UiTheme.FontSmall, UiTheme.TextOff, TextAlignmentOptions.MidlineLeft);
                 return;
             }
@@ -523,15 +646,18 @@ namespace NonaRoyale.Unity.View
 
             if (_draft.Mode == DraftMode.AllPick)
             {
-                string who = SeatWord(_active);
-                return _draft.IsComplete
-                    ? "Every slot is filled. START deals now, or swap until the clock runs out."
-                    : $"{who} is picking · {_draft.PickCount} of {_draft.TotalPicks} slots filled";
+                if (_draft.IsComplete)
+                    return "Every slot is filled. START deals now, or swap until the clock runs out.";
+
+                string who = _active == PlayerColor.None ? "The CPUs are" : $"{SeatWord(_active)} is";
+                return $"{who} picking · {_draft.PickCount} of {_draft.TotalPicks} slots filled";
             }
 
-            return _draft.IsComplete
-                ? "The draft is complete. START deals the match."
-                : $"{SeatWord(_draft.CurrentSeat)} to pick · pick {_draft.PickCount + 1} of {_draft.TotalPicks}";
+            if (_draft.IsComplete) return "The draft is complete. START deals the match.";
+
+            var seat = _draft.CurrentSeat;
+            string cpu = IsCpu(seat) ? " (CPU)" : "";
+            return $"{SeatWord(seat)}{cpu} to pick · pick {_draft.PickCount + 1} of {_draft.TotalPicks}";
         }
 
         // ── Roster grid ──────────────────────────────────────────────────
@@ -696,6 +822,7 @@ namespace NonaRoyale.Unity.View
         private void SeatRow(PlayerColor seat, int index)
         {
             bool allPick = _draft.Mode == DraftMode.AllPick;
+            bool cpu = IsCpu(seat);
             bool picking = allPick ? seat == _active && !_draft.IsComplete : seat == _draft.CurrentSeat;
             var colour = UiTheme.Seat(seat);
 
@@ -703,7 +830,7 @@ namespace NonaRoyale.Unity.View
             UiKit.Column(slot, 0f).childForceExpandHeight = true;
 
             var button = UiKit.Button(slot, "", () => SetActive(seat), selected: picking,
-                interactable: allPick && !Locked);
+                interactable: allPick && !cpu && !Locked);
             var row = (RectTransform)button.transform;
             var layout = UiKit.Row(row, 8f);
             layout.padding = new RectOffset(14, 10, 8, 8);
@@ -716,18 +843,20 @@ namespace NonaRoyale.Unity.View
             gemRect.anchorMin = gemRect.anchorMax = new Vector2(0.5f, 0.5f);
             gemRect.sizeDelta = new Vector2(14f, 21f);
 
+            // Wide enough for "CPU · BRAWLER · 2/3".
             var names = UiKit.Rect("names", row);
-            UiKit.Fixed(names, 110f);
+            UiKit.Fixed(names, 150f);
             UiKit.Column(names, 0f).childAlignment = TextAnchor.MiddleLeft;
 
-            string key = allPick && index < 4 ? $"  <size=70%><color=#{UiTheme.Hex(UiTheme.Gold)}>{index + 1}</color></size>" : "";
+            string key = allPick && !cpu && index < 4 ? $"  <size=70%><color=#{UiTheme.Hex(UiTheme.Gold)}>{index + 1}</color></size>" : "";
             var name = UiKit.Label(names, seat.ToString().ToUpperInvariant() + key, UiTheme.FontBody,
                 UiTheme.Readable(colour), bold: true);
             UiKit.Size(name, height: 26f);
 
-            string state = picking ? "PICKING"
-                : _draft.NextEmptySlot(seat) < 0 ? "READY"
+            string state = _draft.NextEmptySlot(seat) < 0 ? "READY"
+                : picking ? "PICKING"
                 : $"{_draft.FilledCount(seat)}/{_draft.SquadSize}";
+            if (cpu) state = $"CPU · {_cpu[seat].Personality.Label()} · {state}";
             var stateLabel = UiKit.Label(names, state, 11f, picking ? UiTheme.Cyan : UiTheme.TextDim, bold: true);
             stateLabel.characterSpacing = UiTheme.HeadingSpacing * 0.5f;
             UiKit.Size(stateLabel, height: 16f);
@@ -748,7 +877,7 @@ namespace NonaRoyale.Unity.View
             }
 
             // Only ALL PICK clears; a snake slot is a plain, hoverable label.
-            bool clearable = _draft.CanClear(seat, slot) == DraftRefusal.None && !Locked;
+            bool clearable = _draft.CanClear(seat, slot) == DraftRefusal.None && !IsCpu(seat) && !Locked;
             var button = UiKit.Button(row, "", () => ClearSlot(seat, slot), interactable: clearable,
                 tint: UiTheme.PanelInset);
             UiKit.Fixed(button, SlotWidth);
@@ -868,8 +997,7 @@ namespace NonaRoyale.Unity.View
             }
             else
             {
-                FooterButton("UNDO", "Bksp", Undo, 170f,
-                    interactable: open && _draft.CanUndo() == DraftRefusal.None);
+                FooterButton("UNDO", "Bksp", Undo, 170f, interactable: open && UndoAllowed);
                 FooterButton("RANDOM REST", "", RandomRest, 210f, interactable: open && !_draft.IsComplete);
             }
 

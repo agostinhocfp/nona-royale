@@ -255,6 +255,14 @@ namespace NonaRoyale.Core.Draft
             return DraftRefusal.None;
         }
 
+        /// <summary>
+        /// SNAKE: the seat whose pick <see cref="Undo"/> would take back, or
+        /// <see cref="PlayerColor.None"/> when there is nothing to undo. The
+        /// draft screen refuses UNDO after a CPU's pick (BOTS.md decision 7).
+        /// </summary>
+        public PlayerColor LastPickSeat =>
+            Mode == DraftMode.Snake && _canUndo ? _seats[_lastSeatIndex] : PlayerColor.None;
+
         /// <summary>SNAKE: whether the last pick can be taken back.</summary>
         public DraftRefusal CanUndo()
         {

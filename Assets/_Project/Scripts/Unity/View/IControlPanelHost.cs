@@ -27,6 +27,12 @@ namespace NonaRoyale.Unity.View
         MatchFactory.Match Match { get; }
         /// <summary>How the squads on the table were chosen, as setup names it (DR2).</summary>
         string SquadSummary { get; }
+
+        /// <summary>Whether the seat to play is a CPU's (BOT2). Every intent is ignored while it is.</summary>
+        bool CpuTurn { get; }
+
+        /// <summary>"CPU · BRAWLER" for a CPU seat, null for a human one (BOT3).</summary>
+        string SeatTag(PlayerColor seat);
         IReadOnlyList<string> Log { get; }
 
         OperatorState SelectedOperator { get; }

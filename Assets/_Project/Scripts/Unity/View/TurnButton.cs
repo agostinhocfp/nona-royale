@@ -72,7 +72,8 @@ namespace NonaRoyale.Unity.View
             if (_slot == null || engine == null) return;
 
             var dice = engine.UnspentDice;
-            string key = $"{engine.Phase}|{engine.MatchOver}|{engine.MustSpendRoll}|{engine.CanRollAgain}|{string.Join(",", dice)}";
+            bool cpu = _host != null && _host.CpuTurn;
+            string key = $"{engine.Phase}|{engine.MatchOver}|{engine.MustSpendRoll}|{engine.CanRollAgain}|{string.Join(",", dice)}|{cpu}|{(cpu ? engine.CurrentPlayer.Color.ToString() : "")}";
             if (key == _shown) return;
             _shown = key;
 
@@ -98,7 +99,18 @@ namespace NonaRoyale.Unity.View
             Color tint;
             Color accent;
 
-            if (engine.Phase == TurnPhase.AwaitingRoll || (engine.CanRollAgain && dice.Count == 0))
+            if (cpu)
+            {
+                // A CPU seat is playing: the button names it and does nothing (BOT2).
+                var seat = engine.CurrentPlayer.Color;
+                label = $"{seat.ToString().ToUpperInvariant()} IS THINKING";
+                hint = "hold Space to hurry";
+                enabled = false;
+                pulse = false;
+                tint = UiTheme.ButtonFill;
+                accent = UiTheme.Readable(BoardLayout.ColourOf(seat));
+            }
+            else if (engine.Phase == TurnPhase.AwaitingRoll || (engine.CanRollAgain && dice.Count == 0))
             {
                 label = engine.Phase == TurnPhase.AwaitingRoll ? "ROLL" : "ROLL AGAIN";
                 hint = "Space";
@@ -139,7 +151,8 @@ namespace NonaRoyale.Unity.View
             var column = UiKit.Column(rect, 0f, 6);
             column.childAlignment = TextAnchor.MiddleCenter;
 
-            var title = UiKit.Label(rect, label, 22f, enabled ? UiTheme.Text : UiTheme.TextDim, TextAlignmentOptions.Center, bold: true);
+            var title = UiKit.Label(rect, label, cpu ? 17f : 22f,
+                enabled ? UiTheme.Text : cpu ? accent : UiTheme.TextDim, TextAlignmentOptions.Center, bold: true);
             title.characterSpacing = UiTheme.HeadingSpacing * 0.5f;
             UiKit.Label(rect, hint, 13f, enabled ? accent : UiTheme.TextOff, TextAlignmentOptions.Center);
 
