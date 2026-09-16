@@ -26,6 +26,11 @@ namespace NonaRoyale.Unity.View
     /// <b>Select, then cast</b> (PRESENTATION §4): choosing an ability draws
     /// its reach on the board, and nothing is spent until Cast or Enter.
     ///
+    /// <b>The dice arrive from the dice moment</b> (MOTION.md increment MO1).
+    /// While the roller still owns a new roll (<c>DiceHeld</c>), the slots
+    /// read "rolling"; once it lets go, the faces pop in. The roller flies to
+    /// <see cref="DiceFaces"/>.
+    ///
     /// Its left and right edges follow whatever the side panels reserve, and
     /// the composition root sets them through <see cref="SetInsets"/>. The
     /// background blocks board clicks.
@@ -42,10 +47,19 @@ namespace NonaRoyale.Unity.View
 
         public bool Visible { get; set; } = true;
 
+        /// <summary>
+        /// The row the dice faces sit in, as last built. The dice roller flies
+        /// here. Null (or destroyed) between rebuilds.
+        /// </summary>
+        public RectTransform DiceFaces { get; private set; }
+
         private IControlPanelHost _host;
         private RectTransform _tray;
         private RectTransform _content;
         private bool _dirty;
+
+        /// <summary>The faces last shown, so a new roll pops in once rather than on every rebuild.</summary>
+        private string _shownDice = "";
 
         public void Bind(RectTransform canvasRect, IControlPanelHost host)
         {
@@ -136,17 +150,35 @@ namespace NonaRoyale.Unity.View
             var faces = UiKit.Rect("faces", box);
             UiKit.Row(faces, 10f);
             UiKit.Size(faces, height: 64f);
+            DiceFaces = faces;
 
             var dice = engine.UnspentDice;
+            bool held = _host.DiceHeld;
 
-            if (dice.Count == 0)
+            if (held)
+            {
+                // The roller has the new faces; the slots wait for them.
+                Die(faces, "·", false);
+                Die(faces, "·", false);
+                _shownDice = "";
+            }
+            else if (dice.Count == 0)
             {
                 Die(faces, "–", false);
                 Die(faces, "–", false);
+                _shownDice = "";
             }
             else
             {
-                foreach (int face in dice) Die(faces, face.ToString(), true);
+                string key = $"{engine.CurrentPlayer.Color}|{engine.CurrentPlayer.TurnIndex}|{string.Join(",", dice)}";
+                bool arriving = key != _shownDice && dice.Count >= 2;
+                _shownDice = key;
+
+                for (int i = 0; i < dice.Count; i++)
+                {
+                    var die = Die(faces, dice[i].ToString(), true);
+                    if (arriving) UiPopIn.On(die, i * 0.06f);
+                }
             }
 
             bool matchOn = !engine.MatchOver;
@@ -156,7 +188,8 @@ namespace NonaRoyale.Unity.View
 
             // Roll and End turn live on the turn button at the board's corner
             // (TurnButton); the tray only shows the dice and what they need.
-            var hint = UiKit.Label(box, DiceHint(engine, dice.Count, canRoll, canEnd), UiTheme.FontSmall,
+            string hintText = held ? "Rolling…" : DiceHint(engine, dice.Count, canRoll, canEnd);
+            var hint = UiKit.Label(box, hintText, UiTheme.FontSmall,
                 canEnd && !canRoll ? UiTheme.Cyan : UiTheme.TextDim, wrap: true);
             UiKit.Size(hint, height: 40f);
         }
@@ -173,7 +206,7 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>An ivory die with a brass edge; a spent slot is a dim inset.</summary>
-        private static void Die(Transform parent, string face, bool live)
+        private static RectTransform Die(Transform parent, string face, bool live)
         {
             var die = UiKit.Rect("die", parent);
             UiKit.Sliced(die, DecoSprites.ButtonFill, live ? UiTheme.DieFace : UiTheme.PanelInset);
@@ -181,6 +214,7 @@ namespace NonaRoyale.Unity.View
             UiKit.Size(die, 64f, 64f);
             UiKit.Caption(die, face, 36f, live ? UiTheme.DieInk : UiTheme.TextOff,
                 TextAlignmentOptions.Center).fontStyle = FontStyles.Bold;
+            return die;
         }
 
         // ── Operator ─────────────────────────────────────────────────────

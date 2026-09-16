@@ -31,6 +31,12 @@ namespace NonaRoyale.Unity.View
         /// <summary>Whether the seat to play is a CPU's (BOT2). Every intent is ignored while it is.</summary>
         bool CpuTurn { get; }
 
+        /// <summary>
+        /// True while the dice moment still owns the new faces (MO1). The tray
+        /// shows them only once the roller has handed them over.
+        /// </summary>
+        bool DiceHeld { get; }
+
         /// <summary>"CPU · BRAWLER" for a CPU seat, null for a human one (BOT3).</summary>
         string SeatTag(PlayerColor seat);
         IReadOnlyList<string> Log { get; }

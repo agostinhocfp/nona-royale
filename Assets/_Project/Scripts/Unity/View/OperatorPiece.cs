@@ -96,6 +96,13 @@ namespace NonaRoyale.Unity.View
         /// <summary>True while the piece is still travelling, so the view can wait before re-posing it.</summary>
         public bool IsWalking => _path.Count > 0;
 
+        /// <summary>
+        /// True while the piece walks or rests on a contested cell before a
+        /// bounce, so the presentation queue can wait for the whole move
+        /// (MOTION.md increment MO1).
+        /// </summary>
+        public bool IsMoving => _path.Count > 0 || _hold > 0f;
+
         /// <summary>The drawn radius in world units, for hit testing. Ignores the hover lift.</summary>
         public float Radius => _baseScale * 0.4f;
 

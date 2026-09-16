@@ -49,6 +49,13 @@ namespace NonaRoyale.Unity.Composition
     /// flow out of step. While any card is open, the board and the game keys
     /// are ignored.
     ///
+    /// <b>Batches play one after another</b> (MOTION.md increment MO1). The
+    /// engine answers at once; the board catches up through a
+    /// <see cref="PresentationQueue"/>: dice, walks, hits, knockouts, then the
+    /// settle that repositions pieces and refreshes the HUD. Commands wait
+    /// while it is busy. Space and E pressed near the end of a step are kept
+    /// briefly and sent when it finishes; the CPU driver waits for it too.
+    ///
     /// <b>Display settings persist</b> (increment J): health labels, the log
     /// and the dev panel are loaded from <c>PlayerPrefs</c> at Start, with the
     /// inspector values as first-run defaults, and saved whenever they change.
@@ -173,6 +180,34 @@ namespace NonaRoyale.Unity.Composition
         /// <summary>Plays the CPU seats of the match on the table (BOT2). Null without a match.</summary>
         private BotDriver _bots;
 
+        // ── Presentation (MO1) ───────────────────────────────────────────
+
+        /// <summary>How long a hit's numbers own the board before the next step, in scaled seconds.</summary>
+        private const float HitHoldSeconds = 0.3f;
+
+        /// <summary>How long a knockout burst shows before the piece returns to its yard, in scaled seconds.</summary>
+        private const float KnockoutHoldSeconds = 0.45f;
+
+        /// <summary>How long a Space or E press waits for a busy board, in real seconds.</summary>
+        private const float InputBufferSeconds = 0.4f;
+
+        /// <summary>The queue and dice run this much faster while Space hurries a CPU turn.</summary>
+        private const float HurrySpeed = 3f;
+
+        private enum BufferedIntent { None, Roll, EndTurn }
+
+        private PresentationQueue _queue;
+        private DiceRoller _dice;
+
+        /// <summary>True from a roll's arrival until its settle: the tray waits for the dice moment.</summary>
+        private bool _diceHeld;
+
+        private BufferedIntent _buffered;
+        private float _bufferedAt;
+
+        /// <summary>Whether the board is still catching up with the engine.</summary>
+        private bool Busy => _queue != null && _queue.IsBusy;
+
         /// <summary>The screens the app moves between (GUI increment J).</summary>
         public enum AppScreen { Title, Setup, Draft, Match, Paused, Results }
 
@@ -278,6 +313,8 @@ namespace NonaRoyale.Unity.Composition
             foreach (var piece in _pieces)
                 if (piece != null) Destroy(piece.gameObject);
 
+            StopPresentation();
+
             _pieces.Clear();
             _log.Clear();
             _match = null;
@@ -336,6 +373,8 @@ namespace NonaRoyale.Unity.Composition
 
         private void NewMatch()
         {
+            StopPresentation();
+
             foreach (var piece in _pieces)
                 if (piece != null) Destroy(piece.gameObject);
 
@@ -446,6 +485,11 @@ namespace NonaRoyale.Unity.Composition
             _cellLabels = GetComponent<CellLabelLayer>() ?? gameObject.AddComponent<CellLabelLayer>();
             _cellLabels.Bind(hud);
 
+            // After the tray, so the dice draw over it on their way in.
+            _queue = Ensure<PresentationQueue>();
+            _dice = Ensure<DiceRoller>();
+            _dice.Bind(hud, () => _tray != null ? _tray.DiceFaces : null);
+
             // Last, so the menu draws over every other HUD layer.
             _pause = GetComponent<PauseMenu>() ?? gameObject.AddComponent<PauseMenu>();
             _pause.Bind(_hudRoot.Root, this);
@@ -473,6 +517,27 @@ namespace NonaRoyale.Unity.Composition
             }
 
             return new BotDriver(brains);
+        }
+
+        /// <summary>
+        /// The component of this type on this object, added if missing. An
+        /// explicit null check rather than <c>??</c>, which a destroyed
+        /// component can slip past.
+        /// </summary>
+        private T Ensure<T>() where T : Component
+        {
+            var component = GetComponent<T>();
+            return component != null ? component : gameObject.AddComponent<T>();
+        }
+
+        /// <summary>Drops whatever the board was still playing, before a teardown or a new deal.</summary>
+        private void StopPresentation()
+        {
+            if (_queue != null) _queue.Clear();
+            if (_dice != null) _dice.Skip();
+
+            _diceHeld = false;
+            _buffered = BufferedIntent.None;
         }
 
         /// <summary>Screen width the OnGUI panel occupies, including its margin. Pixels.</summary>
@@ -638,13 +703,51 @@ namespace NonaRoyale.Unity.Composition
 
             if (_match == null) return;
 
+            // Space hurries a CPU turn's animation as well as its thinking.
+            float speed = CpuTurn && Input.GetKey(KeyCode.Space) ? HurrySpeed : 1f;
+            if (_queue != null) _queue.Speed = speed;
+            if (_dice != null) _dice.Speed = speed;
+
             DriveBots();
 
             HandleKeys();
             UpdateHover();
 
-            if (Input.GetMouseButtonDown(0)) HandleBoardClick();
+            // A click on a board that is still catching up would aim at where
+            // pieces were, not where they are.
+            if (!Busy && Input.GetMouseButtonDown(0)) HandleBoardClick();
             if (Input.GetMouseButtonDown(1)) StepBack();
+
+            ReleaseBufferedIntent();
+        }
+
+        /// <summary>Keeps a Roll or End turn pressed while the board was busy, for a moment.</summary>
+        private void Buffer(BufferedIntent intent)
+        {
+            _buffered = intent;
+            _bufferedAt = Time.unscaledTime;
+        }
+
+        /// <summary>Sends the kept press once the board is free, if it is still fresh.</summary>
+        private void ReleaseBufferedIntent()
+        {
+            if (_buffered == BufferedIntent.None || Busy) return;
+
+            var intent = _buffered;
+            _buffered = BufferedIntent.None;
+
+            if (Time.unscaledTime - _bufferedAt > InputBufferSeconds) return;
+
+            if (intent == BufferedIntent.Roll) Host.Roll();
+            else Host.EndTurn();
+        }
+
+        private bool AnyPieceMoving()
+        {
+            foreach (var piece in _pieces)
+                if (piece != null && piece.IsMoving) return true;
+
+            return false;
         }
 
         // ── CPU seats (BOT2) ─────────────────────────────────────────────
@@ -661,17 +764,10 @@ namespace NonaRoyale.Unity.Composition
         {
             if (_bots == null || !_bots.HasBots) return;
 
-            bool walking = false;
-            foreach (var piece in _pieces)
-            {
-                if (piece != null && piece.IsWalking)
-                {
-                    walking = true;
-                    break;
-                }
-            }
+            // The board finishes showing one action before the next is chosen.
+            bool busy = Busy || AnyPieceMoving();
 
-            var command = _bots.Tick(_match, Time.deltaTime, mayAct: true, piecesBusy: walking,
+            var command = _bots.Tick(_match, Time.deltaTime, mayAct: true, presentationBusy: busy,
                 cpuSpeed, hurry: Input.GetKey(KeyCode.Space));
             if (command == null) return;
 
@@ -731,6 +827,9 @@ namespace NonaRoyale.Unity.Composition
 
             if (Input.GetKeyDown(KeyCode.Space)) Host.Roll();
             if (Input.GetKeyDown(KeyCode.E)) Host.EndTurn();
+
+            // Space and E buffer through Host while the board is busy; the rest wait for it.
+            if (Busy) return;
 
             if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) Host.Cast();
 
@@ -1006,11 +1105,94 @@ namespace NonaRoyale.Unity.Composition
                 _selectedCell = null;
             }
 
-            if (!immediate)
+            if (immediate || _queue == null)
             {
-                PlayFeedback(events);
-                WalkMoves(events);
+                // Whatever was still playing is overtaken; its settle runs now.
+                if (_queue != null) _queue.Flush();
+                if (_dice != null) _dice.Skip();
+
+                SettleBatch(events, immediate: true, castBy, cast, fromBot);
+                return;
             }
+
+            Present(events, castBy, cast, fromBot);
+        }
+
+        /// <summary>
+        /// Queues a batch's presentation: dice, walks, hits, knockouts, then
+        /// the settle (MOTION.md decision 2). Steps with nothing to show are
+        /// left out.
+        /// </summary>
+        /// <remarks>
+        /// <b>Hits play after the walk, before the settle.</b> The mover has
+        /// arrived and the victim has not been moved yet, so a number or a
+        /// burst lands on the cell where the thing happened, which is what
+        /// playing feedback before repositioning always meant to do.
+        /// </remarks>
+        private void Present(
+            IReadOnlyList<IGameEvent> events, OperatorState castBy, AbilityDefinition cast, bool fromBot)
+        {
+            DiceRolled roll = null;
+            bool walks = false, hits = false, knockouts = false;
+
+            foreach (var e in events)
+            {
+                switch (e)
+                {
+                    case DiceRolled rolled: roll = rolled; break;
+                    case OperatorMoved moved when moved.AttemptedTo > moved.From: walks = true; break;
+                    case OperatorNeutralized _: knockouts = true; break;
+                    case DamageDealt damaged when damaged.Amount > 0: hits = true; break;
+                    case DamageEvaded _:
+                    case DamageAbsorbed _:
+                    case HealApplied _:
+                    case OperatorRegenerated _:
+                        hits = true;
+                        break;
+                }
+            }
+
+            if (roll != null && _dice != null)
+            {
+                // The tray waits from now, not from when the step starts.
+                _diceHeld = true;
+                MarkHudDirty();
+
+                var seat = _match.Engine.CurrentPlayer.Color;
+                var centre = _layout.HomeGoalPosition;
+
+                _queue.Enqueue(PresentationBeat.DiceRolled,
+                    () => _dice.Play(roll.Roll.First, roll.Roll.Second, seat, centre, roll.GrantsAnotherRoll),
+                    () => !_dice.IsTumbling);
+                _queue.Enqueue(PresentationBeat.DiceLanded, null, () => !_dice.IsRolling);
+            }
+
+            if (walks)
+                _queue.Enqueue(PresentationBeat.Walk, () => WalkMoves(events), () => !AnyPieceMoving());
+
+            if (hits)
+                _queue.Enqueue(PresentationBeat.Hit, () => PlayFeedback(events, knockouts: false), hold: HitHoldSeconds);
+
+            if (knockouts)
+                _queue.Enqueue(PresentationBeat.Knockout, () => PlayFeedback(events, knockouts: true), hold: KnockoutHoldSeconds);
+
+            _queue.Enqueue(PresentationBeat.Settle,
+                () => SettleBatch(events, immediate: false, castBy, cast, fromBot),
+                essential: true);
+        }
+
+        /// <summary>
+        /// Brings the board and the HUD up to the engine: pieces, marks,
+        /// devices, the top bar, the turn button, the history and, at the end,
+        /// the results.
+        /// </summary>
+        private void SettleBatch(
+            IReadOnlyList<IGameEvent> events, bool immediate,
+            OperatorState castBy, AbilityDefinition cast, bool fromBot)
+        {
+            if (_match == null) return;
+
+            _diceHeld = false;
 
             Reposition(immediate);
             RefreshHighlights();
@@ -1133,28 +1315,35 @@ namespace NonaRoyale.Unity.Composition
 
         bool IControlPanelHost.CpuTurn => CpuTurn;
 
+        bool IControlPanelHost.DiceHeld => _diceHeld;
+
         string IControlPanelHost.SeatTag(PlayerColor seat) => SeatTag(seat);
 
         // Every intent below is ignored on a CPU's turn: the seat is not the pointer's to command.
+        // Commands also wait for a busy board (MO1): Roll and End turn are kept briefly, the rest dropped.
 
         void IControlPanelHost.Roll()
         {
-            if (!CpuTurn) Send(new RollDiceCommand());
+            if (CpuTurn) return;
+            if (Busy) Buffer(BufferedIntent.Roll);
+            else Send(new RollDiceCommand());
         }
 
         void IControlPanelHost.EndTurn()
         {
-            if (!CpuTurn) Send(new EndTurnCommand());
+            if (CpuTurn) return;
+            if (Busy) Buffer(BufferedIntent.EndTurn);
+            else Send(new EndTurnCommand());
         }
 
         void IControlPanelHost.Deploy(OperatorState op)
         {
-            if (!CpuTurn) Send(new DeployCommand(op.Id));
+            if (!CpuTurn && !Busy) Send(new DeployCommand(op.Id));
         }
 
         void IControlPanelHost.Move(OperatorState op, int? dieFace)
         {
-            if (!CpuTurn) Send(new MoveCommand(op.Id, dieFace));
+            if (!CpuTurn && !Busy) Send(new MoveCommand(op.Id, dieFace));
         }
 
         void IControlPanelHost.ToggleOperator(OperatorState op)
@@ -1196,7 +1385,7 @@ namespace NonaRoyale.Unity.Composition
 
         void IControlPanelHost.Cast()
         {
-            if (CpuTurn || !Host.CastReady) return;
+            if (CpuTurn || Busy || !Host.CastReady) return;
 
             Send(new UseAbilityCommand(
                 _selectedOperator.Id, _selectedAbility.Id,
@@ -1370,12 +1559,15 @@ namespace NonaRoyale.Unity.Composition
         /// already the yard by the time the event arrives, and the burst belongs
         /// on the cell it fell on.
         /// </remarks>
-        private void PlayFeedback(IReadOnlyList<IGameEvent> events)
+        /// <param name="knockouts">True for the knockout bursts only, false for everything else.</param>
+        private void PlayFeedback(IReadOnlyList<IGameEvent> events, bool knockouts)
         {
             if (_feedback == null) return;
 
             foreach (var e in events)
             {
+                if ((e is OperatorNeutralized) != knockouts) continue;
+
                 var damaged = e as DamageDealt;
                 if (damaged != null && damaged.Amount > 0)
                 {

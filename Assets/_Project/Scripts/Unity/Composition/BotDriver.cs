@@ -21,8 +21,9 @@ namespace NonaRoyale.Unity.Composition
     /// the HUD exactly as a human one does. The root reports the events back
     /// through <see cref="Observe"/>.
     ///
-    /// <b>Waiting:</b> nothing is proposed while a card is open, while pieces
-    /// are still walking, or before the think delay has run. The delay runs on
+    /// <b>Waiting:</b> nothing is proposed while a card is open, while the
+    /// board is still presenting the last action (MO1), or before the think
+    /// delay has run. The delay runs on
     /// the time the root passes in, which is scaled time, so pausing freezes
     /// the CPUs (decision 8).
     ///
@@ -72,13 +73,13 @@ namespace NonaRoyale.Unity.Composition
         /// </summary>
         /// <param name="elapsed">Scaled seconds since the last tick.</param>
         /// <param name="mayAct">False while a card is open or the match is not on the table.</param>
-        /// <param name="piecesBusy">True while any piece is still walking.</param>
-        public ICommand Tick(MatchFactory.Match match, float elapsed, bool mayAct, bool piecesBusy,
+        /// <param name="presentationBusy">True while the board is still presenting the last action. Ignored at Instant.</param>
+        public ICommand Tick(MatchFactory.Match match, float elapsed, bool mayAct, bool presentationBusy,
             BotSpeed speed, bool hurry)
         {
             if (match == null || !IsCpuTurn(match.Engine)) { _waited = 0f; return null; }
             if (!mayAct) return null;
-            if (piecesBusy && speed != BotSpeed.Instant) return null;
+            if (presentationBusy && speed != BotSpeed.Instant) return null;
 
             var engine = match.Engine;
             var seat = engine.CurrentPlayer;
