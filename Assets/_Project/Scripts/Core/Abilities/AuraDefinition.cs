@@ -3,9 +3,27 @@ using System;
 
 namespace NonaRoyale.Core.Abilities
 {
+    /// <summary>Which side an aura reaches.</summary>
+    /// <remarks>
+    /// <b>Values are explicit and append-only</b>, like every enum the core
+    /// may one day serialise.
+    /// </remarks>
+    public enum AuraSide
+    {
+        /// <summary>Operators of every other seat. Bouncer's Intimidating Presence.</summary>
+        Enemies = 0,
+
+        /// <summary>
+        /// The projecting operator's own squad, never the projector itself.
+        /// Lethe's Catalyst.
+        /// </summary>
+        Allies = 1
+    }
+
     /// <summary>
-    /// A permanently-on effect an operator projects onto enemies near it.
-    /// Bouncer's Intimidating Presence is the only one on the alpha roster.
+    /// A permanently-on effect an operator projects onto operators near it.
+    /// Bouncer's Intimidating Presence slows enemies; Lethe's Catalyst hastens
+    /// allies.
     /// </summary>
     /// <remarks>
     /// <b>An aura is not a status.</b> It has no duration, no application event
@@ -16,17 +34,34 @@ namespace NonaRoyale.Core.Abilities
     ///
     /// It also survives stun, because a passive is who an operator is rather
     /// than what it does.
+    ///
+    /// <b>Two payloads, and they travel on different channels (2026-09-17).</b>
+    /// <see cref="SpeedModifier"/> is a signed speed delta and joins the speed
+    /// channel. <see cref="GrantsHaste"/> makes the recipient count as
+    /// Hastened for the move being computed — flat extra cells, never speed
+    /// (§5.9). Catalyst uses haste rather than a speed bonus precisely so it
+    /// cannot push anybody past the 1.5 ceiling, which the speed channel does
+    /// not enforce.
     /// </remarks>
     public sealed class AuraDefinition
     {
-        public AuraDefinition(string name, int radius, double speedModifier)
+        public AuraDefinition(
+            string name,
+            int radius,
+            double speedModifier,
+            AuraSide side = AuraSide.Enemies,
+            bool grantsHaste = false)
         {
             if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("An aura needs a name.", nameof(name));
             if (radius < 0) throw new ArgumentOutOfRangeException(nameof(radius));
+            if (speedModifier == 0.0 && !grantsHaste)
+                throw new ArgumentException("An aura that neither changes speed nor grants haste does nothing.");
 
             Name = name;
             Radius = radius;
             SpeedModifier = speedModifier;
+            Side = side;
+            GrantsHaste = grantsHaste;
         }
 
         public string Name { get; }
@@ -34,9 +69,20 @@ namespace NonaRoyale.Core.Abilities
         /// <summary>Track steps in either direction.</summary>
         public int Radius { get; }
 
-        /// <summary>Signed change to an affected enemy's speed multiplier.</summary>
+        /// <summary>Signed change to an affected operator's speed multiplier. Zero for none.</summary>
         public double SpeedModifier { get; }
 
-        public override string ToString() => $"{Name} (r{Radius}, {SpeedModifier:+0.0;-0.0})";
+        /// <summary>Who it reaches.</summary>
+        public AuraSide Side { get; }
+
+        /// <summary>Whether an operator it reaches counts as Hastened (§5.9).</summary>
+        public bool GrantsHaste { get; }
+
+        public override string ToString()
+        {
+            string payload = GrantsHaste ? "haste" : $"{SpeedModifier:+0.0;-0.0}";
+            string side = Side == AuraSide.Allies ? "allies" : "enemies";
+            return $"{Name} (r{Radius}, {payload}, {side})";
+        }
     }
 }

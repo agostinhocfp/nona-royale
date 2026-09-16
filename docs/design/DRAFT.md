@@ -93,3 +93,7 @@ Before the match, the seats choose their three operators from the full roster in
   - **The active-seat pointer** (keys 1–4, seat rows) should skip CPU seats.
   - **UNDO in SNAKE** can revert a CPU pick. Decide whether it should step back past CPU picks to the last human pick.
   - **The CPU draft picker** needs only `Available(seat)`, `CanPick` and the draft RNG. It must not draw from the match RNG.
+- 2026-09-17 — **Tenth operator: the grid widens** (Lethe, `COMBAT_SYSTEMS.md` §10.10). The grid keeps its three rows and its footprint and takes as many columns as the pool needs, with a minimum of three. Ten to twelve operators give four columns of 265-wide cards instead of three of 358. Past twelve the cards are too narrow, and the layout needs a decision (Fuse, Ghost and Revú would make thirteen).
+  - An aura now fills the ability line after an operator's abilities, as `Catalyst · aura · r2`. Bouncer's card used to show `— not yet written —` in that slot. The detail panel names what the aura does ("slows enemies", "hastens allies") and no longer calls a two-ability kit with an aura incomplete.
+  - `PieceShape`: Lethe is a six-pointed star. `OperatorCopy`: her role reads **Catalyst**.
+  - **Play Mode check owed:** the narrower cards' stats row (HP, SPD, the HASTE and AURA tags) and the ability lines at 265 px. It compiled against the Unity 6000.6 DLLs, which proves nothing about layout.

@@ -1,7 +1,7 @@
 # ADR-0007: Lingering Zones and Board-Reading Riders
 
 > Location in repo: `docs/decisions/0007-lingering-zones-and-board-riders.md`
-> Status: **Accepted**, with one open design choice (see the end)
+> Status: **Accepted**, with one open design choice (see the end) · **Amendment 1, 2026-09-17** (crowd zones)
 > Date: 2026-09-14 (decision, landed with Nuetu) · recorded 2026-09-15
 > Related: ADR-0006 (cell-targeted casting), `docs/design/COMBAT_SYSTEMS.md` §5.1, §9.1
 
@@ -38,6 +38,16 @@ ADR-0006 gave the core cell-anchored effects that **fire once and are deleted**.
 - **`Nuetu.cs` required no new engine capability beyond this.** The rest of his kit is existing vocabulary, which is what `AbilityResolver`'s contract predicted operators would eventually look like.
 - **Closed 2026-09-15: zones were not drawn,** for the same reason given in ADR-0006. `DeviceLayer` now draws them: an armed zone as a heavier area with a ring, a zone that has gone off as a fainter area with a thin ring (`CellEffectSnapshot.HasDetonated`).
 - **Zone numbers are reasoned, not measured.** They were walked down several times in one pass, together with Nuetu's health; `Nuetu.cs` records the history. Axes moved together are not independently measured.
+
+## Amendment 1 (2026-09-17): crowd zones, zones without a status, and per-source keys
+
+Lethe's **Eris' Exploit** is a zone whose damage depends on how many enemies it catches. It needed three changes. None of them is a new effect kind.
+
+1. **A third damage shape.** `AbilityEffect.CrowdZone` builds a `DeployZone` with `ScalesWithCrowd` set: each victim takes the payload once for every *other* victim, as one hit. N victims take N(N−1) between them per tick. Beacons divide the payload, zones bill it in full to each victim, and crowd zones multiply it by the rest of the crowd. A crowd of one is not hit at all: a zero-damage instance would still spend an evasion charge.
+2. **The status is optional.** `DeferredCellEffects.Deploy` takes a nullable status. An effect records "no status" as `Duration = 0`, which `AbilityEffect.CarriesStatus` now names. `Status` defaults to `Stun`, so any caller that reads `Status` on a non-status effect must check `CarriesStatus` first. The bots' draft picker was counting Eris' Exploit as a stun until it did.
+3. **Entries are keyed on cell, seat and source operator.** Under the old key (cell and seat), a squadmate casting on a cell replaced the device already there. With Lethe and Nuetu on one seat, that meant a Killzone could be overwritten by an Eris' Exploit. A Kian beacon could be overwritten the same way, before Lethe existed. The same operator re-casting on its own cell still replaces, which is decision 1's "sources do not stack" for a single source. `HasBeaconOn` still asks about the seat as a whole.
+
+**The rider reads only the caster's own zones.** `HasActiveZoneFor(owner, sourceOperatorId)` takes the caster, because Bio-Link Rage's rider is "while one of *his* Killzones is live", and a squadmate's crowd zone is not his. This narrows decision 6. It does not settle the open choice below, which is about *where* Nuetu stands, not *whose* zone it is.
 
 ## Open design choice
 

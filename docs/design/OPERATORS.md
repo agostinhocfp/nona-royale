@@ -18,7 +18,7 @@ That divergence is the same failure that caused the project restart, one layer u
 
 ## Roster scope
 
-The pool is **nine operators**; each player fields **three per match**, distinct within a squad (`GDD.md` §2.2). **The pool is full and all nine are complete** — Mimi's Cryo Field, the last missing ability, landed 2026-09-16 (`COMBAT_SYSTEMS.md` §10.4). **Kian and Nuetu have no entry in this file yet**; their kits are in §10.6 and §10.7, and their identities are unwritten.
+The pool is **ten operators**; each player fields **three per match**, distinct within a squad (`GDD.md` §2.2). **All ten are complete.** Mimi's Cryo Field, the last missing ability, landed 2026-09-16 (`COMBAT_SYSTEMS.md` §10.4), and Lethe joined complete on 2026-09-17 (§10.10). The tenth operator puts the pool past nine, which reopens the "Nona" question under Open items. **Kian and Nuetu have no entry in this file yet**; their kits are in §10.6 and §10.7, and their identities are unwritten.
 
 A new operator must be expressible in the existing combat rules. One that needs a genuinely new _mechanic_ gets an amendment to `COMBAT_SYSTEMS.md` — never a special case inside its own stat block. That rule is what stops the roster from becoming nine sets of bespoke exceptions, and it has now fired twice in earnest: Mimi's coordinate swap forced a sixth effect kind and a rewrite of §7.4, and Javi's cleanse forced a seventh — the first that removes from the status registry rather than adding to it.
 
@@ -170,6 +170,20 @@ The whole kit is a duel. Blind Spot puts him next to his target, and the threat 
 
 **Complete and in the pool.** His live kit is in `COMBAT_SYSTEMS.md` §10.9. Look, fiction, device and the Blind Spot name were settled 2026-09-15. Still open, and not his to settle alone: the **Duelist** tag is a seventh archetype, beside Brawler and Engineer.
 
+### Lethe — Catalyst _(archetype label provisional)_
+
+Added 2026-09-17, mechanics first. **Look, fiction and camp are unwritten**; backstories are deferred for the whole roster.
+
+Her kit is about where a squad stands. Allies who stay near her move faster, she can seal one of them in a bubble that ordinary damage cannot reach but that also holds them in place, and she punishes the enemy for bunching up: a patch of track where every enemy inside hurts every other enemy inside. She rewards her own side for standing together and punishes the other side for doing the same.
+
+Read at the table: _the one who decides where everyone stands._
+
+**Silhouette:** a six-pointed star, point up, like a spark. It is placeholder art: six points to stay distinct from Kian's five and Luka's four at the same size.
+
+**Device, still to design.** Per the constraints below, each power needs a plausible device: an emitter that speeds up nearby allies, a nanite lattice for the bubble, and something that makes a crowd turn on itself. The names already point that way: the ability is Nano Cell, and Eris is the goddess of discord.
+
+**Complete and in the pool.** Her live kit is in `COMBAT_SYSTEMS.md` §10.10. **Catalyst** is also the provisional archetype tag, which makes an eighth label beside Brawler, Engineer and Duelist.
+
 ---
 
 ## Design constraints on future operators
@@ -200,4 +214,5 @@ The whole kit is a duel. Blind Spot puts him next to his target, and the threat 
 - [ ] Write the remaining **four operators**, mechanically and in flavour.
 - [ ] Backstory and world placement — how the five connect to the casino, to each other, and to whoever runs the house.
 - [ ] Strengths, weaknesses, synergies, counters, playstyle notes per operator. Deferred to the balance pass; they are currently implied by the kits rather than stated.
-- [ ] Voice and naming conventions for the roster — "Nona" is nine, and the pool is nine. Whether that is coincidence or canon is undecided.
+- [ ] Voice and naming conventions for the roster — "Nona" is nine, and the pool was nine until Lethe made it ten (2026-09-17). Whether the number is canon is undecided; if it is, the pool needs a rule (nine in the draft at a time, or a rename), not a quiet tenth.
+- [ ] **Write Lethe**: look, fiction, device and camp (house, contractor or neither). Pronoun is "she", per the designer's note on Catalyst (2026-09-17).

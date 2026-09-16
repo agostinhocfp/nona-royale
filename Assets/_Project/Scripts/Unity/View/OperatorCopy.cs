@@ -28,6 +28,7 @@ namespace NonaRoyale.Unity.View
                 case "Sanity": return "Engineer";
                 case "Luka": return "Duelist";
                 case "Nuetu": return "Bruiser";
+                case "Lethe": return "Catalyst";
                 default: return FallbackRole;
             }
         }

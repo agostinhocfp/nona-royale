@@ -183,3 +183,10 @@ In setup, any seat can be HUMAN or CPU. CPU seats draft and play on their own, a
     - Bots beat the scripted players 70% of the time, up from 65–68%.
     - Watch in human games whether combat now feels too soft. Regen is the first thing to take back.
 - 2026-09-16 — **Haste nerfed to flat cells** (COMBAT_SYSTEMS §5.9): +1 on a roll of 6 or less, +2 above, once per roll per operator, capped at 3 a turn. Bots sweep before/after: noise only (Syla 31% → 32%, turns per seat 28.2 both). The payout fires about once a match, so judge it in human games.
+- 2026-09-17 — **Lethe taught to the bots** (`COMBAT_SYSTEMS.md` §10.10). The bots needed four fixes. Each is pinned by `LetheBotTests` and mutation-checked:
+  - **`BotBoard.ExpectedHit` reads the real shield pool** through the new `GameEngine.ShieldPoolOn`. It used to assume `ShieldPoolDefault` (2), so a bot would keep hitting a 99-point Nano Cell, and it misjudged part-spent plates.
+  - **A stun on an ally is a cost.** `CastPlanner.Buff` scores it at −2.5, the value of stunning an enemy. Nano Cell only scores above zero when the ally is threatened.
+  - **A cleanse also strips the ally's shield.** `HarmfulWorth` subtracts the protection the shield was still providing. A Javi bot no longer pops a bubble its side just paid for while the ally is under threat, but still frees a bubbled ally when nothing is near.
+  - **Crowd zones are scored per crowd.** `CastPlanner` multiplies by N−1 and ignores the status of an effect without one. `DraftPicker` no longer counts a stun aimed at allies, or a zone with no status, as control.
+  - **Bots sweep, 800 matches, before and after Lethe:** turns per seat 28.2 → 26.9, knockouts 13.6 → 12.4, casts 60.4 → 55.3. Lethe's win share is 24%, neutral, and no other operator moved more than 3 points. Nano Cell is cast 1.17 times a match, Eris' Exploit 1.04.
+  - **Seen in the same sweep, and not Lethe's doing:** Predator's Read and Cryo Field are cast 0.00 times a match, before and after. The planner has no scoring branch for `Watch` or `ProjectField` effects. That is worth its own look.

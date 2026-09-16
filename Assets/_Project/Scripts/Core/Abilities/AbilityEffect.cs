@@ -24,7 +24,8 @@ namespace NonaRoyale.Core.Abilities
             int bonusIfBleeding, int executeNumerator, int executeDenominator,
             int bonusInOwnZone = 0,
             double critChance = 0.0, int critMultiplier = 1, int heavyCritMultiplier = 1,
-            int heavyAboveMaxHealth = 0, int heavyBonus = 0)
+            int heavyAboveMaxHealth = 0, int heavyBonus = 0,
+            bool scalesWithCrowd = false)
         {
             Kind = kind;
             Scope = scope;
@@ -45,6 +46,7 @@ namespace NonaRoyale.Core.Abilities
             HeavyCritMultiplier = heavyCritMultiplier;
             HeavyAboveMaxHealth = heavyAboveMaxHealth;
             HeavyBonus = heavyBonus;
+            ScalesWithCrowd = scalesWithCrowd;
         }
 
         public EffectKind Kind { get; }
@@ -127,6 +129,23 @@ namespace NonaRoyale.Core.Abilities
         /// </summary>
         public int HeavyBonus { get; }
 
+        /// <summary>
+        /// For a zone: each victim takes the payload once for every <i>other</i>
+        /// victim caught with it, rather than once (ADR-0007 Amendment 1).
+        /// Lethe's Eris' Exploit.
+        /// </summary>
+        public bool ScalesWithCrowd { get; }
+
+        /// <summary>
+        /// Whether <see cref="Status"/> means anything. A status always lasts at
+        /// least one turn, so a zero <see cref="Duration"/> is "no status" —
+        /// the convention every non-status effect already followed, since
+        /// <see cref="Status"/> defaults to <see cref="StatusKind.Stun"/>.
+        /// Read this before reading <see cref="Status"/> on anything but
+        /// <see cref="EffectKind.ApplyStatus"/>.
+        /// </summary>
+        public bool CarriesStatus => Duration > 0;
+
         /// <summary>Whether an operator with this maximum health counts as heavy for this effect.</summary>
         public bool CountsAsHeavy(int maxHealth) =>
             HeavyAboveMaxHealth > 0 && maxHealth > HeavyAboveMaxHealth;
@@ -136,7 +155,8 @@ namespace NonaRoyale.Core.Abilities
             new AbilityEffect(Kind, Scope, Audience, Amount, DamageType, radius,
                 Status, Duration, Stacks, Magnitude, BonusIfBleeding,
                 ExecuteNumerator, ExecuteDenominator, BonusInOwnZone,
-                CritChance, CritMultiplier, HeavyCritMultiplier, HeavyAboveMaxHealth, HeavyBonus);
+                CritChance, CritMultiplier, HeavyCritMultiplier, HeavyAboveMaxHealth, HeavyBonus,
+                ScalesWithCrowd);
 
         /// <summary>
         /// A copy of a damage effect that can land as a critical hit: on a roll
@@ -323,6 +343,41 @@ namespace NonaRoyale.Core.Abilities
             return new AbilityEffect(EffectKind.DeployZone, EffectScope.PrimaryTarget, audience,
                 detonationDamage, damageType, radius, detonationStatus, statusDuration,
                 lingerTicks, lingerDamage, 0, 0, 0);
+        }
+
+        /// <summary>
+        /// A zone whose damage grows with the crowd it catches: every victim
+        /// takes <paramref name="perOtherVictim"/> for each other victim inside,
+        /// at the caster's next upkeep and for <paramref name="lingerTicks"/>
+        /// upkeeps after (ADR-0007 Amendment 1).
+        /// </summary>
+        /// <remarks>
+        /// <b>Quadratic where the other two are not.</b> A beacon divides a
+        /// fixed payload (best against one), a zone bills each victim in full
+        /// (linear in the crowd), and this bills each victim for the rest of
+        /// the crowd — N victims take N(N−1) between them per tick. With one
+        /// victim it does nothing at all, and that is the design, not a bug.
+        ///
+        /// <b>One hit per victim, not one per neighbour.</b> The victim takes a
+        /// single instance of (N−1), so an evasion charge or a plate meets it
+        /// once, the same way it meets a Killzone tick.
+        ///
+        /// No status: <see cref="CarriesStatus"/> is false. Packed like
+        /// <see cref="DeployZone"/>: Amount is the first tick's per-neighbour
+        /// payload, Magnitude the lingering one, Stacks the lingering ticks.
+        /// </remarks>
+        public static AbilityEffect CrowdZone(
+            int perOtherVictim, int lingerTicks, int radius, DamageType damageType,
+            EffectAudience audience = EffectAudience.Any)
+        {
+            if (perOtherVictim < 1) throw new ArgumentOutOfRangeException(nameof(perOtherVictim));
+            if (lingerTicks < 0) throw new ArgumentOutOfRangeException(nameof(lingerTicks));
+            if (radius < 0) throw new ArgumentOutOfRangeException(nameof(radius));
+
+            return new AbilityEffect(EffectKind.DeployZone, EffectScope.PrimaryTarget, audience,
+                perOtherVictim, damageType, radius, default, 0,
+                lingerTicks, perOtherVictim, 0, 0, 0,
+                scalesWithCrowd: true);
         }
 
         /// <summary>

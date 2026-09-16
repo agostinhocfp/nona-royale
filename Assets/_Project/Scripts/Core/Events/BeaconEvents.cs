@@ -91,7 +91,8 @@ namespace NonaRoyale.Core.Events
         /// <summary>What each enemy caught by the detonation takes. Not divided.</summary>
         public int DetonationDamage { get; }
 
-        public override string ToString() => $"{Caster.Name} deploys a killzone on {Cell}";
+        // "zone", not "killzone": Lethe's Eris' Exploit is a zone too (2026-09-17).
+        public override string ToString() => $"{Caster.Name} deploys a zone on {Cell}";
     }
 
     /// <summary>
@@ -132,8 +133,8 @@ namespace NonaRoyale.Core.Events
             string what = IsDetonation ? "detonates" : "lingers";
 
             return Caught == 0
-                ? $"{Owner}'s killzone {what} on {Cell} and catches nobody"
-                : $"{Owner}'s killzone {what} on {Cell}, {Caught} caught for {DamagePerTarget} each";
+                ? $"{Owner}'s zone {what} on {Cell} and catches nobody"
+                : $"{Owner}'s zone {what} on {Cell}, {Caught} caught for {DamagePerTarget} each";
         }
     }
 }

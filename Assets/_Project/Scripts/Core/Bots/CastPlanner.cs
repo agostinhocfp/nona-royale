@@ -249,11 +249,17 @@ namespace NonaRoyale.Core.Bots
                 case EffectKind.DeployZone:
                     if (cell.HasValue)
                     {
-                        int total = effect.Amount + (int)Math.Round(effect.Magnitude * effect.Stacks);
-                        foreach (var r in board.EnemiesNear(own, cell.Value, effect.Radius))
+                        var caught = board.EnemiesNear(own, cell.Value, effect.Radius);
+
+                        // A crowd zone bills each victim once per other victim
+                        // (Eris' Exploit), so a lone target is worth nothing.
+                        int crowd = effect.ScalesWithCrowd ? caught.Count - 1 : 1;
+                        int total = crowd * (effect.Amount + (int)Math.Round(effect.Magnitude * effect.Stacks));
+                        double status = effect.CarriesStatus ? StatusWorth(effect.Status) : 0.0;
+
+                        foreach (var r in caught)
                         {
-                            double value = Hit(board, w, r, board.ExpectedHit(r, total, effect.DamageType))
-                                           + StatusWorth(effect.Status);
+                            double value = Hit(board, w, r, board.ExpectedHit(r, total, effect.DamageType)) + status;
                             offence += value * w.DelayedDiscount;
                         }
                     }
@@ -412,6 +418,12 @@ namespace NonaRoyale.Core.Bots
                 case StatusKind.Stealth: return (danger * 0.5 + 0.3) * w.Protect;
                 case StatusKind.Evasion: return (danger * 0.3 + 0.2) * w.Protect;
                 case StatusKind.Hastened: return 1.0;
+
+                // Stunning a friend is a price, not a buff: Nano Cell pays for
+                // its bubble with the ally's next turn. Costed at what the bot
+                // thinks stunning an enemy is worth.
+                case StatusKind.Stun: return -StatusWorth(StatusKind.Stun);
+
                 default: return 0.0;
             }
         }
@@ -423,7 +435,18 @@ namespace NonaRoyale.Core.Bots
             return StatusWorth(effect.Status) * (effect.Status == StatusKind.Bleed ? Math.Max(1, effect.Stacks) : 1);
         }
 
-        /// <summary>What a cleanse is worth on this ally: the statuses it would strip, by how much each hurts.</summary>
+        /// <summary>
+        /// What a cleanse is worth on this ally: the statuses it would strip, by
+        /// how much each hurts, less the shield it would strip with them.
+        /// </summary>
+        /// <remarks>
+        /// <b>The shield counts against it (2026-09-17).</b> A cleanse is
+        /// indiscriminate (§5.8). Without this, a Nano Cell's stun read as a
+        /// harm to wash out and the bot popped a bubble its own side had just
+        /// paid for, in front of the enemy it was protecting from. With it, a
+        /// bubble is popped only when the ally is in no danger — which is when
+        /// freeing it to move is right.
+        /// </remarks>
         private static double HarmfulWorth(BotBoard board, OperatorState ally)
         {
             double worth = 0.0;
@@ -433,6 +456,8 @@ namespace NonaRoyale.Core.Bots
             if (board.Has(ally, StatusKind.Mark)) worth += StatusWorth(StatusKind.Mark);
             if (board.Has(ally, StatusKind.Hunted)) worth += StatusWorth(StatusKind.Hunted);
             if (board.Has(ally, StatusKind.ZeroDayCharge)) worth += 2.0;
+            if (board.Has(ally, StatusKind.Shield))
+                worth -= Math.Min(board.ShieldPool(ally), Danger(board, ally));
             return worth * board.Fragility(ally);
         }
 

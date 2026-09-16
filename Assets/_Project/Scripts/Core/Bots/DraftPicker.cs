@@ -75,11 +75,14 @@ namespace NonaRoyale.Core.Bots
 
                 foreach (var effect in ability.Effects)
                 {
+                    // A stun aimed at allies is Nano Cell's price, not control.
                     if (effect.Kind == EffectKind.ApplyStatus &&
+                        effect.Audience != EffectAudience.AllyOnly &&
                         (effect.Status == StatusKind.Stun || effect.Status == StatusKind.Slow))
                         control++;
 
-                    if (effect.Kind == EffectKind.DeployZone && effect.Status == StatusKind.Stun)
+                    if (effect.Kind == EffectKind.DeployZone && effect.CarriesStatus &&
+                        effect.Status == StatusKind.Stun)
                         control++;
                 }
             }

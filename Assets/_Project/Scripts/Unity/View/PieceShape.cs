@@ -78,6 +78,13 @@ namespace NonaRoyale.Unity.View
                 // read as Javi's cross; four points, because five is Kian's.
                 case "Luka": return Primitives.Star(4, 45f);
 
+                // Lethe, Catalyst: a six-pointed star — a spark. Six points,
+                // because Kian has five and Luka four; point up, like Kian's,
+                // since at seven health the two are the same size and the
+                // extra point is what tells them apart. Placeholder until the
+                // art pass, like every shape here.
+                case "Lethe": return Primitives.Star(6, 90f);
+
                 // Nuetu, Bruiser: the disc — the only round piece, read as a
                 // plate or a swarm. It was the fallback he drew with by
                 // accident; adopted on purpose 2026-09-15, so the fallback

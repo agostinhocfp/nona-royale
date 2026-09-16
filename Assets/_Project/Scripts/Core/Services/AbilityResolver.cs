@@ -375,7 +375,9 @@ namespace NonaRoyale.Core.Services
                         // grenade. Swapping them is a one-word change.
                         int healed = effect.Amount;
 
-                        if (effect.BonusInOwnZone > 0 && _cellEffects.HasActiveZoneFor(caster.Owner))
+                        // Only the caster's own zones: a squadmate's (Lethe's
+                        // Eris' Exploit) is not "his Killzone" (2026-09-17).
+                        if (effect.BonusInOwnZone > 0 && _cellEffects.HasActiveZoneFor(caster.Owner, caster.Id))
                             healed += effect.BonusInOwnZone;
 
                         recipient.Heal(healed);
@@ -488,8 +490,9 @@ namespace NonaRoyale.Core.Services
                 lingerTicks: effect.Stacks,
                 radius: effect.Radius,
                 damageType: effect.DamageType,
-                detonationStatus: effect.Status,
-                statusDuration: effect.Duration);
+                detonationStatus: effect.CarriesStatus ? effect.Status : (StatusKind?)null,
+                statusDuration: effect.Duration,
+                scalesWithCrowd: effect.ScalesWithCrowd);
 
             outcomes.Add(EffectOutcome.ZoneDeployed(caster, cell.Value, effect.Amount));
         }

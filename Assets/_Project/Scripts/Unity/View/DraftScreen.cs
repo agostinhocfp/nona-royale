@@ -11,13 +11,20 @@ using UnityEngine.UI;
 namespace NonaRoyale.Unity.View
 {
     /// <summary>
-    /// The pre-match draft: the roster as a 3×3 grid of cards, each seat's
-    /// three slots, the clock and the controls (DRAFT.md, increment DR2).
+    /// The pre-match draft: the roster as a grid of cards three rows deep,
+    /// each seat's three slots, the clock and the controls (DRAFT.md,
+    /// increment DR2).
     /// </summary>
     /// <remarks>
-    /// <b>Full canvas, not a card.</b> Nine operator cards and up to four seat
+    /// <b>Full canvas, not a card.</b> The operator cards and up to four seat
     /// rows need the room. The whole layout is a fixed 1840×1020 frame that
     /// scales down to fit narrower windows, so nothing overlaps at 4:3.
+    ///
+    /// <b>Three rows, as many columns as the pool needs (2026-09-17).</b> Nine
+    /// operators fill a 3×3 grid at full card width. Lethe made ten, so the
+    /// grid keeps its footprint and narrows its cards instead: four columns
+    /// hold up to twelve. Past twelve the cards would be too narrow to read,
+    /// and the layout needs a real decision rather than a smaller number.
     ///
     /// <b>The core owns the draft</b> (<see cref="DraftState"/>): whose pick
     /// it is, what a seat may take, what the clock does when it runs out. The
@@ -55,6 +62,12 @@ namespace NonaRoyale.Unity.View
         private const float CardWidth = 358f;
         private const float CardHeight = 236f;
         private const float CardGap = 14f;
+
+        /// <summary>Rows of cards. The body is sized for exactly this many.</summary>
+        private const int CardRows = 3;
+
+        /// <summary>The grid's fixed width: three full-width cards and their gaps.</summary>
+        private const float GridWidth = 3f * CardWidth + 2f * CardGap;
         private const float SlotWidth = 150f;
 
         /// <summary>Seconds the filled table stays up after the ALL PICK clock runs out.</summary>
@@ -84,6 +97,7 @@ namespace NonaRoyale.Unity.View
         private RectTransform _frame;
         private RectTransform _header;
         private RectTransform _grid;
+        private GridLayoutGroup _gridLayout;
         private RectTransform _seatPanel;
         private RectTransform _detail;
         private RectTransform _footer;
@@ -521,18 +535,19 @@ namespace NonaRoyale.Unity.View
 
             // ── Body: cards on the left, seats and details on the right ──
             var body = UiKit.Rect("body", _frame);
-            UiKit.Size(body, height: 3f * CardHeight + 2f * CardGap);
+            UiKit.Size(body, height: CardRows * CardHeight + (CardRows - 1) * CardGap);
             var bodyRow = UiKit.Row(body, 24f);
             bodyRow.childForceExpandHeight = true;
             bodyRow.childAlignment = TextAnchor.UpperLeft;
 
+            // Cell size and column count are set per draft, in RebuildGrid:
+            // the pool is not known until a draft opens.
             _grid = UiKit.Rect("roster", body);
-            UiKit.Fixed(_grid, 3f * CardWidth + 2f * CardGap);
-            var grid = _grid.gameObject.AddComponent<GridLayoutGroup>();
-            grid.cellSize = new Vector2(CardWidth, CardHeight);
-            grid.spacing = new Vector2(CardGap, CardGap);
-            grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-            grid.constraintCount = 3;
+            UiKit.Fixed(_grid, GridWidth);
+            _gridLayout = _grid.gameObject.AddComponent<GridLayoutGroup>();
+            _gridLayout.spacing = new Vector2(CardGap, CardGap);
+            _gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            FitGrid(Roster.All.Count);
 
             var side = UiKit.Rect("side", body);
             UiKit.Size(side, flexibleWidth: 1f);
@@ -665,9 +680,23 @@ namespace NonaRoyale.Unity.View
         private void RebuildGrid()
         {
             Clear(_grid);
+            FitGrid(_draft.Pool.Count);
 
             var picker = Picker;
             foreach (var op in _draft.Pool) Card(op, picker);
+        }
+
+        /// <summary>
+        /// Columns from the pool, never fewer than three; card width from the
+        /// columns, so the grid's footprint never changes.
+        /// </summary>
+        private void FitGrid(int cards)
+        {
+            int columns = Mathf.Max(3, Mathf.CeilToInt(cards / (float)CardRows));
+            float cardWidth = (GridWidth - (columns - 1) * CardGap) / columns;
+
+            _gridLayout.cellSize = new Vector2(cardWidth, CardHeight);
+            _gridLayout.constraintCount = columns;
         }
 
         private void Card(OperatorDefinition op, PlayerColor picker)
@@ -747,7 +776,8 @@ namespace NonaRoyale.Unity.View
 
             UiKit.Divider(card, vertical: false);
 
-            // ── Abilities, one line each; a missing one is shown as missing ──
+            // ── Abilities, one line each; an aura fills the slot after them
+            //    (Bouncer, Lethe), and anything still missing is shown as missing ──
             for (int i = 0; i < Roster.SquadSize; i++)
             {
                 var line = UiKit.Rect("ability", card);
@@ -757,6 +787,14 @@ namespace NonaRoyale.Unity.View
 
                 if (i >= op.Abilities.Count)
                 {
+                    if (i == op.Abilities.Count && op.Aura != null)
+                    {
+                        var auraName = UiKit.Label(line, op.Aura.Name, 14f, UiTheme.Text);
+                        UiKit.Size(auraName, flexibleWidth: 1f);
+                        UiKit.Label(line, $"aura · r{op.Aura.Radius}", 13f, UiTheme.TextDim, TextAlignmentOptions.MidlineRight);
+                        continue;
+                    }
+
                     UiKit.Label(line, "— not yet written —", 14f, UiTheme.TextOff);
                     continue;
                 }
@@ -780,6 +818,14 @@ namespace NonaRoyale.Unity.View
                 UiKit.Caption(reason, RefusalWord(refusal), 11f, UiTheme.Threat, TextAlignmentOptions.Center)
                     .fontStyle = FontStyles.Bold;
             }
+        }
+
+        /// <summary>What an aura does and to whom, in the detail panel's words.</summary>
+        private static string AuraReach(AuraDefinition aura)
+        {
+            string who = aura.Side == AuraSide.Allies ? "allies" : "enemies";
+            if (aura.GrantsHaste) return $"hastens {who}";
+            return aura.SpeedModifier < 0.0 ? $"slows {who}" : $"quickens {who}";
         }
 
         /// <summary>Cost, reach and cooldown, as the action tray words them, shortened.</summary>
@@ -927,11 +973,11 @@ namespace NonaRoyale.Unity.View
             var traits = new List<string> { $"{op.MaxHealth} health", $"speed ×{op.BaseSpeed:0.0}" };
             if (op.Passive.HasValue)
             {
-                // The only passive in the roster is Kurbyn's, whose magnitude is a speed bonus.
+                // A passive's magnitude is a speed bonus (Kurbyn); Lethe's haste carries none.
                 string magnitude = op.PassiveMagnitude != 0.0 ? $" ({op.PassiveMagnitude:+0.0;-0.0} speed)" : "";
                 traits.Add($"passive {StatusPalette.Label(op.Passive.Value)}{magnitude}");
             }
-            if (op.Aura != null) traits.Add($"aura {op.Aura.Name}, radius {op.Aura.Radius}");
+            if (op.Aura != null) traits.Add($"aura {op.Aura.Name}, radius {op.Aura.Radius}, {AuraReach(op.Aura)}");
 
             Paragraph("traits", string.Join("  ·  ", traits), UiTheme.TextDim, UiTheme.FontSmall);
 
@@ -950,7 +996,7 @@ namespace NonaRoyale.Unity.View
                 Paragraph("description", ability.Description, UiTheme.TextDim, 14f);
             }
 
-            if (op.Abilities.Count < Roster.SquadSize)
+            if (op.Abilities.Count + (op.Aura != null ? 1 : 0) < Roster.SquadSize)
                 Paragraph("missing",
                     $"{op.Name} has {op.Abilities.Count} of {Roster.SquadSize} abilities; the rest are not written yet.",
                     UiTheme.Threat, 14f);

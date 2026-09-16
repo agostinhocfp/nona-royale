@@ -2,7 +2,7 @@
 
 > Location in repo: `docs/design/COMBAT_SYSTEMS.md`
 > Status: **Accepted (alpha).** Every mechanic the roster invokes is defined and built — Mimi's Cryo Field, the last gap, landed 2026-09-16 (§5.14, §6.6, §10.4). Open items in §12 are balance dials and post-MVP scope, not gaps.
-> Date: 2026-09-12 · synced to the code 2026-09-15
+> Date: 2026-09-12 · synced to the code 2026-09-15 · Lethe added 2026-09-17
 > Related: `docs/design/OPERATORS.md` (roster), ADR-0002 (board size, incl. Amendment 5), ADR-0003 (topology), ADR-0004 (pure-C# core), `CONVENTIONS.md`, `docs/GDD.md`
 > Supersedes: `docs/design/_HANDOFF_combat.md` and `docs/design/_HANDOFF_split_movement.md` (delete both)
 
@@ -262,7 +262,7 @@ The per-round cap is load-bearing. Uncapped, a roll across the half-dozen attack
 - **Re-application refreshes the duration and refills the pool** to the larger of the remaining and the new pool — sources do not stack, the strongest applies (§5.2). A spent-down plate re-cast is a fresh plate.
 - **Evasion resolves first** (§2.1), so a dodged instance never spends a pool the holder may still need.
 - Atomic ignores it.
-- **Sources:** Javi's Trauma Plate (§10.5, 2-point pool on an ally) and Nuetu's Ablative Plating (§10.7, 2-point pool on himself). The deferred `Shield` board space (ADR-0003) would use `ShieldPoolDefault`; special spaces are not in the MVP.
+- **Sources:** Javi's Trauma Plate (§10.5, 2-point pool on an ally), Nuetu's Ablative Plating (§10.7, 2-point pool on himself) and Lethe's Nano Cell (§10.10, a 99-point pool a round of enemy turns cannot empty, paired with a stun). The deferred `Shield` board space (ADR-0003) would use `ShieldPoolDefault`; special spaces are not in the MVP.
 - A cleanse strips it, friendly or not (§5.8).
 
 **Why a pool.** Absorbing a whole instance regardless of its size was a timing lottery, worth 1 against From the Hip and 3 against a collision, and unpriceable once a shield became castable. The pool landed on 2026-09-13 with Trauma Plate, as the shield half of the mitigation pass. The evasion half — replacing the roll with a flat reduction — was **declined**; the rate moved instead (§5.5, status history).
@@ -297,7 +297,7 @@ Not a status — the absence of them. Javi's Neural Purge removes every **applie
 - **The whole roll decides**, not the dice a move spends. Each hastened operator collects the bonus **once per roll**, on its first move with that roll. A second move from the same roll gets nothing extra. The roll's total counts even if one die went on a deploy or to another operator.
 - **Capped at `HasteBonusCellCap` (3) extra cells per operator per turn.** It only binds on a doubles turn: a high double pays 2, and the re-roll can then add only 1.
 - A move the dice alone would not make (0 cells) gets no bonus, so haste never turns a refused move into a legal one.
-- Granted only by Tagged From Above's payout, to the marker's whole squad (§10.2).
+- **Sources:** Tagged From Above's payout, to the marker's whole squad (§10.2); Lethe's passive, permanently (§10.10); and her Catalyst aura, to an ally within 2 of her when its move starts (§10.10). They do not stack: an operator is hastened or not, and collects one bonus per roll under one cap.
 
 **Amendment (2026-09-16, designer): massive nerf, flat cells instead of speed.** Haste was +0.5 speed, capped at 3 extra cells a turn earlier the same day. Averaged over all 36 rolls, the capped version still paid **2.6 cells per roll at 1.0× and 2.8 at 1.5×**; the flat rule pays **1.6 at any speed**. It is part of the pass that nerfs the fast operators (§10.8): Syla and Kurbyn read strongest in the bots sweep and in human games, and the old bonus grew with the holder's speed.
 
@@ -440,6 +440,8 @@ Expiry sits at End and application takes hold at the target's next turn, so a 1-
 - **Above 1.5 a single move stops being readable.** The ceiling exists so a mean move stays near a fifth of the loop — the figure that actually governs whether a player can follow a piece across the board.
 
 **The band has one recorded exception.** Sanity fields at 0.5 — below the floor, permanently on `MinSpeedMultiplier`, and therefore immune to every slow and aura in the game as a side effect. That is a deliberate designer override (2026-09-15), recorded with its reasoning at §10.8; it does not reopen the band for anyone else.
+
+**Lethe sits inside the band at 1.0** (2026-09-17). Her mobility is permanent haste, which is flat cells and not speed, and her Catalyst aura grants haste rather than a speed bonus for the same reason: the speed channel has a floor and **no ceiling**, so a positive speed aura would have pushed 1.5 operators to 2.0 (§10.10). No shipped effect adds positive speed except Kurbyn's passive. A ceiling is still unenforced (§12).
 
 ### 6.4 Operator-anchored deferred effects
 
@@ -620,7 +622,7 @@ Noun-based, per `CONVENTIONS.md`. Each owns one rule family and nothing else.
 | `AbilityResolver`   | Cost, cooldown, target validation, placement legality, effect emission (§10) |
 | `DamagePipeline`    | The single choke point of §2.1                                               |
 | `StatusRegistry`    | Apply, query, expire, cleanse; absolute-index timers (§5)                    |
-| `AuraRules`         | Aura effects, evaluated on demand rather than stored (§10.1)                 |
+| `AuraRules`         | Aura effects, evaluated on demand rather than stored (§10.1, §10.10)         |
 | `NeutralizeRules`   | The §1.2 consequences, the mark payout (§10.2), and the kill bounty          |
 | `WinConditions`     | §8                                                                           |
 
@@ -628,7 +630,7 @@ Noun-based, per `CONVENTIONS.md`. Each owns one rule family and nothing else.
 
 **`StatusRegistry` reports damage, it never applies it.** The pipeline consults the registry for evasion and shields, so a registry that called the pipeline would close a dependency cycle. Bleed and mark ticks are therefore _queried_ — the registry says what the tick owes and the caller pushes it through the pipeline as Atomic. The registry decides what damage is owed, the pipeline decides how damage lands, and neither knows the other exists.
 
-**An ability is a list of effects, and there are fifteen kinds:** Damage, Heal, ApplyStatus, PullToCaster, Execute, SwapWithCaster, RemoveStatuses, PushFromCaster, PaintCell, DeployZone, AttachCharge, DashToTarget, FollowUp, ProjectField, Watch. The resolver never branches on which ability is being cast. A new operator that cannot be expressed in those fifteen gets an amendment to this document and a new kind — never an `if`. Ten have been added in earnest: the swap for Mimi, the cleanse for Javi, the push and the two cell-anchored deferred kinds for Kian and Nuetu, the operator-anchored charge and the dash for Sanity (§10.8), the follow-up for Luka (§10.9), the self-anchored field for Mimi's Cryo Field (§10.4, §6.6), and the watch for Kurbyn's Predator's Read (§10.3, §6.7). Luka's critical hits are a field on the Damage kind (§2.4), not a kind of their own.
+**An ability is a list of effects, and there are fifteen kinds:** Damage, Heal, ApplyStatus, PullToCaster, Execute, SwapWithCaster, RemoveStatuses, PushFromCaster, PaintCell, DeployZone, AttachCharge, DashToTarget, FollowUp, ProjectField, Watch. The resolver never branches on which ability is being cast. A new operator that cannot be expressed in those fifteen gets an amendment to this document and a new kind — never an `if`. Ten have been added in earnest: the swap for Mimi, the cleanse for Javi, the push and the two cell-anchored deferred kinds for Kian and Nuetu, the operator-anchored charge and the dash for Sanity (§10.8), the follow-up for Luka (§10.9), the self-anchored field for Mimi's Cryo Field (§10.4, §6.6), and the watch for Kurbyn's Predator's Read (§10.3, §6.7). Luka's critical hits are a field on the Damage kind (§2.4), not a kind of their own. Lethe added none (§10.10): Eris' Exploit is a `DeployZone` with a crowd setting (ADR-0007 Amendment 1).
 
 **The engine reports every move a roll could make, not just one.** `PreviewLandings` returns, per operator, the pooled landing and one per distinct unspent face. A preview that showed only the pooled option would hide exactly the choice §6.3 prices, and the view must not compute any of it itself (`PRESENTATION.md` §1).
 
@@ -652,7 +654,7 @@ Randomness reaches exactly three places: `MovementResolver` (dice), `DamagePipel
 
 ## 10. The roster, re-expressed
 
-Nine operators are in the draft pool, and **all nine are complete** — Mimi's Cryo Field and Kurbyn's Predator's Read, the last two unbuilt abilities, landed 2026-09-16 (§10.4, §10.3). An operator the game can deal but this document does not describe is worse than an entry marked incomplete; the pool no longer has one.
+Ten operators are in the draft pool, and **all ten are complete** — Mimi's Cryo Field and Kurbyn's Predator's Read, the last two unbuilt abilities, landed 2026-09-16 (§10.4, §10.3), and Lethe arrived whole on 2026-09-17 (§10.10). Bouncer and Lethe field two abilities and an aura; everyone else fields three abilities. An operator the game can deal but this document does not describe is worse than an entry marked incomplete; the pool no longer has one.
 
 **The tables are copied from the roster files and the code wins any disagreement.** Numbers change there first (`Assets/_Project/Scripts/Core/Abilities/Roster/`), and a table that drifts is a second copy of a value that is now wrong. Last synced 2026-09-16.
 
@@ -896,6 +898,74 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 **All numbers are the designer's, as dropped, and unmeasured.** Adding him shifts the draft's dice stream, so no figure taken before him compares with one after.
 
+### 10.10 Lethe — Catalyst
+
+**HP 7 · Speed 1.0× (permanently Hastened) · Complete — both abilities and the aura implemented** _(added 2026-09-17)_
+
+> **Bouncer's shape, pointed the other way:** two actives, with an aura in the middle slot. His aura slows enemies near him; hers hastens allies near her. **No new effect kind.** Nano Cell uses existing effects, Catalyst is an aura with a side and a haste flag, and Eris' Exploit is a `DeployZone` with a crowd setting (ADR-0007 Amendment 1).
+
+| #   | Ability           | Type    | Cost | CD  | Range      | Effect                                                                                                                                                                                                                                  |
+| --- | ----------------- | ------- | ---- | --- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Nano Cell**     | Active  | 4    | 4   | 4          | Ally (or herself): **Shield, 99-point pool, 2 turns** and **Stun, 2 turns** (§5.1, §5.6). Normal and Tech are absorbed; Atomic goes through.                                                                                           |
+| 2   | **Catalyst**      | Passive | —    | —   | 2          | **Aura, allies only.** An ally within 2 when it starts a move counts as **Hastened** for that move (§5.9). Lethe herself is Hastened by her passive, permanently.                                                                         |
+| 3   | **Eris' Exploit** | Active  | 6    | 4   | 3 (cell)   | **Zone, radius 2** (ADR-0007). At Lethe's next upkeep and the one after, **each enemy inside takes 1 Normal for every other enemy inside**, as a single hit. One enemy inside takes nothing. Kills credit Lethe. |
+
+**Her speed is haste, not a multiplier (designer, 2026-09-17).** The handoff specced "base 1.0, effective 1.5 through her own passive haste", which was Kurbyn's construction when haste was +0.5 speed. Haste has been flat cells since 2026-09-16, so the passive now gives her +1 cell on a roll of 6 or less and +2 above, once per roll, capped at 3 per turn: about 1.6 cells a roll. The passive carries no magnitude, and `StatusRegistry.SpeedModifier` skips Hastened, so her speed is 1.0 and she sits inside the band. A passive survives cleanses and neutralize (§1.2).
+
+**Health 7, the common figure** (designer, 2026-09-17). The handoff's "above the six-health group" was written before the +1 of 2026-09-16. Her price is that her mobility is capped and conditional on the roll, and that her kit asks her squad to stand together.
+
+**Nano Cell is total immunity bought with total inaction.** A shield whose pool a round of enemy turns cannot empty, plus a stun. Its edges:
+
+- **The stun takes hold at once.** Cast on an ally during her own seat's turn, a status is active immediately (§5), so an ally that has not moved yet loses this turn's move as well. Move first, then bubble. Duration 2 is the minimum that protects at all: it covers exactly one round of enemy turns and takes the ally's next turn.
+- **Atomic ignores it** (§2.2): bleed, marks, Velvet Rope, Miracle Pull and Vendetta all go through.
+- **It blocks the road.** A collision is Normal damage, so the bubble eats it, the target survives and the mover bounces (§7.2).
+- **Neural Purge strips both halves** (§5.8). A Javi on her side can free the ally early; an enemy cannot, because a cleanse only reaches allies. A blanket immunity with no answer would be oppressive, so this is intended. Do not "fix" it.
+- **"Cannot be stunned inside" is redundant**, not contradicted: the bubble already stuns. **Status immunity was proposed and dropped**, because it needed an immunity system with a carve-out on day one.
+- **Cost 4, not the spec's 3.** At 3 it blanked a 9-energy Killzone or Drone Strike on one ally for a third of the price. At 4 it costs the same as Trauma Plate, and the stun pays the rest.
+- **She may bubble herself.** Auras survive stun (§10.1), so a bubbled Lethe keeps hastening her squad from a cell that Normal and Tech damage cannot hurt.
+
+**Catalyst is haste, not speed, and it is local** (designer, 2026-09-17). A +0.5 speed aura would have put Syla and Javi at 2.0×, where a mean roll covers a quarter of the loop, because `MovementResolver.EffectiveSpeed` has a floor and no ceiling. Haste is flat cells under a per-turn cap, so nothing can overflow. It is also **not a copy of Tagged From Above's payout**: that one follows the squad anywhere for two turns, while Catalyst ends two cells from Lethe. Its rules:
+
+- **Read where the move starts.** An ally that walks out of range keeps the cells of the move that took it out, and still pays for them against the turn cap. If Lethe moves away first, the ally behind gets nothing.
+- **A yes or no, not a stack.** Catalyst on top of a payout, or on top of another haste, still pays one bonus per roll under one cap.
+- **Visible.** `GameEngine.ActiveStatusesOn` lists Hastened on an ally inside the aura, so the HASTE tag appears and disappears as pieces move.
+- **Not on herself.** Her own haste is the passive.
+
+**Eris' Exploit is the anti-clustering ability.** N enemies inside take N−1 each per tick:
+
+| Caught | Each, per tick | Each, both ticks | Total |
+| ------ | -------------- | ---------------- | ----- |
+| 1      | 0              | 0                | 0     |
+| 2      | 1              | 2                | 4     |
+| 3      | 2              | 4                | 12    |
+| 4      | 3              | 6                | 24    |
+
+- **Three cell abilities, three shapes.** Drone Strike divides a fixed payload, so it is best against one. Killzone bills each victim in full, so it grows linearly with the crowd. Eris' Exploit bills each victim for the rest of the crowd, so it grows quadratically.
+- **Radius 2, not the spec's 3.** Five cells limit the crowd by geometry. At seven cells, four victims were routine on stacked safe cells: 24 damage for 6 energy, against Ace Shards' 4 each at the same price. At radius 2 a crowd of four needs four enemies inside five cells, and since the +1 health, six damage kills only Mimi outright.
+- **The crowd is counted at each tick**, not at the cast. The zone is visible for a round, so a crowd that breaks up has been controlled even if nobody is hurt.
+- **One hit per victim**, so an evasion charge or a plate meets it once, as with a Killzone tick. **A lone victim is not hit at all.** A zero-damage instance would still spend its evasion charge.
+- **Normal, credited to Lethe**, as Killzone is credited to Nuetu. Areas reach safe cells (§4.4).
+- **Squadmates' devices no longer overwrite each other (2026-09-17).** Cell effects were keyed on cell and seat, so a Lethe casting on a squadmate Nuetu's Killzone cell replaced it. They are now keyed on cell, seat and source operator; the same operator re-casting on its own cell still replaces. Bio-Link Rage's rider now reads only Nuetu's own zones: "while one of his Killzones is live" (ADR-0007).
+- **The name** borrows Greek myth, like Hermes' Ring and her own name. Kept as the designer wrote it.
+
+**Measured, bots sweep, 800 matches, 4 seats (2026-09-17).** She is the tenth operator, so every seed's draft changed and no row compares one-to-one.
+
+| Bots against bots          | Before Lethe | With Lethe |
+| -------------------------- | ------------ | ---------- |
+| Turns per seat             | 28.2         | 26.9       |
+| Knockouts per match        | 13.6         | 12.4       |
+| Casts per match            | 60.4         | 55.3       |
+| Lethe win share            | —            | 24%        |
+| Nano Cell casts per match  | —            | 1.17       |
+| Eris' Exploit casts/match  | —            | 1.04       |
+
+- **Lethe lands at 24%, neutral** (25% is an average seat). Every other operator is within 3 points of its previous share: Kurbyn 31% → 33%, Syla 32% → 30%, Javi 29% → 27%, Mimi 20% → 21%, Kian 20% → 22%, Sanity 22% → 21%.
+- **Matches got about a turn shorter** and knockouts fell by about one. Catalyst's extra cells and Nano Cell's protection both point that way. The sim can't tell which.
+- **The bots had to learn four things** (`BOTS.md`): a shield is as deep as its remaining pool, a stun on an ally is a cost, a cleanse also strips the ally's bubble, and a crowd zone scores nothing on a lone enemy.
+- The "with" run was built just before the device-key fix above, which only matters when a Lethe and a Nuetu share a seat and a cell.
+
+**All numbers are the designer's (2026-09-17)** and reasoned against peers. Only the sweep above has measured them.
+
 ---
 
 ## 11. Superseded and removed
@@ -1019,6 +1089,7 @@ That makes 44/5 the only lever measured that buys pacing without giving up comba
 
 ### Open, unresolved rules conflict
 
+- **Across auras, resolved (2026-09-17): the strongest bonus plus the strongest penalty.** `AuraRules` used to take the largest aura by absolute value and keep the first one it met on a tie, so a +0.5 and a −0.5 would have resolved by operator id order. Each sign now resolves on its own and the two add, which gives the same result as before for every shipped aura (all are negative, or grant haste). The status-versus-aura question below is still open.
 - **Slows and auras stack, and §5.2 says they should not.** `GameEngine` sums two channels when computing effective speed — `StatusRegistry.SpeedModifier` and `AuraRules.SpeedModifierFor` — so From the Hip's slow and Bouncer's Intimidating Presence apply together. Within each channel the rule holds; across the two it does not.
   Both readings are defensible: an aura and a status are arguably different things, and a tank's presence compounding a wound is reasonable. But the doc says one thing and the code does another, which is the state this project exists to avoid. **Decide it.** The stakes rose again with Cryo-Pulse, which slows an entire area, and again with §6.1, where a deep enough slow decides whether a turn can be ended at all.
 - **The kill bounty is implemented and this document never states it as a rule.** §9.1 records that `NeutralizeRules` owns it and §12 ranks it first among dials, but no section of §1 or §3 says what it does. A reader could work through the whole document and not learn that killing pays.
@@ -1029,6 +1100,10 @@ That makes 44/5 the only lever measured that buys pacing without giving up comba
 - **The Force damage type, and what amplifies Tech.** A four-type matrix — Normal, Force, Tech, Atomic, across Evasion and Shield — was the agreed model. **Tech landed on 2026-09-15** (§2.2) as Normal plus a ward counter, with "can be amplified by specific abilities" as the stated direction and no amplifier yet. Force is unbuilt. Which operators deal Tech was settled 2026-09-15 (§2.2): Cryo-Pulse, Zero-Day, Drone Strike. **Unmeasured:** a warded Luka against a Mimi squad, and the split-soak on Drone Strike (§5.12).
 - **A draft has no balance constraint.** Nothing checks that a squad has an answer to Evasion, a way to heal, or reliable damage. With Atomic in three operators (§2.2), a legal draw can produce a squad with no way through Kurbyn.
 - **Luka's numbers** (§10.9). Blind Spot (then L) repriced 4 → 5 and Vendetta 9 → 6 by the designer on first review; reasoned, not measured.
+- **A speed ceiling.** `EffectiveSpeed` floors at `MinSpeedMultiplier` and has no upper bound. Nothing ships that needs one (§6.3, §10.10), but the first positive speed aura or status would.
+- **Drone Strike can split to zero.** Four damage over five or more caught enemies gives 0 each, and a zero-damage Normal hit still spends an evasion charge (§5.5). Rare, and left alone; Eris' Exploit skips the hit instead.
+- **The draft grid holds twelve.** The draft screen keeps three rows and widens to four columns for 10–12 operators (`DRAFT.md`). A thirteenth operator (Fuse, Ghost and Revú are drafted) needs a layout decision, not a smaller card.
+- **Nona means nine.** Lethe is the tenth operator. Whether the title's number is canon is open (`OPERATORS.md`).
 - **Whether the same operator may take both dice in two steps.** §6 allows it, and it is Ludo-standard. It is also strictly worse in cells and strictly better in landings, which makes it a deliberate two-collision play rather than a mistake.
 
 ### Open, unmeasured
@@ -1041,7 +1116,7 @@ That makes 44/5 the only lever measured that buys pacing without giving up comba
 
 1. **Special spaces** are deferred (ADR-0003). Shield is defined (§5.6); Teleport, Slippery, Checkpoint, RollAgain and SharksTable are not. Checkpoint conflicts with §1.2's "return to yard" and needs an explicit exception when it lands.
 2. **"Brawler" is a fifth archetype** (Kurbyn) outside the base four, and the base four are now filled. Add it or re-tag.
-3. **One of nine operators unwritten**, and one of the eight written (Mimi) is incomplete. The taxonomy names four archetypes; the roster now has seven (tank, assassin, brawler, controller, support, artillery, bruiser, plus Sanity's engineer). Rewrite or drop it rather than stretch it.
+3. **The taxonomy names four archetypes; the roster now has more than that** (tank, assassin, brawler, controller, support, artillery, bruiser, Sanity's engineer, Luka's duelist and Lethe's catalyst). Rewrite it or drop it rather than stretch it.
 4. **Opt-out of home entry** (ADR-0003, §8) — designed, deferred. Note the overlap with Translocation, which delivers a version of home denial for 3 energy, and that splitting produces two landing decisions per roll where opt-out assumes one.
 5. **Two walks per roll.** `PRESENTATION.md` §3 has pieces walking the track cell by cell; a split produces two, and on the same piece they must be sequenced rather than overlapped.
 6. Flavour and world placement across the roster (`OPERATORS.md`).
@@ -1379,3 +1454,4 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - 2026-09-16 — **Mimi completed: Cryo Field built.** The last unbuilt ability, and with it the mechanic its banner waited on: a status that damages an area at its holder's upkeep. `StatusKind` gains `CryoField` (§5.14); `EffectKind` gains `ProjectField`, the fourteenth kind; `DeferredOperatorEffects` gains a third, **repeating** shape — the field (§6.6), anchored to the caster herself, billing enemies near her current cell at each of her owner-upkeeps while the marker stands. Tick 1 Normal, radius 2, two ticks: the design row's "2 turns" reads as registry duration 3 because a self-applied status counts the cast turn as its first (§5). The tick amount was blank in the design table and is a named constant flagged for tuning (`Mimi.CryoFieldTickDamage`). Being Normal and self-centred, the field goes through Hermes' Ring — a warded Luka is no longer immune to Mimi (§2.2, §5.12). The field ends with her: neutralize strips the marker (§1.2), the follow-up precedent rather than the beacon one. §9.3 gains `FieldProjected` and `FieldTicked`; the top banner, §10's header claim and §10.4's banner are retired; `OPERATORS.md`'s "Finish Mimi" is checked off. Tests +11 (`CryoFieldTests`).
 - 2026-09-16 — **Kurbyn completed: Predator's Read built** (id 303 — cost 3, cooldown 2, range 3). `StatusKind` gains `Watched` (§5.15); `EffectKind` gains `Watch`, the fifteenth kind; `DeferredOperatorEffects` gains a fourth shape — the watch (§6.7), the follow-up's mirror: anchored to the victim like a charge, but its moment is the target's first **dice movement**, not the upkeep, and its condition is the target's conduct rather than the caster's proximity. Placement never trips it (§7.4); standing still is the other escape hatch; the lapse is silent and the strike is once, spent landed or absorbed. It outlives its caster (the charge precedent, ADR-0006 — the condition never reads his position) and dies with its target (neutralize strips the marker, §1.2). Balance intent: his cheapest cast was 6; this fills the 3-energy rung with Short Circuit and From the Hip (§10.3). `GameEngine` gains the registry on its move path (the only trigger a watch has); §9.1 lists fifteen kinds; §9.3 gains `WatchMarked` and `WatchTripped`; §2.1's cause list gains "watch" and the "cryo-field" it had never recorded. `OPERATORS.md`'s Kurbyn paragraph gains the read; `Roster.cs`'s "the pool is even" remark was stale from the moment the Cryo Field commit wrote it — Kurbyn still had two abilities — and is true as of this change. Tests +16 (`PredatorsReadTests`), 533 → 549.
 - 2026-09-16 — **Haste nerfed to flat cells** (designer): +1 extra cell when the roll totals 6 or less, +2 above, once per roll per operator, still capped at 3 per operator per turn (§5.9, §6.3). Replaces +0.5 speed, which averaged 2.6–2.8 cells per roll even under the cap; the new rule averages 1.6 at any speed. `CombatConfig.HasteSpeedBonus` removed; `StatusRegistry.HasteBonus` became `IsHastened`, and Hastened no longer enters the speed sum. `MovementResolver.CellsWithCappedBonus` removed as dead. Syla's payout copy updated. Bots sweep: noise only (§12).
+- 2026-09-17 — **Lethe added as §10.10**, complete (designer's numbers after a review of the handoff). HP 7, speed 1.0 with a permanent Hastened passive (flat cells, not the handoff's +0.5 speed, which the 2026-09-16 haste nerf retired). **Nano Cell** (1001; 4 / 4 / 4) combines a 99-point shield and a stun, each for 2 turns. **Catalyst** is an ally-only aura that grants haste within 2, not speed, so the missing ceiling is never tested. **Eris' Exploit** (1002; 6 / 4 / 3) is a radius-2 zone that bills each enemy N−1 per tick for two ticks. `AuraDefinition` gains a side and a haste flag; `AuraRules` resolves speed auras as strongest bonus plus strongest penalty, and answers `GrantsHaste`; `GameEngine` reads aura haste where a move starts and lists it in `ActiveStatusesOn`. ADR-0007 Amendment 1: crowd zones and zones without a status. Cell effects are keyed on source as well as cell and seat, and Bio-Link Rage's rider reads only Nuetu's own zones. Bots learned real shield pools, ally stuns and crowd zones. Bots sweep: Lethe 24%, turns per seat 28.2 → 26.9. §5.6, §5.9, §6.3, §9.1, §10, §12 amended.

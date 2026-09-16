@@ -102,10 +102,14 @@ namespace NonaRoyale.Core.Services
     /// to need "later", after status durations and cooldowns, and they represent
     /// it the same way. Nothing decrements, so nothing drifts.
     ///
-    /// <b>Keyed on cell <i>and</i> owner.</b> Two seats can both paint or deploy
-    /// on the same cell; each is independent and resolves on its own upkeep.
-    /// Keying on the cell alone would let a player destroy an opponent's spent
-    /// energy by clicking a square, which is griefing nobody designed.
+    /// <b>Keyed on cell, owner <i>and</i> source.</b> Two seats can both paint or
+    /// deploy on the same cell; each is independent and resolves on its own
+    /// upkeep. Keying on the cell alone would let a player destroy an
+    /// opponent's spent energy by clicking a square, which is griefing nobody
+    /// designed. The source joined the key on 2026-09-17: a Nuetu and a Lethe
+    /// on one seat both deploy zones, and a Kian paints beams, so one
+    /// operator's cast must not overwrite a squadmate's device on the same
+    /// cell. The same operator re-casting on its own cell still replaces.
     ///
     /// <b>A beacon and a zone are one entry type with different settings</b>
     /// rather than two stores. They share everything that is hard — the
@@ -140,6 +144,8 @@ namespace NonaRoyale.Core.Services
 
             /// <summary>True for a beacon: the payload divides among those caught.</summary>
             public bool SplitsDamage;
+            /// <summary>Each victim takes the payload once per other victim (ADR-0007 Amendment 1).</summary>
+            public bool ScalesWithCrowd;
 
             /// <summary>Applied on the detonation only. Null for a beacon.</summary>
             public StatusKind? DetonationStatus;
@@ -201,10 +207,16 @@ namespace NonaRoyale.Core.Services
             return shown;
         }
 
-        /// <summary>Whether a seat has any lingering zone in play (ADR-0007).</summary>
+        /// <summary>
+        /// Whether a seat has a lingering zone in play (ADR-0007) — any of its
+        /// operators', or only <paramref name="sourceOperatorId"/>'s when given.
+        /// </summary>
         /// <remarks>
         /// Read by Killzone's rider on Bio-Link Rage — the first case of one
-        /// ability's numbers depending on another's board state.
+        /// ability's numbers depending on another's board state. The resolver
+        /// passes the caster (2026-09-17): the rider is "while one of <i>his</i>
+        /// Killzones is live", and a squadmate Lethe's Eris' Exploit is a zone
+        /// too.
         ///
         /// <b>Compare <see cref="ZoneCoversOperator"/>.</b> This asks only whether
         /// a zone exists anywhere, which makes the rider an unconditional bonus
@@ -214,10 +226,14 @@ namespace NonaRoyale.Core.Services
         /// one-word change, and the choice is a design decision rather than an
         /// implementation one.
         /// </remarks>
-        public bool HasActiveZoneFor(PlayerColor owner)
+        public bool HasActiveZoneFor(PlayerColor owner, int? sourceOperatorId = null)
         {
             foreach (var entry in _pending)
-                if (entry.Owner == owner && entry.IsZone) return true;
+            {
+                if (entry.Owner != owner || !entry.IsZone) continue;
+                if (sourceOperatorId != null && entry.SourceOperatorId != sourceOperatorId.Value) continue;
+                return true;
+            }
 
             return false;
         }
@@ -239,8 +255,14 @@ namespace NonaRoyale.Core.Services
             return false;
         }
 
-        /// <summary>Whether a seat already holds a pending effect on this cell.</summary>
-        public bool HasBeaconOn(CellRef cell, PlayerColor owner) => Find(cell, owner) != null;
+        /// <summary>Whether a seat already holds a pending effect on this cell, from any of its operators.</summary>
+        public bool HasBeaconOn(CellRef cell, PlayerColor owner)
+        {
+            foreach (var entry in _pending)
+                if (entry.Owner == owner && entry.Cell == cell) return true;
+
+            return false;
+        }
 
         // ── Placing ──────────────────────────────────────────────────────
 
@@ -262,9 +284,8 @@ namespace NonaRoyale.Core.Services
             int radius,
             DamageType damageType)
         {
-            var entry = Require(cell, owner);
+            var entry = Require(cell, owner, sourceOperatorId);
 
-            entry.SourceOperatorId = sourceOperatorId;
             entry.ResolvesOnOwnerTurn = _clock.TurnIndexOf(owner) + 1;
             entry.TicksRemaining = 1;
             entry.HasDetonated = false;
@@ -273,6 +294,7 @@ namespace NonaRoyale.Core.Services
             entry.DetonationDamage = totalDamage;
             entry.LingerDamage = 0;
             entry.SplitsDamage = true;
+            entry.ScalesWithCrowd = false;
             entry.DetonationStatus = null;
             entry.DetonationStatusDuration = 0;
         }
@@ -289,7 +311,12 @@ namespace NonaRoyale.Core.Services
         ///
         /// <b>The status lands on the detonation only.</b> Stun blocks movement
         /// (§5.1), so re-applying it every tick would hold a victim inside the
-        /// zone until it expired.
+        /// zone until it expired. A null status lands nothing, and then
+        /// <paramref name="statusDuration"/> is ignored.
+        ///
+        /// <b><paramref name="scalesWithCrowd"/> multiplies each victim's share
+        /// by the number of other victims</b> (ADR-0007 Amendment 1): Eris'
+        /// Exploit. A tick that catches one operator deals nothing.
         /// </remarks>
         public void Deploy(
             CellRef cell,
@@ -300,15 +327,16 @@ namespace NonaRoyale.Core.Services
             int lingerTicks,
             int radius,
             DamageType damageType,
-            StatusKind detonationStatus,
-            int statusDuration)
+            StatusKind? detonationStatus,
+            int statusDuration,
+            bool scalesWithCrowd = false)
         {
             if (lingerTicks < 0) throw new ArgumentOutOfRangeException(nameof(lingerTicks));
-            if (statusDuration < 1) throw new ArgumentOutOfRangeException(nameof(statusDuration));
+            if (detonationStatus != null && statusDuration < 1)
+                throw new ArgumentOutOfRangeException(nameof(statusDuration));
 
-            var entry = Require(cell, owner);
+            var entry = Require(cell, owner, sourceOperatorId);
 
-            entry.SourceOperatorId = sourceOperatorId;
             entry.ResolvesOnOwnerTurn = _clock.TurnIndexOf(owner) + 1;
             entry.TicksRemaining = 1 + lingerTicks;
             entry.HasDetonated = false;
@@ -317,8 +345,9 @@ namespace NonaRoyale.Core.Services
             entry.DetonationDamage = detonationDamage;
             entry.LingerDamage = lingerDamage;
             entry.SplitsDamage = false;
+            entry.ScalesWithCrowd = scalesWithCrowd;
             entry.DetonationStatus = detonationStatus;
-            entry.DetonationStatusDuration = statusDuration;
+            entry.DetonationStatusDuration = detonationStatus != null ? statusDuration : 0;
         }
 
         // ── Resolving ────────────────────────────────────────────────────
@@ -409,8 +438,21 @@ namespace NonaRoyale.Core.Services
             int payload = detonating ? entry.DetonationDamage : entry.LingerDamage;
 
             // A beacon is one beam of fixed energy divided among whoever it
-            // catches; a zone grinds each of them in full.
-            int each = entry.SplitsDamage ? payload / caught.Count : payload;
+            // catches; a zone grinds each of them in full; a crowd zone bills
+            // each of them for everyone else it caught.
+            int each = entry.SplitsDamage ? payload / caught.Count
+                : entry.ScalesWithCrowd ? payload * (caught.Count - 1)
+                : payload;
+
+            // A crowd of one: nothing to deal and nothing to apply. Report who
+            // was inside and stop — a zero instance would still spend an
+            // evasion charge (§5.5) for a hit that never existed.
+            if (entry.ScalesWithCrowd && each == 0 && !(detonating && entry.DetonationStatus != null))
+            {
+                return new CellEffectResolution(
+                    entry.Cell, entry.Owner, entry.SourceOperatorId, entry.Cause,
+                    detonating, caught, null, 0, null);
+            }
 
             var results = new List<DamageResult>(caught.Count);
             List<OperatorState> stunned = null;
@@ -450,27 +492,28 @@ namespace NonaRoyale.Core.Services
             return cells;
         }
 
-        private Pending Require(CellRef cell, PlayerColor owner)
+        private Pending Require(CellRef cell, PlayerColor owner, int sourceOperatorId)
         {
             if (!cell.IsOnTrack)
                 throw new ArgumentException($"A cell effect needs an outer-track cell; got {cell}.", nameof(cell));
             if (owner == PlayerColor.None)
                 throw new ArgumentException("A cell effect needs a seat to pay its kills.", nameof(owner));
 
-            return Find(cell, owner) ?? NewEntry(cell, owner);
+            return Find(cell, owner, sourceOperatorId) ?? NewEntry(cell, owner, sourceOperatorId);
         }
 
-        private Pending Find(CellRef cell, PlayerColor owner)
+        private Pending Find(CellRef cell, PlayerColor owner, int sourceOperatorId)
         {
             foreach (var entry in _pending)
-                if (entry.Owner == owner && entry.Cell == cell) return entry;
+                if (entry.Owner == owner && entry.Cell == cell && entry.SourceOperatorId == sourceOperatorId)
+                    return entry;
 
             return null;
         }
 
-        private Pending NewEntry(CellRef cell, PlayerColor owner)
+        private Pending NewEntry(CellRef cell, PlayerColor owner, int sourceOperatorId)
         {
-            var entry = new Pending { Cell = cell, Owner = owner };
+            var entry = new Pending { Cell = cell, Owner = owner, SourceOperatorId = sourceOperatorId };
             _pending.Add(entry);
             return entry;
         }

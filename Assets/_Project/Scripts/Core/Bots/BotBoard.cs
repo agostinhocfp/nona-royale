@@ -27,6 +27,8 @@ namespace NonaRoyale.Core.Bots
         private readonly Dictionary<int, IReadOnlyList<StatusKind>> _statuses =
             new Dictionary<int, IReadOnlyList<StatusKind>>();
 
+        private readonly Dictionary<int, int> _shieldPools = new Dictionary<int, int>();
+
         public BotBoard(
             MatchFactory.Match match, BotConfig config = null,
             CombatConfig combat = null, GameConfig game = null)
@@ -197,6 +199,26 @@ namespace NonaRoyale.Core.Bots
             return false;
         }
 
+        /// <summary>
+        /// What is left of an operator's shield pool, as the engine reports it.
+        /// </summary>
+        /// <remarks>
+        /// Read rather than assumed (2026-09-17). Every shield used to be
+        /// <c>ShieldPoolDefault</c> deep, so assuming it was harmless; Nano
+        /// Cell's pool is 99, and a bot that read it as 2 kept hitting a bubble
+        /// nothing could get through.
+        /// </remarks>
+        public int ShieldPool(OperatorState op)
+        {
+            if (!_shieldPools.TryGetValue(op.Id, out int pool))
+            {
+                pool = Engine.ShieldPoolOn(op);
+                _shieldPools[op.Id] = pool;
+            }
+
+            return pool;
+        }
+
         // ── Damage estimates ─────────────────────────────────────────────
 
         /// <summary>
@@ -211,7 +233,7 @@ namespace NonaRoyale.Core.Bots
             if (type == DamageType.Tech && Has(target, StatusKind.TechWard)) return 0.0;
 
             double landed = amount;
-            if (Has(target, StatusKind.Shield)) landed = Math.Max(0.0, landed - Combat.ShieldPoolDefault);
+            if (Has(target, StatusKind.Shield)) landed = Math.Max(0.0, landed - ShieldPool(target));
             if (type == DamageType.Normal && Has(target, StatusKind.Evasion))
                 landed *= 1.0 - Combat.EvasionChance;
 
@@ -240,6 +262,8 @@ namespace NonaRoyale.Core.Bots
                         total += effect.Amount;
                         break;
                     case EffectKind.DeployZone:
+                        // A crowd zone against one operator depends on the
+                        // crowd; this is its figure with one neighbour.
                         total += effect.Amount + (int)Math.Round(effect.Magnitude * effect.Stacks);
                         break;
                     case EffectKind.AttachCharge:

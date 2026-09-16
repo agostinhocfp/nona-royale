@@ -55,7 +55,8 @@ namespace NonaRoyale.Core.Abilities
             Kian.Definition,
             Nuetu.Definition,
             Sanity.Definition,
-            Luka.Definition
+            Luka.Definition,
+            Lethe.Definition
         };
 
         /// <summary>The alpha three, in order. What every sweep and test measured.</summary>
@@ -86,7 +87,7 @@ namespace NonaRoyale.Core.Abilities
         /// <b>Distinct within a seat, duplicated freely across seats.</b> Three
         /// Bouncers on one side is a legitimate configuration to measure but a
         /// poor one to play against while the roster is this small, and with
-        /// nine operators and four seats no rule could give every seat a unique
+        /// ten operators and four seats no rule could give every seat a unique
         /// squad anyway. The GDD's draft rules are open (§2.2); this is the
         /// simplest thing that produces varied matches.
         ///
@@ -103,14 +104,12 @@ namespace NonaRoyale.Core.Abilities
         /// produce a squad with no way through Kurbyn. That is a real drafting
         /// question and it is open.
         ///
-        /// <b>The pool is even.</b> Mimi's Cryo Field and Kurbyn's Predator's
-        /// Read both landed on 2026-09-16, so all nine operators draw with
-        /// three abilities. A sweep run now measures the roster as designed;
-        /// nothing here checks that a squad has an answer to Evasion, a way to
-        /// heal, or any reliable damage at all, and with Atomic concentrated in
-        /// three operators (§2.2) a legal draw can still produce a squad with
-        /// no way through Kurbyn. That is a real drafting question and it is
-        /// open.
+        /// <b>The pool is complete.</b> Mimi's Cryo Field and Kurbyn's
+        /// Predator's Read both landed on 2026-09-16, and Lethe (2026-09-17)
+        /// arrived whole, so every operator draws with its full kit — three
+        /// abilities, or two and an aura for Bouncer and Lethe. A sweep run
+        /// now measures the roster as designed, and adding Lethe moved every
+        /// seed's draft, so no sweep before her compares with one after.
         /// </remarks>
         public static IReadOnlyList<OperatorDefinition> DraftRandom(IRandom random)
         {

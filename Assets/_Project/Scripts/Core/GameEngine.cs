@@ -662,6 +662,9 @@ namespace NonaRoyale.Core
                 pips = command.DieFace.Value;
             }
 
+            // Read before the move: an aura's haste belongs to where the mover
+            // started, and the move may carry it out of range (§5.9).
+            bool hastened = IsHastenedNow(op);
             int cells = CellsFor(op, pips, out int hasteCells);
 
             // A single low die under a heavy slow can floor to nothing. Spending
@@ -685,7 +688,7 @@ namespace NonaRoyale.Core
             // Charged on the attempted move, bounce or not: the cells were
             // travelled, and a bounce is placement afterwards (§7.2). The roll's
             // bonus is spent by this move even if the turn cap trimmed it to 0.
-            if (_statuses.IsHastened(op))
+            if (hastened)
             {
                 _hastePaidThisRoll.Add(op.Id);
                 if (hasteCells > 0) _hasteCellsUsed[op.Id] = HasteCellsUsed(op) + hasteCells;
@@ -1170,11 +1173,34 @@ namespace NonaRoyale.Core
         /// consumed at upkeep without a <c>StatusExpired</c>. An inferred badge
         /// layer drifts from the truth, and a board that lies about status is
         /// worse than one that shows none.
+        ///
+        /// <b>Haste from an ally's aura is listed too (2026-09-17).</b> It is
+        /// not a status, but a player reads it as one: the HASTE tag appears
+        /// on an ally the moment it stands within Lethe's Catalyst and goes
+        /// the moment it leaves, which is the whole of how the aura is taught.
         /// </remarks>
         public IReadOnlyList<StatusKind> ActiveStatusesOn(OperatorState op)
         {
             if (op == null) throw new ArgumentNullException(nameof(op));
-            return _statuses.ActiveKinds(op);
+
+            var kinds = _statuses.ActiveKinds(op);
+            if (!_auras.GrantsHaste(op, _operators)) return kinds;
+
+            foreach (var kind in kinds)
+                if (kind == StatusKind.Hastened) return kinds;
+
+            var withHaste = new List<StatusKind>(kinds) { StatusKind.Hastened };
+            return withHaste;
+        }
+
+        /// <summary>
+        /// What is left of an operator's shield pool (§5.6), for callers that
+        /// weigh a hit before making it — the bots. Zero without a shield.
+        /// </summary>
+        public int ShieldPoolOn(OperatorState op)
+        {
+            if (op == null) throw new ArgumentNullException(nameof(op));
+            return _statuses.ShieldPool(op);
         }
 
         /// <summary>
@@ -1242,7 +1268,7 @@ namespace NonaRoyale.Core
             !op.IsInYard && !_win.HasFinished(op) && !_statuses.IsStunned(op);
 
         /// <summary>
-        /// Speed is base, plus statuses, plus any enemy aura reaching it — all
+        /// Speed is base, plus statuses, plus any aura reaching it — all
         /// evaluated now, because an aura's truth changes with position.
         /// </summary>
         /// <remarks>
@@ -1283,7 +1309,7 @@ namespace NonaRoyale.Core
             int cells = _movement.CellsFor(pips, SpeedOf(op));
             hasteCells = 0;
 
-            if (cells <= 0 || !_statuses.IsHastened(op) || _hastePaidThisRoll.Contains(op.Id))
+            if (cells <= 0 || !IsHastenedNow(op) || _hastePaidThisRoll.Contains(op.Id))
                 return cells;
 
             int budget = Math.Max(0, _config.HasteBonusCellCap - HasteCellsUsed(op));
@@ -1291,6 +1317,19 @@ namespace NonaRoyale.Core
 
             return cells + hasteCells;
         }
+
+        /// <summary>
+        /// Hastened by a status, a passive, or an ally's aura (§5.9) — the one
+        /// question haste asks, asked the same way by the move, the preview and
+        /// the legality check.
+        /// </summary>
+        /// <remarks>
+        /// <b>Catalyst is read here, not in the status registry (2026-09-17).</b>
+        /// An aura is true of a position, not of an operator, and the registry
+        /// does not know where anybody stands.
+        /// </remarks>
+        private bool IsHastenedNow(OperatorState op) =>
+            _statuses.IsHastened(op) || _auras.GrantsHaste(op, _operators);
 
         private int HasteCellsUsed(OperatorState op) =>
             _hasteCellsUsed.TryGetValue(op.Id, out int used) ? used : 0;
