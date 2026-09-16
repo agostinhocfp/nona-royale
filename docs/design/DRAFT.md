@@ -1,7 +1,7 @@
 # Nona Royale — All Pick Draft (Stage 1)
 
 > Location in repo: `docs/design/DRAFT.md` · Project copy: `claude/DRAFT.md`
-> Status: **Open, 2026-09-16.** DR1 committed; DR2 (screen) built, awaiting Play Mode.
+> Status: **Closed, 2026-09-16.** DR1 and DR2 are committed and passed Play Mode. Next: Stage 2, CPU opponents (`NEXT_PHASES.md`).
 > Related: `NEXT_PHASES.md` (Stage 1), `GDD.md` §2.2, `PRESENTATION.md` §4.3, ADR-0004 (core has no Unity types), ADR-0008 (uGUI)
 
 ## Goal
@@ -84,3 +84,12 @@ Before the match, the seats choose their three operators from the full roster in
     - The end screen shows each seat's squad (shapes and names) and says whether REMATCH keeps squads. The card is 860 wide.
   - **Checks:** the view compiles against the editor DLLs, and the sim compiles. PRESENTATION §4.3 updated.
   - **Not yet checked:** Play Mode.
+- 2026-09-16 — **DR2 committed** (`feat(draft): draft screen with all-pick and snake flows`). Unity: 476 passing.
+  - The designer's Play Mode pass found nothing wrong: setup modes, ALL PICK at 2 and 4 seats, the timeout, SNAKE, BACK over a live match, and REMATCH.
+- 2026-09-16 — **Stage 1 closed.**
+- **Notes for Stage 2 (CPU opponents):**
+  - **CPU picks in ALL PICK have no turn to wait for.** The plan's "auto-pick for CPU seats with a short delay" needs a pacing rule, for example one CPU pick every ~1.5 s across all CPU seats, and all of them inside the 30 s clock. Humans can still pick at the same time. A CPU pick goes through `DraftState.Pick(seat, op)` like any other.
+  - **In SNAKE**, a CPU seat picks when `CurrentSeat` is its own, after the think delay, well inside the 10 s clock.
+  - **The active-seat pointer** (keys 1–4, seat rows) should skip CPU seats.
+  - **UNDO in SNAKE** can revert a CPU pick. Decide whether it should step back past CPU picks to the last human pick.
+  - **The CPU draft picker** needs only `Available(seat)`, `CanPick` and the draft RNG. It must not draw from the match RNG.

@@ -6,11 +6,12 @@
 
 ## Where things stand
 
+- **Stage 1 (draft): closed 2026-09-16.** DR1 and DR2 are committed and passed Play Mode. Its log, and notes for Stage 2, are in `DRAFT.md`. The decisions changed the plan below: ALL PICK became a free, simultaneous 30 s draft, and SNAKE became a second mode with 10 s per pick.
 - **GUI phase: done through J** (title, setup, pause, end, in-match HUD). Everything up to and including J is committed (`feat(flow): title menu, main-menu return and remembered settings`).
 - **K is parked.** The formal stranger test has no date. The designer ran an informal test at home: the GUI passed easily. The one note was that **the dice roll could be more obvious**, either by catching the eye or by sitting more centrally. That note goes to Stage 3.
 - **The OnGUI dev panel stays** behind Tab (off by default) until a formal stranger test passes (ADR-0008 consequence 6). Known issue: when opened, it draws over the modal cards. Nobody needs it outside debugging.
 - **Art:** Luka's look is settled (`OPERATORS.md`, 2026-09-16). The four run-4 crops are ready for Meshy (in the chat, `art/luka_meshy/`). The designer is working in Meshy alongside these stages.
-- **Tests:** 434 passing in the stand-in run. The sim compiles.
+- **Tests:** 476 passing in Unity (434 before Stage 1). The sim compiles.
 
 ## The stages, in order
 
@@ -55,7 +56,7 @@
 
 ---
 
-## Stage 1 — All Pick Draft
+## Stage 1 — All Pick Draft (closed 2026-09-16; see `DRAFT.md`)
 
 **Stage doc:** `docs/design/DRAFT.md`
 
@@ -179,7 +180,7 @@ In setup, any seat can be HUMAN or CPU. CPU seats draft and play on their own, a
    - **Contact:** landing on or bumping an enemy (weighted by personality), and a penalty for ending inside an enemy's threat range (use `LegalTargetsFor` from their side if it can be queried cheaply; otherwise skip it in v1).
    - These are **preferences, not rules**. Legality always comes from the engine.
 5. **Bot randomness** comes from its own stream, `new SeededRandom(seed ^ BotSalt)`. **It never draws from the match RNG**, so the same seed gives the same dice whoever is playing.
-6. **Draft picks.** Pick by personality priority with a little randomness, and avoid a squad with no healing or no burst if possible.
+6. **Draft picks.** Pick by personality priority with a little randomness, and avoid a squad with no healing or no burst if possible. Pacing differs by mode: ALL PICK has no turns, so CPU picks need their own rhythm inside the 30 s clock; SNAKE picks on the CPU seat's turn, inside the 10 s clock. See the Stage 2 notes at the end of `DRAFT.md`.
 7. **Pacing.**
    - About 0.5 s of thinking before each action, and the driver waits until no piece is walking.
    - A **bot speed** setting (Normal / Fast / Instant), remembered. Space held = fast-forward.
@@ -210,7 +211,7 @@ In setup, any seat can be HUMAN or CPU. CPU seats draft and play on their own, a
 - **BOT3 — setup, draft and end**
   - Seat tiles cycle EMPTY → HUMAN → CPU, with a personality chip on CPU seats.
   - `MatchSettings` gains a per-seat kind and personality.
-  - Stage 1's draft screen auto-picks for CPU seats, with a short delay.
+  - The draft screen auto-picks for CPU seats, paced as decided in item 6. The active-seat pointer skips CPU seats.
   - The end screen and the rail mark CPU seats.
   - The bot speed row goes on the settings page (`SettingsRows`, `SettingsStore`).
   - Update PRESENTATION §4.3.
