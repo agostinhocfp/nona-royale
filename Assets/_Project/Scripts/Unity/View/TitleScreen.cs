@@ -170,14 +170,14 @@ namespace NonaRoyale.Unity.View
             }
 
             Gap(18f);
-            Note("Prototype build · pieces and board drawn in code", UiTheme.TextOff);
+            Note("Prototype build · pieces and board drawn in code", UiTheme.TextNote);
         }
 
         private void SettingsPage()
         {
             Heading("Settings");
             SettingsRows.Build(ColumnSlot, _host, Rebuild);
-            Note("Remembered between sessions.", UiTheme.TextOff);
+            Note("Remembered between sessions.", UiTheme.TextNote);
             Gap(6f);
             Choice("BACK", "Esc", Back);
         }

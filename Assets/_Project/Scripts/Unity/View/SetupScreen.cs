@@ -108,7 +108,7 @@ namespace NonaRoyale.Unity.View
             var seats = ButtonRow("seats", 124f);
             foreach (var seat in MatchSettings.AllSeats) SeatTile(seats, seat);
 
-            Note(_notice ?? SeatNote(), _notice != null ? UiTheme.Threat : UiTheme.TextOff, 38f);
+            Note(_notice ?? SeatNote(), _notice != null ? UiTheme.Threat : UiTheme.TextNote, 38f);
 
             // ── Squads ──
             Gap(4f);
@@ -117,7 +117,7 @@ namespace NonaRoyale.Unity.View
             var squads = ButtonRow("squads");
             foreach (var mode in Modes) SquadOption(squads, mode);
 
-            Note(SquadNote(_edit.Squads), UiTheme.TextOff, 38f);
+            Note(SquadNote(_edit.Squads), UiTheme.TextNote, 38f);
 
             // ── Seed ──
             Gap(4f);
@@ -135,7 +135,7 @@ namespace NonaRoyale.Unity.View
             }, Rebuild, size: UiTheme.FontSmall);
             UiKit.Size(shuffle, flexibleWidth: 1f);
 
-            Note("The seed fixes the dice and any random picks. Same seed, same dice.", UiTheme.TextOff);
+            Note("The seed fixes the dice and any random picks. Same seed, same dice.", UiTheme.TextNote);
 
             // ── Go ──
             Gap(10f);

@@ -108,7 +108,7 @@ namespace NonaRoyale.Unity.View
                     winner: winner == player.Color);
             }
 
-            Note("Knockouts count for the seat whose operator caused them.", UiTheme.TextOff);
+            Note("Knockouts count for the seat whose operator caused them.", UiTheme.TextNote);
 
             // ── Next ──
             Gap(10f);
@@ -123,7 +123,7 @@ namespace NonaRoyale.Unity.View
             Note(_host.Settings.Squads.IsDraft() || _host.Settings.Squads == SquadMode.Alpha
                     ? "Same table and squads, next seed."
                     : "Same table, next seed; squads are drawn again.",
-                UiTheme.TextOff);
+                UiTheme.TextNote);
         }
 
         /// <summary>One row of the tally: a seat diamond, its name, its squad's shapes and three numbers.</summary>

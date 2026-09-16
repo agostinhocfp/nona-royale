@@ -86,6 +86,13 @@ namespace NonaRoyale.Unity.View
         public static readonly Color TextDim = Hex("A39A8C");
         public static readonly Color TextOff = Hex("655E56");
 
+        /// <summary>
+        /// Small explanatory lines on the full-screen cards (title, setup,
+        /// end). Brighter than <see cref="TextDim"/> so 13 pt reads on the
+        /// scrim, and still under <see cref="Text"/> so the buttons lead.
+        /// </summary>
+        public static readonly Color TextNote = Hex("CFC8BC");
+
         /// <summary>Section headings: small spaced capitals in gold.</summary>
         public static readonly Color Heading = Gold;
 
