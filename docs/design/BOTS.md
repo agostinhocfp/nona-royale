@@ -170,3 +170,10 @@ In setup, any seat can be HUMAN or CPU. CPU seats draft and play on their own, a
   - Still pending, not blocking: the designer's minor balance edits. Claude documents them afterwards (diff against HEAD, docs, sim before/after).
   - Kian stays un-nerfed; revisit after more human games.
   - Carried to Stage 3: the pre-move landing/target flash (MO2 cast tells), and the setup tile's "click to change" hint if testers miss it.
+- 2026-09-16 — **The designer's balance edits, documented** (both landed in `balance(haste): cap the haste bonus at 3 cells per operator per turn`). Details and tables live in COMBAT_SYSTEMS.
+  - **Haste cap** (§5.9): Hastened adds at most 3 extra cells per operator per turn. Bots sweep: noise only (Syla 31% → 30%).
+  - **Sanity** (§10.8): Zero-Day range 2 → 3. Collision cost 7 → 6, cooldown 4 → 3, range 5 → 6.
+    - Sanity's win share 21% → 22%, about one standard error.
+    - Bot-vs-bot matches got longer: 32.5 → 34.2 turns per seat, 19.9 → 22.0 knockouts, Collision cast 4.81 → 6.80 times a match. A Collision-only run shows it is the cause.
+    - Watch match length in human games.
+  - This closes the pending balance item above.

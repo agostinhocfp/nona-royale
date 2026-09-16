@@ -42,6 +42,13 @@ namespace NonaRoyale.Core.Abilities
     /// and its target can be an ally. Reasoned, unmeasured — adding him shifts
     /// the draft's dice stream besides, so nothing here can be compared to
     /// figures taken before him.
+    ///
+    /// <b>Designer balance pass, 2026-09-16: 3 / 4 / 6, and more reach.</b>
+    /// Zero-Day range 2 → 3. Collision cost 7 → 6, cooldown 4 → 3, range
+    /// 5 → 6. Both changes push the same way: the slowest operator gets to the
+    /// fight sooner and from further out. The designer's call; the reasoning
+    /// was not recorded with it. COMBAT_SYSTEMS §10.8 has the before/after
+    /// sim.
     /// </remarks>
     public static class Sanity
     {
@@ -132,9 +139,12 @@ namespace NonaRoyale.Core.Abilities
         ///
         /// <b>Cost 4, cooldown 3.</b> Priced under Drone Strike's 6 because
         /// that cannot be cleansed and this can; the cooldown is the real
-        /// limiter either way (§3.1). Range 2 means the slowest operator on
-        /// the roster has to be standing near the fight to throw it — the same
-        /// price Nuetu pays for his whole kit.
+        /// limiter either way (§3.1).
+        ///
+        /// <b>Range 3 (was 2 until 2026-09-16).</b> At 2 the slowest operator
+        /// on the roster had to stand inside the fight to throw it, the same
+        /// price Nuetu pays for his whole kit. At 3 it matches From the Hip and
+        /// Blind Spot, so he can throw it from one cell further back.
         /// </remarks>
         public static AbilityDefinition ZeroDay { get; } = new AbilityDefinition(
             id: 802, name: "Zero-Day",
@@ -164,21 +174,28 @@ namespace NonaRoyale.Core.Abilities
         /// enemy-audience effects, so the cast-mode system filters them out
         /// for an ally anchor instead of the dash branching on it.
         ///
-        /// <b>It is the mobility his speed denies him, priced as an
-        /// ultimate.</b> At 0.5 he moves three cells on a six; this moves him
-        /// up to six — five to the target and one past it — in either
-        /// direction, for 7 energy once every four of his turns. Dashing
+        /// <b>It is the mobility his speed denies him.</b> At 0.5 he moves
+        /// three cells on a six; this moves him up to seven — six to the target
+        /// and one past it — in either direction, for 6 energy once every three
+        /// of his turns. Range 6 ties Translocation for the longest targeted
+        /// reach on the roster (Drone Strike's is unlimited, but it aims at a
+        /// cell). Dashing
         /// backwards to an ally behind him is the escape the rest of the kit
         /// refuses to give him, and it is also why the ability carries the
         /// camping rule: a sheltered engineer may not dash to an ally behind
         /// himself (§4.4, second amendment).
         ///
-        /// <b>Cost 7, under Miracle Pull's 9.</b> Three Normal and a stun on
+        /// <b>Cost 6, under Miracle Pull's 9.</b> Three Normal and a stun on
         /// the anchor plus a rake along the path is less than a possible
         /// execute, and the dash cuts both ways — it delivers the slowest
         /// operator in the game to exactly where the fight is, which is
-        /// sometimes where he wanted to be and sometimes not. Cooldown 4 keeps
-        /// it an event rather than a commute.
+        /// sometimes where he wanted to be and sometimes not.
+        ///
+        /// <b>No longer priced as an ultimate (2026-09-16).</b> It shipped at
+        /// 7 energy, cooldown 4, range 5. At 6 / 3 it has the same price and
+        /// cooldown as Ace Shards, Cryo-Pulse, Vendetta and Neural Purge, so it
+        /// sits in the roster's mid tier. The cooldown still keeps it an event
+        /// rather than a commute, but a more frequent one.
         /// </remarks>
         public static AbilityDefinition Collision { get; } = new AbilityDefinition(
             id: 803, name: "Collision",

@@ -758,16 +758,43 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 | #   | Ability           | Type   | Cost | CD  | Range | Effect                                                                                                                                                                                                                                                            |
 | --- | ----------------- | ------ | ---- | --- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | **Short Circuit** | Active | 3    | 1   | 1     | **1 Normal**; **Stun 1 turn** (§5.1).                                                                                                                                                                                                                             |
-| 2   | **Zero-Day**      | Active | 4    | 3   | 2     | Attach a charge to an enemy (§6.4): at Sanity's next upkeep it detonates on the target's current cell — **1 Tech** to all enemies within 1, **+1** to the marked target, **Slow 1 turn** to everyone caught. Telegraphed on attach; cleanse-detachable (§5.10).   |
-| 3   | **Collision**     | Active | 7    | 4   | 5     | **Dash** to the target, enemy or ally (§7.6): **1 Normal** to every enemy on the traversed cells. Enemy target: **3 Normal** and **Stun 1 turn**. Lands a cell behind the target.                                                                                 |
+| 2   | **Zero-Day**      | Active | 4    | 3   | 3     | Attach a charge to an enemy (§6.4): at Sanity's next upkeep it detonates on the target's current cell — **1 Tech** to all enemies within 1, **+1** to the marked target, **Slow 1 turn** to everyone caught. Telegraphed on attach; cleanse-detachable (§5.10).   |
+| 3   | **Collision**     | Active | 6    | 3   | 6     | **Dash** to the target, enemy or ally (§7.6): **1 Normal** to every enemy on the traversed cells. Enemy target: **3 Normal** and **Stun 1 turn**. Lands a cell behind the target.                                                                                 |
 
 **Short Circuit is From the Hip's shape with the reach spent on a stun.** Same price, same 1 damage — but Syla's slow at range 3 becomes the strongest control status in the game at melee range, on the slowest operator ever fielded. The range is the whole cost of the ability: he has to be standing next to somebody, and at 0.5× that is the rarest thing on the board.
 
 **Zero-Day is the first operator-anchored deferred effect (§6.4).** A beacon is a bet on where somebody will be; the charge is a delayed certainty that follows them there, and it pays for the certainty in counterplay rather than in damage — telegraphed on attachment, and a cleanse strips the marker and cancels it outright. Javi's Neural Purge answers a 4-energy ability for 6, which is the rock-paper-scissors the cleanse exists for (§5.8). The damage split inverts Drone Strike's: the beacon is strongest against a crowd that scatters its beam, the charge against the one operator it is riding. Tech type (§2.2, 2026-09-15): a homing grenade is the plainest guided device on the roster. Otherwise it is Normal, so a plate absorbs it and an evasion charge can dodge it, a warded Luka blocks it, and the cleanse cancels it. Atomic would make the counterplay one-dimensional, and Atomic is deliberately concentrated (§2.2).
 
-**Collision is the mobility his speed denies him, priced as an ultimate.** At 0.5 he moves three cells on a six; the dash moves him up to six — five to the target and one past it — in either direction. The ally mode is the escape the rest of the kit refuses to give him, and it is why the ability carries the camping rule (§4.4, second amendment). Priced under Miracle Pull's 9: three Normal and a stun on the anchor plus a rake along the path is less than a possible execute, and the dash cuts both ways — it delivers the slowest operator in the game to exactly where the fight is, which is sometimes where he wanted to be.
+**Collision is the mobility his speed denies him.** At 0.5 he moves three cells on a six; the dash moves him up to seven — six to the target and one past it — in either direction. The ally mode is the escape the rest of the kit refuses to give him, and it is why the ability carries the camping rule (§4.4, second amendment). Priced under Miracle Pull's 9: three Normal and a stun on the anchor plus a rake along the path is less than a possible execute, and the dash cuts both ways — it delivers the slowest operator in the game to exactly where the fight is, which is sometimes where he wanted to be.
 
-**Costs 3 / 4 / 7 are the balance review's outcome (2026-09-15), argued against peers and unmeasured.** A basic priced like From the Hip, a delayed area priced under Drone Strike because it can be cleansed away, an ultimate priced under Miracle Pull because its damage is Normal and its target can be an ally. Adding him shifts the draft's dice stream besides, so nothing here can be compared to figures taken before him.
+**Costs 3 / 4 / 7 were the balance review's outcome (2026-09-15), argued against peers and unmeasured.** A basic priced like From the Hip, a delayed area priced under Drone Strike because it can be cleansed away, an ultimate priced under Miracle Pull because its damage is Normal and its target can be an ally. Adding him shifts the draft's dice stream besides, so nothing here can be compared to figures taken before him. They are now 3 / 4 / 6 (below).
+
+**Balance pass (2026-09-16, designer).** The reasoning was not recorded with the change.
+
+| Ability   | Cost  | CD    | Range |
+| --------- | ----- | ----- | ----- |
+| Zero-Day  | 4     | 3     | 2 → 3 |
+| Collision | 7 → 6 | 4 → 3 | 5 → 6 |
+
+- **Zero-Day at range 3** matches From the Hip and Blind Spot. He no longer has to stand inside the fight to throw it.
+- **Collision is no longer priced as an ultimate.** At 6 energy and cooldown 3 it has the same price and cooldown as Ace Shards, Cryo-Pulse, Vendetta and Neural Purge. Range 6 ties Translocation for the longest targeted reach on the roster (Drone Strike's is unlimited, but it aims at a cell). The dash now covers up to seven cells.
+
+**Measured: the matches changed more than Sanity did.** Bots sweep, 800 matches per row, same seeds. Sanity is not in the alpha squad, so the standard sweep can't see this change.
+
+| Bots against bots, 4 seats    | Before | Collision change only | Both changes |
+| ----------------------------- | ------ | --------------------- | ------------ |
+| Turns per seat                | 32.5   | 35.0                  | 34.2         |
+| Knockouts per match           | 19.9   | 22.4                  | 22.0         |
+| Casts per match               | 66.1   | 73.4                  | 72.0         |
+| Sanity win share              | 21%    | 22%                   | 22%          |
+| Collision casts per match     | 4.81   | 7.17                  | 6.80         |
+| Zero-Day casts per match      | 1.85   | 2.38                  | 2.62         |
+| Short Circuit casts per match | 3.02   | 3.85                  | 3.50         |
+
+- **Sanity's win share barely moved** (+1 point, about one standard error at 1,047 squads).
+- **Collision drives the rest.** On its own it adds about 2.5 turns per seat and 2.5 knockouts per match, and it is cast about 50% more often. Adding Zero-Day's range takes back a little of that (35.0 → 34.2 turns): Zero-Day is cast more and Collision a little less, which fits the two competing for the same energy.
+- **Other operators moved by 3 points at most, about two standard errors.** Nuetu 21% → 24% and Bouncer 26% → 27% went up; Mimi 20% → 18% and Luka 24% → 22% went down.
+- **Read with care.** The bots cast whatever scores well, and a cheaper Collision scores well more often. Whether a longer match is a problem is a question for human games; the sim only says it happened.
 
 ### 10.9 Luka — Duelist
 
@@ -952,7 +979,8 @@ Carried from the pre-2026-09-14 version of this section, which the table above s
 - **`SlowSpeedPenalty = 0.5`** takes a 1.0 operator to the `MinSpeedMultiplier` floor (§5.2). It was not re-measured when the band moved, and Intimidating Presence and Cryo-Pulse make it land more often. It also interacts with §6.1: a heavily slowed squad can reach the state where a roll has no legal consumer.
 - **`HasteSpeedBonus = 0.5`, `HasteDurationTurns = 2`** — the bonus was cut against the 1.5–2.0 band, where it was about +25%; against 1.0–1.5 it is +33% to +50%.
 - **`HasteBonusCellCap = 3`** (§5.9) — the designer's number (2026-09-16). It limits the +33% to +50% above to 3 cells per operator per turn. Before/after at 800 matches it changed nothing beyond noise: the standard table's adopted row is identical (20.3 turns, 5.5 neutralizes, 40% 3-up), and Syla's bot-vs-bot win share went 31% → 30%. The payout fires about once a match (Tagged From Above: 1.15 casts), so the sim cannot show a cap on it. Only human games can.
-- **`RegenEveryTurns = 3`, `RegenAmount = 1`** (§5.11) — A/B 0 against 3 before trusting either.
+- **`RegenEveryTurns = 3`, `RegenAmount = 1`** (§5.11) — A/B 0 against 3 before trusting either. **Not live in code:** the `CombatConfig` constructor never assigns either field, so both read 0 and regeneration never fires. Found 2026-09-16; enabling it is a balance change and waits for a decision.
+- **Sanity's Collision at 6 / 3 / 6** (§10.8, 2026-09-16) — the bots sweep puts about 1.7 turns per seat and 2 knockouts per match on the four-seat game. Watch match length in human games before touching anything else.
 
 ### Struck
 
@@ -1183,3 +1211,4 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - 2026-09-15 — **Tech sources settled** (designer): damage from a guided or remote-operated device is Tech (§2.2). **Zero-Day and Drone Strike switch Normal → Tech**, joining Cryo-Pulse; Killzone is recorded as borderline and stays Normal. §5.12 states three consequences: the ward blocks damage but not riders, a warded holder still counts toward Drone Strike's split, and Mimi alone is fully shut out by the ward. A roster test pins the source list. §10.4, §10.6, §10.8, §10.9, §12 and §13 updated. Unmeasured.
 - 2026-09-15 — **"L" named Blind Spot** (designer). The device behind it and Hermes' Ring is one signal-spoofing ring: turned outward it hides him from every lens (the teleport), turned inward it jams guided tech (the ward). The fiction lives in `OPERATORS.md`. Ability id 901 unchanged. No rule or number changed.
 - 2026-09-16 — **Haste bonus capped at 3 cells** (designer balance note). §5.9 and §6.3 amended. Hastened still adds +0.5 speed, but at most 3 extra cells per operator per turn. The cap is per turn, not per move, so splitting a roll cannot collect it twice. It is a new config value, `CombatConfig.HasteBonusCellCap`, and `GameEngine` keeps the per-turn budget. `Move`, `PreviewLandings` and `HasLegalMove` now share one distance helper. `MatchFactory.Match` now exposes `Statuses` for tests. Sim before/after is noise-level (§12). Tests 496 → 512.
+- 2026-09-16 — **Sanity balance pass** (designer, landed in the haste-cap commit). Zero-Day range 2 → 3. Collision cost 7 → 6, cooldown 4 → 3, range 5 → 6, so it is no longer priced as an ultimate. §10.8 updated with a before/after bots sweep: Sanity's win share 21% → 22%, but bot matches run about 1.7 turns per seat longer with 2 more knockouts, and Collision is the cause. `Sanity.cs` remarks brought in line. §12 records the watch item, and that regeneration is not live in code.
