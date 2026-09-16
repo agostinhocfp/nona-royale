@@ -3,14 +3,14 @@ using System;
 
 namespace NonaRoyale.Unity.Audio
 {
-    /// <summary>The code-side mixer buses (AUDIO.md decision 2).</summary>
+    /// <summary>The buses, one per group of the mixer (AUDIO.md decision 2).</summary>
     public enum AudioBus
     {
         Music,
         Sfx,
         Voice,
 
-        /// <summary>Button clicks. Follows the SFX slider; keeps playing in pause.</summary>
+        /// <summary>Button clicks. Follows the Effects slider; keeps playing in pause.</summary>
         Ui,
     }
 
@@ -19,17 +19,37 @@ namespace NonaRoyale.Unity.Audio
     /// (AUDIO.md decisions 2 and 5). Remembered between sessions.
     /// </summary>
     /// <remarks>
-    /// <b>Plain C#.</b> The director multiplies every source by
-    /// <see cref="Gain"/>; there is no AudioMixer asset. Sliders are linear
-    /// 0–1 and are mapped onto a perceptual curve here, so the middle of a
-    /// slider sounds like the middle.
+    /// <b>Plain C#.</b> Sliders are linear 0–1 and are mapped onto a
+    /// perceptual curve here, so the middle of a slider sounds like the
+    /// middle. With the mixer loaded (AU1f), each curve value becomes a
+    /// group's fader in decibels (<see cref="Decibels"/>); without it, the
+    /// director multiplies every source by <see cref="Gain"/> instead.
     /// </remarks>
     public sealed class AudioLevels
     {
         public const float DefaultMaster = 0.8f;
-        public const float DefaultMusic = 0.6f;
+
+        /// <summary>
+        /// 30% under the first default (<see cref="FormerDefaultMusic"/>),
+        /// decided 2026-09-16 (AU1f): the Lyria score sat on top of the
+        /// effects.
+        /// </summary>
+        public const float DefaultMusic = 0.42f;
+
         public const float DefaultSfx = 0.8f;
         public const float DefaultVoice = 0.8f;
+
+        /// <summary>The Music default before AU1f. A saved value equal to it was never chosen.</summary>
+        public const float FormerDefaultMusic = 0.6f;
+
+        /// <summary>
+        /// The version of the saved settings. 1 was AU1 (unversioned);
+        /// 2 is AU1f, the lower music default.
+        /// </summary>
+        public const int Version = 2;
+
+        /// <summary>A fader's floor, and what Mute sets Master to. Unity's mixer bottoms out here.</summary>
+        public const float SilentDecibels = -80f;
 
         /// <summary>Music level while the pause menu is open.</summary>
         public const float PausedMusic = 0.35f;
@@ -43,6 +63,14 @@ namespace NonaRoyale.Unity.Audio
         public float Voice { get; set; } = DefaultVoice;
         public bool Muted { get; set; }
 
+        /// <summary>The Master fader's gain: its curve, or 0 when muted.</summary>
+        public float MasterGain => Muted ? 0f : Curve(Master);
+
+        /// <summary>True when every value is the default, so Restore defaults has nothing to do.</summary>
+        public bool IsDefault =>
+            Master == DefaultMaster && Music == DefaultMusic && Sfx == DefaultSfx &&
+            Voice == DefaultVoice && !Muted;
+
         /// <summary>The slider value for a bus. UI shares the SFX slider.</summary>
         public float SliderOf(AudioBus bus)
         {
@@ -54,11 +82,20 @@ namespace NonaRoyale.Unity.Audio
             }
         }
 
+        /// <summary>The bus's own fader gain, without Master.</summary>
+        public float BusGain(AudioBus bus) => Curve(SliderOf(bus));
+
         /// <summary>The linear gain a source on <paramref name="bus"/> plays at: master times bus, on a perceptual curve.</summary>
-        public float Gain(AudioBus bus)
+        public float Gain(AudioBus bus) => MasterGain * BusGain(bus);
+
+        /// <summary>Back to the defaults, unmuted.</summary>
+        public void Reset()
         {
-            if (Muted) return 0f;
-            return Curve(Master) * Curve(SliderOf(bus));
+            Master = DefaultMaster;
+            Music = DefaultMusic;
+            Sfx = DefaultSfx;
+            Voice = DefaultVoice;
+            Muted = false;
         }
 
         /// <summary>Copies every value from <paramref name="other"/>.</summary>
@@ -83,6 +120,28 @@ namespace NonaRoyale.Unity.Audio
         {
             float s = Math.Clamp(slider, 0f, 1f);
             return s * s;
+        }
+
+        /// <summary>
+        /// A linear gain as a mixer fader: 0 dB at 1, and
+        /// <see cref="SilentDecibels"/> at 0.0001 (-80 dB) or below.
+        /// </summary>
+        public static float Decibels(float gain)
+        {
+            if (!(gain > 0.0001f)) return SilentDecibels; // also catches NaN
+            return Math.Clamp(20f * MathF.Log10(gain), SilentDecibels, 0f);
+        }
+
+        /// <summary>
+        /// The Music value to use for one saved under settings version
+        /// <paramref name="savedVersion"/>. A value saved before AU1f that
+        /// still equals the old default was never picked by the player, so it
+        /// moves to the new default; anything the player set stays.
+        /// </summary>
+        public static float MigrateMusic(int savedVersion, float savedMusic)
+        {
+            if (savedVersion >= Version) return savedMusic;
+            return Math.Abs(savedMusic - FormerDefaultMusic) < 0.005f ? DefaultMusic : savedMusic;
         }
 
         /// <summary>A slider value as the percentage the settings row shows.</summary>

@@ -6,7 +6,8 @@ namespace NonaRoyale.Unity.Audio
     /// <summary>
     /// Plays every sound in the game (AUDIO.md increment AU1): effects on
     /// pooled sources, music with crossfades and a win sting, all through
-    /// the code-side buses in <see cref="AudioLevels"/>.
+    /// the mixer's buses (<see cref="SoundMixer"/>, AU1f) set from
+    /// <see cref="AudioLevels"/>.
     /// </summary>
     /// <remarks>
     /// <b>Told what to play, never deciding why.</b> The composition root
@@ -29,6 +30,11 @@ namespace NonaRoyale.Unity.Audio
     /// rules run on a clock that stops while paused, so a line frozen mid-way
     /// still counts as speaking when play resumes. The music ducks to
     /// <see cref="AudioLevels.DuckedMusic"/> while a line plays.
+    ///
+    /// <b>The mixer (AU1f)</b> carries the player's levels: every source is
+    /// routed to its group, and a source's own volume is only its cue level
+    /// and the fades above. Without the mixer, <see cref="Level"/> folds the
+    /// player's levels back into each source, as AU1 did.
     /// </remarks>
     public sealed class AudioDirector : MonoBehaviour
     {
@@ -47,6 +53,7 @@ namespace NonaRoyale.Unity.Audio
         private const float PanWidth = 0.4f;
 
         private readonly SoundBank _bank = new SoundBank();
+        private readonly SoundMixer _mixer = new SoundMixer();
         private readonly System.Random _random = new System.Random();
         private readonly float[] _lastPlayed = new float[64];
 
@@ -88,16 +95,17 @@ namespace NonaRoyale.Unity.Audio
 
             _built = true;
             EnsureListener();
+            _mixer.Load();
 
-            _sfx = Pool("sfx", SfxVoices, ignorePause: false);
-            _ui = Pool("ui", UiVoices, ignorePause: true);
+            _sfx = Pool("sfx", SfxVoices, AudioBus.Sfx, ignorePause: false);
+            _ui = Pool("ui", UiVoices, AudioBus.Ui, ignorePause: true);
             _sfxBase = new float[SfxVoices];
             _uiBase = new float[UiVoices];
 
-            _musicA = Source("music_a", ignorePause: true);
-            _musicB = Source("music_b", ignorePause: true);
-            _sting = Source("sting", ignorePause: true);
-            _voice = Source("voice", ignorePause: false);
+            _musicA = Source("music_a", AudioBus.Music, ignorePause: true);
+            _musicB = Source("music_b", AudioBus.Music, ignorePause: true);
+            _sting = Source("sting", AudioBus.Music, ignorePause: true);
+            _voice = Source("voice", AudioBus.Voice, ignorePause: false);
             _voiceRules = new VoiceRules(_random.NextDouble);
 
             _bank.Warm();
@@ -132,7 +140,7 @@ namespace NonaRoyale.Unity.Audio
 
             source.Stop();
             source.clip = clip;
-            source.volume = gain * _levels.Gain(ui ? AudioBus.Ui : AudioBus.Sfx);
+            source.volume = gain * Level(ui ? AudioBus.Ui : AudioBus.Sfx);
             source.pitch = 1f + (float)(_random.NextDouble() * 2.0 - 1.0) * spec.PitchJitter;
             source.panStereo = at.HasValue ? PanOf(at.Value) : 0f;
             source.Play();
@@ -233,7 +241,7 @@ namespace NonaRoyale.Unity.Audio
             _voice.clip = clip;
             _voice.pitch = 1f;
             _voice.panStereo = at.HasValue ? PanOf(at.Value) : 0f;
-            _voice.volume = VoiceGain * _levels.Gain(AudioBus.Voice);
+            _voice.volume = VoiceGain * Level(AudioBus.Voice);
             _voice.Play();
         }
 
@@ -273,23 +281,34 @@ namespace NonaRoyale.Unity.Audio
 
         private void UpdateVolumes()
         {
-            float music = _levels.Gain(AudioBus.Music) * _stingLevel * _duck *
+            _mixer.Apply(_levels);
+
+            float music = Level(AudioBus.Music) * _stingLevel * _duck *
                           (Paused ? AudioLevels.PausedMusic : 1f);
             _musicA.volume = music * _fadeIn;
             _musicB.volume = music * _fadeOut;
-            _sting.volume = _levels.Gain(AudioBus.Music);
+            _sting.volume = Level(AudioBus.Music);
 
-            // A slider moved while effects ring: follow it.
-            float sfx = _levels.Gain(AudioBus.Sfx);
+            // Without the mixer, a slider moved while effects ring: follow it.
+            if (_mixer.Ready) return;
+
+            float sfx = Level(AudioBus.Sfx);
             for (int i = 0; i < _sfx.Length; i++)
                 if (_sfx[i].isPlaying) _sfx[i].volume = _sfxBase[i] * sfx;
 
-            if (_voice.isPlaying) _voice.volume = VoiceGain * _levels.Gain(AudioBus.Voice);
+            if (_voice.isPlaying) _voice.volume = VoiceGain * Level(AudioBus.Voice);
 
-            float ui = _levels.Gain(AudioBus.Ui);
+            float ui = Level(AudioBus.Ui);
             for (int i = 0; i < _ui.Length; i++)
                 if (_ui[i].isPlaying) _ui[i].volume = _uiBase[i] * ui;
         }
+
+        /// <summary>
+        /// The player's level a source on <paramref name="bus"/> carries
+        /// itself: none with the mixer, which applies it on the group; the
+        /// whole of it without.
+        /// </summary>
+        private float Level(AudioBus bus) => _mixer.Ready ? 1f : _levels.Gain(bus);
 
         private void OnDisable()
         {
@@ -299,14 +318,14 @@ namespace NonaRoyale.Unity.Audio
 
         // ── Building ─────────────────────────────────────────────────────
 
-        private AudioSource[] Pool(string name, int count, bool ignorePause)
+        private AudioSource[] Pool(string name, int count, AudioBus bus, bool ignorePause)
         {
             var pool = new AudioSource[count];
-            for (int i = 0; i < count; i++) pool[i] = Source($"{name}_{i}", ignorePause);
+            for (int i = 0; i < count; i++) pool[i] = Source($"{name}_{i}", bus, ignorePause);
             return pool;
         }
 
-        private AudioSource Source(string name, bool ignorePause)
+        private AudioSource Source(string name, AudioBus bus, bool ignorePause)
         {
             var go = new GameObject(name);
             go.transform.SetParent(transform, false);
@@ -316,6 +335,7 @@ namespace NonaRoyale.Unity.Audio
             source.spatialBlend = 0f;
             source.ignoreListenerPause = ignorePause;
             source.volume = 0f;
+            _mixer.Route(source, bus);
             return source;
         }
 

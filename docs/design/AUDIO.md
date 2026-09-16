@@ -1,7 +1,7 @@
 # Nona Royale — Audio (Stage 5)
 
 > Location in repo: `docs/design/AUDIO.md` · Project copy: `claude/AUDIO.md`
-> Status: **Open, 2026-09-16.** AU1, AU1b and AU1c are committed. AU2 (voices), AU1d (the grounded effect palette) and AU1e (Kenney chips for the step) are in the repo, awaiting Play Mode; the stage closes after that check.
+> Status: **Closed, 2026-09-16.** AU1 to AU1f and AU2 committed after Play Mode.
 > Related: `NEXT_PHASES.md` (Stage 5), `MOTION.md` (Stage 3, whose presentation steps the sounds follow), `PRESENTATION.md` §3.1, `ART_PIPELINE.md` §8 (licensing)
 
 ## Goal
@@ -26,6 +26,11 @@ Stage 4 (art hookup) was skipped for now: no finished Meshy renders are in hand.
    - `AudioLevels` holds Master, Music, Effects, Voice and Mute. Each source plays at master × bus, on a squared (perceptual) curve.
    - Interface clicks follow the Effects slider.
    - A mixer asset can come later if real effects (reverb, snapshots) are wanted.
+   - **Superseded (AU1f): there is now a real AudioMixer.** The designer asked for one. It lives in `Resources` and loads by name, so "no scene wiring" still holds.
+     - Groups: `Master` › `Music`, `Effects` › `Interface`, and `Voice`. Exposed faders: `MasterVolume`, `MusicVolume`, `EffectsVolume`, `VoiceVolume`.
+     - The sliders keep their squared curve; each result becomes a fader in decibels (−80 dB floor). Mute sets Master to −80 dB.
+     - Only the player's levels live on the mixer. Per-cue levels, crossfades, the sting dip, ducking and the pause dip stay on the sources.
+     - If the asset is missing or incomplete, the director logs one warning and uses the AU1 code-side levels.
 3. **Voice placeholders are "voice blips":** short synthesized chirps with a signature per operator, so the priority, cooldown and chance rules can be heard before any recording exists. Real `VoiceSet` clips replace them per operator.
    - **Settled in AU2:** an operator with any recorded file uses recordings only. A slot without a file is silent rather than a blip, because a recorded voice answered by a chirp sounds broken. File names and the recording spec are in `docs/audio/VOICE_LINES.md`.
 4. **Music is a procedural noir loop.**
@@ -48,6 +53,7 @@ Stage 4 (art hookup) was skipped for now: no finished Meshy renders are in hand.
    - Music ducks under voice lines.
    - **Pause:** music keeps playing at 35%, effects pause, interface clicks still sound.
    - **Settings:** sliders for Master, Music, Effects and Voice, plus Mute, on a new SOUND page reached from the settings page. All remembered.
+     - **AU1f:** the Music default drops 30%, from 60% to 42%, because the score sat on top of the effects. A Restore defaults row closes the page.
 
 ## Increments
 
@@ -58,6 +64,7 @@ Stage 4 (art hookup) was skipped for now: no finished Meshy renders are in hand.
 | AU1c | **Lyria score** | The designer's Lyria tracks as the real music: loops cut and levelled, `Showdown` for a match's final stretch (`GameEngine.IsFinalStretch`), and a provenance record. |
 | AU1d | **Grounded effects** | `Synth.Resonate` (noise through a gliding resonant band-pass) and `Synth.Darken`; every `SfxRecipes` cue rebuilt without pitched tones; per-cue levels rebalanced in `SoundBank`; `SfxRecipesTests`. |
 | AU1e | **Chip steps** | Kenney `chip-lay-1…3` as `Step`, `Step_2`, `Step_3`: trimmed to the landing, darkened, level-matched; `SoundBank` step level 0.41. |
+| AU1f | **Mixer** | `Audio/Resources/Audio/Mixer.mixer` (Master, Music, Effects › Interface, Voice; four exposed faders); `SoundMixer` routes every source and sets the faders, with the AU1 levels as fallback; Music default 42% (was 60%) with a one-time move for untouched saves; Restore defaults on the Sound page; `AudioLevelsTests`, `SoundMixerAssetTests`. |
 | AU2 | **Voices** | `VoiceRules` (priority, cooldown, chance), `VoiceBlips` (per-operator signatures), `VoiceSet` (real clips by operator name), music ducking. Voice hooks on deploy, move, cast, hit, kill, death, victory and quit. Luka's line list. |
 
 ## Rules for this stage
@@ -238,3 +245,33 @@ Stage 4 (art hookup) was skipped for now: no finished Meshy renders are in hand.
   - **Files:** `Audio/Resources/Audio/SFX/Step.wav`, `Step_2.wav`, `Step_3.wav`. As with the dice, they replace all four synthesized step variants. `SoundBank` still adds ±6% pitch jitter.
   - **Level:** `SoundBank.SpecOf(Step)` is 0.41, which plays the files at the synthesized step's level (about −30 dBA over the loudest 50 ms).
   - **Checks:** a six-hop walk rendered at 8 hops a second, synthesized and then the files. The `.meta` files come from Unity on import (default settings, like the dice).
+- 2026-09-16 — **AU2, AU1d and AU1e committed** by the designer: `947169a` (voices) and `a17b8ee` (grounded effects and chip steps).
+- 2026-09-16 — **AU1f: the mixer and a quieter music default.** The designer asked for sound settings that include a mixer, with the music starting about 30% lower. The Sound page already existed (AU1), so this adds the mixer under it.
+  - **`Audio/Resources/Audio/Mixer.mixer`**, written by hand as Unity YAML (there is no public API to create a mixer from code):
+    - `Master` › `Music`, `Effects` › `Interface`, `Voice`; each group has its Attenuation. One snapshot, left at 0 dB. Update mode: unscaled time.
+    - Exposed: `MasterVolume`, `MusicVolume`, `EffectsVolume`, `VoiceVolume`. `Interface` isn't exposed; it sits under `Effects`, so clicks follow the Effects slider as before.
+    - Unity writes its `.meta` on import.
+  - **New `SoundMixer`** (Unity code): loads the asset, finds the four groups by exact path, checks the four faders, routes each source (`AudioSource.outputAudioMixerGroup`), and sets the faders every frame.
+    - Exposed faders set from code ignore snapshots, so in Play Mode the Audio Mixer window shows the meters but the four faders follow the sliders. Effects added to a group, and the Interface fader, can still be tuned there.
+    - Anything missing: one warning (`[Audio] …`), `Ready` stays false, and the director uses the AU1 levels.
+  - **`AudioDirector`:** loads the mixer in `Bind` and routes every source (effects and clicks, both music sources and the sting, the voice). `Level(bus)` is 1 with the mixer, and the AU1 master × bus gain without it. Source volumes keep the cue level, fades, sting dip, duck and pause dip.
+  - **`AudioLevels`:**
+    - `DefaultMusic` is 0.42 (was 0.6, `FormerDefaultMusic`).
+    - `MasterGain` (0 when muted), `BusGain`, `Decibels` (20·log10, clamped to −80…0 dB, NaN-safe), `Reset`, `IsDefault`.
+    - `Version` 2 and `MigrateMusic`: a Music value saved before AU1f that still equals 60% was never chosen, so it loads as 42%. Anything else the player set stays.
+  - **Settings:** `SettingsStore` reads and writes `nr.audio.version` (missing means 1). The Sound page gains **Restore defaults**, whose chip reads DEFAULT or RESET.
+  - **Checks:**
+    - The view compiles with no warnings.
+    - `AudioLevelsTests` (9) run in the cloud harness: **583 passing** (574 before). Mutants caught: the migration applied to current saves, a wide migration tolerance, Mute not silencing Master, Reset leaving Mute on, IsDefault ignoring Mute, the dB floor, the 0 dB ceiling, and a wrong bus slider.
+    - `SoundMixerAssetTests` (4) need the editor: the asset loads by name, every group exists, `Interface` sits under `Effects`, and every fader is exposed. They were compiled against the Unity DLLs but not run.
+    - The mixer file parses as YAML. Whether Unity accepts it is the first Play Mode check.
+  - **Play Mode watch-list:**
+    - No `[Audio]` warning in the Console; the four `SoundMixerAssetTests` pass.
+    - Window › Audio › Audio Mixer shows the Mixer with its groups; the meters move on music, effects, clicks and voices.
+    - Each slider moves only its bus; Master and Mute move everything; clicks follow Effects.
+    - Music starts at 42%, including on a machine whose saved Music was still 60%.
+    - Ducking, the pause dip and the win sting behave as before. Clicks still sound in pause.
+    - Restore defaults resets the sliders and unmutes, and the chip reads DEFAULT afterwards.
+  - **If Unity rejects the mixer file:** delete it, create one with Assets › Create › Audio Mixer at the same path, named `Mixer`. Add `Music`, `Effects` and `Voice` under `Master`, then `Interface` under `Effects`. For Master, Music, Effects and Voice, right-click Volume in the Inspector, choose Expose, and rename the exposed parameters to the four names above.
+- 2026-09-16 — **AU1f passed Play Mode** ("all sounds great"): the mixer imported, and the sliders, Mute, the music default and Restore defaults behave. Committed as `feat(audio): audio mixer with exposed bus faders and a quieter music default`.
+- 2026-09-16 — **Stage 5 closed.** Carried forward: Luka's recordings from `docs/audio/VOICE_LINES.md`, then the other operators' lines from its template; optional mixer effects (a low-pass on music in pause, a light room reverb); the Kenney card slide as the turn cue or a draft card flip (needs a `PROVENANCE.md` row); a main-thread synthesis fallback if a WebGL build is ever wanted.

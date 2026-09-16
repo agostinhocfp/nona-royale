@@ -82,8 +82,9 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>
         /// The sound page (AUDIO.md decision 5): Mute, then Master, Music,
-        /// Effects and Voice. Sliders write straight into the levels and never
-        /// rebuild; Mute rebuilds, so the sliders dim.
+        /// Effects and Voice, then Restore defaults (AU1f). Sliders write
+        /// straight into the levels and never rebuild; Mute and Restore
+        /// rebuild, so the sliders dim or jump.
         /// </summary>
         public static void BuildSound(System.Func<string, RectTransform> slot, ISettingsHost host, System.Action rebuild)
         {
@@ -95,6 +96,10 @@ namespace NonaRoyale.Unity.View
             Volume(slot, "Music", levels.Music, v => levels.Music = v, muted);
             Volume(slot, "Effects", levels.Sfx, v => levels.Sfx = v, muted);
             Volume(slot, "Voice", levels.Voice, v => levels.Voice = v, muted);
+
+            var reset = UiKit.ChoiceRow(slot("cycle"), "Restore defaults", "", levels.IsDefault ? "DEFAULT" : "RESET",
+                false, () => { levels.Reset(); rebuild(); });
+            UiKit.Size(reset, height: SliderHeight);
         }
 
         /// <summary>"80%", or "MUTED".</summary>
@@ -144,6 +149,9 @@ namespace NonaRoyale.Unity.View
         public const string VolumeVoice = "nr.audio.voice";
         public const string Mute = "nr.audio.mute";
 
+        /// <summary>The volume settings' version (<see cref="AudioLevels.Version"/>). Missing means 1.</summary>
+        public const string AudioVersion = "nr.audio.version";
+
         public static BotSpeed LoadSpeed(BotSpeed fallback)
         {
             if (!PlayerPrefs.HasKey(CpuSpeed)) return fallback;
@@ -174,11 +182,17 @@ namespace NonaRoyale.Unity.View
             PlayerPrefs.Save();
         }
 
-        /// <summary>Reads the volume settings into <paramref name="into"/>, keeping its values where nothing was saved.</summary>
+        /// <summary>
+        /// Reads the volume settings into <paramref name="into"/>, keeping its
+        /// values where nothing was saved. Music saved before AU1f at the old
+        /// default moves to the new one (<see cref="AudioLevels.MigrateMusic"/>).
+        /// </summary>
         public static void LoadAudio(AudioLevels into)
         {
+            int version = PlayerPrefs.GetInt(AudioVersion, 1);
             into.Master = LoadVolume(VolumeMaster, into.Master);
-            into.Music = LoadVolume(VolumeMusic, into.Music);
+            if (PlayerPrefs.HasKey(VolumeMusic))
+                into.Music = AudioLevels.MigrateMusic(version, Mathf.Clamp01(PlayerPrefs.GetFloat(VolumeMusic)));
             into.Sfx = LoadVolume(VolumeSfx, into.Sfx);
             into.Voice = LoadVolume(VolumeVoice, into.Voice);
             into.Muted = Load(Mute, into.Muted);
@@ -192,6 +206,7 @@ namespace NonaRoyale.Unity.View
             PlayerPrefs.SetFloat(VolumeSfx, levels.Sfx);
             PlayerPrefs.SetFloat(VolumeVoice, levels.Voice);
             PlayerPrefs.SetInt(Mute, levels.Muted ? 1 : 0);
+            PlayerPrefs.SetInt(AudioVersion, AudioLevels.Version);
             PlayerPrefs.Save();
         }
 
