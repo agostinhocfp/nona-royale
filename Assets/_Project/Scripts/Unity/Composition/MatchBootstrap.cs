@@ -125,6 +125,10 @@ namespace NonaRoyale.Unity.Composition
         [Tooltip("How fast every seat's actions animate. Remembered; this is the first-run default.")]
         public AnimationSpeed animationSpeed = AnimationSpeed.Normal;
 
+        [Tooltip("Pools of light, the powered-cell glow and bloom (LIGHTING.md). Off is the flat room. " +
+                 "Remembered; this is the first-run default.")]
+        public bool lightingEffects = true;
+
         [Tooltip("Health readout above every deployed piece (ADR-0008). " +
                  "H toggles it while playing — the stranger test decides its fate.")]
         public bool showPieceHealth = true;
@@ -272,6 +276,7 @@ namespace NonaRoyale.Unity.Composition
         private bool _savedHealth, _savedLog, _savedDev;
         private BotSpeed _savedSpeed;
         private bool _savedReduced;
+        private bool _savedLighting;
         private AnimationSpeed _savedAnimation;
 
         /// <summary>The seats the next deal uses. Squads and seed live in the inspector fields.</summary>
@@ -289,7 +294,7 @@ namespace NonaRoyale.Unity.Composition
             LoadSettings();
             SyncMotion();
 
-            // URP's 2D Renderer lights every sprite; a white global light keeps them at their own colour (ADR-0010).
+            // URP's 2D Renderer lights every sprite, so the room's lights come before any board (ADR-0010, LT1).
             _lighting = Ensure<SceneLighting>();
             _lighting.Build();
 
@@ -328,6 +333,7 @@ namespace NonaRoyale.Unity.Composition
             cpuSpeed = SettingsStore.LoadSpeed(cpuSpeed);
             reducedMotion = SettingsStore.Load(SettingsStore.ReducedMotion, reducedMotion);
             animationSpeed = SettingsStore.LoadAnimationSpeed(animationSpeed);
+            lightingEffects = SettingsStore.Load(SettingsStore.Lighting, lightingEffects);
 
             _savedHealth = showPieceHealth;
             _savedLog = showFullLog;
@@ -335,6 +341,7 @@ namespace NonaRoyale.Unity.Composition
             _savedSpeed = cpuSpeed;
             _savedReduced = reducedMotion;
             _savedAnimation = animationSpeed;
+            _savedLighting = lightingEffects;
 
             SettingsStore.LoadAudio(_levels);
             _savedLevels.CopyFrom(_levels);
@@ -354,6 +361,12 @@ namespace NonaRoyale.Unity.Composition
                 _savedReduced = reducedMotion;
                 _savedAnimation = animationSpeed;
                 SettingsStore.SaveMotion(reducedMotion, animationSpeed);
+            }
+
+            if (lightingEffects != _savedLighting)
+            {
+                _savedLighting = lightingEffects;
+                SettingsStore.SaveLighting(lightingEffects);
             }
 
             // Not mid-drag: a slider reports every frame it moves, and each save flushes to disk.
@@ -435,7 +448,9 @@ namespace NonaRoyale.Unity.Composition
             _layout = new BoardLayout(board, cellSpacing);
 
             var boardView = GetComponent<BoardView>() ?? gameObject.AddComponent<BoardView>();
-            boardView.Build(new PathMap(board), _layout, 3);
+            var map = new PathMap(board);
+            boardView.Build(map, _layout, 3);
+            if (_lighting != null) _lighting.Arrange(_layout, map);
 
             FrameCamera();
         }
@@ -516,6 +531,7 @@ namespace NonaRoyale.Unity.Composition
                 seatsPerTable = Mathf.Max(seatsPerTable, player.Operators.Count);
 
             boardView.Build(_match.Map, _layout, seatsPerTable);
+            if (_lighting != null) _lighting.Arrange(_layout, _match.Map);
 
             _highlights = GetComponent<HighlightLayer>() ?? gameObject.AddComponent<HighlightLayer>();
             _highlights.Bind(_layout);
@@ -857,6 +873,13 @@ namespace NonaRoyale.Unity.Composition
             // Driven every frame rather than on the keypress, so flipping the
             // inspector checkbox works too.
             if (_pieceHud != null) _pieceHud.Visible = showPieceHealth;
+
+            // Before the pause check: the switch lives on the pause menu.
+            if (_lighting != null)
+            {
+                _lighting.Effects = lightingEffects;
+                _lighting.Reduced = reducedMotion;
+            }
 
             SaveSettingsIfChanged();
 
@@ -1724,6 +1747,7 @@ namespace NonaRoyale.Unity.Composition
         bool ISettingsHost.ShowDevPanel { get => showDevPanel; set => showDevPanel = value; }
         BotSpeed ISettingsHost.CpuSpeed { get => cpuSpeed; set => cpuSpeed = value; }
         bool ISettingsHost.ReducedMotion { get => reducedMotion; set => reducedMotion = value; }
+        bool ISettingsHost.LightingEffects { get => lightingEffects; set => lightingEffects = value; }
         AnimationSpeed ISettingsHost.AnimationSpeed { get => animationSpeed; set => animationSpeed = value; }
         AudioLevels ISettingsHost.Audio => _levels;
 

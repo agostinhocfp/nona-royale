@@ -102,6 +102,11 @@ namespace NonaRoyale.Unity.View
     ///
     /// Sorting orders are all below zero. Devices draw at 0, highlights at 1
     /// and 2, pieces from 1 up.
+    ///
+    /// <b>Its own sorting layer</b> (LT1): everything here goes on
+    /// <see cref="SceneLighting.BoardLayer"/> when that layer exists, so the
+    /// powered cells' cyan light reaches the floor and not the pieces. The
+    /// layer sits behind Default, so the orders above still hold.
     /// </remarks>
     public sealed class BoardView : MonoBehaviour
     {
@@ -144,6 +149,7 @@ namespace NonaRoyale.Unity.View
         };
 
         private readonly List<GameObject> _drawn = new List<GameObject>();
+        private int? _layer;
 
         /// <param name="seatsPerTable">Seats drawn at each table: the largest squad.</param>
         public void Build(PathMap map, BoardLayout layout, int seatsPerTable)
@@ -152,6 +158,7 @@ namespace NonaRoyale.Unity.View
                 if (go != null) Destroy(go);
 
             _drawn.Clear();
+            _layer = SceneLighting.BoardLayerId;
 
             DrawFloor(layout);
             DrawTrack(map, layout);
@@ -328,6 +335,7 @@ namespace NonaRoyale.Unity.View
             renderer.sprite = sprite;
             renderer.color = colour;
             renderer.sortingOrder = order;
+            if (_layer.HasValue) renderer.sortingLayerID = _layer.Value;
 
             _drawn.Add(go);
             return renderer;

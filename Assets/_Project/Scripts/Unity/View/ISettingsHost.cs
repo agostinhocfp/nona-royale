@@ -31,6 +31,9 @@ namespace NonaRoyale.Unity.View
         /// <summary>How fast every seat's actions animate (MO2).</summary>
         AnimationSpeed AnimationSpeed { get; set; }
 
+        /// <summary>Pools of light, powered-cell glow and bloom; off is the flat room (LT1).</summary>
+        bool LightingEffects { get; set; }
+
         /// <summary>The volume settings (AU1). The sound page writes to this object directly.</summary>
         AudioLevels Audio { get; }
     }
@@ -57,6 +60,7 @@ namespace NonaRoyale.Unity.View
             Row(slot, "Event log", "L", host.ShowFullLog, v => host.ShowFullLog = v, rebuild);
             Row(slot, "Dev panel", "Tab", host.ShowDevPanel, v => host.ShowDevPanel = v, rebuild);
             Row(slot, "Reduced motion", "", host.ReducedMotion, v => host.ReducedMotion = v, rebuild);
+            Row(slot, "Lighting effects", "", host.LightingEffects, v => host.LightingEffects = v, rebuild);
             AnimationSpeedRow(slot, host, rebuild);
             CpuSpeedRow(slot, host, rebuild);
         }
@@ -143,6 +147,7 @@ namespace NonaRoyale.Unity.View
         public const string CpuSpeed = "nr.settings.cpuSpeed";
         public const string ReducedMotion = "nr.settings.reducedMotion";
         public const string AnimSpeed = "nr.settings.animationSpeed";
+        public const string Lighting = "nr.settings.lighting";
         public const string VolumeMaster = "nr.audio.master";
         public const string VolumeMusic = "nr.audio.music";
         public const string VolumeSfx = "nr.audio.sfx";
@@ -179,6 +184,13 @@ namespace NonaRoyale.Unity.View
         {
             PlayerPrefs.SetInt(ReducedMotion, reducedMotion ? 1 : 0);
             PlayerPrefs.SetInt(AnimSpeed, (int)speed);
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>Writes the Lighting effects setting (LT1) and flushes it to disk.</summary>
+        public static void SaveLighting(bool on)
+        {
+            PlayerPrefs.SetInt(Lighting, on ? 1 : 0);
             PlayerPrefs.Save();
         }
 

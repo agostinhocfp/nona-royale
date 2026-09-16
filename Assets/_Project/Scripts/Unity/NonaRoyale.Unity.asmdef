@@ -5,6 +5,7 @@
     "NonaRoyale.Core",
     "UnityEngine.UI",
     "Unity.TextMeshPro",
+    "Unity.RenderPipelines.Core.Runtime",
     "Unity.RenderPipelines.Universal.Runtime",
     "Unity.RenderPipelines.Universal.2D.Runtime"
   ],
