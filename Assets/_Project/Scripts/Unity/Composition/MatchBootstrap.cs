@@ -432,7 +432,7 @@ namespace NonaRoyale.Unity.Composition
 
             _pieces.Clear();
             _log.Clear();
-            _hovered = null;
+            SetHovered(null);
             _selectedOperator = null;
             _selectedTarget = null;
             _selectedAbility = null;
