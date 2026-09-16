@@ -1,7 +1,7 @@
 # Nona Royale — Combat Systems
 
 > Location in repo: `docs/design/COMBAT_SYSTEMS.md`
-> Status: **Accepted (alpha).** Every mechanic the roster invokes is defined and built, except Mimi's Cryo Field (§10.4, bannered). Open items in §12 are balance dials and post-MVP scope, not gaps.
+> Status: **Accepted (alpha).** Every mechanic the roster invokes is defined and built — Mimi's Cryo Field, the last gap, landed 2026-09-16 (§5.14, §6.6, §10.4). Open items in §12 are balance dials and post-MVP scope, not gaps.
 > Date: 2026-09-12 · synced to the code 2026-09-15
 > Related: `docs/design/OPERATORS.md` (roster), ADR-0002 (board size, incl. Amendment 5), ADR-0003 (topology), ADR-0004 (pure-C# core), `CONVENTIONS.md`, `docs/GDD.md`
 > Supersedes: `docs/design/_HANDOFF_combat.md` and `docs/design/_HANDOFF_split_movement.md` (delete both)
@@ -90,13 +90,13 @@ All damage — from abilities, collisions, bleed and marks alike — passes thro
 
 Evasion resolves before Shield deliberately: evasion is a reflex and should not burn a consumable the operator may need later.
 
-**Every instance carries a cause** — "bleed", "mark", "collision", "ability", "critical", "execute", "self", "zero-day", "follow-up" — and no rule reads it. It exists so the view can say what happened. Upkeep damage is why: bleed and mark ticks land in a phase where nothing else moves, so without a stated cause an operator simply loses health and, if that was its last, vanishes with nothing on screen accounting for it.
+**Every instance carries a cause** — "bleed", "mark", "collision", "ability", "critical", "execute", "self", "zero-day", "follow-up", "cryo-field", "watch" — and no rule reads it. It exists so the view can say what happened. Upkeep damage is why: bleed and mark ticks land in a phase where nothing else moves, so without a stated cause an operator simply loses health and, if that was its last, vanishes with nothing on screen accounting for it.
 
 ### 2.2 Normal, Tech and Atomic
 
 - **Normal** is subject to every mitigation layer: Evasion, Shield, and anything added later.
 - **Tech** is Normal in every respect, plus one counter: a **tech ward** (§5.12) blocks it outright, before evasion or a shield is consulted. The designer's stated direction is that Tech "can be amplified by specific abilities" — **nothing amplifies it yet**; the first amplifier is an amendment here and a step in the pipeline, placed before 1b so a ward blocks the amplified hit. _(Added 2026-09-15 with Luka.)_
-  - **What deals Tech: damage from a guided or remote-operated device**, one that leaves the operator and does its work elsewhere — a field projected onto someone else, a homing charge, a drone. The operator's own blows, shots and self-centred emissions stay Normal, even when a device delivers them. _(Settled 2026-09-15.)_ The rule is what a jammer could plausibly stop, which is also what Hermes' Ring is (§5.12). **Borderline and left Normal:** Nuetu's Killzone, a deferred zone that reads as ordnance rather than a guided device. Mimi's unbuilt Cryo Field is self-centred and would be Normal under the rule.
+  - **What deals Tech: damage from a guided or remote-operated device**, one that leaves the operator and does its work elsewhere — a field projected onto someone else, a homing charge, a drone. The operator's own blows, shots and self-centred emissions stay Normal, even when a device delivers them. _(Settled 2026-09-15.)_ The rule is what a jammer could plausibly stop, which is also what Hermes' Ring is (§5.12). **Borderline and left Normal:** Nuetu's Killzone, a deferred zone that reads as ordnance rather than a guided device. Mimi's Cryo Field is self-centred and is Normal under the rule — her own emission, not a device that leaves her.
 - **Atomic** ignores all of it.
 
 Atomic does **not** bypass _targeting_ protection. Safe cells, home columns, and Stealth are not defenses — they are reachability rules, and Atomic damage that cannot legally be aimed at an operator simply never enters the pipeline.
@@ -351,7 +351,7 @@ _(Added 2026-09-15.)_
 - **Consumes nothing.** A blocked hit spends no evasion charge and no shield pool — the ward is a duration, not a charge.
 - **Source:** Luka's Hermes' Ring, a self-cast for 3 turns: the cast turn and his next two, so it covers two full rounds of opponents' turns.
 - **Cleansable,** like every applied status (§5.8).
-- **Three sources, one per operator** (§2.2): Cryo-Pulse, Zero-Day and Drone Strike. Sanity and Kian keep Normal damage elsewhere in their kits, so against them the ward is a counter, not an immunity. **Mimi is the exception:** Cryo-Pulse is her only built damage, so a warded Luka is immune to her until Cryo Field lands.
+- **Three sources, one per operator** (§2.2): Cryo-Pulse, Zero-Day and Drone Strike. Sanity and Kian keep Normal damage elsewhere in their kits, so against them the ward is a counter, not an immunity. **Mimi was the exception until 2026-09-16:** Cryo-Pulse was her only built damage — but Cryo Field is now built and is Normal (a self-centred emission, §2.2), so the ward no longer shuts her out.
 - **Blocks damage, not riders.** Cryo-Pulse's bleed and slow and Zero-Day's slow still land on a warded holder. Bleed ticks are Atomic, so Cryo-Pulse still costs him 1 at his upkeep.
 - **A warded holder still counts toward a divided payload.** Drone Strike splits its beam among everyone caught before any hit reaches the pipeline (§10.6), so the holder's share is blocked, not passed on: an ally under the beam with him takes half what it would alone. It follows from the pipeline and is kept deliberately, as a jammer eating its share; excluding warded operators from the split would be a new rule in `DeferredCellEffects`.
 
@@ -368,13 +368,36 @@ _(Added 2026-09-15.)_
 
 ---
 
+### 5.14 CryoField
+
+_(Added 2026-09-16, with Mimi's Cryo Field — the mechanic the §10.4 banner waited on.)_
+
+- **Effect:** while the status is active, every enemy within its radius of the holder's **current** cell takes the tick damage at each of the holder's owner-upkeeps (§6.6). The first status that damages an area, and the first whose victim is someone other than its carrier.
+- **The marker is the field.** The ticking payload lives in `DeferredOperatorEffects` (§6.6) — the board-reading half — and this status is its visible, cleanseable tell, the ZeroDayCharge pattern again: a cleanse strips it and the field never ticks (§5.8's rule applied to a delayed effect once more).
+- **Duration 3 reads as "two working turns"** here. A self-applied status counts the cast turn as its first (§5), and the field bills only at upkeeps — the cast turn's upkeep has already passed. Mimi's field is designed to tick at her next two upkeeps, so the registry duration is three of her turns.
+- **It ends with the holder.** Neutralize strips it with every other applied status (§1.2), and a field centred on an operator in her yard centres nowhere — the follow-up precedent (§6.5), not the beacon one (ADR-0006): nothing was deployed, the field is her.
+- **The tick is Normal** (a self-centred emission, §2.2) and goes through the pipeline: evasion and shields interact with it per §2.1.
+
+---
+
+### 5.15 Watched
+
+_(Added 2026-09-16, with Kurbyn's Predator's Read — §6.7, §10.3.)_
+
+- **Effect:** none. A pure marker, exactly as §5.10 and §5.13 — the visible half of a pending watch (§6.7): if the carrier moves **by dice** before the watch's owner-upkeep, the watch trips and strikes it, once.
+- **A cleanse strips it, and the watch never trips.** Same mechanism and same silence as a cleansed charge or follow-up — Neural Purge answers Predator's Read for 6 against 3, the reverse of its trade against Zero-Day, and the rock-paper-scissors is the point either way.
+- **Duration 2**, for §5.10's reason: the watch lapses at the same moment a charge detonates or a follow-up resolves, and the marker must outlive every counterplay window without outliving the lapse.
+- **Its own kind, not a reused Hunted,** for §5.13's reason: one entry per status kind per operator, so a target carrying both a follow-up and a watch (Luka and Kurbyn can share a squad) keeps both. The fiction overlaps and the trigger is the exact opposite — Hunted punishes staying close, Watched punishes moving — so confusing the two on the board would misstate the counterplay, not just the badge.
+
+---
+
 ## 6. Turn structure and resolution order
 
 **Every die is consumed exactly once, by a deploy or by a move.** Dice spent on movement may be pooled onto one operator or dealt one to each of two — or spent on the same operator in two separate steps. A die is forfeit only when no legal consumer exists for it. Energy may be spent by any owned operator and consumes no dice.
 
 | Phase         | What resolves                                                                                                                                                                                                                                                                                                                                  |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **1. Upkeep** | Bleed ticks (Atomic), then mark ticks (Atomic). Cooldowns advance. Evasion charge refreshes. Neutralize checks from both damage sources resolve here, and a mark payout can fire here.                                                                                                                                                         |
+| **1. Upkeep** | Bleed ticks (Atomic), then mark ticks (Atomic). Cooldowns advance. Evasion charge refreshes. Due beacons, charges and follow-ups resolve, standing fields bill their tick, and unsprung watches lapse (§6.4–§6.7). Neutralize checks from all of these resolve here, and a mark payout can fire here.                                                            |
 | **2. Roll**   | Dice rolled from the injected RNG. Energy granted (first roll of the turn only, §3.1).                                                                                                                                                                                                                                                         |
 | **3. Action** | Deploy (if an unspent 6, §1.3) and move until the roll is spent; spend energy on abilities with any owned operator; any order the player chooses. Deploying no longer has to precede moving. Collisions resolve immediately on landing (§7). Doubles → return to phase 2 **without** an energy grant, and only once the roll in hand is spent. |
 | **4. End**    | Status durations expire. Win check.                                                                                                                                                                                                                                                                                                            |
@@ -445,6 +468,34 @@ A follow-up is the charge's conditional sibling: the same registry (`DeferredOpe
 - **Telegraphed and cleansable.** Setting it applies the Hunted marker (§5.13) and emits `FollowUpMarked`; a cleanse strips the marker and cancels it silently.
 - **Re-setting replaces**, as with charges. A follow-up and a charge on the same target are separate entries with separate markers.
 - **A miss still reports** (`FollowUpResolved` with `Landed = false`), naming the target — the escape is the counterplay working, and the player should see it.
+
+### 6.6 Self-anchored fields
+
+_(Added 2026-09-16 with Mimi's Cryo Field.)_
+
+A field is the charge's second sibling: the same registry (`DeferredOperatorEffects`), the same marker-and-cleanse counterplay — but anchored to the **caster herself**, and **repeating**.
+
+- **Timing is every owner-upkeep while the marker stands**, in the same window as beacons and charges, before the holder moves. A charge and a follow-up resolve once and are spent; a field bills each upkeep for its duration and is retired when the marker is — by expiry, by a cleanse, or by the holder's neutralize (§5.14).
+- **It follows the holder.** Each tick is measured from her current cell, not from where she cast it. A beacon is a bet on a place and a charge follows its victim; a field is a bet on where *she* will be, which is to say a zoning tool.
+- **Enemies only, within the radius.** Allies and the holder are never billed. Stealth and safe cells do not protect, exactly as they do not against an area cast (§4.4, §5.4): the field is not an aim, it is weather. Mitigation still applies — the tick is Normal, so evasion and shields interact per §2.1.
+- **It does not outlive its holder.** The beacon precedent — a deployed device is not its operator (ADR-0006) — does not apply, because nothing was deployed. The follow-up's does: the effect is anchored to a body, and a yarded body is nowhere (§6.5). A kill still credits the recorded source through the same neutralize fold.
+- **Re-projecting replaces**, as with charges and follow-ups.
+
+### 6.7 Watches
+
+_(Added 2026-09-16 with Kurbyn's Predator's Read.)_
+
+A watch is the charge's third sibling: the same registry (`DeferredOperatorEffects`), the same marker-and-cleanse counterplay — but where a follow-up waits for the upkeep and asks where the target is, a watch asks only **what the target did**, and resolves the moment it does it.
+
+- **The trigger is the target's first dice movement while the marker stands.** The strike lands the moment the move completes — after the landing's contest, before home credit — not at any upkeep. A move spent in two steps springs it on the first.
+- **Placement never trips it** (§7.4). Pulls, pushes, swaps, dashes and bounce-backs relocate the target without spending its move, and a watch that answered those would punish the victim for somebody else's action. Being moved by somebody else is the escape hatch beside the obvious one: **standing still**. A target that never moves before the watch lapses takes nothing — the value of the cast was the movement it denied.
+- **Once, and spent either way.** The trip consumes the watch and the marker; a second move in the same turn springs nothing. A strike the shield absorbs or evasion dodges is still spent.
+- **The lapse is silent.** If no dice movement came before the owner's next upkeep, the entry retires and the marker is stripped, with no event — nothing happened, and the disappearing badge is the whole announcement. Contrast the follow-up, whose miss is reported (§6.5): there the target visibly escaped a blow; here there was never a blow to escape.
+- **It outlives its caster, like a charge and unlike a follow-up.** The condition reads only the target's conduct, never the caster's position, so there is nothing for a yarded caster to be out of: the read was taken at cast time, and the answer was recorded with it (ADR-0006's deployed-device precedent). A kill still credits the recorded source.
+- **It dies with its target.** Neutralize strips the marker with every other applied status (§1.2), and the marker is the source of truth for cancellation — a re-deployed target is clean, and the orphaned entry retires at the owner's next upkeep.
+- **Telegraphed and cleanseable.** Setting a watch applies the Watched marker (§5.15) and emits `WatchMarked`; a cleanse strips the marker and the watch springs nothing — the trip finds no attachment and retires the entry silently.
+- **Re-setting replaces**, as with every shape in the registry. With Predator's Read the case is unreachable in play — its cooldown outlasts its own marker — and the registry still answers it the same way.
+- **Damage is whatever the effect declares** — Normal for Predator's Read — through the pipeline at trip time (§2.1). Safe cells and stealth do not bear on it, as with the follow-up: the aim was legal when the watch was set.
 
 ---
 
@@ -575,7 +626,7 @@ Noun-based, per `CONVENTIONS.md`. Each owns one rule family and nothing else.
 
 **`StatusRegistry` reports damage, it never applies it.** The pipeline consults the registry for evasion and shields, so a registry that called the pipeline would close a dependency cycle. Bleed and mark ticks are therefore _queried_ — the registry says what the tick owes and the caller pushes it through the pipeline as Atomic. The registry decides what damage is owed, the pipeline decides how damage lands, and neither knows the other exists.
 
-**An ability is a list of effects, and there are thirteen kinds:** Damage, Heal, ApplyStatus, PullToCaster, Execute, SwapWithCaster, RemoveStatuses, PushFromCaster, PaintCell, DeployZone, AttachCharge, DashToTarget, FollowUp. The resolver never branches on which ability is being cast. A new operator that cannot be expressed in those thirteen gets an amendment to this document and a new kind — never an `if`. Eight have been added in earnest: the swap for Mimi, the cleanse for Javi, the push and the two cell-anchored deferred kinds for Kian and Nuetu, the operator-anchored charge and the dash for Sanity (§10.8), and the follow-up for Luka (§10.9). Luka's critical hits are a field on the Damage kind (§2.4), not a kind of their own.
+**An ability is a list of effects, and there are fifteen kinds:** Damage, Heal, ApplyStatus, PullToCaster, Execute, SwapWithCaster, RemoveStatuses, PushFromCaster, PaintCell, DeployZone, AttachCharge, DashToTarget, FollowUp, ProjectField, Watch. The resolver never branches on which ability is being cast. A new operator that cannot be expressed in those fifteen gets an amendment to this document and a new kind — never an `if`. Ten have been added in earnest: the swap for Mimi, the cleanse for Javi, the push and the two cell-anchored deferred kinds for Kian and Nuetu, the operator-anchored charge and the dash for Sanity (§10.8), the follow-up for Luka (§10.9), the self-anchored field for Mimi's Cryo Field (§10.4, §6.6), and the watch for Kurbyn's Predator's Read (§10.3, §6.7). Luka's critical hits are a field on the Damage kind (§2.4), not a kind of their own.
 
 **The engine reports every move a roll could make, not just one.** `PreviewLandings` returns, per operator, the pooled landing and one per distinct unspent face. A preview that showed only the pooled option would hide exactly the choice §6.3 prices, and the view must not compute any of it itself (`PRESENTATION.md` §1).
 
@@ -589,7 +640,7 @@ Randomness reaches exactly three places: `MovementResolver` (dice), `DamagePipel
 
 ### 9.3 Events (core → view)
 
-`CommandRejected` · `TurnBegan` · `DiceRolled` · `EnergyGranted` · `EnergySpent` · `OperatorDeployed` · `OperatorPityDeployed` · `OperatorMoved` · `CollisionResolved` · `DamageDealt` · `DamageEvaded` · `DamageAbsorbed` · `HealApplied` · `OperatorRegenerated` · `StatusApplied` · `StatusExpired` · `OperatorNeutralized` · `OperatorReachedHome` · `TurnEnded` · `GameWon` · `BeaconPlaced` · `BeaconFired` · `ZoneDeployed` · `ZoneTicked` · `ZeroDayAttached` · `ZeroDayDetonated` · `FollowUpMarked` · `FollowUpResolved`
+`CommandRejected` · `TurnBegan` · `DiceRolled` · `EnergyGranted` · `EnergySpent` · `OperatorDeployed` · `OperatorPityDeployed` · `OperatorMoved` · `CollisionResolved` · `DamageDealt` · `DamageEvaded` · `DamageAbsorbed` · `HealApplied` · `OperatorRegenerated` · `StatusApplied` · `StatusExpired` · `OperatorNeutralized` · `OperatorReachedHome` · `TurnEnded` · `GameWon` · `BeaconPlaced` · `BeaconFired` · `ZoneDeployed` · `ZoneTicked` · `ZeroDayAttached` · `ZeroDayDetonated` · `FollowUpMarked` · `FollowUpResolved` · `FieldProjected` · `FieldTicked` · `WatchMarked` · `WatchTripped`
 
 **`OperatorMoved` carries the attempted landing as well as the final one** (`AttemptedTo`, `Bounced`), so a bounced move can be drawn reaching the contested cell before it is thrown back (§7.2, `PRESENTATION.md` §3). For placement the two are equal.
 
@@ -599,9 +650,9 @@ Randomness reaches exactly three places: `MovementResolver` (dice), `DamagePipel
 
 ## 10. The roster, re-expressed
 
-Nine operators are in the draft pool. **Eight are complete; Mimi (§10.4) is not** — Cryo Field is unbuilt, and her section carries a banner saying so. An operator the game can deal but this document does not describe is worse than an entry marked incomplete, and an incomplete one is tolerable only while it is the exception.
+Nine operators are in the draft pool, and **all nine are complete** — Mimi's Cryo Field and Kurbyn's Predator's Read, the last two unbuilt abilities, landed 2026-09-16 (§10.4, §10.3). An operator the game can deal but this document does not describe is worse than an entry marked incomplete; the pool no longer has one.
 
-**The tables are copied from the roster files and the code wins any disagreement.** Numbers change there first (`Assets/_Project/Scripts/Core/Abilities/Roster/`), and a table that drifts is a second copy of a value that is now wrong. Last synced 2026-09-15.
+**The tables are copied from the roster files and the code wins any disagreement.** Numbers change there first (`Assets/_Project/Scripts/Core/Abilities/Roster/`), and a table that drifts is a second copy of a value that is now wrong. Last synced 2026-09-16.
 
 **Health went up by 1 across the roster on 2026-09-16** (§1.1). The HP lines below show the new values. Reasoning in this section that cites 5, 6 or 9 health was written before it; read those as one lower than today.
 
@@ -657,13 +708,16 @@ Two numbers here have been walked back under measurement. The squad buff was **+
 
 ### 10.3 Kurbyn, DarkGrave — Brawler
 
-**HP 7 · Speed 1.0× base (1.5× with passive)**
+**HP 7 · Speed 1.0× base (1.5× with passive) · Complete — all three abilities implemented since 2026-09-16**
 
 | #   | Ability              | Type         | Cost | CD  | Range                | Effect                                                                                                                                                                                              |
 | --- | -------------------- | ------------ | ---- | --- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Dargin Pulse**     | Active       | 6    | 3   | 2 (AOE, self-origin) | **2 Normal** to all enemies in the window; **Stun 1 turn** (§5.1).                                                                                                                                  |
-| 2   | **Evasive Protocol** | Passive      | —    | —   | self                 | First Normal damage instance each round: negated on a **30%** roll (§5.5). Speed multiplier **+0.5**.                                                                                               |
-| 3   | **Miracle Pull**     | Active (Ult) | 9    | 2   | 2                    | **3 Atomic** to the target. **Execute:** if the target was below 50% HP **at cast time**, it is instead neutralized outright. **2 Atomic** to enemies within 3 of the target, excluding the target. |
+| 1   | **Predator's Read**  | Active       | 3    | 2   | 3                    | **Watch** the target until Kurbyn's next upkeep (§6.7): if it moves by dice, it takes **2 Normal**, once. Placement never trips it (§7.4). Telegraphed, cleanseable (§5.15).                           |
+| 2   | **Dargin Pulse**     | Active       | 6    | 3   | 2 (AOE, self-origin) | **2 Normal** to all enemies in the window; **Stun 1 turn** (§5.1).                                                                                                                                  |
+| 3   | **Evasive Protocol** | Passive      | —    | —   | self                 | First Normal damage instance each round: negated on a **30%** roll (§5.5). Speed multiplier **+0.5**.                                                                                               |
+| 4   | **Miracle Pull**     | Active (Ult) | 9    | 2   | 2                    | **3 Atomic** to the target. **Execute:** if the target was below 50% HP **at cast time**, it is instead neutralized outright. **2 Atomic** to enemies within 3 of the target, excluding the target. |
+
+**Predator's Read fills the three-energy rung (2026-09-16, designer).** His cheapest cast was 6, so on a lean turn Kurbyn watched the fight rather than shaping it. The ability needed the roster's fifteenth effect kind (§9.1): the follow-up's machinery with the trigger inverted — a follow-up resolves at the upkeep and punishes a target that stayed; the watch resolves on the move and punishes a target that left. The fiction is his established one (the neural-prediction rig reads the target; if it moves, the answer is already on its way), and the damage is deliberately not the point: a target that stands still to dodge the 2 has spent its move, which under compulsory movement (§6.1) is often the worse half of the choice. Priced with Short Circuit and From the Hip, the other cheap control tools, and Normal so his own evasion's answers — a charge, a plate, a cleanse — all work against it. Unmeasured; adding him a third ability shifts the draft's dice stream, so no figure taken before compares with one after.
 
 The execute threshold is evaluated **before** the direct damage lands, on the target's HP at cast. Checking after would mean a full-health 6-HP target drops to 3 and survives at exactly 50%, which reads as a bug at the table. `current * 2 < max` — integer comparison, no fractional HP support required anywhere in the core.
 
@@ -677,19 +731,19 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 ### 10.4 Mimi — Controller
 
-**HP 6 · Speed 1.0× · Two of three abilities implemented**
+**HP 6 · Speed 1.0× · Complete — all three abilities implemented since 2026-09-16**
 
-> **Incomplete, and in the draft pool.** Cryo Field is designed and not built: it needs a status that damages an area at its holder's upkeep, and no such mechanic exists. She is draftable now, so this section describes what she actually does.
->
-> Her damage is **Tech** (2026-09-15, §2.2). The type landed with Luka, whose Hermes' Ring blocks it; otherwise it behaves as Normal, so the change costs her only against a warded Luka — but against him it costs her everything, because Cryo-Pulse is her only built damage (§5.12). Her old identity as the anti-shield operator is still unexpressed — nothing amplifies Tech yet.
+> Her direct damage is **Tech** (2026-09-15, §2.2); Cryo Field is a self-centred emission and stays **Normal** under the same rule, so a warded Luka no longer shuts her out (§5.12). Her old identity as the anti-shield operator is still unexpressed — nothing amplifies Tech yet.
 
 | #   | Ability           | Type   | Cost | CD  | Range                                          | Effect                                                                                                         |
 | --- | ----------------- | ------ | ---- | --- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | 1   | **Cryo-Pulse**    | Active | 6    | 3   | 3 (AOE radius 2, target-origin, **inclusive**) | **2 Tech** to every enemy in the window, the target included; applies **1 Bleed** and **Slow 1 turn** to each. |
-| 2   | **Cryo Field**    | Active | 6    | 3   | radius 2, 2 turns                              | _Not implemented._ Damage at her own upkeep to enemies near her.                                               |
+| 2   | **Cryo Field**    | Active | 6    | 3   | self (AOE radius 2, self-origin, **2 ticks**)  | **1 Normal** to every enemy within 2 of her **current** cell, at each of her next **two upkeeps** (§5.14, §6.6). Ends early if cleansed or if she is neutralized. |
 | 3   | **Translocation** | Active | 3    | 4   | 6                                              | **Swap** cells with the target, ally or enemy. Placement — collides with nothing, triggers nothing (§7.4).     |
 
 **Five health is what prices her kit.** She is the only operator below 6, and she moves at the tank's speed, so she cannot run from anything. Ace Shards into a bleeding-bonus From the Hip kills her; so does Dargin Pulse into a collision — two-ability sequences every other operator survives.
+
+**Cryo Field's tick is 1 Normal, and the amount is a placeholder** — the design table left it blank and 1 is the smallest instrument in the game, which fits a zoning tool rather than a nuke. It is a named constant (`Mimi.CryoFieldTickDamage`) so tuning is a one-line edit. The timing likewise: a self-applied status counts the cast turn as its first (§5), so the marker's registry duration is 3 to yield the designed two ticks — cast during her action phase, it bills at her next two upkeeps and expires at the end of the second. **It follows her**: each tick is measured from where she stands then, which is the zoning the ability is for. It has never been simulated.
 
 **Cryo-Pulse is unmeasured and possibly stronger than its peer.** Against Dargin Pulse it is the same cost, radius and damage, but it originates on a target three cells away rather than on the caster, and applies two statuses rather than one. For a 1.0-speed operator, remote origin is most of the game. It was 4 energy in the first draft and did more than either 6-cost area ability for two-thirds the price. The tier was a second objection at the time and is now abolished; the peer comparison was always the real one, so the price stands.
 
@@ -834,7 +888,7 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 **Blind Spot costs 5, one above Zero-Day, because it does more to one target** (dropped at 4, raised by the designer 2026-09-15). Same cooldown; two damage now where Zero-Day deals two a round later, up to two more if the target stays, and up to four cells of free mobility. Zero-Day pays for its certainty with a cleanse and a blast that reaches others; L pays with the escape — the teleport leaves Luka adjacent, so the target has to spend its move getting more than two cells clear — and the extra point. Both hits are Normal; no type was specified.
 
-**Hermes' Ring counters three abilities, one per operator** (§2.2, §5.12): Cryo-Pulse, Zero-Day and Drone Strike, at Ablative Plating's price. It fully shuts out only Mimi, whose one built damaging ability is Tech. Three turns on a self-cast covers two full rounds of opponents' turns.
+**Hermes' Ring counters three abilities, one per operator** (§2.2, §5.12): Cryo-Pulse, Zero-Day and Drone Strike, at Ablative Plating's price. It fully shut out only Mimi until Cryo Field landed (2026-09-16) — a self-centred field is Normal, so it now bills a warded Luka through the ward. Three turns on a self-cast covers two full rounds of opponents' turns.
 
 **Vendetta costs 6** (dropped at 9, lowered by the designer 2026-09-15): expected 3.3 damage, 3.6 against a heavy target. At least one blow crits about 27% of the time; the ceiling is 6, or 9 against a heavy target. At 9 it lost to Miracle Pull at the same price; at 6 it sits beside Velvet Rope, the other single-target Atomic cast — 3 certain damage and a pull against 3.3 expected and a swing. A blow that finds its target already down is not thrown (§2.4), so a first-blow kill pays one bounty.
 
@@ -1251,6 +1305,35 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - `Vendetta_StopsStriking_ATargetItAlreadyDowned`
 - `TechWard_SpendsNeitherTheEvasionChargeNorThePool`
 
+**Mimi's Cryo Field — `CryoFieldTests`**
+
+- `CryoField_AppliesTheMarkerAndTelegraphs_AndNothingTicksYet`
+- `CryoField_RequiresNoTarget`
+- `CryoField_FirstTickLandsAtHerNextUpkeep_NotImmediately`
+- `CryoField_TicksExactlyTwice_ThenExpires`
+- `CryoField_FollowsHerBetweenUpkeeps`
+- `CryoField_HarmsEnemiesOnly_AndOnlyWithinRadius`
+- `CryoField_TickIsNormal_AShieldPoolAbsorbsIt`
+- `CryoField_EndsWhenMimiIsNeutralized`
+- `CryoField_CleanseStripsTheMarker_AndCancelsTheField`
+- `CryoField_RefusedOnCooldown_AndReadyAgainAfterThreeOwnerTurns`
+- `CryoField_RefusedWithoutEnergy_AndCostsNothing`
+
+**Kurbyn's Predator's Read — `PredatorsReadTests`** (§6.7)
+
+- `Cast_MarksTheTarget_AndTelegraphsIt_ButStrikesNothingYet`
+- `DiceMovement_TripsTheWatch_ForTwoNormal_ExactlyOnce`
+- `TheStrike_IsNormal_AndAShieldAbsorbsIt`
+- `StandingStill_TheReadLapsesAtKurbynsNextUpkeep_AndNothingHappens`
+- `Placement_ASwap_DoesNotTripTheWatch`
+- `Placement_APull_DoesNotTripTheWatch`
+- `Placement_APush_DoesNotTripTheWatch`
+- `Cleanse_CancelsTheWatch_AndNoStrikeFollows`
+- `TargetNeutralized_TheReadDiesWithIt_AndARedeployedTargetIsClean`
+- `KurbynNeutralized_TheReadStillTrips_AndCreditsHim`
+- `ReSettingAWatch_ReplacesRatherThanStacks`
+- `Engine_ADiceMoveByTheMarkedTarget_TripsTheWatch`
+
 **Neutralize and win — `WinConditions`**
 
 - `NeutralizedOperator_ReturnsToYardAtFullHealth`
@@ -1291,3 +1374,5 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - 2026-09-16 — **Sanity balance pass** (designer, landed in the haste-cap commit). Zero-Day range 2 → 3. Collision cost 7 → 6, cooldown 4 → 3, range 5 → 6, so it is no longer priced as an ultimate. §10.8 updated with a before/after bots sweep: Sanity's win share 21% → 22%, but bot matches run about 1.7 turns per seat longer with 2 more knockouts, and Collision is the cause. `Sanity.cs` remarks brought in line. §12 records the watch item, and that regeneration is not live in code.
 - 2026-09-16 — **Designer's reasoning recorded** for the haste cap and the Sanity pass (§5.9, §10.8), and for the 2026-09-15 evasion cut (§10.3): buff the weakest, nerf the fast operators that the bots sweep and human games both had on top. §12 gains the match-length measurement behind the designer's ideas (health may be too low; 0.5 regen per round): knockouts drive length, and +1 health, +2 health or 0.5 regen shorten matches by 11–18%, while lower health lengthens them. +1 health moves win shares least. Nothing adopted.
 - 2026-09-16 — **Match-length pass adopted** (designer): +1 health across the roster (common 7, Mimi 6, Bouncer and Sanity 10) and regen at +1 every 3 turns for any wound, off safe cells (§1.1, §5.11). Regen had never run: `CombatConfig` did not assign its fields, now fixed. Luka's heavy line 6 → 7 so it still means the tanks. Bots: 34.2 → 28.0 turns per seat, 22.0 → 13.4 knockouts, win shares within 3 points (§12). Standard sweep: 20.3 → 19.2 turns. §10 HP lines updated; older reasoning that cites 5, 6 or 9 health is flagged, not rewritten. Tests 512 → 518.
+- 2026-09-16 — **Mimi completed: Cryo Field built.** The last unbuilt ability, and with it the mechanic its banner waited on: a status that damages an area at its holder's upkeep. `StatusKind` gains `CryoField` (§5.14); `EffectKind` gains `ProjectField`, the fourteenth kind; `DeferredOperatorEffects` gains a third, **repeating** shape — the field (§6.6), anchored to the caster herself, billing enemies near her current cell at each of her owner-upkeeps while the marker stands. Tick 1 Normal, radius 2, two ticks: the design row's "2 turns" reads as registry duration 3 because a self-applied status counts the cast turn as its first (§5). The tick amount was blank in the design table and is a named constant flagged for tuning (`Mimi.CryoFieldTickDamage`). Being Normal and self-centred, the field goes through Hermes' Ring — a warded Luka is no longer immune to Mimi (§2.2, §5.12). The field ends with her: neutralize strips the marker (§1.2), the follow-up precedent rather than the beacon one. §9.3 gains `FieldProjected` and `FieldTicked`; the top banner, §10's header claim and §10.4's banner are retired; `OPERATORS.md`'s "Finish Mimi" is checked off. Tests +11 (`CryoFieldTests`).
+- 2026-09-16 — **Kurbyn completed: Predator's Read built** (id 303 — cost 3, cooldown 2, range 3). `StatusKind` gains `Watched` (§5.15); `EffectKind` gains `Watch`, the fifteenth kind; `DeferredOperatorEffects` gains a fourth shape — the watch (§6.7), the follow-up's mirror: anchored to the victim like a charge, but its moment is the target's first **dice movement**, not the upkeep, and its condition is the target's conduct rather than the caster's proximity. Placement never trips it (§7.4); standing still is the other escape hatch; the lapse is silent and the strike is once, spent landed or absorbed. It outlives its caster (the charge precedent, ADR-0006 — the condition never reads his position) and dies with its target (neutralize strips the marker, §1.2). Balance intent: his cheapest cast was 6; this fills the 3-energy rung with Short Circuit and From the Hip (§10.3). `GameEngine` gains the registry on its move path (the only trigger a watch has); §9.1 lists fifteen kinds; §9.3 gains `WatchMarked` and `WatchTripped`; §2.1's cause list gains "watch" and the "cryo-field" it had never recorded. `OPERATORS.md`'s Kurbyn paragraph gains the read; `Roster.cs`'s "the pool is even" remark was stale from the moment the Cryo Field commit wrote it — Kurbyn still had two abilities — and is true as of this change. Tests +16 (`PredatorsReadTests`), 533 → 549.

@@ -430,6 +430,14 @@ namespace NonaRoyale.Core.Services
                     case EffectKind.FollowUp:
                         RunFollowUp(effect, caster, recipient, outcomes);
                         break;
+
+                    case EffectKind.Watch:
+                        RunWatch(effect, caster, recipient, outcomes);
+                        break;
+
+                    case EffectKind.ProjectField:
+                        RunProjectField(effect, caster, outcomes);
+                        break;
                 }
             }
         }
@@ -564,6 +572,75 @@ namespace NonaRoyale.Core.Services
             outcomes.Add(EffectOutcome.FollowUpMarked(target));
             outcomes.Add(EffectOutcome.StatusApplied(
                 target, StatusKind.Hunted, DeferredOperatorEffects.MarkerDurationTurns));
+        }
+
+        /// <summary>
+        /// Sets a watch on the target. Nothing strikes now — it trips the
+        /// first time the target moves by dice before the caster's next
+        /// upkeep, and lapses if it never does (§6.7).
+        /// </summary>
+        /// <remarks>
+        /// <see cref="RunFollowUp"/> with the trigger inverted: the
+        /// <see cref="StatusKind.Watched"/> marker is applied here as an
+        /// ordinary status so the badge draws it and a cleanse strips it
+        /// (§5.15), and the registry reads it back when the target moves. A
+        /// null <see cref="DeferredOperatorEffects"/> is guarded the same way
+        /// <see cref="RunAttachCharge"/> guards it: the mildest failure for a
+        /// wiring bug is the watch never existing.
+        /// </remarks>
+        private void RunWatch(
+            AbilityEffect effect, OperatorState caster, OperatorState target, List<EffectOutcome> outcomes)
+        {
+            if (_operatorEffects == null) return;
+
+            _statuses.Apply(target, StatusKind.Watched,
+                DeferredOperatorEffects.MarkerDurationTurns, sourceOperatorId: caster.Id);
+
+            _operatorEffects.SetWatch(
+                target, caster.Owner, caster.Id,
+                damage: effect.Amount,
+                damageType: effect.DamageType);
+
+            outcomes.Add(EffectOutcome.WatchMarked(target));
+            outcomes.Add(EffectOutcome.StatusApplied(
+                target, StatusKind.Watched, DeferredOperatorEffects.MarkerDurationTurns));
+        }
+
+        /// <summary>
+        /// Projects a field onto the caster. Nothing ticks now — the field
+        /// first bills at the caster's next upkeep, and keeps billing while
+        /// its marker stands (§6.6).
+        /// </summary>
+        /// <remarks>
+        /// <see cref="RunAttachCharge"/> turned inward: the
+        /// <see cref="StatusKind.CryoField"/> marker is applied here as an
+        /// ordinary status so the badge draws it and a cleanse strips it
+        /// (§5.14), and the registry reads it back at each upkeep to tell a
+        /// standing field from a finished one. The duration is the effect's
+        /// own; the registry counts a self-applied status's cast turn as its
+        /// first, which the ability's stat block already accounts for.
+        ///
+        /// A null <see cref="DeferredOperatorEffects"/> is guarded the same
+        /// way <see cref="RunAttachCharge"/> guards it: the mildest failure
+        /// for a wiring bug is the field never existing.
+        /// </remarks>
+        private void RunProjectField(
+            AbilityEffect effect, OperatorState caster, List<EffectOutcome> outcomes)
+        {
+            if (_operatorEffects == null) return;
+
+            _statuses.Apply(caster, StatusKind.CryoField,
+                effect.Duration, sourceOperatorId: caster.Id);
+
+            _operatorEffects.SetField(
+                caster, caster.Owner, caster.Id,
+                tickDamage: effect.Amount,
+                radius: effect.Radius,
+                damageType: effect.DamageType);
+
+            outcomes.Add(EffectOutcome.FieldProjected(caster));
+            outcomes.Add(EffectOutcome.StatusApplied(
+                caster, StatusKind.CryoField, effect.Duration));
         }
 
         /// <summary>

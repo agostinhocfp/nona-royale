@@ -87,6 +87,43 @@ namespace NonaRoyale.Core.Model
         /// a target carrying both keeps both: the registry holds one entry per
         /// kind, and a shared kind would let one detonation cancel the other.
         /// </remarks>
-        Hunted = 10
+        Hunted = 10,
+
+        /// <summary>
+        /// A self-anchored damage field: while it is active, enemies near the
+        /// holder take damage at each of the holder's owner-upkeeps (§5.14).
+        /// Mimi's Cryo Field.
+        /// </summary>
+        /// <remarks>
+        /// <b>The status is the field.</b> The ticking payload lives in
+        /// <c>DeferredOperatorEffects</c> — the board-reading half — and this
+        /// entry is its visible, cleanseable tell, the <see cref="ZeroDayCharge"/>
+        /// pattern again: stripping the status cancels the field, and neutralize
+        /// strips it with everything else (§1.2), so the field ends when the
+        /// holder does. Unlike a charge it is centred on the caster herself and
+        /// repeats every upkeep rather than resolving once.
+        /// </remarks>
+        CryoField = 11,
+
+        /// <summary>
+        /// A marker with no gameplay effect of its own: a watch is pending on
+        /// this operator, and if it moves by dice before its owner's next
+        /// upkeep the watch trips and strikes it, once (§5.15, §6.7).
+        /// Kurbyn's Predator's Read.
+        /// </summary>
+        /// <remarks>
+        /// The <see cref="ZeroDayCharge"/> pattern a third time — the pending
+        /// strike lives in <c>DeferredOperatorEffects</c>, this is its tell,
+        /// and a cleanse that strips it cancels the watch.
+        ///
+        /// A separate kind rather than a reused <see cref="Hunted"/>, for
+        /// <see cref="Hunted"/>'s own reason: the registry holds one entry per
+        /// kind, and a target carrying both a follow-up and a watch (Luka and
+        /// Kurbyn can share a squad) must keep both — one resolution consuming
+        /// a shared marker would read the other as cleansed. The fiction is
+        /// near-identical and the trigger is the opposite: Hunted punishes
+        /// staying, Watched punishes moving.
+        /// </remarks>
+        Watched = 12
     }
 }

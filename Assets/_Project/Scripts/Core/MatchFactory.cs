@@ -202,7 +202,10 @@ namespace NonaRoyale.Core
 
             var engine = new GameEngine(
     operators, abilityBook, map, turns, movement, collisions,
-    abilities, statuses, auraRules, neutralize, win, combatConfig, cellEffects, random);
+    abilities, statuses, auraRules, neutralize, win, combatConfig, cellEffects, random,
+    // The move path trips watches on watched movers (§6.7); without the
+    // registry the engine could not tell one.
+    operatorEffects);
 
 
             return new Match(engine, players, operators, map, abilitiesByOperator, statuses);

@@ -105,7 +105,37 @@ namespace NonaRoyale.Core.Services
         /// can outrun ask different things of the player who sees them.
         /// <see cref="EffectOutcome.Recipient"/> is the marked operator.
         /// </remarks>
-        FollowUpMarked = 12
+        FollowUpMarked = 12,
+
+        /// <summary>
+        /// A field was projected onto the caster. Nothing has ticked yet — it
+        /// first bills at the caster's next upkeep (§6.6).
+        /// </summary>
+        /// <remarks>
+        /// The <see cref="ChargeAttached"/> telegraph for a self-anchored field:
+        /// a Cryo Field the opponent cannot see is a trap rather than a zone to
+        /// play around, and the <see cref="StatusKind.CryoField"/> badge keeps
+        /// showing it on the board afterwards.
+        /// <see cref="EffectOutcome.Recipient"/> is the caster carrying the field.
+        /// </remarks>
+        FieldProjected = 13,
+
+        /// <summary>
+        /// A watch was set on an operator. Nothing has struck yet — it trips
+        /// the first time the target moves by dice before the caster's next
+        /// upkeep, and lapses if it never does (§6.7).
+        /// </summary>
+        /// <remarks>
+        /// The <see cref="ChargeAttached"/> telegraph for Kurbyn's Predator's
+        /// Read: an unannounced watch is a trap, and the
+        /// <see cref="StatusKind.Watched"/> badge keeps showing it on the
+        /// board afterwards. Its own kind rather than a reused
+        /// <see cref="FollowUpMarked"/> because the counterplay is the exact
+        /// opposite — a follow-up asks the target to run, a watch asks it to
+        /// stand still — and the view has to say which.
+        /// <see cref="EffectOutcome.Recipient"/> is the watched operator.
+        /// </remarks>
+        WatchMarked = 14
     }
 
     /// <summary>
@@ -197,6 +227,14 @@ namespace NonaRoyale.Core.Services
         /// <summary>A follow-up strike set on <paramref name="target"/>.</summary>
         public static EffectOutcome FollowUpMarked(OperatorState target) =>
             new EffectOutcome(EffectOutcomeKind.FollowUpMarked, target, default, 0, default, 0, 0);
+
+        /// <summary>A field projected onto <paramref name="caster"/>, who now carries it (§6.6).</summary>
+        public static EffectOutcome FieldProjected(OperatorState caster) =>
+            new EffectOutcome(EffectOutcomeKind.FieldProjected, caster, default, 0, default, 0, 0);
+
+        /// <summary>A watch set on <paramref name="target"/>, which is now watched (§6.7).</summary>
+        public static EffectOutcome WatchMarked(OperatorState target) =>
+            new EffectOutcome(EffectOutcomeKind.WatchMarked, target, default, 0, default, 0, 0);
 
         public static EffectOutcome Executed(OperatorState recipient) =>
             new EffectOutcome(EffectOutcomeKind.Executed, recipient, default, 0, default, 0, 0);

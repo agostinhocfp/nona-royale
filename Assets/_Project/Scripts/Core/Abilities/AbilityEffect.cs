@@ -412,6 +412,43 @@ namespace NonaRoyale.Core.Abilities
         }
 
         /// <summary>
+        /// Projects a self-anchored field onto the caster: at each of her
+        /// owner-upkeeps for <paramref name="durationTurns"/> of her turns,
+        /// every enemy within <paramref name="radius"/> of her current cell
+        /// takes <paramref name="tickDamage"/> (§6.6). Mimi's Cryo Field.
+        /// </summary>
+        /// <remarks>
+        /// <b>Scoped to the caster, and the recipient is real.</b> Unlike
+        /// <see cref="PaintCell"/> and <see cref="DeployZone"/> this effect has
+        /// someone in hand at cast time — the operator the field is projected
+        /// onto — so it runs through the ordinary recipient path rather than
+        /// the no-recipient routing those two need.
+        ///
+        /// The field follows her: each tick is measured from where she stands
+        /// at that upkeep, not from where she cast it. The
+        /// <see cref="StatusKind.CryoField"/> marker is the telegraph and the
+        /// counterplay — a cleanse or her own neutralize ends the field by
+        /// stripping it (§5.14).
+        ///
+        /// Reused fields, exactly as <see cref="DeployZone"/> packs its
+        /// payload: <c>Amount</c> is the per-tick damage, <c>Duration</c> the
+        /// marker's span. Note the registry counts a self-applied status's cast
+        /// turn as its first (§5), so a field designed to tick at her next two
+        /// upkeeps is duration 3.
+        /// </remarks>
+        public static AbilityEffect Field(
+            int tickDamage, int radius, int durationTurns,
+            DamageType damageType, EffectAudience audience = EffectAudience.Any)
+        {
+            if (tickDamage < 0) throw new ArgumentOutOfRangeException(nameof(tickDamage));
+            if (radius < 0) throw new ArgumentOutOfRangeException(nameof(radius));
+            if (durationTurns < 1) throw new ArgumentOutOfRangeException(nameof(durationTurns));
+
+            return new AbilityEffect(EffectKind.ProjectField, EffectScope.Caster, audience,
+                tickDamage, damageType, radius, default, durationTurns, 0, 0, 0, 0, 0);
+        }
+
+        /// <summary>
         /// Marks the target for a follow-up strike at the caster's next
         /// upkeep: <paramref name="damage"/>, plus <paramref name="heavyBonus"/>
         /// if the target's maximum health is above
@@ -439,6 +476,33 @@ namespace NonaRoyale.Core.Abilities
             return new AbilityEffect(EffectKind.FollowUp, EffectScope.PrimaryTarget, audience,
                 damage, damageType, withinRange, default, 0, 0, 0, 0, 0, 0,
                 heavyAboveMaxHealth: heavyAboveMaxHealth, heavyBonus: heavyBonus);
+        }
+
+        /// <summary>
+        /// Sets a watch on the target: if it moves by dice before the caster's
+        /// owner's next upkeep, it takes <paramref name="damage"/>, once, and
+        /// the watch is spent; if it never moves, the watch lapses (§6.7).
+        /// Placement never trips it (§7.4). Kurbyn's Predator's Read.
+        /// </summary>
+        /// <remarks>
+        /// Telegraphed the way a Zero-Day charge is: an event at cast time and
+        /// a <see cref="StatusKind.Watched"/> marker on the target, which a
+        /// cleanse strips to cancel the watch (§5.15).
+        ///
+        /// <c>Amount</c> carries the damage — the whole payload. Unlike
+        /// <see cref="FollowUp"/> there is no reach to settle: the condition
+        /// reads only the target's own conduct, never the caster's position,
+        /// which is also why a watch outlives its caster exactly as a charge
+        /// does (ADR-0006).
+        /// </remarks>
+        public static AbilityEffect Watch(
+            int damage, DamageType damageType,
+            EffectAudience audience = EffectAudience.EnemyOnly)
+        {
+            if (damage < 0) throw new ArgumentOutOfRangeException(nameof(damage));
+
+            return new AbilityEffect(EffectKind.Watch, EffectScope.PrimaryTarget, audience,
+                damage, damageType, 0, default, 0, 0, 0, 0, 0, 0);
         }
     }
 }

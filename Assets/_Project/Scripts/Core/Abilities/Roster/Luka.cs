@@ -115,9 +115,10 @@ namespace NonaRoyale.Core.Abilities
         /// Cryo-Pulse, Sanity's Zero-Day and Kian's Drone Strike, the
         /// roster's guided and remote-operated devices (§2.2). Sanity and Kian
         /// keep Normal damage elsewhere in their kits, so against them the
-        /// ring is a counter, not an immunity. Mimi's only built damage is
-        /// Cryo-Pulse, so a warded Luka is immune to her until Cryo Field
-        /// lands. Cost 3, cooldown 4 is the Ablative Plating price.
+        /// ring is a counter, not an immunity. Mimi was shut out entirely
+        /// until Cryo Field landed (2026-09-16) — a self-centred emission and
+        /// therefore Normal (§2.2), so the field now goes through the ward.
+        /// Cost 3, cooldown 4 is the Ablative Plating price.
         /// Cleansable like any applied status.
         /// </remarks>
         public static AbilityDefinition HermesRing { get; } = new AbilityDefinition(

@@ -91,8 +91,52 @@ namespace NonaRoyale.Core.Abilities
                     EffectAudience.EnemyOnly, radius: 3)
             });
 
+        /// <summary>
+        /// The rig reads the target's next move before the target makes it.
+        /// If the read target moves before Kurbyn's next turn, the answer
+        /// lands on its own; if it never moves, the read was the point.
+        /// </summary>
+        /// <remarks>
+        /// <b>The watch shape of the operator-anchored registry (§6.7), added
+        /// 2026-09-16 with this ability.</b> A marker the target carries until
+        /// Kurbyn's next upkeep: the first dice movement trips it for 2 Normal,
+        /// once; placement never trips it (§7.4), which is the escape hatch
+        /// alongside simply standing still. Telegraphed on application and
+        /// cleanseable — Neural Purge answers it exactly as it answers a
+        /// Zero-Day charge (§5.15).
+        ///
+        /// <b>It fills the three-energy rung.</b> His cheapest cast was 6, so
+        /// on a lean turn Kurbyn watched the fight rather than shaping it. At
+        /// 3 the read is priced with Short Circuit and From the Hip, the other
+        /// cheap control tools — and like both, its damage is not what is
+        /// being bought: the denial is. A target that stands still to dodge
+        /// the hit has spent its move, which on a board where movement is
+        /// compulsory is often the worse half of the choice.
+        ///
+        /// <b>It outlives him.</b> The condition reads only the target's
+        /// conduct, never his position, so the read is a deployed certainty in
+        /// the Zero-Day sense (ADR-0006), not a duel in the Blind Spot sense:
+        /// Kurbyn in his yard changes nothing. It dies with the target —
+        /// neutralize strips the marker with every other applied status (§1.2).
+        ///
+        /// <b>Normal damage, so his own passive's answer applies to it.</b>
+        /// The strike goes through the pipeline: an evasion charge can dodge
+        /// it and a plate can eat it. Atomic would put a second unblockable
+        /// tool on the operator the Atomic concentration rules already worry
+        /// about (§2.2).
+        /// </remarks>
+        public static AbilityDefinition PredatorsRead { get; } = new AbilityDefinition(
+            id: 303, name: "Predator's Read",
+            description:
+                "The rig finishes reading the target before it has finished deciding. If the target moves before the reading fades, the answer is already on its way.",
+            energyCost: 3, cooldownTurns: 2, range: 3,
+            effects: new[]
+            {
+                AbilityEffect.Watch(2, DamageType.Normal)
+            });
+
         public static IReadOnlyList<AbilityDefinition> All { get; } =
-            new[] { DarginPulse, MiraclePull };
+            new[] { PredatorsRead, DarginPulse, MiraclePull };
 
         /// <summary>
         /// His uniform shape, for drafting. The passive carries its speed bonus

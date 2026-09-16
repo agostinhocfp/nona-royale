@@ -103,10 +103,14 @@ namespace NonaRoyale.Core.Abilities
         /// produce a squad with no way through Kurbyn. That is a real drafting
         /// question and it is open.
         ///
-        /// <b>One of the nine is incomplete.</b> Mimi is missing Cryo Field, so
-        /// she draws with two abilities where the rest have three. The draft
-        /// does not know or care, which is correct — but any sweep run now is
-        /// measuring a pool that is deliberately uneven.
+        /// <b>The pool is even.</b> Mimi's Cryo Field and Kurbyn's Predator's
+        /// Read both landed on 2026-09-16, so all nine operators draw with
+        /// three abilities. A sweep run now measures the roster as designed;
+        /// nothing here checks that a squad has an answer to Evasion, a way to
+        /// heal, or any reliable damage at all, and with Atomic concentrated in
+        /// three operators (§2.2) a legal draw can still produce a squad with
+        /// no way through Kurbyn. That is a real drafting question and it is
+        /// open.
         /// </remarks>
         public static IReadOnlyList<OperatorDefinition> DraftRandom(IRandom random)
         {

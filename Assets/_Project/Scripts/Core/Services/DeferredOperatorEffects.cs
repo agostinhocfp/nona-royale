@@ -99,13 +99,19 @@ namespace NonaRoyale.Core.Services
     }
 
     /// <summary>
-    /// Effects that name a victim and a later moment. Two shapes, both
-    /// resolving at the caster's next upkeep:
+    /// Effects that name a moment later than the cast. Three shapes:
     /// <list type="bullet">
     /// <item>a <b>charge</b> (§6.4, Zero-Day) follows the target and detonates
     /// on whatever cell it then occupies, catching everyone near it;</item>
     /// <item>a <b>follow-up</b> (§6.5, Luka's Blind Spot) strikes the target alone, and
-    /// only if the caster is still close enough to it.</item>
+    /// only if the caster is still close enough to it;</item>
+    /// <item>a <b>field</b> (§6.6, Mimi's Cryo Field) is anchored to the caster
+    /// herself and repeats: it bills every enemy near her at each of her
+    /// owner-upkeeps while its marker stands.</item>
+    /// <item>a <b>watch</b> (§6.7, Kurbyn's Predator's Read) is anchored to the
+    /// victim like a charge, but resolves early: the first time the target
+    /// moves <i>by dice</i> it trips and strikes, once; if the target never
+    /// moves, it lapses at the owner's next upkeep.</item>
     /// </list>
     /// </summary>
     /// <remarks>
@@ -141,9 +147,10 @@ namespace NonaRoyale.Core.Services
     /// so two seats attaching to the same victim leave a single badge; the
     /// first resolution consumes it and the second then reads as cleansed. A
     /// four-seat edge the design has not needed to answer; recorded rather
-    /// than solved. The two shapes use different markers
-    /// (<see cref="StatusKind.ZeroDayCharge"/>, <see cref="StatusKind.Hunted"/>),
-    /// so a charge and a follow-up on the same target never collide.
+    /// than solved. The shapes use different markers
+    /// (<see cref="StatusKind.ZeroDayCharge"/>, <see cref="StatusKind.Hunted"/>,
+    /// <see cref="StatusKind.CryoField"/>, <see cref="StatusKind.Watched"/>),
+    /// so a charge, a follow-up and a watch on the same target never collide.
     /// </remarks>
     public sealed class DeferredOperatorEffects
     {
@@ -152,6 +159,12 @@ namespace NonaRoyale.Core.Services
 
         /// <summary>Cause recorded on a follow-up's damage, for the view (§2.1).</summary>
         public const string FollowUpCause = "follow-up";
+
+        /// <summary>Cause recorded on a field's tick, for the view (§2.1, §6.6).</summary>
+        public const string FieldCause = "cryo-field";
+
+        /// <summary>Cause recorded on a watch's strike, for the view (§2.1, §6.7).</summary>
+        public const string WatchCause = "watch";
 
         /// <summary>
         /// How long the attachment marker lasts, in the target's own turns.
@@ -174,7 +187,17 @@ namespace NonaRoyale.Core.Services
         private enum Shape
         {
             Charge,
-            FollowUp
+            FollowUp,
+
+            /// <summary>Repeating: fires at every owner upkeep while its marker stands (§6.6).</summary>
+            Field,
+
+            /// <summary>
+            /// Trips on the target's first dice movement, lapses at the owner's
+            /// next upkeep if none came (§6.7). Never produces a resolution
+            /// from <see cref="Fire"/> — its moment is the move, not the upkeep.
+            /// </summary>
+            Watch
         }
 
         private sealed class Pending
@@ -242,6 +265,22 @@ namespace NonaRoyale.Core.Services
             if (target == null) throw new ArgumentNullException(nameof(target));
 
             return Find(target, owner, Shape.FollowUp) != null;
+        }
+
+        /// <summary>Whether a seat has a field riding on this operator. For the view and for tests.</summary>
+        public bool HasFieldOn(OperatorState holder, PlayerColor owner)
+        {
+            if (holder == null) throw new ArgumentNullException(nameof(holder));
+
+            return Find(holder, owner, Shape.Field) != null;
+        }
+
+        /// <summary>Whether a seat has a watch pending on this operator. For the view and for tests.</summary>
+        public bool HasWatchOn(OperatorState target, PlayerColor owner)
+        {
+            if (target == null) throw new ArgumentNullException(nameof(target));
+
+            return Find(target, owner, Shape.Watch) != null;
         }
 
         /// <summary>
@@ -335,6 +374,172 @@ namespace NonaRoyale.Core.Services
         }
 
         /// <summary>
+        /// Projects a field onto <paramref name="holder"/> — the caster herself.
+        /// At each of <paramref name="owner"/>'s upkeeps while the
+        /// <see cref="StatusKind.CryoField"/> marker stands, every enemy within
+        /// <paramref name="radius"/> of the holder's current cell takes
+        /// <paramref name="tickDamage"/> (§6.6).
+        /// </summary>
+        /// <remarks>
+        /// <b>Repeating, where a charge and a follow-up resolve once.</b> The
+        /// entry is not consumed by firing; it is retired when the marker is —
+        /// by expiry, by a cleanse, or by the holder's neutralize, all of which
+        /// strip the status that is the field's tell (§5.14). No due turn is
+        /// recorded because every owner upkeep is due.
+        ///
+        /// <b>It ends with the holder.</b> A field is centred on a body, not
+        /// deployed like a beacon, so the beacon precedent — a device outlives
+        /// its operator (ADR-0006) — does not apply; the follow-up's does: a
+        /// yarded holder is nowhere, and the field centres on nowhere (§6.5's
+        /// caster-anchored rule, §1.2's status stripping).
+        ///
+        /// <b>Re-projecting replaces rather than stacks</b>, as
+        /// <see cref="Attach"/> does.
+        /// </remarks>
+        public void SetField(
+            OperatorState holder,
+            PlayerColor owner,
+            int sourceOperatorId,
+            int tickDamage,
+            int radius,
+            DamageType damageType)
+        {
+            if (holder == null) throw new ArgumentNullException(nameof(holder));
+            if (owner == PlayerColor.None)
+                throw new ArgumentException("A field needs a seat to pay its kills.", nameof(owner));
+            if (tickDamage < 0) throw new ArgumentOutOfRangeException(nameof(tickDamage));
+            if (radius < 0) throw new ArgumentOutOfRangeException(nameof(radius));
+
+            var entry = Find(holder, owner, Shape.Field) ?? NewEntry(holder, owner, Shape.Field);
+
+            entry.Marker = StatusKind.CryoField;
+            entry.SourceOperatorId = sourceOperatorId;
+            entry.Radius = radius;
+            entry.DamageType = damageType;
+            entry.SplashDamage = tickDamage;
+            entry.PrimaryBonus = 0;
+            entry.HasStatus = false;
+            entry.Status = default;
+            entry.StatusDuration = 0;
+        }
+
+        /// <summary>
+        /// Sets a watch on <paramref name="target"/>. If the target moves
+        /// <b>by dice</b> before <paramref name="owner"/>'s next upkeep, it
+        /// takes <paramref name="damage"/>, once, and the watch is spent; if
+        /// it never moves, the watch lapses at that upkeep (§6.7).
+        /// </summary>
+        /// <remarks>
+        /// <b>Re-setting replaces rather than stacks</b>, as <see cref="Attach"/>
+        /// does. With Predator's Read the path is unreachable in play — its
+        /// cooldown outlasts the marker, so the first watch has always lapsed
+        /// before the second can be cast — but the registry answers the general
+        /// case the same way every shape does.
+        ///
+        /// <b>It outlives its caster, like a charge and unlike a follow-up.</b>
+        /// The condition reads only the target's conduct — did it move — and
+        /// never the caster's position, so there is nothing for a yarded caster
+        /// to be out of. The read is already taken; the rig's answer was
+        /// recorded at cast time (ADR-0006's deployed-device precedent). A kill
+        /// still credits the recorded source.
+        ///
+        /// <b>It dies with its target.</b> Neutralize strips the marker with
+        /// every other applied status (§1.2), and the marker is the source of
+        /// truth for cancellation — a re-deployed target is clean, and the
+        /// orphaned entry is retired at the owner's next upkeep.
+        /// </remarks>
+        public void SetWatch(
+            OperatorState target,
+            PlayerColor owner,
+            int sourceOperatorId,
+            int damage,
+            DamageType damageType)
+        {
+            if (target == null) throw new ArgumentNullException(nameof(target));
+            if (owner == PlayerColor.None)
+                throw new ArgumentException("A watch needs a seat to pay its kills.", nameof(owner));
+            if (damage < 0) throw new ArgumentOutOfRangeException(nameof(damage));
+
+            var entry = Find(target, owner, Shape.Watch) ?? NewEntry(target, owner, Shape.Watch);
+
+            entry.Marker = StatusKind.Watched;
+            entry.SourceOperatorId = sourceOperatorId;
+            entry.ResolvesOnOwnerTurn = _clock.TurnIndexOf(owner) + 1;
+            entry.LastKnownCell = _targeting.CellOf(target);
+            entry.Radius = 0;
+            entry.DamageType = damageType;
+            entry.SplashDamage = damage;
+            entry.PrimaryBonus = 0;
+            entry.HasStatus = false;
+            entry.Status = default;
+            entry.StatusDuration = 0;
+        }
+
+        /// <summary>
+        /// Tells the registry an operator just completed a <b>dice movement</b>
+        /// and trips any live watch riding on it. Returns what tripped, in
+        /// attachment order; empty when nothing did.
+        /// </summary>
+        /// <remarks>
+        /// <b>The only trigger a watch has.</b> Called by <c>GameEngine</c> from
+        /// the move path and from nowhere else: placement — pulls, pushes,
+        /// swaps, dashes, bounce-backs (§7.4) — never reaches this method,
+        /// which is the whole of "placement never trips a watch". Deploying is
+        /// placement too.
+        ///
+        /// <b>A cleansed watch springs nothing and is retired.</b> The marker
+        /// is the source of truth: a target moving without it was cleansed
+        /// (or neutralized and re-deployed), and the entry can never fire, so
+        /// it is dropped silently rather than left to its upkeep.
+        ///
+        /// Kills are the caller's to fold, exactly as <see cref="Fire"/>
+        /// leaves them to <c>TurnStateMachine</c>: this type owns the strike
+        /// and the pipeline call, not what reaching zero means.
+        /// </remarks>
+        public IReadOnlyList<OperatorEffectResolution> NotifyDiceMovement(OperatorState mover)
+        {
+            if (mover == null) throw new ArgumentNullException(nameof(mover));
+
+            List<OperatorEffectResolution> tripped = null;
+
+            // Backwards so a removal cannot skip the next entry.
+            for (int i = _pending.Count - 1; i >= 0; i--)
+            {
+                var entry = _pending[i];
+
+                if (entry.Shape != Shape.Watch || !ReferenceEquals(entry.Target, mover)) continue;
+
+                // The marker is the attachment: a mover without it was cleansed
+                // — or died and came back — and the watch springs nothing.
+                if (!_statuses.Has(mover, entry.Marker))
+                {
+                    _pending.RemoveAt(i);
+                    continue;
+                }
+
+                var result = _damage.Apply(mover, new DamageInstance(
+                    entry.SplashDamage, entry.DamageType, entry.SourceOperatorId, WatchCause));
+
+                // Sprung is spent, landed or absorbed: the marker comes off so
+                // the badge stops drawing, and the entry is gone either way.
+                _statuses.Remove(mover, entry.Marker);
+                _pending.RemoveAt(i);
+
+                if (tripped == null) tripped = new List<OperatorEffectResolution>(1);
+                tripped.Add(new OperatorEffectResolution(
+                    _targeting.CellOf(mover), entry.Owner, entry.SourceOperatorId, WatchCause,
+                    new[] { mover }, new[] { result }, entry.SplashDamage,
+                    markedTargetBonus: 0, statused: null, status: default, statusDuration: 0,
+                    target: mover));
+            }
+
+            if (tripped == null) return Array.Empty<OperatorEffectResolution>();
+
+            tripped.Reverse();
+            return tripped;
+        }
+
+        /// <summary>
         /// Records where an operator died, for any charge riding on it. Called
         /// by <c>NeutralizeRules</c> before the piece is yarded — afterwards its
         /// last cell is unrecoverable.
@@ -356,7 +561,8 @@ namespace NonaRoyale.Core.Services
 
         /// <summary>
         /// Resolves every charge of <paramref name="owner"/>'s that has come
-        /// due, and reports what each one did. Called at that seat's upkeep,
+        /// due and ticks every field it has standing, reporting what each one
+        /// did. Called at that seat's upkeep,
         /// beside <see cref="DeferredCellEffects.Fire"/>.
         /// </summary>
         /// <remarks>
@@ -379,6 +585,25 @@ namespace NonaRoyale.Core.Services
                 var entry = _pending[i];
 
                 if (entry.Owner != owner) continue;
+
+                // A field is due at every owner upkeep, and is retired rather
+                // than fired when its marker is gone: expiry, a cleanse, and
+                // the holder's own neutralize all strip the status (§5.14),
+                // and a yarded holder centres the field nowhere.
+                if (entry.Shape == Shape.Field)
+                {
+                    if (!_targeting.IsInPlay(entry.Target) ||
+                        !_statuses.Has(entry.Target, entry.Marker))
+                    {
+                        _pending.RemoveAt(i);
+                        continue;
+                    }
+
+                    if (fired == null) fired = new List<OperatorEffectResolution>();
+                    fired.Add(ResolveField(entry, allOperators));
+                    continue;   // a field is not consumed by firing
+                }
+
                 if (ownerTurn < entry.ResolvesOnOwnerTurn) continue;
 
                 // A target standing in play without its marker was cleansed:
@@ -386,6 +611,20 @@ namespace NonaRoyale.Core.Services
                 if (_targeting.IsInPlay(entry.Target) &&
                     !_statuses.Has(entry.Target, entry.Marker))
                 {
+                    _pending.RemoveAt(i);
+                    continue;
+                }
+
+                // A watch's moment was the move that never came (§6.7). It
+                // lapses here: the entry is retired and its marker stripped so
+                // a spent read does not keep drawing a badge — the detonation's
+                // precedent in ResolveCharge. Nothing reports, because nothing
+                // happened: the value of the cast was the movement it denied.
+                if (entry.Shape == Shape.Watch)
+                {
+                    if (_targeting.IsInPlay(entry.Target))
+                        _statuses.Remove(entry.Target, entry.Marker);
+
                     _pending.RemoveAt(i);
                     continue;
                 }
@@ -511,6 +750,41 @@ namespace NonaRoyale.Core.Services
                 cell, entry.Owner, entry.SourceOperatorId, FollowUpCause,
                 caught, results, entry.SplashDamage,
                 inReach ? entry.PrimaryBonus : 0,
+                statused: null, status: default, statusDuration: 0,
+                target: entry.Target);
+        }
+
+        /// <summary>
+        /// Resolves one field tick: every enemy within the entry's radius of
+        /// the holder's <b>current</b> cell takes the tick damage (§6.6).
+        /// </summary>
+        /// <remarks>
+        /// <b>The field follows the holder.</b> The origin is read at fire
+        /// time, not recorded at cast time — a Mimi who moved between upkeeps
+        /// carries her cold with her, which is the zoning the ability is for.
+        /// There is no death cell to fall back on: the entry is retired before
+        /// this runs when the holder has left the board.
+        ///
+        /// <b>Stealth and safe cells do not stop it</b>, exactly as they do not
+        /// stop an area cast (§4.4, §5.4): the field is not an aim, it is
+        /// weather. Mitigation still applies downstream — the tick is Normal,
+        /// so evasion and shields interact with it through the pipeline.
+        /// </remarks>
+        private OperatorEffectResolution ResolveField(Pending entry, IReadOnlyList<OperatorState> allOperators)
+        {
+            var cell = _targeting.CellOf(entry.Target);
+            var caught = _targeting.EnemiesInArea(cell, entry.Radius, entry.Owner, allOperators);
+
+            var results = new List<DamageResult>(caught.Count);
+            foreach (var victim in caught)
+            {
+                results.Add(_damage.Apply(victim, new DamageInstance(
+                    entry.SplashDamage, entry.DamageType, entry.SourceOperatorId, FieldCause)));
+            }
+
+            return new OperatorEffectResolution(
+                cell, entry.Owner, entry.SourceOperatorId, FieldCause,
+                caught, results, entry.SplashDamage, markedTargetBonus: 0,
                 statused: null, status: default, statusDuration: 0,
                 target: entry.Target);
         }

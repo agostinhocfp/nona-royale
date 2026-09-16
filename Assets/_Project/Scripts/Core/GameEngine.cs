@@ -57,6 +57,7 @@ namespace NonaRoyale.Core
         private readonly WinConditions _win;
         private readonly CombatConfig _config;
         private readonly DeferredCellEffects _cellEffects;
+        private readonly DeferredOperatorEffects _operatorEffects;
 
         /// <summary>
         /// The match's one shared random stream. Only the pity deploy's yard
@@ -123,7 +124,8 @@ namespace NonaRoyale.Core
                         WinConditions win,
             CombatConfig config,
             DeferredCellEffects cellEffects,
-            IRandom random)
+            IRandom random,
+            DeferredOperatorEffects operatorEffects = null)
         {
 
             _operators = operators ?? throw new ArgumentNullException(nameof(operators));
@@ -140,6 +142,12 @@ namespace NonaRoyale.Core
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _cellEffects = cellEffects ?? throw new ArgumentNullException(nameof(cellEffects));
             _random = random ?? throw new ArgumentNullException(nameof(random));
+
+            // Optional, matching the AbilityResolver wiring: fixtures built
+            // before watches existed construct the engine without the registry,
+            // and only a dice move by a watched operator can tell the
+            // difference (§6.7).
+            _operatorEffects = operatorEffects;
 
             _unspentView = new ReadOnlyCollection<int>(_unspentDice);
 
@@ -284,12 +292,19 @@ namespace NonaRoyale.Core
             {
                 // A follow-up is the charge's sibling (§6.5) and reads
                 // differently: one blow that landed or was outrun, not a blast.
-                // Branching on the cause is the beacon/zone precedent above.
+                // A field tick (§6.6) reads differently again: weather that
+                // bills every upkeep, not a device going off once. Branching on
+                // the cause is the beacon/zone precedent above.
                 if (charge.Cause == DeferredOperatorEffects.FollowUpCause)
                 {
                     events.Add(new FollowUpResolved(
                         charge.Owner, charge.SourceOperatorId, charge.Target, charge.Cell,
                         charge.HitSomething, charge.DamagePerTarget, charge.MarkedTargetBonus));
+                }
+                else if (charge.Cause == DeferredOperatorEffects.FieldCause)
+                {
+                    events.Add(new FieldTicked(
+                        charge.Owner, charge.Cell, charge.Caught.Count, charge.DamagePerTarget));
                 }
                 else
                 {
@@ -684,6 +699,30 @@ namespace NonaRoyale.Core
                 }
             }
 
+            // A watched mover is struck the moment its dice movement completes
+            // (§6.7) — after the landing's contest, before home credit, so a
+            // read that finishes the mover yards it instead of sending it home.
+            // Placement never reaches this call: pulls, pushes, swaps, dashes
+            // and bounce-backs are not dice movement (§7.4), which is the
+            // escape hatch the ability is priced around.
+            if (_operatorEffects != null)
+            {
+                foreach (var tripped in _operatorEffects.NotifyDiceMovement(op))
+                {
+                    events.Add(new WatchTripped(
+                        tripped.Owner, tripped.SourceOperatorId, tripped.Target,
+                        tripped.Cell, tripped.DamagePerTarget));
+
+                    for (int i = 0; i < tripped.Damage.Count; i++)
+                    {
+                        EmitDamage(tripped.Caught[i], tripped.Damage[i], events);
+
+                        if (tripped.Damage[i].Outcome == DamageOutcome.Neutralized)
+                            Neutralize(tripped.Caught[i], tripped.Cause, tripped.SourceOperatorId, events);
+                    }
+                }
+            }
+
             if (_win.HasFinished(op))
                 events.Add(new OperatorReachedHome(op));
         }
@@ -804,6 +843,14 @@ namespace NonaRoyale.Core
 
                 case EffectOutcomeKind.FollowUpMarked:
                     events.Add(new FollowUpMarked(caster, outcome.Recipient));
+                    break;
+
+                case EffectOutcomeKind.WatchMarked:
+                    events.Add(new WatchMarked(caster, outcome.Recipient));
+                    break;
+
+                case EffectOutcomeKind.FieldProjected:
+                    events.Add(new FieldProjected(outcome.Recipient));
                     break;
 
                 // Placement again, with the caster as the subject: reported as

@@ -182,6 +182,55 @@ namespace NonaRoyale.Core.Abilities
         /// same distance targeting uses (§4.1), between the two operators as
         /// they stand at the caster's upkeep — before the caster moves.
         /// </remarks>
-        FollowUp = 12
+        FollowUp = 12,
+
+        /// <summary>
+        /// Projects a self-anchored field onto the caster. Nothing happens now;
+        /// at each of the caster's owner-upkeeps while the field stands, every
+        /// enemy within <c>Radius</c> of the caster's <i>current</i> cell takes
+        /// <c>Amount</c> (§6.6). Mimi's Cryo Field.
+        /// </summary>
+        /// <remarks>
+        /// <b>The sibling of <see cref="AttachCharge"/> anchored to the caster
+        /// herself, and repeating.</b> A charge follows its victim and resolves
+        /// once; a field follows its caster and bills every upkeep for its
+        /// duration. Same pending registry, same marker pattern — the marker is
+        /// <see cref="StatusKind.CryoField"/>, and a cleanse or the caster's
+        /// neutralize ends the field by stripping it (§5.14).
+        ///
+        /// <c>Amount</c> carries the per-tick damage, <c>Radius</c> the field's
+        /// reach, <c>Duration</c> the marker's span in the caster's own turns —
+        /// which, self-applied on her turn, counts the cast turn as its first,
+        /// so a field meant to tick twice lasts three (§5). Reused fields, the
+        /// same trade <see cref="DeployZone"/> already makes.
+        /// </remarks>
+        ProjectField = 13,
+
+        /// <summary>
+        /// Sets a watch on the primary target. Nothing happens now; if the
+        /// target moves <b>by dice</b> before the caster's owner's next upkeep,
+        /// it takes <c>Amount</c>, once, and the watch is spent. If it never
+        /// moves, the watch lapses at that upkeep (§6.7). Kurbyn's Predator's
+        /// Read.
+        /// </summary>
+        /// <remarks>
+        /// <b>The follow-up's mirror (§6.5): a strike conditional on what the
+        /// target does — but resolved the moment it does it, not at upkeep.</b>
+        /// A follow-up punishes a target that stayed close; a watch punishes
+        /// the first dice movement and lapses if none came. Same pending
+        /// registry, same marker pattern — the marker is
+        /// <see cref="StatusKind.Watched"/>, and a cleanse strips it to cancel
+        /// the watch (§5.15).
+        ///
+        /// <b>Placement never trips it</b> (§7.4): pulls, pushes, swaps, dashes
+        /// and bounce-backs relocate the target without spending its move, and
+        /// a watch that punished those would punish the victim for somebody
+        /// else's action. Standing still, and being moved by somebody else,
+        /// are the two escape hatches.
+        ///
+        /// <c>Amount</c> carries the damage; <c>DamageType</c> the type. No
+        /// radius, no status rider, no heavy rule — the payload is one number.
+        /// </remarks>
+        Watch = 14
     }
 }

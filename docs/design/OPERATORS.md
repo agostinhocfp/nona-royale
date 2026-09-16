@@ -18,13 +18,13 @@ That divergence is the same failure that caused the project restart, one layer u
 
 ## Roster scope
 
-The pool is **nine operators**; each player fields **three per match**, distinct within a squad (`GDD.md` §2.2). **The pool is full:** eight operators are complete and Mimi is playable but unfinished (`COMBAT_SYSTEMS.md` §10). **Kian and Nuetu have no entry in this file yet**; their kits are in §10.6 and §10.7, and their identities are unwritten.
+The pool is **nine operators**; each player fields **three per match**, distinct within a squad (`GDD.md` §2.2). **The pool is full and all nine are complete** — Mimi's Cryo Field, the last missing ability, landed 2026-09-16 (`COMBAT_SYSTEMS.md` §10.4). **Kian and Nuetu have no entry in this file yet**; their kits are in §10.6 and §10.7, and their identities are unwritten.
 
 A new operator must be expressible in the existing combat rules. One that needs a genuinely new _mechanic_ gets an amendment to `COMBAT_SYSTEMS.md` — never a special case inside its own stat block. That rule is what stops the roster from becoming nine sets of bespoke exceptions, and it has now fired twice in earnest: Mimi's coordinate swap forced a sixth effect kind and a rewrite of §7.4, and Javi's cleanse forced a seventh — the first that removes from the status registry rather than adding to it.
 
 **An operator is not finished until its mechanics exist.** Flavour can be written here at any time; §10 takes an operator only once every rule it needs is implemented and tested. Until then it lives under _In play, incomplete_ or _In design_ below, with what it is blocked on written down.
 
-**The exception, and why it is one.** Mimi and Javi are both in the draft pool with an ability missing, so a player can be dealt either — and an operator the game can deal but the rules document does not describe is worse than an entry marked incomplete. They therefore appear in `COMBAT_SYSTEMS.md` §10.4 and §10.5 under banners saying exactly what is absent. The rule still holds for everyone else: an operator enters the pool and §10 together, or neither.
+**The exception, retired.** Mimi and Javi spent a stretch in the draft pool with an ability missing, under banners in `COMBAT_SYSTEMS.md` §10.4 and §10.5 saying exactly what was absent — an operator the game can deal but the rules document does not describe is worse than an entry marked incomplete. Both are complete now (Javi on 2026-09-15, Mimi on 2026-09-16), and the rule stands for whoever comes next: an operator enters the pool and §10 together, or neither.
 
 That the exception now covers two of five is a warning rather than a precedent. A third would mean the pool has become the place operators go to wait, which is the opposite of what it is for.
 
@@ -70,7 +70,7 @@ Read at the table: _the one who finishes things._
 
 ### Kurbyn, DarkGrave — Brawler
 
-A neural-prediction rig that lets him slip the first punch of any exchange, a pulse that scrambles motor function in a small radius, and a gravitic tether that implodes anything already dying. Built to be in the middle of a scrum and survive the first thing that hits him — by prediction, not armour.
+A neural-prediction rig that lets him slip the first punch of any exchange and finishes reading a target's next move before the target makes it, a pulse that scrambles motor function in a small radius, and a gravitic tether that implodes anything already dying. Built to be in the middle of a scrum and survive the first thing that hits him — by prediction, not armour.
 
 He dominated the first human sessions, and the response was to give one other operator a way through him rather than to take the prediction away. The rig is untouched; what changed is that it is no longer an answer to everything.
 
@@ -90,13 +90,13 @@ Her entire kit is one damage type, deliberately: she is the answer to an opponen
 
 Read at the table: _the one who is never where you left her._
 
-**Draftable and playable with two of three abilities.** Her live kit is in `COMBAT_SYSTEMS.md` §10.4, marked incomplete.
+**Draftable and playable, complete since 2026-09-16.** Her kit is in `COMBAT_SYSTEMS.md` §10.4.
 
-**One of three blockers is cleared:**
+**All three blockers are cleared:**
 
 - ~~**A swap effect.**~~ **Done.** It needed a sixth effect kind, and it forced the §7.4 amendment that had been overdue since Velvet Rope's clamp went undocumented. The arithmetic also exposed a case nobody had noticed — a placement running _forwards_ into a home column — and produced the rule that placement moving one operator clamps while placement moving two refuses.
 - ~~**The Tech damage type.**~~ **Done (2026-09-15)**, with Luka. Her damage is now Tech, which Luka's Hermes' Ring blocks and nothing else does. Her identity as the answer to barriers is still unexpressed: Tech is Normal plus that one counter until something amplifies it (`COMBAT_SYSTEMS.md` §2.2).
-- **A field that damages on a duration.** Still missing. Auras are permanent and carry speed effects only, and no status damages an area at its holder's upkeep. **Cryo Field is not implemented and she plays without it.**
+- ~~**A field that damages on a duration.**~~ **Done (2026-09-16).** It arrived as the field shape of the operator-anchored deferred registry (`COMBAT_SYSTEMS.md` §6.6): a self-anchored `CryoField` status (§5.14) that bills enemies near her at each of her upkeeps, follows her when she moves, and ends when she does. The tick is 1 Normal — the design table left the amount blank, and it is flagged for tuning.
 
 Her fiction is also the strongest argument in the tech-level question below. Everyone else has a rope, a rig or a drone; she has a singularity core and tachyon targeting.
 
@@ -188,7 +188,7 @@ The whole kit is a duel. Blind Spot puts him next to his target, and the threat 
 ## Open items
 
 - [ ] Resolve **Brawler**: define it as a fifth archetype, or re-tag Kurbyn. More pressing now the base four are filled.
-- [ ] **Finish Mimi** — an area-damage-over-time status for Cryo Field. (Tech landed 2026-09-15.)
+- [x] ~~**Finish Mimi** — an area-damage-over-time status for Cryo Field.~~ Done 2026-09-16: the field shape of `DeferredOperatorEffects` (§6.6) with a `CryoField` marker (§5.14), 1 Normal per tick flagged for designer tuning. (Tech landed 2026-09-15.)
 - [x] ~~**Write Luka**~~: look, fiction, device and the Blind Spot name are done (2026-09-15). Whether "Duelist" is an archetype is still open, together with Brawler and Engineer.
 - [ ] **Write Kian and Nuetu** — deferred (2026-09-15): backstory waits until later in development. Both are complete in `COMBAT_SYSTEMS.md` §10.6 and §10.7, both are contractors, and Nuetu's piece is the disc.
 - [ ] **Javi's entry is stale.** It still says Trauma Plate is unbuilt; §10.5 has him complete.

@@ -35,6 +35,8 @@ namespace NonaRoyale.Unity.View
                 case StatusKind.ZeroDayCharge: return new Color(0.90f, 0.40f, 0.70f); // magenta, a pending payload
                 case StatusKind.TechWard: return new Color(0.45f, 0.75f, 0.95f);      // bright cyan, a ward
                 case StatusKind.Hunted: return new Color(0.95f, 0.30f, 0.45f);        // crimson, a pending strike
+                case StatusKind.CryoField: return new Color(0.60f, 0.90f, 0.95f);     // pale ice, a carried chill
+                case StatusKind.Watched: return new Color(0.75f, 0.55f, 0.95f);       // pale violet, a read pending
                 default: return new Color(0.65f, 0.65f, 0.68f);
             }
         }
@@ -65,6 +67,8 @@ namespace NonaRoyale.Unity.View
                 case StatusKind.ZeroDayCharge: return "0-DAY";
                 case StatusKind.TechWard: return "WARD";
                 case StatusKind.Hunted: return "HUNTED";
+                case StatusKind.CryoField: return "CRYO";
+                case StatusKind.Watched: return "WATCHED";
                 default: return kind.ToString().ToUpperInvariant();
             }
         }

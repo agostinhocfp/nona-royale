@@ -9,22 +9,23 @@ namespace NonaRoyale.Core.Abilities
     /// alpha three.
     /// </summary>
     /// <remarks>
-    /// <b>Two of three abilities.</b> Cryo Field is deliberately absent: it
-    /// needs a status that damages an area at its holder's upkeep, and no such
-    /// mechanic exists (<c>OPERATORS.md</c>, In design). Shipping her partial
-    /// beats shipping a stub that silently does nothing.
+    /// <b>Complete since 2026-09-16.</b> Cryo Field was the last gap: it needed
+    /// a status that damages an area at its holder's upkeep, which arrived as
+    /// the field shape of <c>DeferredOperatorEffects</c> (§6.6) carrying a
+    /// <see cref="StatusKind.CryoField"/> marker (§5.14).
     ///
-    /// <b>Her damage is Tech</b> (2026-09-15, §2.2). The type arrived with
-    /// Luka, whose Hermes' Ring blocks it. Tech is otherwise Normal — evasion
-    /// and shields still apply — so the change costs her only against a warded
-    /// Luka. Her old identity as the anti-shield operator is still
-    /// unexpressed: "Tech can be amplified" is the designer's stated direction,
-    /// and nothing amplifies it yet.
+    /// <b>Her direct damage is Tech; her field is not.</b> (2026-09-15, §2.2).
+    /// The type arrived with Luka, whose Hermes' Ring blocks it. Cryo Field is
+    /// a self-centred emission and stays Normal under the same rule, so a
+    /// warded Luka is no longer immune to her — the field goes through the
+    /// ward and his shield decides what it stops. Her old identity as the
+    /// anti-shield operator is still unexpressed: "Tech can be amplified" is
+    /// the designer's stated direction, and nothing amplifies it yet.
     ///
     /// <b>Reachable, and unmeasured.</b> Drafting made her fieldable, so a
-    /// random-squad match or sweep can now execute both of these — neither of
-    /// which has ever been simulated. Cryo-Pulse's remote origin and
-    /// Translocation's cooldown are both reasoned values.
+    /// random-squad match or sweep can now execute all three of these — none
+    /// of which has ever been simulated. Cryo-Pulse's remote origin,
+    /// Translocation's cooldown and Cryo Field's tick are all reasoned values.
     /// </remarks>
     public static class Mimi
     {
@@ -126,10 +127,61 @@ namespace NonaRoyale.Core.Abilities
             energyCost: 3, cooldownTurns: 4, range: 6,
             effects: new[] { AbilityEffect.Swap() });
 
-        public static IReadOnlyList<AbilityDefinition> All { get; } =
-            new[] { CryoPulse, Translocation };
+        /// <summary>
+        /// A field Mimi raises around herself and carries: while it stands,
+        /// everything hostile near her freezes a little more each time her
+        /// turn comes round.
+        /// </summary>
+        /// <remarks>
+        /// <b>1 Normal per tick, and the number is a placeholder.</b> The design
+        /// table leaves the amount blank; 1 is the smallest instrument in the
+        /// game, and the ability is a zoning tool, not a nuke. Tuning it is a
+        /// one-line edit to <see cref="CryoFieldTickDamage"/>. Self-centred, so
+        /// Normal rather than Tech (§2.2 — her own emission, not a guided
+        /// device), which also means a warded Luka is no longer immune to her
+        /// (§5.12).
+        ///
+        /// <b>Duration 3 is the designed "2 turns".</b> A self-applied status
+        /// counts the cast turn as its first (§5), and the field only bills at
+        /// upkeeps — the cast turn's upkeep has already passed. Duration 3 spans
+        /// her cast turn and her next two, which is exactly two ticks.
+        ///
+        /// <b>It ends with her.</b> The field is anchored to her body, not
+        /// deployed like a beacon: neutralize strips the marker with every other
+        /// applied status (§1.2), and a field centred on an operator in her
+        /// yard is centred nowhere. The follow-up precedent, not the beacon one
+        /// (§6.5 vs ADR-0006).
+        /// </remarks>
+        public static AbilityDefinition CryoField { get; } = new AbilityDefinition(
+            id: 403, name: "Cryo Field",
+            description:
+                "Mimi surrounds herself with a deepening cold. For a while, enemies near her are bitten by frost each time her turn begins.",
+            energyCost: 6, cooldownTurns: 3, range: 0,
+            targeting: AbilityTargeting.None,
+            effects: new[]
+            {
+                AbilityEffect.Field(
+                    CryoFieldTickDamage, CryoFieldRadius, CryoFieldDurationTurns,
+                    DamageType.Normal)
+            });
 
-        /// <summary>Her uniform shape, for drafting. Two of three abilities.</summary>
+        /// <summary>Per-tick field damage. Designer tuning flag — the design table left it blank.</summary>
+        public const int CryoFieldTickDamage = 1;
+
+        /// <summary>The field's reach in track steps, each way. The design row's radius.</summary>
+        public const int CryoFieldRadius = 2;
+
+        /// <summary>
+        /// The marker's span in her own turns. 3, not the design row's 2: a
+        /// self-applied status counts the cast turn as its first, and the field
+        /// ticks only at upkeeps, so 3 yields the designed two ticks (§5, §6.6).
+        /// </summary>
+        public const int CryoFieldDurationTurns = 3;
+
+        public static IReadOnlyList<AbilityDefinition> All { get; } =
+            new[] { CryoPulse, CryoField, Translocation };
+
+        /// <summary>Her uniform shape, for drafting. All three abilities.</summary>
         public static OperatorDefinition Definition { get; } = new OperatorDefinition(
             name: "Mimi",
             maxHealth: MaxHealth,
