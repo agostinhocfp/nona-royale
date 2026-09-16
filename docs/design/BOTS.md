@@ -1,7 +1,7 @@
 # Nona Royale — CPU Opponents (Stage 2)
 
 > Location in repo: `docs/design/BOTS.md` · Project copy: `claude/BOTS.md`
-> Status: **Open, 2026-09-16.** BOT1 built. BOT2 and BOT3 built together, awaiting Play Mode.
+> Status: **Closed, 2026-09-16.** BOT1, BOT2 and BOT3 committed and passed Play Mode.
 > Related: `NEXT_PHASES.md` (Stage 2), `DRAFT.md` (Stage 1 and its notes for this stage), `COMBAT_SYSTEMS.md`, `PRESENTATION.md` §1 and §4.3, ADR-0004, `tools/sim/sim-README.md`
 
 ## Goal
@@ -165,3 +165,8 @@ In setup, any seat can be HUMAN or CPU. CPU seats draft and play on their own, a
     - **Settings page:** a "CPU speed" row (`UiKit.ChoiceRow`, cycling Normal/Fast/Instant), saved to `PlayerPrefs` (`nr.settings.cpuSpeed`).
   - **Changed from the plan:** no landing/target flash before a CPU move. Stage 3's presentation queue is the place for it.
   - **Checks:** the view compiles against the editor DLLs, and the sim compiles. `BotDriver` lives in the Unity assembly, so it has no EditMode test; Play Mode is its test. PRESENTATION §4.3 updated.
+- 2026-09-16 — **Stage closed.** The designer's Play Mode pass on BOT2+BOT3 found no issues, so there is no follow-up fix commit.
+  - HEAD at close: `docs(motion): open stage 3 with the settled motion decisions`.
+  - Still pending, not blocking: the designer's minor balance edits. Claude documents them afterwards (diff against HEAD, docs, sim before/after).
+  - Kian stays un-nerfed; revisit after more human games.
+  - Carried to Stage 3: the pre-move landing/target flash (MO2 cast tells), and the setup tile's "click to change" hint if testers miss it.

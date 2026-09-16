@@ -1,7 +1,7 @@
 # Nona Royale — Motion and Feedback (Stage 3)
 
 > Location in repo: `docs/design/MOTION.md` · Project copy: `claude/MOTION.md`
-> Status: **Open, 2026-09-16.** Decisions settled. Code waits until BOT2+BOT3 is committed, because MO1 rewrites the same batch handling in `MatchBootstrap`.
+> Status: **Open, 2026-09-16.** MO1 built, awaiting Play Mode. MO2 next.
 > Related: `NEXT_PHASES.md` (Stage 3), `BOTS.md` (Stage 2), `PRESENTATION.md` §3 and §4, `ART_DIRECTION.md` §8, ADR-0008
 
 ## Goal
@@ -56,3 +56,29 @@ This covers the pitch's "simple animations (idle loops, move effects, card flips
   - Code starts once BOT2+BOT3 is committed, since MO1 changes `MatchBootstrap.Handle`.
   - Watch-list from the playtest: stalled CPU turns, how readable CPU actions are at Normal speed, whether the three styles feel distinct, and how a CPU Kian uses the push.
   - Setup discoverability: the seat tile is the HUMAN/CPU control, which wasn't obvious at first. If testers miss it too, the tile should say "click to change".
+- 2026-09-16 — **Stage 2 closed** (Play Mode pass, no fixes). MO1 unblocked.
+- 2026-09-16 — **MO1 built: the queue and the dice.**
+  - **New `View/PresentationQueue.cs`.**
+    - Steps are an action, an optional "finished" condition and a minimum hold. Steps that finish at once chain in the same frame, so a batch with nothing to show (a refusal) settles immediately.
+    - `IsBusy` is the gate. `BeatStarted` announces `DiceRolled`, `DiceLanded`, `Walk`, `Hit`, `Knockout` and `Settle` for Stage 5. MO2 adds the finer beats (`Step`, `CastTell`).
+    - Scaled time, times `Speed`. A step still unfinished after 6 s is let go, so nothing can freeze the table.
+    - `Flush` skips the cosmetic steps and runs the essential ones (the settle); `Clear` drops everything on a teardown or a new deal.
+  - **New `View/DiceRoller.cs`** (decision 1).
+    - Two ivory dice with pips are thrown in from a random side, spin and bounce over the vault, and land on the `DiceRolled` faces. They hold 0.4 s (0.85 s on doubles), then fly to the tray's dice row and fade.
+    - The in-between faces come from the roller's own `System.Random`, never the match RNG.
+    - A dark pool and a glow in the rolling seat's colour sit under the dice. Doubles show "DOUBLES · roll again" (or just "DOUBLES" when no roll is left).
+    - Pips in the tumble, digits in the tray. A face above six falls back to a digit.
+  - **New `View/UiPopIn.cs`:** a one-shot, unscaled pop used by the tray.
+  - **`MatchBootstrap`:**
+    - `Handle` now logs and clears a stale selection at once, then either settles immediately (the opening deal, CPU Instant) or queues the batch: dice → walks → hits (0.3 s) → knockouts (0.45 s) → settle.
+    - The settle is the old tail of `Handle`: reposition, highlights, devices, top bar, turn button, history and toasts, end screen.
+    - Hits now play after the walk, so a number lands on the cell where it happened with the mover already there.
+    - An instant batch flushes the queue first, so the history never loses a batch.
+    - **Input while busy:** board clicks, Enter and 1–3 wait. Deploy, Move and Cast intents are dropped. Space and E (and the Roll / End turn buttons) are kept for 0.4 s of real time and sent when the board is free. Esc, right-click and selection still work.
+    - Holding Space on a CPU turn runs the queue and the dice ×3.
+    - New components are fetched with an explicit null check (`Ensure<T>`), not `??`.
+  - **`BotDriver`:** waits on `presentationBusy` (the queue, or any piece still moving) instead of walking pieces only. Instant still ignores it.
+  - **`ActionTray`:** while the roller holds a new roll (`IControlPanelHost.DiceHeld`), the slots read "·" and the hint "Rolling…". When the faces arrive they pop in, once per roll. `DiceFaces` is the roller's flight target.
+  - **`OperatorPiece.IsMoving`:** walking, or resting on a contested cell before a bounce.
+  - **Checks:** the view compiles against the editor DLLs with no warnings; 496 core tests pass; the sim compiles. No core change. The queue's sequencing was exercised in a scratch harness (order, hold, flush, clear, pause, speed, 6 s cap), and a mutation to `Flush` was caught. The roller and the tray are uGUI, so Play Mode is their only layout check.
+  - **Known and left for MO2:** the piece health readout and the rail read the engine at once, so a health drop can show a moment before its hit number. Walks still glide at 11 cells/s (the hop is MO2). The CPU speed setting doesn't shorten the dice moment; only the Space hurry does. MO2's animation speed setting covers that.
