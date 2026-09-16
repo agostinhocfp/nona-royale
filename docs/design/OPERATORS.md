@@ -136,7 +136,7 @@ Read at the table: _the one the fight has to come to._
 
 ### Luka — Duelist _(archetype label provisional)_
 
-Born in the Caucasus, and built like someone who was fighting before anyone taught him how: medium frame, athletic, a clean buzzcut, nothing on him that is there for show. He dresses for the room without dressing like it. He wears a dark open-collar shirt under an unstructured jacket, with the sleeves pushed to the forearm and good shoes he can move in. No livery, no crest. The only thing on him that lights up is a heavy signet ring on his right hand.
+Born in the Caucasus, and built like someone who was fighting before anyone taught him how: medium frame, athletic, a clean buzzcut, nothing on him that is there for show. He dresses for the room without dressing like it. He wears a black open-collar shirt under a worn, slightly creased camel linen blazer, unstructured, with the sleeves pushed to the forearm and the shirt cuffs turned over them, dark trousers and good shoes he can move in. His hands are wrapped in worn tape, and a healed split runs through one eyebrow. No livery, no crest. In a room where the house dresses dark, he is the light shape on the floor, which is also what keeps him readable on the board. The only thing on him that lights up is a heavy signet ring on his right hand.
 
 **Where he comes from.** He came up in the fight nights the house runs under the floor: bare-knuckle bouts for high rollers who like to watch. He was the best earner that room ever had, which made him the house's to spend. On the night the book was heavy against him, he was told to lose, and he refused. He lost anyway. Something guided came down out of the rafters mid-round, and nobody in the room saw it but him.
 
@@ -161,6 +161,8 @@ The whole kit is a duel. Blind Spot puts him next to his target, and the threat 
 
 **Art notes** (`ART_PIPELINE.md` §6):
 
+- **Look settled 2026-09-16** from image-generator runs (`ART_PROMPTS.md`): the camel blazer, black shirt and trousers, hand tape and eyebrow scar. Board figures still need the 6-head proportions and the ready stance; the character sheet is the design reference, not a board asset.
+- **Keep the light jacket his.** No other operator should carry a light torso, or he loses the one shape that makes him stand out.
 - **Seated:** at the yard table, taping his hands.
 - **Rise:** the jacket comes off the chair.
 - **Ability tell:** the ring flares in the cool cyan register, and his figure drops out in horizontal scanlines before resolving beside the target. The ward is the same flare held steady, a faint ring of interference around him.
