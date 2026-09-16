@@ -22,7 +22,9 @@ namespace NonaRoyale.Unity.View
     /// damage arrived; self-inflicted and friendly kills count for nobody.
     ///
     /// <b>VIEW BOARD hides the screen</b> so the final position can be read;
-    /// Esc brings it back while the match is over.
+    /// Esc brings it back while the match is over. MAIN MENU (was QUIT until
+    /// increment J) returns to the title; the match is over, so it does not
+    /// ask.
     /// </remarks>
     public sealed class EndScreen : ModalCard
     {
@@ -110,7 +112,7 @@ namespace NonaRoyale.Unity.View
             var row = ButtonRow("next");
             UiKit.Button(row, "NEW MATCH", () => _host.OpenSetup(), size: UiTheme.FontBody);
             UiKit.Button(row, WithKey("VIEW BOARD", "Esc"), Close, size: UiTheme.FontBody);
-            UiKit.Button(row, "QUIT", () => _host.Quit(), size: UiTheme.FontBody);
+            UiKit.Button(row, "MAIN MENU", () => { Close(); _host.MainMenu(); }, size: UiTheme.FontBody);
 
             Note("Same table, next seed.", UiTheme.TextOff);
         }

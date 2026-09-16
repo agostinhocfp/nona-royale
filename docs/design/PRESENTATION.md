@@ -95,7 +95,7 @@ _Added 2026-09-15, GUI phase increment E._ A stranger's first instinct is to cli
 - **Click a pulsing yard piece** to deploy it. The pulse comes from `GameEngine.CanDeploy`, the same check the command runs.
 - **With an ability selected, a click aims it.** A cell ability snaps to the nearest legal cell. A target ability takes an amber-ringed piece, and the rings come from `LegalTargetsFor`. Clicking your own non-target piece switches the selection.
 - **Right-click or Esc steps back:** first the aim, then the ability, then the piece.
-- **Esc with nothing left to step back from opens the pause menu** (increment H): resume, new match, settings, quit. The MENU button on the top bar opens it too. While it is open the clock stops and the board ignores input. Once the match is over, Esc brings back the results instead.
+- **Esc with nothing left to step back from opens the pause menu** (increment H): resume, new match, settings, main menu. The MENU button on the top bar opens it too. While it is open the clock stops and the board ignores input. Once the match is over, Esc brings back the results instead.
 - **Keys:** Space rolls, E ends the turn, 1–3 pick an ability, Enter casts.
 - **A landing beats a piece only for the selected operator.** With nothing selected, a piece wins, so clicking your own piece never moves a different operator whose landing shares its cell.
 - **Only clickable pieces lift under the pointer**: your own, and legal targets. A lift that promised nothing would teach the player to click at random.
@@ -129,8 +129,11 @@ The dev panel (`ControlPanel`) takes the left edge instead of the rail while Tab
 
 _Added 2026-09-16, GUI phase increment I._
 
-- **Play opens the setup screen** over an empty table: seats (any two to four of the four colours), squads (the alpha three or drafted), the seed (shown, with SHUFFLE), DEAL. The inspector's Skip Setup deals straight in.
-- **A finished match opens the end screen** a beat after the winning move: the winner, the round, the seed, and a tally per seat of operators home, knockouts and operators lost. REMATCH deals the same table with the next seed; NEW MATCH opens setup; VIEW BOARD hides the screen until Esc.
+- **Play opens the title screen** (increment J): the NONA ROYALE wordmark over the empty room, on a light scrim so the tables and the vault read through, with PLAY, SETTINGS and QUIT. It is the only screen that quits the app, and QUIT asks twice. The inspector's Skip Setup deals straight into a match.
+- **PLAY opens the setup screen**: seats (any two to four of the four colours), squads (the alpha three or drafted), the seed (shown, with SHUFFLE), DEAL. BACK returns to the match, or to the title when there is none.
+- **MAIN MENU** in the pause menu (asks twice) and on the end screen returns to the title and removes the match. The in-match HUD lives on its own canvas layer and is hidden there.
+- **Display settings are remembered** between sessions (PlayerPrefs): health labels, the log, the dev panel. The inspector values are the first-run defaults.
+- **A finished match opens the end screen** a beat after the winning move: the winner, the round, the seed, and a tally per seat of operators home, knockouts and operators lost. REMATCH deals the same table with the next seed; NEW MATCH opens setup; VIEW BOARD hides the screen until Esc; MAIN MENU returns to the title.
 - **Every tally is an engine answer.** Knockout credit is a core rule (COMBAT_SYSTEMS §1.2), not something the view infers from who was nearby.
 - While setup or the end screen is open, the board and the game keys are ignored. Enter deals or rematches; Esc goes back.
 

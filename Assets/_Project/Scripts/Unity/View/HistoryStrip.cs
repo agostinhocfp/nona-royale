@@ -281,7 +281,8 @@ namespace NonaRoyale.Unity.View
             chip.GetWorldCorners(_corners);
             float y = (_corners[0].y + _corners[1].y) * 0.5f;
 
-            float half = _card.rect.height * _canvas.localScale.y * 0.5f;
+            // lossyScale: the strip may sit on a layer under the canvas (increment J).
+            float half = _card.rect.height * _canvas.lossyScale.y * 0.5f;
             y = Mathf.Clamp(y, half + 4f, Screen.height - half - 4f);
 
             _card.position = new Vector3(left - 8f, y, 0f);

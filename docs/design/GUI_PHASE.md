@@ -1,7 +1,7 @@
 # Nona Royale — GUI Phase
 
 > Location in repo: `docs/design/GUI_PHASE.md`
-> Status: **In progress.** Started 2026-09-15. E through H are committed; I (setup and end screens) is written and waiting for a Play Mode check.
+> Status: **In progress.** Started 2026-09-15. E through I are committed; J (title menu) is written and waiting for a Play Mode check. K (stranger test, then the OnGUI cut) is next.
 > Related: ADR-0008 (uGUI; its removal order stays binding), `PRESENTATION.md` (what the view may do and must show), `ART_DIRECTION.md` §3 and §8 (palette, UI registers), `STRANGER_TEST.md` (the gate before `OnGUI` is deleted)
 
 ## Goal
@@ -111,4 +111,13 @@ Each increment ends with a Play Mode check and a commit.
   - **End:** "RED WINS" in the seat colour, round and seed, a tally table (home, knockouts, lost) with the winner's row plated, REMATCH (Enter, next seed), NEW MATCH, VIEW BOARD (Esc; Esc again brings the screen back), QUIT. Opens 1.2 s after the win, on unscaled time.
   - `MatchBootstrap`: implements `IMatchFlowHost`; Start draws the empty table and opens setup unless `skipSetup`; seats come from the setup (the `players` field seeds the first deal); one modal check gates input; Esc/Enter routed to the open card; the end screen is queued once per match.
   - `PauseMenu`: NEW MATCH replaces RESTART (no confirmation; setup has its own way back). `IPauseHost.Restart` became `OpenSetup`. `TurnStrip`: match-over prompt says Esc shows the results.
+  - Known: the legacy OnGUI dev panel still draws over the cards until K.
+- 2026-09-16 — **I committed** (designer: "looks great").
+- 2026-09-16 — **Increment J written: the title menu and the app flow.** Decided with the designer: in-match QUIT becomes MAIN MENU, and only the title quits; display settings are remembered between sessions.
+  - New `TitleScreen` (with `ITitleHost`): no card, a light scrim over the empty room, a warm glow, the NONA wordmark, ROYALE between two diamond-tipped rules, the tagline "Nine operators. One vault.", then PLAY (cyan, Enter), SETTINGS and QUIT (asks twice). Its settings page is the pause menu's.
+  - New `ISettingsHost`, `SettingsRows` (the shared rows) and `SettingsStore` (PlayerPrefs; missing keys fall back to the inspector). `UiKit.ToggleRow` replaces the pause menu's private toggle. `IPauseHost` now extends `ISettingsHost`.
+  - **App flow.** `MatchBootstrap.CurrentScreen` (Title, Setup, Match, Paused, Results) is read from the open cards, so a card that closes itself cannot desynchronise it; Esc and Enter route by it. Start shows the title (Skip Setup still deals straight in). `ShowTitle` closes every card, tears the match down (pieces, marks, devices, labels, history, toasts) and redraws the empty room. Settings are loaded at Start and saved whenever a flag changes, whatever changed it.
+  - **The in-match HUD moved to `HudRoot.MatchLayer`**, a full-canvas child hidden on the title; the cards stay on the canvas root. `HistoryStrip` now uses `lossyScale` for its hover card, since its parent is no longer the canvas. The camera frames the room with no HUD reservations when there is no match.
+  - Setup: BACK always shows (to the match, or to the title); `IMatchFlowHost.Quit` became `CancelSetup` and `MainMenu`. Pause: QUIT became MAIN MENU (asks twice, "This match is lost"). End: QUIT became MAIN MENU (no confirmation; the match is over). `ModalCard` gained `Framed`, `ColumnSlot`, `Root`.
+  - No core changes. View compile-checked; 434 tests unchanged.
   - Known: the legacy OnGUI dev panel still draws over the cards until K.

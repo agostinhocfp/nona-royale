@@ -29,7 +29,30 @@ namespace NonaRoyale.Unity.View
     public sealed class HudRoot : MonoBehaviour
     {
         private RectTransform _root;
+        private RectTransform _matchLayer;
         private Canvas _canvas;
+
+        /// <summary>
+        /// A full-canvas layer holding the in-match HUD: top bar, rail, tray,
+        /// strip, labels, toasts (GUI increment J). Hidden on the title screen,
+        /// so the room shows without the match's chrome. Full-screen cards
+        /// (pause, setup, end, title) parent to <see cref="Root"/> and draw
+        /// over it.
+        /// </summary>
+        public RectTransform MatchLayer
+        {
+            get
+            {
+                if (_root == null) Build();
+                return _matchLayer;
+            }
+        }
+
+        public bool MatchLayerVisible
+        {
+            get => MatchLayer.gameObject.activeSelf;
+            set { if (MatchLayer.gameObject.activeSelf != value) MatchLayer.gameObject.SetActive(value); }
+        }
 
         /// <summary>The canvas rect every HUD element parents under. Built on first use.</summary>
         public RectTransform Root
@@ -89,6 +112,15 @@ namespace NonaRoyale.Unity.View
             }
 
             _root = (RectTransform)go.transform;
+
+            var layer = new GameObject("match_hud", typeof(RectTransform));
+            _matchLayer = (RectTransform)layer.transform;
+            _matchLayer.SetParent(_root, false);
+            _matchLayer.anchorMin = Vector2.zero;
+            _matchLayer.anchorMax = Vector2.one;
+            _matchLayer.offsetMin = Vector2.zero;
+            _matchLayer.offsetMax = Vector2.zero;
+            _matchLayer.SetAsFirstSibling();
         }
     }
 }

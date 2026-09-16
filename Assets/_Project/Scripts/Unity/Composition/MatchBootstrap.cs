@@ -39,14 +39,23 @@ namespace NonaRoyale.Unity.Composition
     /// <b>Esc with nothing selected pauses</b> (GUI increment H). While the
     /// pause menu is open, the board and the game keys are ignored.
     ///
-    /// <b>Play opens the setup screen</b> over an empty table (GUI increment
-    /// I), unless Skip Setup is on. A finished match opens the end screen.
-    /// While either is open, the board and the game keys are ignored too.
+    /// <b>The app flow</b> (GUI increments I and J). Play opens the title
+    /// screen over the empty room, unless Skip Title is on. PLAY leads to
+    /// setup, DEAL to the match, a win to the end screen, and MAIN MENU from
+    /// the pause menu or the end screen back to the title, which tears the
+    /// match down. Which screen is showing is read from the cards themselves
+    /// (<see cref="CurrentScreen"/>), so a card closing itself can never leave the
+    /// flow out of step. While any card is open, the board and the game keys
+    /// are ignored.
+    ///
+    /// <b>Display settings persist</b> (increment J): health labels, the log
+    /// and the dev panel are loaded from <c>PlayerPrefs</c> at Start, with the
+    /// inspector values as first-run defaults, and saved whenever they change.
     /// </remarks>
-    public sealed class MatchBootstrap : MonoBehaviour, IControlPanelHost, IPauseHost, IMatchFlowHost
+    public sealed class MatchBootstrap : MonoBehaviour, IControlPanelHost, IPauseHost, IMatchFlowHost, ITitleHost
     {
         [Header("Flow")]
-        [Tooltip("Deal straight into a match with the settings below, without the setup screen.")]
+        [Tooltip("Deal straight into a match with the settings below, skipping the title and setup screens.")]
         public bool skipSetup = false;
 
         [Header("Match")]
@@ -139,7 +148,24 @@ namespace NonaRoyale.Unity.Composition
         private PauseMenu _pause;
         private SetupScreen _setup;
         private EndScreen _end;
+        private TitleScreen _title;
         private bool _endQueued;
+
+        /// <summary>The screens the app moves between (GUI increment J).</summary>
+        public enum AppScreen { Title, Setup, Match, Paused, Results }
+
+        /// <summary>
+        /// Which screen is showing, read from the open cards, topmost first.
+        /// No card open means the match itself.
+        /// </summary>
+        public AppScreen CurrentScreen =>
+            _title != null && _title.IsOpen ? AppScreen.Title :
+            _setup != null && _setup.IsOpen ? AppScreen.Setup :
+            _pause != null && _pause.IsOpen ? AppScreen.Paused :
+            _end != null && _end.IsOpen ? AppScreen.Results :
+            AppScreen.Match;
+
+        private bool _savedHealth, _savedLog, _savedDev;
 
         /// <summary>The seats the next deal uses. Squads and seed live in the inspector fields.</summary>
         private readonly List<PlayerColor> _seats = new List<PlayerColor>();
@@ -150,6 +176,8 @@ namespace NonaRoyale.Unity.Composition
             _seats.Clear();
             _seats.AddRange(MatchSettings.AllSeats.Take(players));
 
+            LoadSettings();
+
             _hudRoot = GetComponent<HudRoot>() ?? gameObject.AddComponent<HudRoot>();
             BindScreens();
 
@@ -159,8 +187,81 @@ namespace NonaRoyale.Unity.Composition
                 return;
             }
 
+            ShowTitle();
+        }
+
+        // ── Settings (GUI increment J) ───────────────────────────────────
+
+        private void LoadSettings()
+        {
+            showPieceHealth = SettingsStore.Load(SettingsStore.PieceHealth, showPieceHealth);
+            showFullLog = SettingsStore.Load(SettingsStore.FullLog, showFullLog);
+            showDevPanel = SettingsStore.Load(SettingsStore.DevPanel, showDevPanel);
+
+            _savedHealth = showPieceHealth;
+            _savedLog = showFullLog;
+            _savedDev = showDevPanel;
+        }
+
+        /// <summary>Saves when a flag changed, however it changed: a key, a menu toggle, the inspector.</summary>
+        private void SaveSettingsIfChanged()
+        {
+            if (showPieceHealth == _savedHealth && showFullLog == _savedLog && showDevPanel == _savedDev) return;
+
+            _savedHealth = showPieceHealth;
+            _savedLog = showFullLog;
+            _savedDev = showDevPanel;
+            SettingsStore.Save(showPieceHealth, showFullLog, showDevPanel);
+        }
+
+        // ── Screens (GUI increments I and J) ─────────────────────────────
+
+        /// <summary>
+        /// The title over the empty room. Tears down a match if one is on the
+        /// table, and hides the in-match HUD.
+        /// </summary>
+        private void ShowTitle()
+        {
+            if (_pause != null) _pause.Close();
+            if (_setup != null) _setup.Close();
+            if (_end != null) _end.Close();
+
+            TearDownMatch();
             ShowEmptyTable();
-            _setup.Open();
+            _title.Open();
+        }
+
+        /// <summary>
+        /// Removes the match: pieces, marks, devices, labels and history. The
+        /// HUD widgets stay built and hidden, and rebind on the next deal.
+        /// </summary>
+        private void TearDownMatch()
+        {
+            foreach (var piece in _pieces)
+                if (piece != null) Destroy(piece.gameObject);
+
+            _pieces.Clear();
+            _log.Clear();
+            _match = null;
+            _hovered = null;
+            _selectedOperator = null;
+            _selectedTarget = null;
+            _selectedAbility = null;
+            _selectedCell = null;
+            _legalCells = new List<CellRef>();
+            _castTargets = new List<OperatorState>();
+            _moveOptions.Clear();
+            _endQueued = false;
+
+            if (_highlights != null) _highlights.Clear();
+            if (_devices != null) _devices.Clear();
+            if (_cellLabels != null) _cellLabels.Clear();
+            if (_pieceHud != null) _pieceHud.Bind(_hudRoot.MatchLayer, _pieces, cellSpacing * 0.8f);
+            if (_history != null) _history.Clear();
+            if (_toasts != null) _toasts.Clear();
+            if (_banner != null) _banner.Bind(_hudRoot.MatchLayer);
+
+            _hudRoot.MatchLayerVisible = false;
         }
 
         private BoardProfile Board =>
@@ -178,9 +279,11 @@ namespace NonaRoyale.Unity.Composition
             FrameCamera();
         }
 
-        /// <summary>The setup and end screens. Bound before the first match, and again after each deal.</summary>
+        /// <summary>The full-screen cards. Bound before the first match, and again after each deal.</summary>
         private void BindScreens()
         {
+            _title = GetComponent<TitleScreen>() ?? gameObject.AddComponent<TitleScreen>();
+            _title.Bind(_hudRoot.Root, this);
             _setup = GetComponent<SetupScreen>() ?? gameObject.AddComponent<SetupScreen>();
             _setup.Bind(_hudRoot.Root, this);
             _end = GetComponent<EndScreen>() ?? gameObject.AddComponent<EndScreen>();
@@ -188,10 +291,7 @@ namespace NonaRoyale.Unity.Composition
         }
 
         /// <summary>Whether a full-screen card owns the input.</summary>
-        private bool ModalOpen =>
-            (_pause != null && _pause.IsOpen) ||
-            (_setup != null && _setup.IsOpen) ||
-            (_end != null && _end.IsOpen);
+        private bool ModalOpen => CurrentScreen != AppScreen.Match;
 
         private void NewMatch()
         {
@@ -259,31 +359,34 @@ namespace NonaRoyale.Unity.Composition
             // The HUD scaffold survives a reseed — only the per-piece labels
             // are rebuilt, since the pieces they tracked were just destroyed.
             _hudRoot = GetComponent<HudRoot>() ?? gameObject.AddComponent<HudRoot>();
+            _hudRoot.MatchLayerVisible = true;
+            var hud = _hudRoot.MatchLayer;
+
             _pieceHud = GetComponent<PieceHudLayer>() ?? gameObject.AddComponent<PieceHudLayer>();
             // Clear of a standing figure's head and its bar (increment G2).
-            _pieceHud.Bind(_hudRoot.Root, _pieces, cellSpacing * 0.8f);
+            _pieceHud.Bind(hud, _pieces, cellSpacing * 0.8f);
             _turnStrip = GetComponent<TurnStrip>() ?? gameObject.AddComponent<TurnStrip>();
-            _turnStrip.Bind(_hudRoot.Root, OpenPause);
+            _turnStrip.Bind(hud, OpenPause);
             _controls = GetComponent<ControlPanel>() ?? gameObject.AddComponent<ControlPanel>();
-            _controls.Bind(_hudRoot.Root, this);
+            _controls.Bind(hud, this);
             _rail = GetComponent<SquadRail>() ?? gameObject.AddComponent<SquadRail>();
-            _rail.Bind(_hudRoot.Root, this);
+            _rail.Bind(hud, this);
             _tray = GetComponent<ActionTray>() ?? gameObject.AddComponent<ActionTray>();
-            _tray.Bind(_hudRoot.Root, this);
+            _tray.Bind(hud, this);
             _logPanel = GetComponent<LogPanel>() ?? gameObject.AddComponent<LogPanel>();
-            _logPanel.Bind(_hudRoot.Root, this);
+            _logPanel.Bind(hud, this);
             _logPanel.CloseRequested = () => showFullLog = false;
             _history = GetComponent<HistoryStrip>() ?? gameObject.AddComponent<HistoryStrip>();
-            _history.Bind(_hudRoot.Root);
+            _history.Bind(hud);
             _history.LogRequested = () => showFullLog = !showFullLog;
             _toasts = GetComponent<EventToasts>() ?? gameObject.AddComponent<EventToasts>();
-            _toasts.Bind(_hudRoot.Root);
+            _toasts.Bind(hud);
             _banner = GetComponent<TurnBanner>() ?? gameObject.AddComponent<TurnBanner>();
-            _banner.Bind(_hudRoot.Root);
+            _banner.Bind(hud);
             _turnButton = GetComponent<TurnButton>() ?? gameObject.AddComponent<TurnButton>();
-            _turnButton.Bind(_hudRoot.Root, this);
+            _turnButton.Bind(hud, this);
             _cellLabels = GetComponent<CellLabelLayer>() ?? gameObject.AddComponent<CellLabelLayer>();
-            _cellLabels.Bind(_hudRoot.Root);
+            _cellLabels.Bind(hud);
 
             // Last, so the menu draws over every other HUD layer.
             _pause = GetComponent<PauseMenu>() ?? gameObject.AddComponent<PauseMenu>();
@@ -304,6 +407,7 @@ namespace NonaRoyale.Unity.Composition
         private bool _framedWithPanel;
         private bool _framedLegacy;
         private float _framedScale;
+        private bool _framedWithHud;
 
         /// <summary>
         /// Sizes the camera and centres the board in the part of the screen the
@@ -346,13 +450,16 @@ namespace NonaRoyale.Unity.Composition
             float width = Mathf.Max(1f, Screen.width);
             float height = Mathf.Max(1f, Screen.height);
 
-            float leftUnits = LeftReservedUnits(scale);
-            float rightUnits = HistoryStrip.ReservedWidth;
+            // With no match on the table (the title's room), nothing is
+            // reserved and the room is centred.
+            bool hud = _match != null;
+            float leftUnits = hud ? LeftReservedUnits(scale) : 0f;
+            float rightUnits = hud ? HistoryStrip.ReservedWidth : 0f;
 
             float left = Mathf.Clamp(leftUnits * scale / width, 0f, 0.45f);
             float right = Mathf.Clamp(rightUnits * scale / width, 0f, 0.45f);
-            float top = Mathf.Clamp(TurnStrip.ReservedHeight * scale / height, 0f, 0.3f);
-            float bottom = Mathf.Clamp(ActionTray.ReservedHeight * scale / height, 0f, 0.35f);
+            float top = hud ? Mathf.Clamp(TurnStrip.ReservedHeight * scale / height, 0f, 0.3f) : 0f;
+            float bottom = hud ? Mathf.Clamp(ActionTray.ReservedHeight * scale / height, 0f, 0.35f) : 0f;
 
             // Never let the panels claim so much of a tiny window that the board
             // is sized into nothing.
@@ -386,6 +493,7 @@ namespace NonaRoyale.Unity.Composition
             _framedWithPanel = showDevPanel;
             _framedLegacy = useLegacyPanel;
             _framedScale = scale;
+            _framedWithHud = hud;
         }
 
         /// <summary>
@@ -417,6 +525,8 @@ namespace NonaRoyale.Unity.Composition
             // inspector checkbox works too.
             if (_pieceHud != null) _pieceHud.Visible = showPieceHealth;
 
+            SaveSettingsIfChanged();
+
             if (_controls != null)
             {
                 _controls.Visible = showDevPanel && !useLegacyPanel;
@@ -436,6 +546,7 @@ namespace NonaRoyale.Unity.Composition
                 Screen.height != _framedHeight ||
                 showDevPanel != _framedWithPanel ||
                 useLegacyPanel != _framedLegacy ||
+                (_match != null) != _framedWithHud ||
                 (_hudRoot != null && !Mathf.Approximately(_hudRoot.ScaleFactor, _framedScale)))
             {
                 FrameCamera();
@@ -505,11 +616,17 @@ namespace NonaRoyale.Unity.Composition
             bool escape = Input.GetKeyDown(KeyCode.Escape);
             bool enter = Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter);
 
-            if (_setup != null && _setup.IsOpen)
+            switch (CurrentScreen)
             {
-                if (escape) _setup.Back();
-                else if (enter) _setup.Confirm();
-                return;
+                case AppScreen.Title:
+                    if (escape) _title.Back();
+                    else if (enter) _title.Confirm();
+                    return;
+
+                case AppScreen.Setup:
+                    if (escape) _setup.Back();
+                    else if (enter) _setup.Confirm();
+                    return;
             }
 
             if (_pause != null && _pause.IsOpen)
@@ -955,9 +1072,12 @@ namespace NonaRoyale.Unity.Composition
             }
         }
 
-        bool IPauseHost.ShowPieceHealth { get => showPieceHealth; set => showPieceHealth = value; }
-        bool IPauseHost.ShowFullLog { get => showFullLog; set => showFullLog = value; }
-        bool IPauseHost.ShowDevPanel { get => showDevPanel; set => showDevPanel = value; }
+        // Settings are saved by Update when they change (SaveSettingsIfChanged).
+        bool ISettingsHost.ShowPieceHealth { get => showPieceHealth; set => showPieceHealth = value; }
+        bool ISettingsHost.ShowFullLog { get => showFullLog; set => showFullLog = value; }
+        bool ISettingsHost.ShowDevPanel { get => showDevPanel; set => showDevPanel = value; }
+
+        void IPauseHost.MainMenu() => ShowTitle();
 
         void IPauseHost.OpenSetup() => OpenSetup();
 
@@ -965,6 +1085,7 @@ namespace NonaRoyale.Unity.Composition
         {
             if (_pause != null) _pause.Close();
             if (_end != null) _end.Close();
+            if (_title != null) _title.Close();
 
             _hovered = null;
             if (_match != null) RefreshMarks();
@@ -1002,11 +1123,21 @@ namespace NonaRoyale.Unity.Composition
 
         void IMatchFlowHost.OpenSetup() => OpenSetup();
 
-        void IMatchFlowHost.Quit() => ((IPauseHost)this).Quit();
-
-        void IPauseHost.Quit()
+        void IMatchFlowHost.CancelSetup()
         {
-            _pause.Close();
+            // Back to the match if there is one; the room with no match is the title's.
+            if (_match == null) ShowTitle();
+        }
+
+        void IMatchFlowHost.MainMenu() => ShowTitle();
+
+        // ── Title (GUI increment J) ──────────────────────────────────────
+
+        void ITitleHost.Play() => OpenSetup();
+
+        void ITitleHost.Quit()
+        {
+            SaveSettingsIfChanged();
 
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.isPlaying = false;

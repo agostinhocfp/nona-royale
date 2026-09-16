@@ -6,7 +6,7 @@ using UnityEngine.UI;
 namespace NonaRoyale.Unity.View
 {
     /// <summary>
-    /// The pause menu: resume, new match, settings, quit (GUI increment H).
+    /// The pause menu: resume, new match, settings, main menu (GUI increments H to J).
     /// </summary>
     /// <remarks>
     /// <b>Opened by Esc when nothing is selected</b>, or by the MENU button on
@@ -21,7 +21,8 @@ namespace NonaRoyale.Unity.View
     /// time and keep breathing. The composition root ignores board input and
     /// game keys while <see cref="IsOpen"/>.
     ///
-    /// <b>QUIT asks twice.</b> The first press turns the button amber and
+    /// <b>MAIN MENU asks twice</b> (it was QUIT until increment J; only the
+    /// title screen quits now). The first press turns the button amber and
     /// says what will be lost; the second press does it. Any other press
     /// disarms it. NEW MATCH (was RESTART until increment I) opens the setup
     /// screen, which has its own way back, so it does not ask.
@@ -158,7 +159,7 @@ namespace NonaRoyale.Unity.View
 
             Choice("NEW MATCH", "", () => { Close(); _host?.OpenSetup(); });
             Choice("SETTINGS", "", () => { _page = Page.Settings; _armed = null; Rebuild(); });
-            Destructive("quit", "QUIT", "Leaves the game. The title menu arrives with increment J.", () => _host?.Quit());
+            Destructive("menu", "MAIN MENU", "Back to the title. This match is lost.", () => { Close(); _host?.MainMenu(); });
 
             Footer("Esc resumes");
         }
@@ -167,12 +168,7 @@ namespace NonaRoyale.Unity.View
         {
             Title("Settings", "Changes apply at once.");
 
-            if (_host != null)
-            {
-                Toggle("Health above pieces", "H", _host.ShowPieceHealth, v => _host.ShowPieceHealth = v);
-                Toggle("Event log", "L", _host.ShowFullLog, v => _host.ShowFullLog = v);
-                Toggle("Dev panel", "Tab", _host.ShowDevPanel, v => _host.ShowDevPanel = v);
-            }
+            if (_host != null) SettingsRows.Build(Content, _host, Rebuild);
 
             Space(4f);
             Choice("BACK", "Esc", Back);
@@ -234,29 +230,6 @@ namespace NonaRoyale.Unity.View
                     TextAlignmentOptions.Center, wrap: true);
                 UiKit.Size(note, height: 20f);
             }
-        }
-
-        /// <summary>A setting: its name on the left, its key, and an ON or OFF chip on the right.</summary>
-        private void Toggle(string label, string key, bool on, System.Action<bool> set)
-        {
-            var button = UiKit.Button(Content("toggle"), "", () => { set(!on); Rebuild(); },
-                selected: on);
-            UiKit.Size(button, height: ButtonHeight);
-
-            var row = UiKit.Row((RectTransform)button.transform, 10f);
-            row.padding = new RectOffset(18, 14, 0, 0);
-            row.childAlignment = TextAnchor.MiddleLeft;
-
-            var name = UiKit.Label(button.transform, label, UiTheme.FontBody);
-            UiKit.Size(name, flexibleWidth: 1f);
-
-            UiKit.Label(button.transform, key, 13f, UiTheme.Gold, TextAlignmentOptions.MidlineRight);
-
-            var chip = UiKit.Rect("state", button.transform);
-            UiKit.Sliced(chip, DecoSprites.ChipFill, on ? UiTheme.Cyan : UiTheme.PanelInset);
-            UiKit.Fixed(chip, 54f, 24f);
-            UiKit.Caption(chip, on ? "ON" : "OFF", 13f, on ? UiTheme.DieInk : UiTheme.TextDim,
-                TextAlignmentOptions.Center).fontStyle = FontStyles.Bold;
         }
 
         private void Footer(string text)

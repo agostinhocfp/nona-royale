@@ -10,19 +10,15 @@ namespace NonaRoyale.Unity.View
     /// settings and no match. It shows a snapshot and reports intents, so
     /// the H, L and Tab keys and the menu's toggles change the same flags.
     /// </remarks>
-    public interface IPauseHost
+    public interface IPauseHost : ISettingsHost
     {
         /// <summary>One line under the title: the round and the seat to play, or the result.</summary>
         string PauseSummary { get; }
 
-        bool ShowPieceHealth { get; set; }
-        bool ShowFullLog { get; set; }
-        bool ShowDevPanel { get; set; }
-
         /// <summary>Opens the setup screen for a new match (GUI increment I). The current match stays until DEAL.</summary>
         void OpenSetup();
 
-        /// <summary>Leaves the game. Stops Play Mode in the editor.</summary>
-        void Quit();
+        /// <summary>Abandons the match and returns to the title screen (GUI increment J).</summary>
+        void MainMenu();
     }
 }

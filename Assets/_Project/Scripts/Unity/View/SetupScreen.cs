@@ -10,9 +10,10 @@ namespace NonaRoyale.Unity.View
     /// The match setup screen: seats, squads, seed, deal (GUI increment I).
     /// </summary>
     /// <remarks>
-    /// <b>Shown on Play</b> (unless the inspector's Skip Setup is on) over an
-    /// empty table, and from the pause menu's NEW MATCH. It edits a copy of
-    /// the host's settings; DEAL hands the copy back, BACK throws it away.
+    /// <b>Shown from the title's PLAY</b> over the empty table, and from the
+    /// pause menu's and end screen's NEW MATCH. It edits a copy of the host's
+    /// settings; DEAL hands the copy back, BACK throws it away and returns to
+    /// the match, or to the title when there is no match (increment J).
     ///
     /// <b>Seats are four tiles, any two to four on</b>, so a two-player game
     /// can sit opposite (Red and Green), as in classic Ludo. The last two
@@ -22,7 +23,7 @@ namespace NonaRoyale.Unity.View
     /// seed is the view's own business, not a rule; the dice it produces come
     /// from the core.
     ///
-    /// Enter deals; Esc goes back when a match is on the table.
+    /// Enter deals; Esc goes back.
     /// </remarks>
     public sealed class SetupScreen : ModalCard
     {
@@ -35,8 +36,8 @@ namespace NonaRoyale.Unity.View
         // Over an empty table at first launch; the board shows faintly through.
         protected override float ScrimAlpha => 0.72f;
 
-        /// <summary>Whether BACK is offered: only with a match to go back to.</summary>
-        public bool CanGoBack => _host?.Match != null;
+        /// <summary>Whether BACK returns to a match (otherwise it returns to the title).</summary>
+        private bool HasMatch => _host?.Match != null;
 
         public void Bind(RectTransform canvasRect, IMatchFlowHost host)
         {
@@ -54,10 +55,13 @@ namespace NonaRoyale.Unity.View
             Show();
         }
 
-        /// <summary>Esc: back to the match, if there is one.</summary>
+        /// <summary>Esc: back to the match, or to the title.</summary>
         public void Back()
         {
-            if (CanGoBack) Close();
+            if (!IsOpen) return;
+
+            Close();
+            _host.CancelSetup();
         }
 
         /// <summary>Enter: deal.</summary>
@@ -122,10 +126,7 @@ namespace NonaRoyale.Unity.View
 
             Choice("DEAL", "Enter", Deal, UiTheme.CyanDeep, UiTheme.Cyan);
 
-            if (CanGoBack)
-                Choice("BACK TO THE MATCH", "Esc", Close);
-            else
-                Choice("QUIT", "", () => _host.Quit());
+            Choice(HasMatch ? "BACK TO THE MATCH" : "BACK", "Esc", Back);
         }
 
         /// <summary>A seat: its diamond and name, lit cyan when playing.</summary>

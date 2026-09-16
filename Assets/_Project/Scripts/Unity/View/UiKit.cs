@@ -435,6 +435,34 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
+        /// A setting as one wide button: its name, its key in gold, and an ON
+        /// or OFF chip (GUI increments H and J). Selected, so cyan, while on.
+        /// </summary>
+        public static UnityEngine.UI.Button ToggleRow(Transform parent, string label, string key, bool on, Action press)
+        {
+            var button = Button(parent, "", press, selected: on);
+            var rect = (RectTransform)button.transform;
+
+            var row = Row(rect, 10f);
+            row.padding = new RectOffset(18, 14, 0, 0);
+            row.childAlignment = TextAnchor.MiddleLeft;
+
+            var name = Label(rect, label, UiTheme.FontBody);
+            Size(name, flexibleWidth: 1f);
+
+            if (!string.IsNullOrEmpty(key))
+                Label(rect, key, 13f, UiTheme.Gold, TextAlignmentOptions.MidlineRight);
+
+            var chip = Rect("state", rect);
+            Sliced(chip, DecoSprites.ChipFill, on ? UiTheme.Cyan : UiTheme.PanelInset);
+            Fixed(chip, 54f, 24f);
+            Caption(chip, on ? "ON" : "OFF", 13f, on ? UiTheme.DieInk : UiTheme.TextDim,
+                TextAlignmentOptions.Center).fontStyle = FontStyles.Bold;
+
+            return button;
+        }
+
+        /// <summary>
         /// A chamfered button with a brass edge. The click runs
         /// <paramref name="onClick"/> and then <paramref name="afterClick"/>,
         /// usually the owner's MarkDirty.

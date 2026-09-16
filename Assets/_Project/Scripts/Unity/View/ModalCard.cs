@@ -28,11 +28,19 @@ namespace NonaRoyale.Unity.View
 
         public bool IsOpen => _root != null && _root.gameObject.activeSelf;
 
+        protected bool IsBuilt => _root != null;
+
+        /// <summary>The full-screen scrim the card sits on.</summary>
+        protected RectTransform Root => _root;
+
         /// <summary>Card width in canvas units.</summary>
         protected abstract float CardWidth { get; }
 
         /// <summary>How dark the scrim is. A screen shown with no match behind it can be nearly opaque.</summary>
         protected virtual float ScrimAlpha => 0.8f;
+
+        /// <summary>Whether the card gets the Deco panel frame. The title screen composes on the open scrim.</summary>
+        protected virtual bool Framed => true;
 
         /// <summary>Builds the scaffold once. Safe to call on every new match.</summary>
         protected void BuildOnce(RectTransform canvasRect, string name)
@@ -48,7 +56,7 @@ namespace NonaRoyale.Unity.View
             _card.anchorMax = new Vector2(0.5f, 0.5f);
             _card.pivot = new Vector2(0.5f, 0.5f);
             _card.sizeDelta = new Vector2(CardWidth, 0f);
-            UiKit.Panel(_card, blocksPointer: true);
+            if (Framed) UiKit.Panel(_card, blocksPointer: true);
 
             var column = UiKit.Column(_card, 10f, 36);
             column.padding.top = 30;
@@ -105,6 +113,14 @@ namespace NonaRoyale.Unity.View
         {
             var slot = UiKit.Rect("content_" + name, _card);
             if (height >= 0f) UiKit.Size(slot, height: height);
+            return slot;
+        }
+
+        /// <summary>A slot that lays out one child at the child's preferred height, for rows built elsewhere.</summary>
+        protected RectTransform ColumnSlot(string name)
+        {
+            var slot = Slot(name);
+            UiKit.Column(slot, 0f).childForceExpandHeight = true;
             return slot;
         }
 

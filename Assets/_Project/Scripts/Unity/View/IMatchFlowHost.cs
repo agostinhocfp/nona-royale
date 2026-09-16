@@ -79,7 +79,10 @@ namespace NonaRoyale.Unity.View
         /// <summary>Opens the setup screen.</summary>
         void OpenSetup();
 
-        /// <summary>Leaves the game. Stops Play Mode in the editor.</summary>
-        void Quit();
+        /// <summary>Setup's BACK: to the match if one is on the table, otherwise to the title (GUI increment J).</summary>
+        void CancelSetup();
+
+        /// <summary>Abandons any match and returns to the title screen (GUI increment J).</summary>
+        void MainMenu();
     }
 }
