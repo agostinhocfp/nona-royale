@@ -1,7 +1,7 @@
 # Nona Royale — GUI Phase
 
 > Location in repo: `docs/design/GUI_PHASE.md`
-> Status: **In progress.** Started 2026-09-15. E through I are committed; J (title menu) is written and waiting for a Play Mode check. K (stranger test, then the OnGUI cut) is next.
+> Status: **Closed at J, 2026-09-16.** E through J are committed. K (stranger test, then the OnGUI cut) is parked until testers are available. What comes next is `NEXT_PHASES.md`.
 > Related: ADR-0008 (uGUI; its removal order stays binding), `PRESENTATION.md` (what the view may do and must show), `ART_DIRECTION.md` §3 and §8 (palette, UI registers), `STRANGER_TEST.md` (the gate before `OnGUI` is deleted)
 
 ## Goal
@@ -121,3 +121,6 @@ Each increment ends with a Play Mode check and a commit.
   - Setup: BACK always shows (to the match, or to the title); `IMatchFlowHost.Quit` became `CancelSetup` and `MainMenu`. Pause: QUIT became MAIN MENU (asks twice, "This match is lost"). End: QUIT became MAIN MENU (no confirmation; the match is over). `ModalCard` gained `Framed`, `ColumnSlot`, `Root`.
   - No core changes. View compile-checked; 434 tests unchanged.
   - Known: the legacy OnGUI dev panel still draws over the cards until K.
+- 2026-09-16 — **J committed** (designer: "you nailed the menu").
+- 2026-09-16 — **Informal test at home: the GUI passed easily.** One note: the dice roll could be more obvious, either by catching the eye or by sitting more centrally. Carried to `NEXT_PHASES.md` Stage 3 (dice moment).
+- 2026-09-16 — **Phase closed at J.** K is parked: the formal stranger test has no date, and the OnGUI dev panel stays behind Tab until it passes (ADR-0008 consequence 6). Next work, in order: All Pick Draft, CPU opponents, motion and feedback, art hookup (ADR-0009), audio (`NEXT_PHASES.md`).
