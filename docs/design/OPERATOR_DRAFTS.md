@@ -12,17 +12,17 @@
 
 ## 1. Fuse
 
-**4 HP · speed 1.5 · the dead man's switch**
+**5 HP · speed 1.5 · the dead man's switch**
 
 The inversion operator: trivially easy to kill, and killing him is the
 mistake. The 4 HP is not a weakness to compensate — it is the trigger.
 
-| Slot | Name | Cost | CD | Range | Effect |
-|---|---|---|---|---|---|
-| Passive | Dead Man's Switch | — | — | — | When Fuse is neutralized, he detonates: **3 Atomic, radius 1**, around his death cell. **New: on-death trigger.** The callback point already exists (NeutralizeRules death-cell hook, built for Zero-Day). |
-| 1 | Hot Swap | 3 | 2 | 2 | Swap places with an **ally**. Existing mechanic (Translocation shape), aimed the other way: the tank steps out, Fuse steps in. |
-| 2 | Cooked Round | 4 | 3 | 2 | Attach a charge to **himself**: at his next upkeep he detonates, radius 1 — and he counts as caught. Reuses the operator-anchored deferred machinery (§6.4) pointed inward. |
-| 3 | Kamikaze Protocol | 9 | 5 | self | Voluntary detonation, immediately: **4 Atomic, radius 2**, and Fuse is neutralized. An ultimate that spends an operator. **New: self-neutralize effect.** |
+| Slot    | Name              | Cost | CD  | Range | Effect                                                                                                                                                                                                     |
+| ------- | ----------------- | ---- | --- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Passive | Dead Man's Switch | —    | —   | —     | When Fuse is neutralized, he detonates: **3 Atomic, radius 1**, around his death cell. **New: on-death trigger.** The callback point already exists (NeutralizeRules death-cell hook, built for Zero-Day). |
+| 1       | Hot Swap          | 3    | 2   | 2     | Swap places with an **ally**. Existing mechanic (Translocation shape), aimed the other way: the tank steps out, Fuse steps in.                                                                             |
+| 2       | Cooked Round      | 4    | 3   | 2     | Attach a charge to **himself**: at his next upkeep he detonates, radius 1 — and he counts as caught. Reuses the operator-anchored deferred machinery (§6.4) pointed inward.                                |
+| 3       | Kamikaze Protocol | 9    | 5   | self  | Voluntary detonation, immediately: **4 Atomic, radius 2**, and Fuse is neutralized. An ultimate that spends an operator. **New: self-neutralize effect.**                                                  |
 
 **Counterplay:** stun him and walk away (threat radius is 1–2); push him
 (Sonic Disrupter); out-range him (Kian); or refuse to kill him and race — an
@@ -30,24 +30,24 @@ ignored 4-HP unit is a wasted slot. His own team pays too: the ultimate costs
 a squad slot and the redeploy crawl.
 
 **Open questions:** does Dead Man's Switch hit allies caught in radius 1?
-Does it fire on *every* neutralize cause (execute, collision, bleed)? Redeploy
+Does it fire on _every_ neutralize cause (execute, collision, bleed)? Redeploy
 timing after Kamikaze Protocol — normal pity-deploy coverage or a penalty?
 
 ---
 
 ## 2. Ghost
 
-**4 HP · speed 1.5 · the energy saboteur**
+**5 HP · speed 1.5 · the energy saboteur**
 
 Zero damage — a roster first. He doesn't beat the enemy squad, he defunds it.
 Rebuilt away from pure denial (locks are misery) into **taxation**: every
 effect leaves the enemy a choice with a price.
 
-| Slot | Name | Cost | CD | Range | Effect |
-|---|---|---|---|---|---|
-| 1 | Siphon | 3 | 2 | 3 | Steal **2 energy** from the enemy pool into yours. **New: energy-transfer effect.** Visible and telegraphed — the EnergyChanged events already exist, so the theft is in the log. |
-| 2 | Brownout | 4 | 3 | 3 | Enemy abilities cost **+2** until their next turn ends. A tax, not a lock — they can still cast, they wince. **New: cost-modifier status.** |
-| 3 | Grand Larceny | 9 | 5 | — | **Swap energy pools with the enemy.** The 9 is paid *before* the swap — running your own pool to zero first is the skill test. **New: pool-swap effect.** |
+| Slot | Name          | Cost | CD  | Range | Effect                                                                                                                                                                            |
+| ---- | ------------- | ---- | --- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Siphon        | 3    | 2   | 3     | Steal **2 energy** from the enemy pool into yours. **New: energy-transfer effect.** Visible and telegraphed — the EnergyChanged events already exist, so the theft is in the log. |
+| 2    | Brownout      | 4    | 3   | 3     | Enemy abilities cost **+2** until their next turn ends. A tax, not a lock — they can still cast, they wince. **New: cost-modifier status.**                                       |
+| 3    | Grand Larceny | 9    | 5   | —     | **Swap energy pools with the enemy.** The 9 is paid _before_ the swap — running your own pool to zero first is the skill test. **New: pool-swap effect.**                         |
 
 **Counterplay is economic:** spend fluidly, never hoard — there is nothing to
 steal from an empty pool. Physically: he operates at range 3, never fights,
@@ -65,17 +65,17 @@ legal and funny, or refused?
 
 ## 3. Revú
 
-**4 HP · speed 1.0 · the loan shark**
+**7 HP · speed 1.0 · the loan shark**
 
-The punishment web. His ultimate scales with what the enemy has *spent*, his
+The punishment web. His ultimate scales with what the enemy has _spent_, his
 passive makes the cheap answers to him feed that ultimate, and his basic
 drains the pool further. Every door the enemy tries has a price on it.
 
-| Slot | Name | Cost | CD | Range | Effect |
-|---|---|---|---|---|---|
-| 1 | Leech Round | 3 | 2 | 3 | **1 Normal + drain 2 energy** from the enemy pool. From the Hip's price tag; the drain is the rider. **New: energy-drain effect** (shared machinery with Ghost's Siphon). |
-| 2 | Equilibrium (passive) | — | — | — | Incoming **ability** damage scales with the casting ability's cost: cost ≤ 3 deals **double**, cost ≥ 6 deals **half** (rounds down), 4–5 lands clean. Collisions, bleeds and beacons are not casts and bypass it entirely. **New: incoming-damage modifier; DamageInstance must carry the source ability's cost.** |
-| 3 | Sadist | 9 | 5 | 3 | Damage = **floor((12 − enemy pool) ÷ 3)** — empty pool hits for **4**, pool of 6 for 2, full pool for 0. Enemies within **2** of the target take half (round down). |
+| Slot | Name                  | Cost | CD  | Range | Effect                                                                                                                                                                                                                                                                                                              |
+| ---- | --------------------- | ---- | --- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Leech Round           | 3    | 2   | 3     | **1 Normal + drain 2 energy** from the enemy pool. From the Hip's price tag; the drain is the rider. **New: energy-drain effect** (shared machinery with Ghost's Siphon).                                                                                                                                           |
+| 2    | Equilibrium (passive) | —    | —   | —     | Incoming **ability** damage scales with the casting ability's cost: cost ≤ 3 deals **double**, cost ≥ 6 deals **half** (rounds down), 4–5 lands clean. Collisions, bleeds and beacons are not casts and bypass it entirely. **New: incoming-damage modifier; DamageInstance must carry the source ability's cost.** |
+| 3    | Sadist                | 9    | 5   | 3     | Damage = **floor((12 − enemy pool) ÷ 3)** — empty pool hits for **4**, pool of 6 for 2, full pool for 0. Enemies within **2** of the target take half (round down).                                                                                                                                                 |
 
 **The web:** cheap casts are the best way to kill him (Equilibrium doubles
 them) — but casting spends energy, which feeds Sadist. Hoarding blunts Sadist
