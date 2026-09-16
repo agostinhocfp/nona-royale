@@ -1,4 +1,5 @@
 // Assets/_Project/Scripts/Unity/View/SquadRail.cs
+using System.Collections.Generic;
 using NonaRoyale.Core.Model;
 using TMPro;
 using UnityEngine;
@@ -34,6 +35,11 @@ namespace NonaRoyale.Unity.View
         public const float Width = 290f;
         private const float RowHeight = 52f;
 
+        // Warm and faint: the wash echoes where the pointer is, it is not a
+        // live control, so it stays clear of the cyan register (ART_DIRECTION
+        // §2.1) and of the selected row's cyan fill and edge.
+        private const float HoverGlowAlpha = 0.10f;
+
         /// <summary>Canvas units the rail claims from the left edge.</summary>
         public static float ReservedWidth => Width;
 
@@ -44,6 +50,21 @@ namespace NonaRoyale.Unity.View
         private RectTransform _content;
         private bool _dirty;
 
+        // The board-hover echo: the row of the piece under the pointer gets a
+        // soft wash, so the eye can tie the 3D piece to its rail entry. Kept
+        // out of the rebuild path — hover moves at pointer speed, and toggling
+        // a wash is one Image.enabled, not a rebuild.
+        private OperatorState _hovered;
+        private readonly List<RowGlow> _rowGlows = new List<RowGlow>();
+
+        /// <summary>One operator row's hover wash, and whether selection already owns the row.</summary>
+        private sealed class RowGlow
+        {
+            public OperatorState Operator;
+            public Image Glow;
+            public bool Selected;
+        }
+
         public void Bind(RectTransform canvasRect, IControlPanelHost host)
         {
             _host = host;
@@ -52,6 +73,26 @@ namespace NonaRoyale.Unity.View
         }
 
         public void MarkDirty() => _dirty = true;
+
+        /// <summary>
+        /// Mirrors the board's hovered piece onto its row. Instant on/off: the
+        /// board mark is instant too, and a fade here would lag the pointer.
+        /// </summary>
+        public void SetHovered(OperatorState op)
+        {
+            _hovered = op;
+            ApplyHover();
+        }
+
+        /// <summary>
+        /// Selection wins: a selected row already reads as live (cyan fill,
+        /// cyan double edge), so the hover wash stays off it.
+        /// </summary>
+        private void ApplyHover()
+        {
+            foreach (var row in _rowGlows)
+                row.Glow.enabled = ReferenceEquals(row.Operator, _hovered) && !row.Selected;
+        }
 
         private void Build(RectTransform canvasRect)
         {
@@ -110,6 +151,8 @@ namespace NonaRoyale.Unity.View
                 Destroy(child);
             }
 
+            _rowGlows.Clear();
+
             var match = _host?.Match;
             if (match == null) return;
 
@@ -127,6 +170,9 @@ namespace NonaRoyale.Unity.View
 
                 UiKit.Space(_content, height: 8f);
             }
+
+            // Rows were recreated disabled; the hover may outlive a rebuild.
+            ApplyHover();
         }
 
         private void SeatHeader(PlayerState seat, bool playing, int cap, Core.GameEngine engine)
@@ -203,6 +249,16 @@ namespace NonaRoyale.Unity.View
             }
 
             UiKit.Size(row, height: RowHeight);
+
+            // The hover wash is the row's first child, so it draws under the
+            // icon and labels; layout ignores it and it never catches the
+            // pointer (ADR-0008 consequence 9).
+            var glowRect = UiKit.Rect("hover_glow", row);
+            UiKit.Stretch(glowRect);
+            glowRect.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            var glow = UiKit.Fill(glowRect, UiTheme.WithAlpha(UiTheme.Gold, HoverGlowAlpha));
+            glow.enabled = false;
+            _rowGlows.Add(new RowGlow { Operator = op, Glow = glow, Selected = selected });
 
             var layout = UiKit.Row(row, 8f);
             layout.padding = new RectOffset(8, 8, 4, 4);

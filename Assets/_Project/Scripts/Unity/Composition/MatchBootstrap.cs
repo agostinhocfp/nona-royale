@@ -972,11 +972,7 @@ namespace NonaRoyale.Unity.Composition
         {
             if (_pause == null || _pause.IsOpen) return;
 
-            if (_hovered != null)
-            {
-                _hovered = null;
-                RefreshMarks();
-            }
+            SetHovered(null);
 
             _pause.Open();
         }

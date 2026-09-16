@@ -91,6 +91,13 @@ namespace NonaRoyale.Unity.View
         private GameObject _hint;
         private bool _dirty;
 
+        // The board-hover echo, same idea as the squad rail's: the row of the
+        // piece under the pointer gets a soft wash, toggled directly rather
+        // than through a rebuild, because hover moves at pointer speed.
+        private OperatorState _hovered;
+        private readonly List<KeyValuePair<OperatorState, Image>> _hoverGlows =
+            new List<KeyValuePair<OperatorState, Image>>();
+
         /// <summary>
         /// Builds the panel once and points it at the host. Safe to call on
         /// every NewMatch.
@@ -106,6 +113,23 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>Asks for a rebuild at the end of this frame.</summary>
         public void MarkDirty() => _dirty = true;
+
+        /// <summary>
+        /// Mirrors the board's hovered piece onto its row, when the row exists
+        /// (this panel lists the current seat only, so an enemy piece lights
+        /// nothing). Instant on/off, like the board mark itself.
+        /// </summary>
+        public void SetHovered(OperatorState op)
+        {
+            _hovered = op;
+            ApplyHover();
+        }
+
+        private void ApplyHover()
+        {
+            foreach (var pair in _hoverGlows)
+                pair.Value.enabled = ReferenceEquals(pair.Key, _hovered);
+        }
 
         /// <summary>Player-facing words for why an ability cannot be cast.</summary>
         public static string Explain(AbilityAvailability availability)
@@ -221,6 +245,8 @@ namespace NonaRoyale.Unity.View
                 Destroy(child);
             }
 
+            _hoverGlows.Clear();
+
             var match = _host?.Match;
             if (match == null) return;
 
@@ -277,6 +303,18 @@ namespace NonaRoyale.Unity.View
             {
                 var row = Row(_content);
 
+                // The hover wash is the row's first child, so it draws under
+                // the controls; layout ignores it and it never catches the
+                // pointer. Gold at a whisper, not the cyan of a live control.
+                var glowRect = NewRect("hover_glow", row);
+                Stretch(glowRect);
+                glowRect.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+                var glow = glowRect.gameObject.AddComponent<Image>();
+                glow.color = UiTheme.WithAlpha(UiTheme.Gold, 0.10f);
+                glow.raycastTarget = false;
+                glow.enabled = false;
+                _hoverGlows.Add(new KeyValuePair<OperatorState, Image>(op, glow));
+
                 AddLabel(row, $"{op.Name} <color=#{Hex(TextDim)}>{op.Health}/{op.MaxHealth}</color>", width: 126f);
 
                 if (op.IsInYard) AddButton(row, "Deploy", () => _host.Deploy(op), width: 104f);
@@ -287,6 +325,9 @@ namespace NonaRoyale.Unity.View
                 bool selected = ReferenceEquals(op, _host.SelectedOperator);
                 AddButton(row, selected ? "Selected" : "Select", () => _host.ToggleOperator(op), selected: selected, width: 92f);
             }
+
+            // The wash rows were recreated disabled; the hover may outlive a rebuild.
+            ApplyHover();
         }
 
         /// <summary>
