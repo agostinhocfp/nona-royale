@@ -47,6 +47,8 @@ On neutralize:
 | Track progress | **Entirely lost** — it re-enters at its start cell                                                    |
 | Energy         | Unaffected. The pool is player-level (§3) and a yarded operator costs the player nothing economically |
 
+**Who a knockout counts for** (added 2026-09-16, GUI increment I). The seat whose operator caused it: the mover in a collision, the caster of an ability, the source recorded on a bleed, mark, beacon or charge. A self-inflicted kill, a kill of one's own side, or a kill with no known source counts for nobody. The rule is the bounty's eligibility without the bounty's switch, so the tally does not move when the bounty is tuned. The engine reports it on `OperatorNeutralized.CreditedTo` and keeps per-seat totals (`KnockoutsScoredBy`, `OperatorsLostBy`) for the end screen. It is a statistic, not a rule: nothing reads it back.
+
 **Passives are not status effects and survive neutralize.** Kurbyn's Evasive Protocol is who he is, not something applied to him; an operator returning to the yard is still itself. The registry keeps passives in a store the clear does not touch, which makes this structural rather than something every caller has to remember.
 
 **There is no permanent death in the MVP.** Nothing removes an operator from a match for good. The GDD line about play continuing "until there's only one player left" is an artifact of the same early pass that produced the 3-energy-per-turn economy; player elimination is not a mechanic. Neutralize is a setback measured in turns, not a removal.

@@ -38,9 +38,17 @@ namespace NonaRoyale.Unity.Composition
     ///
     /// <b>Esc with nothing selected pauses</b> (GUI increment H). While the
     /// pause menu is open, the board and the game keys are ignored.
+    ///
+    /// <b>Play opens the setup screen</b> over an empty table (GUI increment
+    /// I), unless Skip Setup is on. A finished match opens the end screen.
+    /// While either is open, the board and the game keys are ignored too.
     /// </remarks>
-    public sealed class MatchBootstrap : MonoBehaviour, IControlPanelHost, IPauseHost
+    public sealed class MatchBootstrap : MonoBehaviour, IControlPanelHost, IPauseHost, IMatchFlowHost
     {
+        [Header("Flow")]
+        [Tooltip("Deal straight into a match with the settings below, without the setup screen.")]
+        public bool skipSetup = false;
+
         [Header("Match")]
         [Tooltip("Draft three distinct operators per seat from the whole roster. " +
                  "Off means the alpha three, which is what every measurement in ADR-0002 used.")]
@@ -50,6 +58,7 @@ namespace NonaRoyale.Unity.Composition
                  "Amendment 6 (59 against 58). Kept switchable for comparison only.")]
         public bool useCompactBoard = false;
 
+        [Tooltip("Seats at the first deal, filled Red, Blue, Green, Violet. The setup screen overrides it.")]
         [Range(2, 4)] public int players = 4;
 
         [Tooltip("Operators already on the board at the start. 2 is the adopted value.")]
@@ -128,9 +137,61 @@ namespace NonaRoyale.Unity.Composition
         private TurnBanner _banner;
         private TurnButton _turnButton;
         private PauseMenu _pause;
+        private SetupScreen _setup;
+        private EndScreen _end;
+        private bool _endQueued;
+
+        /// <summary>The seats the next deal uses. Squads and seed live in the inspector fields.</summary>
+        private readonly List<PlayerColor> _seats = new List<PlayerColor>();
         private Vector2 _panelScroll;
 
-        private void Start() => NewMatch();
+        private void Start()
+        {
+            _seats.Clear();
+            _seats.AddRange(MatchSettings.AllSeats.Take(players));
+
+            _hudRoot = GetComponent<HudRoot>() ?? gameObject.AddComponent<HudRoot>();
+            BindScreens();
+
+            if (skipSetup)
+            {
+                NewMatch();
+                return;
+            }
+
+            ShowEmptyTable();
+            _setup.Open();
+        }
+
+        private BoardProfile Board =>
+            useCompactBoard ? BoardProfile.Cross("Compact", 3, laps: 2) : BoardProfile.Standard;
+
+        /// <summary>The room before the first deal: the table and its four empty seats, no pieces.</summary>
+        private void ShowEmptyTable()
+        {
+            var board = Board;
+            _layout = new BoardLayout(board, cellSpacing);
+
+            var boardView = GetComponent<BoardView>() ?? gameObject.AddComponent<BoardView>();
+            boardView.Build(new PathMap(board), _layout, 3);
+
+            FrameCamera();
+        }
+
+        /// <summary>The setup and end screens. Bound before the first match, and again after each deal.</summary>
+        private void BindScreens()
+        {
+            _setup = GetComponent<SetupScreen>() ?? gameObject.AddComponent<SetupScreen>();
+            _setup.Bind(_hudRoot.Root, this);
+            _end = GetComponent<EndScreen>() ?? gameObject.AddComponent<EndScreen>();
+            _end.Bind(_hudRoot.Root, this);
+        }
+
+        /// <summary>Whether a full-screen card owns the input.</summary>
+        private bool ModalOpen =>
+            (_pause != null && _pause.IsOpen) ||
+            (_setup != null && _setup.IsOpen) ||
+            (_end != null && _end.IsOpen);
 
         private void NewMatch()
         {
@@ -144,16 +205,15 @@ namespace NonaRoyale.Unity.Composition
             _selectedTarget = null;
             _selectedAbility = null;
             _selectedCell = null;
+            _endQueued = false;
 
             // Both profiles must be drawable crosses: BoardLayout rejects a
             // circuit outside the 8L+4 family rather than drawing a track with a
             // gap in it (ADR-0002 Amendment 6). 28x2 replaces the old 24x2.
-            var board = useCompactBoard
-                ? BoardProfile.Cross("Compact", 3, laps: 2)
-                : BoardProfile.Standard;
+            var board = Board;
 
-            var seats = new[] { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Violet }
-                .Take(players).ToList();
+            if (_seats.Count == 0) _seats.AddRange(MatchSettings.AllSeats.Take(players));
+            var seats = _seats.ToList();
 
             _match = randomSquads
                 ? MatchFactory.Create(
@@ -228,6 +288,7 @@ namespace NonaRoyale.Unity.Composition
             // Last, so the menu draws over every other HUD layer.
             _pause = GetComponent<PauseMenu>() ?? gameObject.AddComponent<PauseMenu>();
             _pause.Bind(_hudRoot.Root, this);
+            BindScreens();
 
             FrameCamera();
             Handle(_match.Engine.Start(), immediate: true);
@@ -340,7 +401,7 @@ namespace NonaRoyale.Unity.Composition
 
         private void Update()
         {
-            bool paused = _pause != null && _pause.IsOpen;
+            bool paused = ModalOpen;
 
             // The menu mirrors these flags, so their keys stay dead while it
             // is open rather than changing what it shows under the pointer.
@@ -380,13 +441,13 @@ namespace NonaRoyale.Unity.Composition
                 FrameCamera();
             }
 
-            if (_match == null) return;
-
             if (paused)
             {
-                if (Input.GetKeyDown(KeyCode.Escape)) _pause.Back();
+                HandleModalKeys();
                 return;
             }
+
+            if (_match == null) return;
 
             HandleKeys();
             UpdateHover();
@@ -409,8 +470,10 @@ namespace NonaRoyale.Unity.Composition
             if (Input.GetKeyDown(KeyCode.Escape))
             {
                 // Esc backs out of a choice first; with nothing left to back
-                // out of, it pauses.
+                // out of, it pauses, or brings the results back once the
+                // match is over.
                 if (HasSelection) StepBack();
+                else if (_match.Engine.MatchOver && _end != null) _end.Open();
                 else OpenPause();
             }
 
@@ -434,6 +497,32 @@ namespace NonaRoyale.Unity.Composition
 
             Host.ToggleAbility(abilities[index]);
             MarkHudDirty();
+        }
+
+        /// <summary>Esc and Enter while a full-screen card is up. The topmost open card takes them.</summary>
+        private void HandleModalKeys()
+        {
+            bool escape = Input.GetKeyDown(KeyCode.Escape);
+            bool enter = Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter);
+
+            if (_setup != null && _setup.IsOpen)
+            {
+                if (escape) _setup.Back();
+                else if (enter) _setup.Confirm();
+                return;
+            }
+
+            if (_pause != null && _pause.IsOpen)
+            {
+                if (escape) _pause.Back();
+                return;
+            }
+
+            if (_end != null && _end.IsOpen)
+            {
+                if (escape) _end.Close();
+                else if (enter) ((IMatchFlowHost)this).Rematch();
+            }
         }
 
         private bool HasSelection =>
@@ -675,6 +764,12 @@ namespace NonaRoyale.Unity.Composition
 
             ShowHistory(events, castBy, cast);
             MarkHudDirty();
+
+            if (_match.Engine.MatchOver && !_endQueued && _end != null)
+            {
+                _endQueued = true;
+                _end.OpenSoon();
+            }
         }
 
         /// <summary>
@@ -864,16 +959,50 @@ namespace NonaRoyale.Unity.Composition
         bool IPauseHost.ShowFullLog { get => showFullLog; set => showFullLog = value; }
         bool IPauseHost.ShowDevPanel { get => showDevPanel; set => showDevPanel = value; }
 
-        /// <summary>
-        /// A fresh deal with the same settings: the next seed, like the dev
-        /// panel's reseed. A replay of the same seed would repeat the same
-        /// dice, which is a debugging tool, not a restart.
-        /// </summary>
-        void IPauseHost.Restart()
+        void IPauseHost.OpenSetup() => OpenSetup();
+
+        private void OpenSetup()
         {
-            _pause.Close();
+            if (_pause != null) _pause.Close();
+            if (_end != null) _end.Close();
+
+            _hovered = null;
+            if (_match != null) RefreshMarks();
+
+            _setup.Open();
+        }
+
+        // ── Match flow (GUI increment I) ─────────────────────────────────
+
+        MatchSettings IMatchFlowHost.Settings => new MatchSettings(_seats, randomSquads, seed);
+
+        MatchFactory.Match IMatchFlowHost.Match => _match;
+
+        void IMatchFlowHost.Deal(MatchSettings settings)
+        {
+            _seats.Clear();
+            _seats.AddRange(settings.Seats);
+            randomSquads = settings.Drafted;
+            seed = settings.Seed;
+
+            if (_setup != null) _setup.Close();
+            NewMatch();
+        }
+
+        /// <summary>
+        /// The same table with the next seed, like the dev panel's reseed. A
+        /// replay of the same seed would repeat the same dice, which is a
+        /// debugging tool, not a rematch.
+        /// </summary>
+        void IMatchFlowHost.Rematch()
+        {
+            if (_end != null) _end.Close();
             Host.Reseed();
         }
+
+        void IMatchFlowHost.OpenSetup() => OpenSetup();
+
+        void IMatchFlowHost.Quit() => ((IPauseHost)this).Quit();
 
         void IPauseHost.Quit()
         {

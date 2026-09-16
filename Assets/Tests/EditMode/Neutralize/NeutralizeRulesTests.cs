@@ -201,6 +201,41 @@ namespace NonaRoyale.Core.Tests.Neutralize
             Assert.That(_red.Energy, Is.EqualTo(0));
         }
 
+        // ── Knockout credit (GUI increment I) ────────────────────────────
+
+        [Test]
+        public void AKill_IsCreditedToTheKillersSeat()
+        {
+            Assert.That(_neutralize.Apply(_victim, _killer.Id).CreditedTo, Is.EqualTo(PlayerColor.Red));
+        }
+
+        [Test]
+        public void SelfFriendlyAndUnknownKills_AreCreditedToNobody()
+        {
+            Assert.That(_neutralize.Apply(_ally, _ally.Id).CreditedTo, Is.Null, "self");
+            Assert.That(_neutralize.Apply(_ally, _killer.Id).CreditedTo, Is.Null, "own side");
+            Assert.That(_neutralize.Apply(_victim).CreditedTo, Is.Null, "no known killer");
+        }
+
+        [Test]
+        public void Credit_DoesNotDependOnTheBounty()
+        {
+            // Match stats must not change when the bounty is tuned to zero.
+            var combat = new CombatConfig(neutralizeEnergyBounty: 0);
+            var targeting = new TargetingRules(_map, _statuses);
+            var damage = new DamagePipeline(_statuses, new SeededRandom(1));
+            var cellEffects = new DeferredCellEffects(_clock, targeting, damage, _statuses);
+            var abilities = new AbilityResolver(_map, _clock, _energy, _statuses, targeting, damage, cellEffects);
+
+            var unrewarded = new NeutralizeRules(
+                _statuses, abilities, _energy, _operators, new[] { _red, _blue }, combat);
+
+            var outcome = unrewarded.Apply(_victim, _killer.Id);
+
+            Assert.That(outcome.PaidABounty, Is.False);
+            Assert.That(outcome.CreditedTo, Is.EqualTo(PlayerColor.Red));
+        }
+
         // ── The §1.2 consequences ────────────────────────────────────────
 
         [Test]

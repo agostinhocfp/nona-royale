@@ -6,7 +6,7 @@ using UnityEngine.UI;
 namespace NonaRoyale.Unity.View
 {
     /// <summary>
-    /// The pause menu: resume, restart, settings, quit (GUI increment H).
+    /// The pause menu: resume, new match, settings, quit (GUI increment H).
     /// </summary>
     /// <remarks>
     /// <b>Opened by Esc when nothing is selected</b>, or by the MENU button on
@@ -21,9 +21,10 @@ namespace NonaRoyale.Unity.View
     /// time and keep breathing. The composition root ignores board input and
     /// game keys while <see cref="IsOpen"/>.
     ///
-    /// <b>Destructive choices ask twice.</b> The first press of RESTART or
-    /// QUIT turns the button amber and says what will be lost; the second
-    /// press does it. Any other press disarms it.
+    /// <b>QUIT asks twice.</b> The first press turns the button amber and
+    /// says what will be lost; the second press does it. Any other press
+    /// disarms it. NEW MATCH (was RESTART until increment I) opens the setup
+    /// screen, which has its own way back, so it does not ask.
     ///
     /// <b>Two pages, rebuilt on every change</b>, like the rail and the tray.
     /// The scrim covers the whole canvas and catches the pointer, so nothing
@@ -155,7 +156,7 @@ namespace NonaRoyale.Unity.View
             Choice("RESUME", "Esc", Close, UiTheme.CyanDeep, UiTheme.Cyan);
             Space(4f);
 
-            Destructive("restart", "RESTART", "New deal, same settings. This match is lost.", () => _host?.Restart());
+            Choice("NEW MATCH", "", () => { Close(); _host?.OpenSetup(); });
             Choice("SETTINGS", "", () => { _page = Page.Settings; _armed = null; Rebuild(); });
             Destructive("quit", "QUIT", "Leaves the game. The title menu arrives with increment J.", () => _host?.Quit());
 

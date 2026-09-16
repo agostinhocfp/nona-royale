@@ -790,6 +790,89 @@ namespace NonaRoyale.Core.Tests.Engine
             Assert.That(match.Players[0].Energy, Is.GreaterThan(redEnergy));
         }
 
+        [Test]
+        public void AnUpkeepKill_IsCreditedAndTallied()
+        {
+            // The stats the end screen shows (GUI increment I): the kill counts
+            // for the marker's seat, the loss for the victim's, on a turn that
+            // belongs to neither.
+            var match = Armed();
+            var syla = Of(match, PlayerColor.Red, "Syla");
+            var victim = Of(match, PlayerColor.Blue, "Syla");
+
+            victim.MoveTo(1);
+            syla.MoveTo(11);
+            victim.SetHealth(2);
+
+            Assert.That(match.Engine.KnockoutsScoredBy(PlayerColor.Red), Is.EqualTo(0), "precondition");
+
+            match.Engine.Execute(new UseAbilityCommand(syla.Id, Syla.TaggedFromAbove.Id, victim.Id));
+
+            var mover = Of(match, PlayerColor.Red, "Bouncer");
+            match.Engine.Execute(new MoveCommand(mover.Id));
+            var events = match.Engine.Execute(new EndTurnCommand());
+
+            var down = events.OfType<OperatorNeutralized>().Single();
+            Assert.That(down.CreditedTo, Is.EqualTo(PlayerColor.Red));
+
+            Assert.That(match.Engine.KnockoutsScoredBy(PlayerColor.Red), Is.EqualTo(1));
+            Assert.That(match.Engine.KnockoutsScoredBy(PlayerColor.Blue), Is.EqualTo(0));
+            Assert.That(match.Engine.OperatorsLostBy(PlayerColor.Blue), Is.EqualTo(1));
+            Assert.That(match.Engine.OperatorsLostBy(PlayerColor.Red), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void EveryNeutralizeInAWholeMatch_IsTallied()
+        {
+            // The same greedy scripted match as the black-box test below. The
+            // losses counted must equal the neutralize events announced, and the
+            // knockouts counted must equal the credited ones.
+            var match = MatchFactory.CreateAlphaMatch(
+                new[] { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Violet },
+                seed: 20260911, board: BoardProfile.Sprint);
+
+            var engine = match.Engine;
+            var log = new List<IGameEvent>(engine.Start());
+
+            for (int turn = 0; turn < 4000 && !engine.MatchOver; turn++)
+            {
+                var rolled = engine.Execute(new RollDiceCommand());
+                log.AddRange(rolled);
+
+                var squad = engine.CurrentPlayer.Operators;
+
+                var waiting = squad.FirstOrDefault(o => o.IsInYard);
+                if (waiting != null) log.AddRange(engine.Execute(new DeployCommand(waiting.Id)));
+
+                var leader = squad
+                    .Where(o => !o.IsInYard && o.Progress < BoardProfile.Sprint.Journey)
+                    .OrderByDescending(o => o.Progress)
+                    .FirstOrDefault();
+
+                if (leader != null) log.AddRange(engine.Execute(new MoveCommand(leader.Id)));
+
+                log.AddRange(engine.Execute(new EndTurnCommand()));
+            }
+
+            var downs = log.OfType<OperatorNeutralized>().ToList();
+            Assert.That(downs.Count, Is.GreaterThan(0), "the scripted match should produce collisions");
+
+            int lost = 0, scored = 0;
+            foreach (var player in match.Players)
+            {
+                lost += engine.OperatorsLostBy(player.Color);
+                scored += engine.KnockoutsScoredBy(player.Color);
+
+                Assert.That(engine.OperatorsLostBy(player.Color),
+                    Is.EqualTo(downs.Count(d => d.Operator.Owner == player.Color)));
+                Assert.That(engine.KnockoutsScoredBy(player.Color),
+                    Is.EqualTo(downs.Count(d => d.CreditedTo == player.Color)));
+            }
+
+            Assert.That(lost, Is.EqualTo(downs.Count));
+            Assert.That(scored, Is.LessThanOrEqualTo(lost));
+        }
+
         // ── A whole match, through the boundary only ─────────────────────
 
         [Test]

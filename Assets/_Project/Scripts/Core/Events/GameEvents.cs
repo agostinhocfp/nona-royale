@@ -246,11 +246,14 @@ namespace NonaRoyale.Core.Events
     /// </remarks>
     public sealed class OperatorNeutralized : IGameEvent
     {
-        public OperatorNeutralized(OperatorState op, string cause = null)
+        public OperatorNeutralized(OperatorState op, string cause = null, PlayerColor? creditedTo = null)
         {
-            Operator = op; Cause = cause;
+            Operator = op; Cause = cause; CreditedTo = creditedTo;
         }
         public OperatorState Operator { get; }
+
+        /// <summary>The seat the knockout counts for, or null (see <c>NeutralizeOutcome.CreditedTo</c>).</summary>
+        public PlayerColor? CreditedTo { get; }
 
         /// <summary>"bleed", "mark", "collision", "ability", "execute", "self", or null.</summary>
         public string Cause { get; }

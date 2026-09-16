@@ -19,8 +19,8 @@ namespace NonaRoyale.Unity.View
         bool ShowFullLog { get; set; }
         bool ShowDevPanel { get; set; }
 
-        /// <summary>Throws the match away and deals a new one with the same settings.</summary>
-        void Restart();
+        /// <summary>Opens the setup screen for a new match (GUI increment I). The current match stays until DEAL.</summary>
+        void OpenSetup();
 
         /// <summary>Leaves the game. Stops Play Mode in the editor.</summary>
         void Quit();

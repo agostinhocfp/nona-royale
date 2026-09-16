@@ -162,7 +162,7 @@ namespace NonaRoyale.Unity.View
                     ? $"<color=#{UiTheme.Hex(UiTheme.Readable(colour))}>{winner.Value.ToString().ToUpperInvariant()}</color> WINS"
                     : "MATCH OVER";
                 _energy.text = "";
-                _prompt.text = "Match over — press <b>Esc</b> for a new match";
+                _prompt.text = "Match over — press <b>Esc</b> for the results";
                 SetPips(0, 0);
                 return;
             }

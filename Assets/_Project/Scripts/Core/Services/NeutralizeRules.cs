@@ -22,12 +22,22 @@ namespace NonaRoyale.Core.Services
         public NeutralizeOutcome(
             IReadOnlyList<OperatorState> hastened,
             PlayerColor? bountyPaidTo,
-            EnergyGrant bounty)
+            EnergyGrant bounty,
+            PlayerColor? creditedTo = null)
         {
             Hastened = hastened ?? Array.Empty<OperatorState>();
             BountyPaidTo = bountyPaidTo;
             Bounty = bounty;
+            CreditedTo = creditedTo;
         }
+
+        /// <summary>
+        /// The seat the knockout counts for: the killer's owner, or null for a
+        /// kill with no creditable source, a self-inflicted one, or a kill of
+        /// one's own side. Independent of whether a bounty is configured, so
+        /// match stats do not change when the bounty is tuned (GUI increment I).
+        /// </summary>
+        public PlayerColor? CreditedTo { get; }
 
         /// <summary>Operators hastened by a mark payout. Empty when the dead operator was not marked.</summary>
         public IReadOnlyList<OperatorState> Hastened { get; }
@@ -121,6 +131,7 @@ namespace NonaRoyale.Core.Services
             // Likewise before the yard move: the bounty is refused when the
             // killer is the victim, and that comparison reads the victim.
             var bounty = PayBounty(op, killerOperatorId);
+            var credit = CreditFor(op, killerOperatorId);
 
             // Also before the yard move: a charge riding on this operator
             // detonates on its death cell (§6.4), and once the piece is in the
@@ -136,7 +147,7 @@ namespace NonaRoyale.Core.Services
             // The victim's own energy is untouched: the pool is player-level, so
             // a yarded operator costs its owner nothing economically.
 
-            return new NeutralizeOutcome(hastened, bounty.Key, bounty.Value);
+            return new NeutralizeOutcome(hastened, bounty.Key, bounty.Value, credit);
         }
 
         /// <summary>
@@ -162,6 +173,21 @@ namespace NonaRoyale.Core.Services
         /// mark can outlive the operator that applied it, and the pool belongs
         /// to the player rather than the piece.
         /// </remarks>
+        /// <summary>
+        /// Who a knockout counts for. The same eligibility as the bounty —
+        /// a known killer that is neither the victim nor on the victim's side —
+        /// without the bounty's configuration switch.
+        /// </summary>
+        private PlayerColor? CreditFor(OperatorState victim, int? killerOperatorId)
+        {
+            if (killerOperatorId == null || killerOperatorId.Value == victim.Id) return null;
+
+            var killer = FindOperator(killerOperatorId.Value);
+            if (killer == null || killer.Owner == victim.Owner) return null;
+
+            return killer.Owner;
+        }
+
         private KeyValuePair<PlayerColor?, EnergyGrant> PayBounty(OperatorState victim, int? killerOperatorId)
         {
             var nothing = new KeyValuePair<PlayerColor?, EnergyGrant>(null, default);

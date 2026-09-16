@@ -1,7 +1,7 @@
 # Nona Royale — GUI Phase
 
 > Location in repo: `docs/design/GUI_PHASE.md`
-> Status: **In progress.** Started 2026-09-15. E through G2 are committed; H (pause) is written and waiting for a Play Mode check.
+> Status: **In progress.** Started 2026-09-15. E through H are committed; I (setup and end screens) is written and waiting for a Play Mode check.
 > Related: ADR-0008 (uGUI; its removal order stays binding), `PRESENTATION.md` (what the view may do and must show), `ART_DIRECTION.md` §3 and §8 (palette, UI registers), `STRANGER_TEST.md` (the gate before `OnGUI` is deleted)
 
 ## Goal
@@ -103,3 +103,12 @@ Each increment ends with a Play Mode check and a commit.
   - `TurnStrip`: MENU button; legend now "Esc back / menu" and drops H and Tab (they live in settings); the match-over prompt points at Esc instead of the dev panel.
   - `MatchBootstrap` implements `IPauseHost`. No core changes; view compile-checked.
   - Known: the legacy OnGUI dev panel (Tab then F2) still draws over the scrim. It is deleted in K.
+- 2026-09-16 — **H committed.**
+- 2026-09-16 — **Increment I written: match setup and end.** Decided with the designer: setup shows on Play with a Skip Setup flag, and the pause menu's RESTART becomes NEW MATCH (opens setup); seats are four toggles, any two to four; knockout credit goes into the core.
+  - **Core.** `NeutralizeOutcome.CreditedTo` (the killer's seat; null for self, friendly or unknown kills; independent of the bounty setting). `OperatorNeutralized.CreditedTo`. `GameEngine.KnockoutsScoredBy(seat)` and `OperatorsLostBy(seat)`, tallied at both places a neutralize is reported. COMBAT_SYSTEMS §1.2 records the rule. Five new tests (three service, two engine including a whole scripted match that checks tallies against announced events); 434 passing in the stand-in run; the sim compiles.
+  - New `ModalCard` (scrim plus framed card, rebuilt on change, keeps the top sibling), `MatchSettings` and `IMatchFlowHost`, `SetupScreen`, `EndScreen`.
+  - **Setup:** seat tiles (diamond, name, PLAYING or EMPTY; the last two refuse to switch off and say why), ALPHA THREE or DRAFTED with a line on each, the seed with SHUFFLE, DEAL (Enter), and BACK TO THE MATCH (Esc) when there is one or QUIT when there is not. It edits a copy; backing out changes nothing. Shown over the empty table, which is drawn before the first deal.
+  - **End:** "RED WINS" in the seat colour, round and seed, a tally table (home, knockouts, lost) with the winner's row plated, REMATCH (Enter, next seed), NEW MATCH, VIEW BOARD (Esc; Esc again brings the screen back), QUIT. Opens 1.2 s after the win, on unscaled time.
+  - `MatchBootstrap`: implements `IMatchFlowHost`; Start draws the empty table and opens setup unless `skipSetup`; seats come from the setup (the `players` field seeds the first deal); one modal check gates input; Esc/Enter routed to the open card; the end screen is queued once per match.
+  - `PauseMenu`: NEW MATCH replaces RESTART (no confirmation; setup has its own way back). `IPauseHost.Restart` became `OpenSetup`. `TurnStrip`: match-over prompt says Esc shows the results.
+  - Known: the legacy OnGUI dev panel still draws over the cards until K.

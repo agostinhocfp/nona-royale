@@ -95,6 +95,9 @@ namespace NonaRoyale.Core
 
         private PlayerColor? _winner;
 
+        private readonly Dictionary<PlayerColor, int> _knockoutsScored = new Dictionary<PlayerColor, int>();
+        private readonly Dictionary<PlayerColor, int> _operatorsLost = new Dictionary<PlayerColor, int>();
+
         public GameEngine(
             IReadOnlyList<OperatorState> operators,
             IReadOnlyDictionary<int, AbilityDefinition> abilityBook,
@@ -137,6 +140,19 @@ namespace NonaRoyale.Core
 
         /// <summary>Who won, once the match is over. Null until then.</summary>
         public PlayerColor? Winner => _winner;
+
+        /// <summary>
+        /// Knockouts credited to <paramref name="seat"/> this match: enemy
+        /// operators neutralized by its operators, however the damage arrived
+        /// (collision, ability, bleed, mark, charge). Self-inflicted and
+        /// friendly kills count for nobody. Display only (GUI increment I).
+        /// </summary>
+        public int KnockoutsScoredBy(PlayerColor seat) =>
+            _knockoutsScored.TryGetValue(seat, out int count) ? count : 0;
+
+        /// <summary>Times an operator of <paramref name="seat"/> was neutralized this match, by anything.</summary>
+        public int OperatorsLostBy(PlayerColor seat) =>
+            _operatorsLost.TryGetValue(seat, out int count) ? count : 0;
 
         /// <summary>The current round (see <c>TurnStateMachine.Round</c>). Display only.</summary>
         public int Round => _turns.Round;
@@ -287,7 +303,8 @@ namespace NonaRoyale.Core
             // when badges appeared on a later refresh.
             foreach (var down in upkeep.Neutralized)
             {
-                events.Add(new OperatorNeutralized(down.Operator, down.Cause));
+                Tally(down.Operator, down.Outcome);
+                events.Add(new OperatorNeutralized(down.Operator, down.Cause, down.Outcome.CreditedTo));
 
                 foreach (var ally in down.Hastened)
                     events.Add(new StatusApplied(ally, StatusKind.Hastened, _config.HasteDurationTurns));
@@ -800,7 +817,8 @@ namespace NonaRoyale.Core
         {
             var outcome = _neutralize.Apply(op, killerId);
 
-            events.Add(new OperatorNeutralized(op, cause));
+            Tally(op, outcome);
+            events.Add(new OperatorNeutralized(op, cause, outcome.CreditedTo));
 
             foreach (var ally in outcome.Hastened)
                 events.Add(new StatusApplied(ally, StatusKind.Hastened, _config.HasteDurationTurns));
@@ -818,6 +836,15 @@ namespace NonaRoyale.Core
         /// strategy, and a line saying a reward paid zero would read as a
         /// malfunction rather than as the cost of the bank.
         /// </remarks>
+        /// <summary>Counts a neutralize for the match stats. Every death funnels through here or the upkeep loop.</summary>
+        private void Tally(OperatorState victim, NeutralizeOutcome outcome)
+        {
+            _operatorsLost[victim.Owner] = OperatorsLostBy(victim.Owner) + 1;
+
+            if (outcome.CreditedTo.HasValue)
+                _knockoutsScored[outcome.CreditedTo.Value] = KnockoutsScoredBy(outcome.CreditedTo.Value) + 1;
+        }
+
         private static void EmitBounty(NeutralizeOutcome outcome, List<IGameEvent> events)
         {
             if (!outcome.PaidABounty || outcome.Bounty.Stored <= 0) return;
