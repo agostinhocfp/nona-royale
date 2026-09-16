@@ -105,6 +105,16 @@ namespace NonaRoyale.Core
         /// </remarks>
         private readonly Dictionary<int, int> _hasteCellsUsed = new Dictionary<int, int>();
 
+        /// <summary>
+        /// Operators that have already collected the haste bonus from the roll
+        /// in hand. Cleared on every roll (§5.9): the bonus is paid once per
+        /// roll, on the operator's first move with it.
+        /// </summary>
+        private readonly HashSet<int> _hastePaidThisRoll = new HashSet<int>();
+
+        /// <summary>The total of the roll in hand; it sets the haste bonus (§5.9).</summary>
+        private int _rollTotal;
+
         private PlayerColor? _winner;
 
         private readonly Dictionary<PlayerColor, int> _knockoutsScored = new Dictionary<PlayerColor, int>();
@@ -426,6 +436,8 @@ namespace NonaRoyale.Core
             _unspentDice.Add(report.Roll.First);
             _unspentDice.Add(report.Roll.Second);
             _hasRolled = true;
+            _rollTotal = report.Roll.Total;
+            _hastePaidThisRoll.Clear();
 
             if (report.Roll.CountOf(_movement.DeployFace) > 0) _sawDeployFace = true;
 
@@ -671,9 +683,13 @@ namespace NonaRoyale.Core
             op.MoveTo(collision.MoverFinalProgress);
 
             // Charged on the attempted move, bounce or not: the cells were
-            // travelled, and a bounce is placement afterwards (§7.2).
-            if (hasteCells > 0)
-                _hasteCellsUsed[op.Id] = HasteCellsUsed(op) + hasteCells;
+            // travelled, and a bounce is placement afterwards (§7.2). The roll's
+            // bonus is spent by this move even if the turn cap trimmed it to 0.
+            if (_statuses.IsHastened(op))
+            {
+                _hastePaidThisRoll.Add(op.Id);
+                if (hasteCells > 0) _hasteCellsUsed[op.Id] = HasteCellsUsed(op) + hasteCells;
+            }
 
             if (command.DieFace == null) _unspentDice.Clear();
             else _unspentDice.Remove(command.DieFace.Value);
@@ -1238,15 +1254,14 @@ namespace NonaRoyale.Core
         /// <c>HasLegalMove</c> both needed it. Three copies of this expression
         /// would be three places for the aura rule to drift.
         /// </remarks>
-        private double SpeedOf(OperatorState op, double adjustment = 0.0) =>
+        private double SpeedOf(OperatorState op) =>
             _movement.EffectiveSpeed(
                 op.BaseSpeedMultiplier,
-                _statuses.SpeedModifier(op) + _auras.SpeedModifierFor(op, _operators) + adjustment);
+                _statuses.SpeedModifier(op) + _auras.SpeedModifierFor(op, _operators));
 
         /// <summary>
-        /// Cells this operator moves for <paramref name="pips"/> right now, with
-        /// the haste bonus capped at what is left of this turn's
-        /// <c>HasteBonusCellCap</c> (COMBAT_SYSTEMS §5.9).
+        /// Cells this operator moves for <paramref name="pips"/> right now,
+        /// plus the haste bonus if it is due (COMBAT_SYSTEMS §5.9).
         /// </summary>
         /// <remarks>
         /// <b>The one place movement distance is computed.</b> <see cref="Move"/>,
@@ -1255,26 +1270,26 @@ namespace NonaRoyale.Core
         /// Only <see cref="Move"/> charges <paramref name="hasteCells"/> to the
         /// budget; the other two only ask.
         ///
-        /// The unhasted speed is the same expression minus the haste, floored
-        /// by <c>EffectiveSpeed</c> on its own. So a slowed and hasted operator
-        /// sitting on the speed floor gets no phantom bonus: both speeds floor
-        /// to the same value and the difference is zero.
+        /// <b>The bonus is flat cells added after speed.</b> +1 when the roll in
+        /// hand totals 6 or less, +2 above (<c>CombatConfig.HasteCellsFor</c>),
+        /// once per roll per operator, and never more than what is left of
+        /// this turn's <c>HasteBonusCellCap</c>. The roll's total counts even
+        /// if one of its dice went on a deploy or to another operator. A move
+        /// the dice alone would not make (0 cells) gets no bonus either, so
+        /// haste never turns a refused move into a legal one.
         /// </remarks>
         private int CellsFor(OperatorState op, int pips, out int hasteCells)
         {
-            double speed = SpeedOf(op);
-            double haste = _statuses.HasteBonus(op);
+            int cells = _movement.CellsFor(pips, SpeedOf(op));
+            hasteCells = 0;
 
-            if (haste <= 0.0)
-            {
-                hasteCells = 0;
-                return _movement.CellsFor(pips, speed);
-            }
+            if (cells <= 0 || !_statuses.IsHastened(op) || _hastePaidThisRoll.Contains(op.Id))
+                return cells;
 
             int budget = Math.Max(0, _config.HasteBonusCellCap - HasteCellsUsed(op));
+            hasteCells = Math.Min(_config.HasteCellsFor(_rollTotal), budget);
 
-            return _movement.CellsWithCappedBonus(
-                pips, speed, SpeedOf(op, -haste), budget, out hasteCells);
+            return cells + hasteCells;
         }
 
         private int HasteCellsUsed(OperatorState op) =>
@@ -1302,6 +1317,8 @@ namespace NonaRoyale.Core
             _sawDeployFace = false;
             _unspentDice.Clear();
             _hasteCellsUsed.Clear();
+            _hastePaidThisRoll.Clear();
+            _rollTotal = 0;
         }
 
         private OperatorState FindOperator(int id)

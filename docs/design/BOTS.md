@@ -182,3 +182,4 @@ In setup, any seat can be HUMAN or CPU. CPU seats draft and play on their own, a
     - Bots against bots: 34.2 → 28.0 turns per seat, 22.0 → 13.4 knockouts. Win shares moved 3 points at most; Sanity 22% → 20%.
     - Bots beat the scripted players 70% of the time, up from 65–68%.
     - Watch in human games whether combat now feels too soft. Regen is the first thing to take back.
+- 2026-09-16 — **Haste nerfed to flat cells** (COMBAT_SYSTEMS §5.9): +1 on a roll of 6 or less, +2 above, once per roll per operator, capped at 3 a turn. Bots sweep before/after: noise only (Syla 31% → 32%, turns per seat 28.2 both). The payout fires about once a match, so judge it in human games.

@@ -20,9 +20,11 @@ namespace NonaRoyale.Core.Config
             int bleedDamagePerStack = 1,
             double slowSpeedPenalty = 0.5,
             int markDamagePerTurn = 2,
-            double hasteSpeedBonus = 0.5,
             int hasteDurationTurns = 2,
             int hasteBonusCellCap = 3,
+            int hasteRollThreshold = 6,
+            int hasteCellsAtOrBelowThreshold = 1,
+            int hasteCellsAboveThreshold = 2,
             int neutralizeEnergyBounty = 3,
             int shieldPoolDefault = 2,
             int regenEveryTurns = 3,
@@ -34,11 +36,14 @@ namespace NonaRoyale.Core.Config
                 throw new ArgumentOutOfRangeException(nameof(evasionChance), "A probability, so within [0,1].");
             if (bleedDamagePerStack < 0) throw new ArgumentOutOfRangeException(nameof(bleedDamagePerStack));
             if (markDamagePerTurn < 0) throw new ArgumentOutOfRangeException(nameof(markDamagePerTurn));
-            if (hasteSpeedBonus < 0) throw new ArgumentOutOfRangeException(nameof(hasteSpeedBonus));
             if (hasteDurationTurns < 1) throw new ArgumentOutOfRangeException(nameof(hasteDurationTurns));
             if (hasteBonusCellCap < 0)
                 throw new ArgumentOutOfRangeException(nameof(hasteBonusCellCap),
                     "Zero means haste adds nothing; pass int.MaxValue to lift the cap.");
+            if (hasteCellsAtOrBelowThreshold < 0)
+                throw new ArgumentOutOfRangeException(nameof(hasteCellsAtOrBelowThreshold));
+            if (hasteCellsAboveThreshold < 0)
+                throw new ArgumentOutOfRangeException(nameof(hasteCellsAboveThreshold));
             if (neutralizeEnergyBounty < 0)
                 throw new ArgumentOutOfRangeException(nameof(neutralizeEnergyBounty),
                     "A bounty cannot take energy away; zero disables it.");
@@ -56,9 +61,11 @@ namespace NonaRoyale.Core.Config
             BleedDamagePerStack = bleedDamagePerStack;
             SlowSpeedPenalty = slowSpeedPenalty;
             MarkDamagePerTurn = markDamagePerTurn;
-            HasteSpeedBonus = hasteSpeedBonus;
             HasteDurationTurns = hasteDurationTurns;
             HasteBonusCellCap = hasteBonusCellCap;
+            HasteRollThreshold = hasteRollThreshold;
+            HasteCellsAtOrBelowThreshold = hasteCellsAtOrBelowThreshold;
+            HasteCellsAboveThreshold = hasteCellsAboveThreshold;
             NeutralizeEnergyBounty = neutralizeEnergyBounty;
             ShieldPoolDefault = shieldPoolDefault;
             RegenEveryTurns = regenEveryTurns;
@@ -146,16 +153,37 @@ namespace NonaRoyale.Core.Config
         public int MarkDamagePerTurn { get; }
 
         /// <summary>
-        /// Speed added by <c>StatusKind.Hastened</c>, the default magnitude for
-        /// Tagged From Above's squad payout (COMBAT_SYSTEMS §10.2).
+        /// A roll totalling this or less earns a hastened operator
+        /// <see cref="HasteCellsAtOrBelowThreshold"/> extra cells; above it,
+        /// <see cref="HasteCellsAboveThreshold"/> (COMBAT_SYSTEMS §5.9).
         /// </summary>
         /// <remarks>
-        /// At 0.5 against the 1.0–1.5 band a hasted squad moves at 1.5–2.0 for
-        /// the duration: a real tempo swing a player can still follow on the
-        /// board. The payout was +3 in the original roster, which produced a
-        /// 35-cell turn — three-quarters of the loop from one ability.
+        /// <b>Haste is flat cells, not speed (designer, 2026-09-16).</b> It
+        /// was +0.5 speed: +3 in the original roster (a 35-cell turn), cut to
+        /// +0.5, then capped at 3 cells a turn the same day. The designer then
+        /// cut it hard to +1 on a roll of 6 or less and +2 above, so the bonus
+        /// no longer scales with the operator's own speed.
+        ///
+        /// <b>The whole roll decides, not the move.</b> The two dice's total is
+        /// what counts, whatever they were spent on, and each hastened operator
+        /// collects the bonus once per roll, on its first move with it. A
+        /// single die is always 6 or less, so reading the move's own pips would
+        /// have made splitting a low roll pay double.
         /// </remarks>
-        public double HasteSpeedBonus { get; }
+        public int HasteRollThreshold { get; }
+
+        /// <summary>Extra cells for a roll at or below <see cref="HasteRollThreshold"/>.</summary>
+        public int HasteCellsAtOrBelowThreshold { get; }
+
+        /// <summary>Extra cells for a roll above <see cref="HasteRollThreshold"/>.</summary>
+        public int HasteCellsAboveThreshold { get; }
+
+        /// <summary>
+        /// The haste bonus a roll with this total earns, before the per-turn
+        /// cap (§5.9).
+        /// </summary>
+        public int HasteCellsFor(int rollTotal) =>
+            rollTotal <= HasteRollThreshold ? HasteCellsAtOrBelowThreshold : HasteCellsAboveThreshold;
 
         /// <summary>
         /// How many of the squad's own turns the payout's haste lasts.
@@ -176,21 +204,14 @@ namespace NonaRoyale.Core.Config
         /// </summary>
         /// <remarks>
         /// <b>A designer balance call (2026-09-16), not a measured figure.</b>
-        /// At +0.5 speed the haste bonus grows with the roll: a pooled 12 at
-        /// 1.0× gained 6 cells, and at 1.5× (hasted to 2.0×) it also gained 6.
-        /// Capped at 3, the payout stays a tempo nudge a player can count on the
-        /// board rather than a swing decided by how high the dice came up.
+        /// It was written for haste as +0.5 speed, where a pooled 12 gained 6
+        /// cells. Since haste became +1 or +2 per roll, it only binds on a
+        /// doubles turn: two high rolls would pay 4, and the cap keeps it at 3.
+        /// The designer kept it for that case.
         ///
-        /// <b>Per operator, per turn — not per move.</b> Movement rounds per
-        /// move (§6.3), so a per-move cap would let a split roll collect it
-        /// twice: 6 + 6 at 1.0× moves 9 + 9, and neither move reaches the cap,
-        /// which would make splitting strictly better than pooling for a
-        /// hastened operator. <c>GameEngine</c> keeps the per-turn budget;
-        /// doubles re-rolls draw from the same budget because they are the same
-        /// turn.
-        ///
-        /// Only the Hastened status is capped. Evasive Protocol's passive speed
-        /// and aura modifiers are not haste and are not counted against it.
+        /// <b>Per operator, per turn.</b> <c>GameEngine</c> keeps the per-turn
+        /// budget; doubles re-rolls draw from the same budget because they are
+        /// the same turn.
         /// </remarks>
         public int HasteBonusCellCap { get; }
 

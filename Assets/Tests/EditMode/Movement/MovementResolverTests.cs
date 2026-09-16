@@ -315,54 +315,5 @@ namespace NonaRoyale.Core.Tests.Movement
             // does, something upstream is wrong and should say so loudly.
             Assert.Throws<InvalidOperationException>(() => _resolver.BounceBackProgress(0));
         }
-
-        // ── Capped bonus (COMBAT_SYSTEMS §5.9) ───────────────────────────
-
-        [Test]
-        public void ACappedBonus_TrimsOnlyTheCellsTheBonusAdded()
-        {
-            // 12 at 1.0 is 12; at 1.5 it is 18. A budget of 3 moves 15.
-            int cells = _resolver.CellsWithCappedBonus(12, 1.5, 1.0, 3, out int bonus);
-
-            Assert.That(cells, Is.EqualTo(15));
-            Assert.That(bonus, Is.EqualTo(3));
-        }
-
-        [Test]
-        public void ABonusUnderTheBudget_IsPaidInFull()
-        {
-            // 5 at 1.0 is 5; at 1.5 it floors to 7. Two extra, under a budget of 3.
-            int cells = _resolver.CellsWithCappedBonus(5, 1.5, 1.0, 3, out int bonus);
-
-            Assert.That(cells, Is.EqualTo(7));
-            Assert.That(bonus, Is.EqualTo(2));
-        }
-
-        [Test]
-        public void ASpentBudget_LeavesTheUnbonusedMove()
-        {
-            int cells = _resolver.CellsWithCappedBonus(9, 2.0, 1.5, 0, out int bonus);
-
-            Assert.That(cells, Is.EqualTo(_resolver.CellsFor(9, 1.5)));
-            Assert.That(bonus, Is.EqualTo(0));
-        }
-
-        [Test]
-        public void TheUnbonusedMove_KeepsItsOwnRounding()
-        {
-            // At 0.5 a 5 rounds up to 3; hasted to 1.0 it is 5. The bonus is 2,
-            // not the 2.5 a speed-level calculation would suggest.
-            int cells = _resolver.CellsWithCappedBonus(5, 1.0, 0.5, 3, out int bonus);
-
-            Assert.That(cells, Is.EqualTo(5));
-            Assert.That(bonus, Is.EqualTo(2));
-        }
-
-        [Test]
-        public void ANegativeBudget_IsRejected()
-        {
-            Assert.Throws<ArgumentOutOfRangeException>(
-                () => _resolver.CellsWithCappedBonus(6, 1.5, 1.0, -1, out _));
-        }
     }
 }

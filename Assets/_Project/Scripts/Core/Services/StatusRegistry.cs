@@ -96,7 +96,7 @@ namespace NonaRoyale.Core.Services
         /// is what stops two supports from stacking an arbitrarily deep wall.
         ///
         /// A magnitude of zero means "use this kind's default", which is how
-        /// Slow, Hastened and Shield get their size without <c>AlphaRoster</c>
+        /// Slow and Shield get their size without <c>AlphaRoster</c>
         /// needing a dependency on config. An ability that wants a different
         /// size states one and it is honoured.
         /// </remarks>
@@ -202,6 +202,11 @@ namespace NonaRoyale.Core.Services
         /// <b>Shield is skipped.</b> Its magnitude is a damage pool, not a speed
         /// delta. Every other kind either carries a signed speed value or
         /// carries zero, which is why this could be a blind sum until now.
+        ///
+        /// <b>Hastened is skipped too (2026-09-16).</b> Haste is flat extra
+        /// cells per roll now, applied by <c>GameEngine</c>, not speed. An
+        /// ability that stated a magnitude for it would otherwise leak into
+        /// the speed channel.
         /// </remarks>
         public double SpeedModifier(OperatorState op)
         {
@@ -217,7 +222,7 @@ namespace NonaRoyale.Core.Services
             {
                 foreach (var pair in applied)
                 {
-                    if (pair.Key == StatusKind.Shield) continue;
+                    if (IsNotSpeed(pair.Key)) continue;
                     if (IsActive(pair.Value, ownerTurn)) total += pair.Value.Magnitude;
                 }
             }
@@ -226,7 +231,7 @@ namespace NonaRoyale.Core.Services
             {
                 foreach (var pair in passives)
                 {
-                    if (pair.Key == StatusKind.Shield) continue;
+                    if (IsNotSpeed(pair.Key)) continue;
                     if (applied != null && applied.ContainsKey(pair.Key)) continue;
                     total += pair.Value.Magnitude;
                 }
@@ -236,21 +241,14 @@ namespace NonaRoyale.Core.Services
         }
 
         /// <summary>
-        /// The speed <see cref="StatusKind.Hastened"/> is adding right now, or 0
-        /// if the operator is not hastened.
+        /// Whether <see cref="StatusKind.Hastened"/> is active on this operator
+        /// right now. The engine turns it into extra cells per roll
+        /// (COMBAT_SYSTEMS §5.9).
         /// </summary>
-        /// <remarks>
-        /// <see cref="SpeedModifier"/> already includes this; it is exposed on
-        /// its own so the engine can work out what a move would be <i>without</i>
-        /// the haste and cap the difference (COMBAT_SYSTEMS §5.9). Read through
-        /// <see cref="ActiveEntry"/>, the same precedence the sum uses, so the
-        /// two can never disagree about whether the operator is hastened.
-        /// </remarks>
-        public double HasteBonus(OperatorState op)
-        {
-            var entry = ActiveEntry(op, StatusKind.Hastened);
-            return entry == null ? 0.0 : Math.Max(0.0, entry.Magnitude);
-        }
+        public bool IsHastened(OperatorState op) => Has(op, StatusKind.Hastened);
+
+        private static bool IsNotSpeed(StatusKind kind) =>
+            kind == StatusKind.Shield || kind == StatusKind.Hastened;
 
         public int BleedStacks(OperatorState op)
         {
@@ -681,7 +679,6 @@ namespace NonaRoyale.Core.Services
             switch (kind)
             {
                 case StatusKind.Slow: return -_config.SlowSpeedPenalty;
-                case StatusKind.Hastened: return _config.HasteSpeedBonus;
                 case StatusKind.Shield: return _config.ShieldPoolDefault;
                 default: return 0.0;
             }

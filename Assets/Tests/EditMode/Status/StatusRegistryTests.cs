@@ -568,31 +568,28 @@ namespace NonaRoyale.Core.Tests.Status
         }
 
         [Test]
-        public void HasteBonus_ReportsOnlyTheHastenedStatus()
+        public void Haste_IsNotSpeed()
         {
-            // The engine subtracts this from the summed modifier to find the
-            // unhasted move (§5.9). A passive speed bonus must not appear here,
-            // or the cap would trim Kurbyn's own speed.
+            // Haste is flat extra cells per roll, applied by the engine (§5.9).
+            // It must not leak into the speed channel, even with a magnitude.
             _statuses.ApplyPassive(_red, StatusKind.Evasion, 0.5);
-            Assert.That(_statuses.HasteBonus(_red), Is.EqualTo(0.0));
+            _statuses.Apply(_red, StatusKind.Hastened, duration: 2, magnitude: 0.5);
 
-            _statuses.Apply(_red, StatusKind.Hastened, duration: 2);
-
-            Assert.That(_statuses.HasteBonus(_red), Is.EqualTo(_config.HasteSpeedBonus));
-            Assert.That(_statuses.SpeedModifier(_red), Is.EqualTo(0.5 + _config.HasteSpeedBonus));
+            Assert.That(_statuses.IsHastened(_red), Is.True);
+            Assert.That(_statuses.SpeedModifier(_red), Is.EqualTo(0.5), "only the passive");
         }
 
         [Test]
-        public void HasteBonus_IsZero_BeforeTheHasteTakesHold()
+        public void IsHastened_IsFalse_BeforeTheHasteTakesHold()
         {
             // Applied on an opponent's turn, it starts on the holder's next one.
             _statuses.Apply(_blue, StatusKind.Hastened, duration: 2);
 
-            Assert.That(_statuses.HasteBonus(_blue), Is.EqualTo(0.0));
+            Assert.That(_statuses.IsHastened(_blue), Is.False);
 
             _clock.BeginTurnFor(PlayerColor.Blue);
 
-            Assert.That(_statuses.HasteBonus(_blue), Is.EqualTo(_config.HasteSpeedBonus));
+            Assert.That(_statuses.IsHastened(_blue), Is.True);
         }
 
         [Test]

@@ -959,8 +959,9 @@ namespace NonaRoyale.Core.Tests.Turn
             _neutralize.Apply(_enemy);
             _clock.BeginTurnFor(_red);
 
-            Assert.That(_statuses.SpeedModifier(_syla), Is.EqualTo(_combat.HasteSpeedBonus));
-            Assert.That(_statuses.SpeedModifier(_bouncer), Is.EqualTo(_combat.HasteSpeedBonus));
+            // Haste is flat extra cells per roll now, not speed (§5.9).
+            Assert.That(_statuses.IsHastened(_syla), Is.True);
+            Assert.That(_statuses.IsHastened(_bouncer), Is.True);
         }
 
         [Test]

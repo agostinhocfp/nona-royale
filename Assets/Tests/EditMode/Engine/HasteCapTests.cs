@@ -12,15 +12,17 @@ using NUnit.Framework;
 namespace NonaRoyale.Core.Tests.Engine
 {
     /// <summary>
-    /// The haste bonus cap (COMBAT_SYSTEMS §5.9): Hastened adds at most
-    /// <c>CombatConfig.HasteBonusCellCap</c> cells to one operator per turn.
+    /// Haste as flat extra cells (COMBAT_SYSTEMS §5.9, 2026-09-16): +1 when the
+    /// roll totals 6 or less, +2 above, once per roll per operator, and at most
+    /// <c>CombatConfig.HasteBonusCellCap</c> per operator per turn.
     /// </summary>
     /// <remarks>
-    /// Driven through the engine, not the resolver, because the budget lives in
-    /// the engine and the failure worth catching is the plumbing: a preview that
-    /// ignores the cap, a split that collects it twice, a budget that never
-    /// resets. The pure arithmetic has its own tests in
-    /// <c>MovementResolverTests</c>.
+    /// The file keeps its name from the capped-speed version it replaces.
+    ///
+    /// Driven through the engine, because the bookkeeping lives there and the
+    /// failures worth catching are plumbing: a preview that ignores the paid
+    /// bonus, a split that collects it twice, a doubles turn that beats the
+    /// cap, a budget that never resets.
     ///
     /// Every match here is a solo seat with the whole squad deployed, so no
     /// enemy aura or collision can touch the distance being measured. Seeds are
@@ -30,13 +32,14 @@ namespace NonaRoyale.Core.Tests.Engine
     [TestFixture]
     public class HasteCapTests
     {
-        private static int Cap => CombatConfig.Default.HasteBonusCellCap;
-        private static double Haste => CombatConfig.Default.HasteSpeedBonus;
+        private static CombatConfig Config => CombatConfig.Default;
+        private static int Cap => Config.HasteBonusCellCap;
 
         private static int Cells(int pips, double speed) => (int)Math.Floor(pips * speed);
 
-        private static int UncappedBonus(int pips, double speed) =>
-            Cells(pips, speed + Haste) - Cells(pips, speed);
+        private static int Bonus(int rollTotal) => Config.HasteCellsFor(rollTotal);
+
+        private static bool Low(DiceRoll r) => r.Total <= Config.HasteRollThreshold;
 
         private static OperatorState Named(MatchFactory.Match match, string name) =>
             match.Operators.First(o => o.Name == name);
@@ -68,7 +71,7 @@ namespace NonaRoyale.Core.Tests.Engine
         }
 
         private static void Hasten(MatchFactory.Match match, OperatorState op) =>
-            match.Statuses.Apply(op, StatusKind.Hastened, CombatConfig.Default.HasteDurationTurns);
+            match.Statuses.Apply(op, StatusKind.Hastened, Config.HasteDurationTurns);
 
         private static int Travelled(MatchFactory.Match match, ICommand move)
         {
@@ -79,112 +82,144 @@ namespace NonaRoyale.Core.Tests.Engine
         }
 
         [Test]
-        public void TheCap_IsThree()
+        public void TheDesignersNumbers()
         {
-            // The designer's number (2026-09-16). A test so that changing it is
-            // a deliberate act that also updates §5.9.
+            // 2026-09-16. A test so that changing them is a deliberate act that
+            // also updates §5.9.
+            Assert.That(Config.HasteRollThreshold, Is.EqualTo(6));
+            Assert.That(Bonus(2), Is.EqualTo(1));
+            Assert.That(Bonus(6), Is.EqualTo(1));
+            Assert.That(Bonus(7), Is.EqualTo(2));
+            Assert.That(Bonus(12), Is.EqualTo(2));
             Assert.That(Cap, Is.EqualTo(3));
         }
 
         [Test]
-        public void APooledHastedMove_GainsNoMoreThanTheCap()
+        public void ALowRoll_AddsOneCell()
         {
-            // Bouncer at 1.0×: any total of 8 or more would gain 4+ uncapped.
-            var match = RolledSolo(r => !r.IsDouble && UncappedBonus(r.Total, Bouncer.Speed) > Cap, out var roll);
+            var match = RolledSolo(r => !r.IsDouble && Low(r), out var roll);
             var bouncer = Named(match, "Bouncer");
             Hasten(match, bouncer);
 
-            int travelled = Travelled(match, new MoveCommand(bouncer.Id));
-
-            Assert.That(travelled, Is.EqualTo(Cells(roll.Total, Bouncer.Speed) + Cap));
+            Assert.That(Travelled(match, new MoveCommand(bouncer.Id)),
+                Is.EqualTo(Cells(roll.Total, Bouncer.Speed) + 1));
         }
 
         [Test]
-        public void ASmallHastedMove_KeepsItsWholeBonus()
+        public void AHighRoll_AddsTwoCells()
         {
-            // Below the cap nothing changes: haste is still +0.5 speed.
-            var match = RolledSolo(
-                r => !r.IsDouble && UncappedBonus(r.Total, Bouncer.Speed) is int b && b > 0 && b < Cap,
-                out var roll);
+            var match = RolledSolo(r => !r.IsDouble && !Low(r), out var roll);
             var bouncer = Named(match, "Bouncer");
             Hasten(match, bouncer);
 
-            int travelled = Travelled(match, new MoveCommand(bouncer.Id));
-
-            Assert.That(travelled, Is.EqualTo(Cells(roll.Total, Bouncer.Speed + Haste)));
+            Assert.That(Travelled(match, new MoveCommand(bouncer.Id)),
+                Is.EqualTo(Cells(roll.Total, Bouncer.Speed) + 2));
         }
 
         [Test]
-        public void ASplitRoll_SharesOneBudget_RatherThanCollectingItTwice()
+        public void HasteNoLongerScalesWithSpeed()
         {
-            // The reason the cap is per turn: rounding is per move, so 6 + 4 at
-            // 1.0× gains 3 + 2 when split. Per move, neither reaches the cap.
-            var match = RolledSolo(r =>
-                !r.IsDouble &&
-                UncappedBonus(r.First, Bouncer.Speed) + UncappedBonus(r.Second, Bouncer.Speed) > Cap,
-                out var roll);
+            // Syla at 1.5 gets the same flat +2 as the Bouncer. Under the old
+            // +0.5 speed a pooled 11 at 2.0 would have gained 6 cells.
+            var match = RolledSolo(r => !r.IsDouble && !Low(r), out var roll);
+            var syla = Named(match, "Syla");
+            Hasten(match, syla);
+
+            Assert.That(Travelled(match, new MoveCommand(syla.Id)),
+                Is.EqualTo(Cells(roll.Total, Syla.Speed) + 2));
+            Assert.That(match.Statuses.SpeedModifier(syla), Is.EqualTo(0.0), "haste is not speed");
+        }
+
+        [Test]
+        public void APassiveSpeedBonus_StillApplies()
+        {
+            // Kurbyn's Evasive Protocol is speed, not haste: his move is his
+            // passive speed, plus the flat bonus.
+            double kurbyn = Kurbyn.BaseSpeed + Kurbyn.PassiveSpeedBonus;
+            var match = RolledSolo(r => !r.IsDouble && !Low(r), out var roll);
+            var op = Named(match, "Kurbyn");
+            Hasten(match, op);
+
+            Assert.That(Travelled(match, new MoveCommand(op.Id)),
+                Is.EqualTo(Cells(roll.Total, kurbyn) + 2));
+        }
+
+        [Test]
+        public void ASplitRoll_PaysTheBonusOnce_AndTheWholeRollSetsIt()
+        {
+            // 5 + 4: each die alone is low, but the roll is 9, so +2, on the
+            // first move only.
+            var match = RolledSolo(r => !r.IsDouble && !Low(r), out var roll);
             var bouncer = Named(match, "Bouncer");
             Hasten(match, bouncer);
 
             int first = Travelled(match, new MoveCommand(bouncer.Id, roll.First));
             int second = Travelled(match, new MoveCommand(bouncer.Id, roll.Second));
 
-            int unhasted = Cells(roll.First, Bouncer.Speed) + Cells(roll.Second, Bouncer.Speed);
-
-            Assert.That(first + second, Is.EqualTo(unhasted + Cap));
-            Assert.That(first, Is.EqualTo(
-                Cells(roll.First, Bouncer.Speed) + Math.Min(Cap, UncappedBonus(roll.First, Bouncer.Speed))));
+            Assert.That(first, Is.EqualTo(Cells(roll.First, Bouncer.Speed) + 2));
+            Assert.That(second, Is.EqualTo(Cells(roll.Second, Bouncer.Speed)));
         }
 
         [Test]
-        public void ThePreview_ShowsWhatIsLeftOfTheBudget()
+        public void ThePreview_DropsTheBonusOnceItIsPaid()
         {
-            // A preview that ignored the spent half would promise a landing the
-            // move then trims — the exact disagreement PreviewLandings exists
-            // to prevent.
-            var match = RolledSolo(r =>
-                !r.IsDouble &&
-                UncappedBonus(r.First, Bouncer.Speed) >= Cap &&
-                UncappedBonus(r.Second, Bouncer.Speed) > 0,
-                out var roll);
+            var match = RolledSolo(r => !r.IsDouble, out var roll);
             var bouncer = Named(match, "Bouncer");
             Hasten(match, bouncer);
+
+            var before = match.Engine.PreviewLandings()
+                .First(p => p.OperatorId == bouncer.Id && p.DieFace == roll.First);
+            Assert.That(before.Cells, Is.EqualTo(Cells(roll.First, Bouncer.Speed) + Bonus(roll.Total)));
 
             match.Engine.Execute(new MoveCommand(bouncer.Id, roll.First));
 
             // One die left, so the engine offers only the pooled option for it.
-            var preview = match.Engine.PreviewLandings()
+            var after = match.Engine.PreviewLandings()
                 .First(p => p.OperatorId == bouncer.Id && p.IsPooled);
 
-            Assert.That(preview.Cells, Is.EqualTo(Cells(roll.Second, Bouncer.Speed)),
-                "the first die spent the whole budget");
-            Assert.That(Travelled(match, new MoveCommand(bouncer.Id)), Is.EqualTo(preview.Cells));
+            Assert.That(after.Cells, Is.EqualTo(Cells(roll.Second, Bouncer.Speed)), "already paid this roll");
+            Assert.That(Travelled(match, new MoveCommand(bouncer.Id)), Is.EqualTo(after.Cells));
         }
 
         [Test]
-        public void EachOperator_HasItsOwnBudget()
+        public void EachOperator_CollectsItsOwnBonus()
         {
-            var match = RolledSolo(r =>
-                !r.IsDouble &&
-                UncappedBonus(r.First, Bouncer.Speed) >= Cap &&
-                UncappedBonus(r.Second, Syla.Speed) > 0,
-                out var roll);
+            var match = RolledSolo(r => !r.IsDouble, out var roll);
             var bouncer = Named(match, "Bouncer");
             var syla = Named(match, "Syla");
             Hasten(match, bouncer);
             Hasten(match, syla);
 
-            match.Engine.Execute(new MoveCommand(bouncer.Id, roll.First));
-            int sylaTravelled = Travelled(match, new MoveCommand(syla.Id, roll.Second));
+            int b = Travelled(match, new MoveCommand(bouncer.Id, roll.First));
+            int s = Travelled(match, new MoveCommand(syla.Id, roll.Second));
 
-            Assert.That(sylaTravelled, Is.EqualTo(
-                Cells(roll.Second, Syla.Speed) + Math.Min(Cap, UncappedBonus(roll.Second, Syla.Speed))));
+            Assert.That(b, Is.EqualTo(Cells(roll.First, Bouncer.Speed) + Bonus(roll.Total)));
+            Assert.That(s, Is.EqualTo(Cells(roll.Second, Syla.Speed) + Bonus(roll.Total)));
+        }
+
+        [Test]
+        public void ADoublesTurn_StopsAtTheCap()
+        {
+            // A high double pays 2; the re-roll would pay 1 or 2, but only 1 of
+            // the turn's 3 is left.
+            var match = RolledSolo(r => r.IsDouble && !Low(r), out var roll);
+            var bouncer = Named(match, "Bouncer");
+            Hasten(match, bouncer);
+
+            Assert.That(Travelled(match, new MoveCommand(bouncer.Id)),
+                Is.EqualTo(Cells(roll.Total, Bouncer.Speed) + 2));
+            Assert.That(match.Engine.CanRollAgain, Is.True, "precondition: doubles re-roll");
+
+            var second = match.Engine.Execute(new RollDiceCommand()).OfType<DiceRolled>().First().Roll;
+
+            Assert.That(Travelled(match, new MoveCommand(bouncer.Id)),
+                Is.EqualTo(Cells(second.Total, Bouncer.Speed) + Cap - 2));
         }
 
         [Test]
         public void TheBudget_ResetsOnTheNextTurn()
         {
-            var match = RolledSolo(r => !r.IsDouble && UncappedBonus(r.Total, Bouncer.Speed) >= Cap, out _);
+            var match = RolledSolo(r => !r.IsDouble, out _);
             var bouncer = Named(match, "Bouncer");
             Hasten(match, bouncer);                      // duration 2: this turn and the next
 
@@ -194,28 +229,8 @@ namespace NonaRoyale.Core.Tests.Engine
             var roll = match.Engine.Execute(new RollDiceCommand()).OfType<DiceRolled>().First().Roll;
             Assert.That(match.Statuses.Has(bouncer, StatusKind.Hastened), Is.True, "precondition: still hastened");
 
-            int travelled = Travelled(match, new MoveCommand(bouncer.Id));
-
-            Assert.That(travelled, Is.EqualTo(
-                Cells(roll.Total, Bouncer.Speed) + Math.Min(Cap, UncappedBonus(roll.Total, Bouncer.Speed))));
-            Assert.That(travelled, Is.GreaterThan(Cells(roll.Total, Bouncer.Speed)),
-                "a fresh turn earns a fresh bonus");
-        }
-
-        [Test]
-        public void APassiveSpeedBonus_IsNotCountedAgainstTheCap()
-        {
-            // Kurbyn's Evasive Protocol is speed, not haste. Only the Hastened
-            // part of his move is trimmed.
-            double kurbyn = Kurbyn.BaseSpeed + Kurbyn.PassiveSpeedBonus;
-            var match = RolledSolo(r => !r.IsDouble && UncappedBonus(r.Total, kurbyn) > Cap, out var roll);
-            var op = Named(match, "Kurbyn");
-            Hasten(match, op);
-
-            int travelled = Travelled(match, new MoveCommand(op.Id));
-
-            Assert.That(travelled, Is.EqualTo(Cells(roll.Total, kurbyn) + Cap));
-            Assert.That(travelled, Is.GreaterThan(Cells(roll.Total, Kurbyn.BaseSpeed) + Cap));
+            Assert.That(Travelled(match, new MoveCommand(bouncer.Id)),
+                Is.EqualTo(Cells(roll.Total, Bouncer.Speed) + Bonus(roll.Total)));
         }
 
         [Test]
