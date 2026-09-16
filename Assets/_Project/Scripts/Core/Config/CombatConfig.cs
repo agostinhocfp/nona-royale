@@ -22,6 +22,7 @@ namespace NonaRoyale.Core.Config
             int markDamagePerTurn = 2,
             double hasteSpeedBonus = 0.5,
             int hasteDurationTurns = 2,
+            int hasteBonusCellCap = 3,
             int neutralizeEnergyBounty = 3,
             int shieldPoolDefault = 2,
             int regenEveryTurns = 3,
@@ -35,6 +36,9 @@ namespace NonaRoyale.Core.Config
             if (markDamagePerTurn < 0) throw new ArgumentOutOfRangeException(nameof(markDamagePerTurn));
             if (hasteSpeedBonus < 0) throw new ArgumentOutOfRangeException(nameof(hasteSpeedBonus));
             if (hasteDurationTurns < 1) throw new ArgumentOutOfRangeException(nameof(hasteDurationTurns));
+            if (hasteBonusCellCap < 0)
+                throw new ArgumentOutOfRangeException(nameof(hasteBonusCellCap),
+                    "Zero means haste adds nothing; pass int.MaxValue to lift the cap.");
             if (neutralizeEnergyBounty < 0)
                 throw new ArgumentOutOfRangeException(nameof(neutralizeEnergyBounty),
                     "A bounty cannot take energy away; zero disables it.");
@@ -54,6 +58,7 @@ namespace NonaRoyale.Core.Config
             MarkDamagePerTurn = markDamagePerTurn;
             HasteSpeedBonus = hasteSpeedBonus;
             HasteDurationTurns = hasteDurationTurns;
+            HasteBonusCellCap = hasteBonusCellCap;
             NeutralizeEnergyBounty = neutralizeEnergyBounty;
             ShieldPoolDefault = shieldPoolDefault;
         }
@@ -162,6 +167,30 @@ namespace NonaRoyale.Core.Config
         /// upkeep. This is what COMBAT_SYSTEMS §10.2's "one round" resolves to.
         /// </remarks>
         public int HasteDurationTurns { get; }
+
+        /// <summary>
+        /// The most extra cells <c>StatusKind.Hastened</c> can add to one
+        /// operator's movement in one of its owner's turns (COMBAT_SYSTEMS §5.9).
+        /// </summary>
+        /// <remarks>
+        /// <b>A designer balance call (2026-09-16), not a measured figure.</b>
+        /// At +0.5 speed the haste bonus grows with the roll: a pooled 12 at
+        /// 1.0× gained 6 cells, and at 1.5× (hasted to 2.0×) it also gained 6.
+        /// Capped at 3, the payout stays a tempo nudge a player can count on the
+        /// board rather than a swing decided by how high the dice came up.
+        ///
+        /// <b>Per operator, per turn — not per move.</b> Movement rounds per
+        /// move (§6.3), so a per-move cap would let a split roll collect it
+        /// twice: 6 + 6 at 1.0× moves 9 + 9, and neither move reaches the cap,
+        /// which would make splitting strictly better than pooling for a
+        /// hastened operator. <c>GameEngine</c> keeps the per-turn budget;
+        /// doubles re-rolls draw from the same budget because they are the same
+        /// turn.
+        ///
+        /// Only the Hastened status is capped. Evasive Protocol's passive speed
+        /// and aura modifiers are not haste and are not counted against it.
+        /// </remarks>
+        public int HasteBonusCellCap { get; }
 
         /// <summary>
         /// Energy paid to whoever lands a neutralize (COMBAT_SYSTEMS §1.2).

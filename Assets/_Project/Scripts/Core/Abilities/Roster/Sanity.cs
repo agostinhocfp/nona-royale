@@ -140,7 +140,7 @@ namespace NonaRoyale.Core.Abilities
             id: 802, name: "Zero-Day",
             description:
                 "The engineer launches a magnetized guided grenade to an enemy, its magnets snap tightly to the target. The next turn, it explodes dealing massive area-of-effect thermal damage and slowing nearby enemies.",
-            energyCost: 4, cooldownTurns: 3, range: 2,
+            energyCost: 4, cooldownTurns: 3, range: 3,
             effects: new[]
             {
                 AbilityEffect.AttachCharge(
@@ -184,7 +184,7 @@ namespace NonaRoyale.Core.Abilities
             id: 803, name: "Collision",
             description:
                 "Upon striking a target (be it an enemy or an ally), the caster anchors himself to it, launching himself towards him causing damage to enemies in his path and stunning the target. Lands a cell behind the target.",
-            energyCost: 7, cooldownTurns: 4, range: 5,
+            energyCost: 6, cooldownTurns: 3, range: 6,
             effects: new[]
             {
                 AbilityEffect.Dash(pathDamage: 1),

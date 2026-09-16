@@ -568,6 +568,34 @@ namespace NonaRoyale.Core.Tests.Status
         }
 
         [Test]
+        public void HasteBonus_ReportsOnlyTheHastenedStatus()
+        {
+            // The engine subtracts this from the summed modifier to find the
+            // unhasted move (§5.9). A passive speed bonus must not appear here,
+            // or the cap would trim Kurbyn's own speed.
+            _statuses.ApplyPassive(_red, StatusKind.Evasion, 0.5);
+            Assert.That(_statuses.HasteBonus(_red), Is.EqualTo(0.0));
+
+            _statuses.Apply(_red, StatusKind.Hastened, duration: 2);
+
+            Assert.That(_statuses.HasteBonus(_red), Is.EqualTo(_config.HasteSpeedBonus));
+            Assert.That(_statuses.SpeedModifier(_red), Is.EqualTo(0.5 + _config.HasteSpeedBonus));
+        }
+
+        [Test]
+        public void HasteBonus_IsZero_BeforeTheHasteTakesHold()
+        {
+            // Applied on an opponent's turn, it starts on the holder's next one.
+            _statuses.Apply(_blue, StatusKind.Hastened, duration: 2);
+
+            Assert.That(_statuses.HasteBonus(_blue), Is.EqualTo(0.0));
+
+            _clock.BeginTurnFor(PlayerColor.Blue);
+
+            Assert.That(_statuses.HasteBonus(_blue), Is.EqualTo(_config.HasteSpeedBonus));
+        }
+
+        [Test]
         public void AZeroDuration_IsRejected()
         {
             Assert.Throws<ArgumentOutOfRangeException>(

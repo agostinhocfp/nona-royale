@@ -1594,7 +1594,7 @@ namespace NonaRoyale.Unity.Composition
             if (_title != null) _title.Close();
             if (_draftScreen != null) _draftScreen.Close();
 
-            _hovered = null;
+            SetHovered(null);
             if (_match != null) RefreshMarks();
 
             _setup.Open();
@@ -2199,6 +2199,19 @@ namespace NonaRoyale.Unity.Composition
                     Host.ToggleOperator(op);
 
                 GUILayout.EndHorizontal();
+
+                // Board-hover echo: a whisper of gold over the hovered piece's
+                // row (immediate mode has no way to draw behind an already
+                // laid-out row, so the wash goes on top, faint enough to read
+                // as a glow). GUI.color wraps only this one draw.
+                if (_hovered != null && ReferenceEquals(op, _hovered.Operator) &&
+                    Event.current.type == EventType.Repaint)
+                {
+                    var tint = GUI.color;
+                    GUI.color = UiTheme.WithAlpha(UiTheme.Gold, 0.10f);
+                    GUI.DrawTexture(GUILayoutUtility.GetLastRect(), Texture2D.whiteTexture);
+                    GUI.color = tint;
+                }
             }
 
             if (_selectedOperator != null) DrawAbilities(seat);

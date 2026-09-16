@@ -119,6 +119,41 @@ namespace NonaRoyale.Core.Services
         }
 
         /// <summary>
+        /// Cells moved when part of the speed is a capped bonus: the move at
+        /// <paramref name="speedWithoutBonus"/>, plus at most
+        /// <paramref name="bonusBudget"/> of the cells the bonus would add
+        /// (COMBAT_SYSTEMS §5.9).
+        /// </summary>
+        /// <remarks>
+        /// <b>The bonus is measured in cells, not speed.</b> Both moves go
+        /// through <see cref="CellsFor"/>, so the rounding rules and the
+        /// one-cell clamp apply exactly as they would to an uncapped move, and
+        /// the cap trims only what the bonus added on top. A negative
+        /// difference cannot happen with a non-negative bonus; it is clamped
+        /// anyway so a caller passing speeds the wrong way round loses the bonus
+        /// rather than cells it was owed.
+        ///
+        /// The budget is the caller's to keep. This type computes and never
+        /// remembers, so how much of a turn's cap is left is
+        /// <c>GameEngine</c>'s question.
+        /// </remarks>
+        public int CellsWithCappedBonus(
+            int diceValue,
+            double effectiveSpeed,
+            double speedWithoutBonus,
+            int bonusBudget,
+            out int bonusCells)
+        {
+            if (bonusBudget < 0) throw new ArgumentOutOfRangeException(nameof(bonusBudget));
+
+            int full = CellsFor(diceValue, effectiveSpeed);
+            int without = CellsFor(diceValue, speedWithoutBonus);
+
+            bonusCells = Math.Min(Math.Max(0, full - without), bonusBudget);
+            return without + bonusCells;
+        }
+
+        /// <summary>
         /// What this roll offers a player who has operators waiting in the yard.
         /// Reports possibilities only — deployment is optional, so the choice
         /// belongs to the command layer (COMBAT_SYSTEMS §1.3).

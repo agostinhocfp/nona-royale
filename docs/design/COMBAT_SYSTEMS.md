@@ -288,7 +288,19 @@ Not a status — the absence of them. Javi's Neural Purge removes every **applie
 ### 5.9 Hastened
 
 - **Effect:** speed multiplier **+`HasteSpeedBonus` (0.5)** for `HasteDurationTurns` (2) of the holder's own turns.
+- **Capped at `HasteBonusCellCap` (3) extra cells per operator per turn** (amendment, 2026-09-16). The move is worked out with and without the haste, and at most 3 of the extra cells are kept. The rest of the move, including a passive speed bonus like Evasive Protocol's, is not capped.
 - Granted only by Tagged From Above's payout, to the marker's whole squad (§10.2).
+
+**Amendment (2026-09-16, designer): the bonus is capped at 3 cells.** At +0.5 the bonus grows with the roll. A pooled 12 gained 6 cells at 1.0× and 6 again at 1.5×, so the payout's value depended on how high the dice came up. With the cap it stays a tempo nudge the player can count on the board: a pooled 12 at 1.0× now moves 15, not 18.
+
+**Per operator, per turn, not per move.** Movement rounds per move (§6.3), so a per-move cap could be collected twice by splitting. A 6 and a 4 at 1.0× gain 3 + 2 when spent separately, and neither move reaches the cap, which would make splitting better than pooling for a hastened operator. So the engine keeps one budget per operator for the whole turn:
+
+- A split roll draws both moves from the same 3 cells.
+- A doubles re-roll is the same turn, so it draws from the same budget too.
+- Each hastened operator has its own budget. One operator's move never uses up another's.
+- The budget resets at the start of the owner's next turn. The haste lasts 2 turns, so a squad can collect the cap twice in total.
+- A bounced move still pays for the bonus cells it used (§7.2). Those cells were travelled, and the bounce is placement afterwards.
+- The landing preview reads the same budget (§9.1), so it never shows a landing the cap would then cut short.
 
 **Two turns, not one.** The payout can fire on the marker's own turn — a collision or ability kill — by which point that turn's movement is usually already spent, so a 1-turn buff would routinely be worth nothing. At 2 it covers the remainder of the current turn and the whole of the next, whether it fired on the marker's turn or on an opponent's upkeep.
 
@@ -378,6 +390,8 @@ Expiry sits at End and application takes hold at the target's next turn, so a 1-
 **The rounding applies per move, which is what splitting costs.** Two dice pooled lose at most one half-cell to it; spent separately they lose one each. So splitting costs a **whole cell exactly when both dice are odd** — 9 rolls in 36 — and nothing otherwise. At whole-number speeds it costs nothing at all.
 
 **The larger cost is routing a die through a slower operator**, which forfeits that operator's whole speed deficit on those pips: a double six pooled onto a 1.5 operator moves 18; split between a 1.5 and a 1.0 operator it moves 15. That is three cells, not one, and it is why the landing preview must show every option before one is chosen (§9.1).
+
+**Haste is the one capped speed source (amendment, 2026-09-16).** For a hastened operator the move is `cellsWithoutHaste + min(cellsWithHaste − cellsWithoutHaste, budget left this turn)`. Both terms use the rounding above. The budget is `HasteBonusCellCap` (3) per operator per turn (§5.9). Slows, auras and passive speed are not capped.
 
 **Speed band: 1.0 – 1.5**, in half-steps. `SpeedMultiplierMin = 1.0` and `SpeedMultiplierMax = 2.5` are the legal schema bounds; the roster uses 1.0 and 1.5 only. The band was set by simulation, not by feel — see ADR-0002 Amendment 4, which lowered it from the 1.5–2.0 adopted in Amendment 2. Two constraints fix it:
 
@@ -889,7 +903,7 @@ That makes 44/5 the only lever measured that buys pacing without giving up comba
    The general rule, which matters more than the dial: **a dial's potency is a function of how often its trigger fires.** Anything struck here must be re-measured after a structural change rather than trusted. Note also that at 6 it is the only configuration measured that fails to finish every match — 99% completion against 100% everywhere else.
 4. **Opening deployments.** Adopted at 2, and still the only lever that ever improved a problem at no cost elsewhere.
 5. `EvasionChance = 0.3` — **lowered from 0.5 by reasoning, and this run is its first measurement.** It is inside the 9.3 baseline and cannot be separated from the rest of the tuning pass without its own sweep.
-6. `MarkDamagePerTurn = 2`, `HasteSpeedBonus = 0.5`, `HasteDurationTurns = 2`, `SlowSpeedPenalty = 0.5` — all still set by reasoning and unmeasured in isolation.
+6. `MarkDamagePerTurn = 2`, `HasteSpeedBonus = 0.5`, `HasteDurationTurns = 2`, `HasteBonusCellCap = 3`, `SlowSpeedPenalty = 0.5` — all still set by reasoning and unmeasured in isolation.
 7. `EnergyCap = 12` against a `floor(total/2)` drip. **Burn is 12.1 per match at the shipping configuration**, up from 8.0 without the bounty. That is the economy's headroom, and it is the figure to watch if the bounty ever moves.
 
 ### Consequences of compulsory and split movement — split still unmeasured
@@ -937,6 +951,7 @@ Carried from the pre-2026-09-14 version of this section, which the table above s
 - **`MarkDamagePerTurn = 2`** over a 2-turn mark: 4 total leaves a 6-HP target at 2, inside collision range and Miracle Pull's execute window, while 9 would kill unassisted and make the ult's payout self-fulfilling.
 - **`SlowSpeedPenalty = 0.5`** takes a 1.0 operator to the `MinSpeedMultiplier` floor (§5.2). It was not re-measured when the band moved, and Intimidating Presence and Cryo-Pulse make it land more often. It also interacts with §6.1: a heavily slowed squad can reach the state where a roll has no legal consumer.
 - **`HasteSpeedBonus = 0.5`, `HasteDurationTurns = 2`** — the bonus was cut against the 1.5–2.0 band, where it was about +25%; against 1.0–1.5 it is +33% to +50%.
+- **`HasteBonusCellCap = 3`** (§5.9) — the designer's number (2026-09-16). It limits the +33% to +50% above to 3 cells per operator per turn. Before/after at 800 matches it changed nothing beyond noise: the standard table's adopted row is identical (20.3 turns, 5.5 neutralizes, 40% 3-up), and Syla's bot-vs-bot win share went 31% → 30%. The payout fires about once a match (Tagged From Above: 1.15 casts), so the sim cannot show a cap on it. Only human games can.
 - **`RegenEveryTurns = 3`, `RegenAmount = 1`** (§5.11) — A/B 0 against 3 before trusting either.
 
 ### Struck
@@ -973,6 +988,18 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - `SlowedOperatorAtOneTimesSpeed_FloorsAtHalfMultiplier`
 - `KurbynMovesAtHisPassiveSpeed_NotHisBaseSpeed`
 - `TheTank_MovesAtItsBaseSpeed_WithNoPassiveToAdd`
+
+**Haste cap — `HasteCapTests`, `MovementResolverTests`, `StatusRegistryTests`** (§5.9)
+
+- `APooledHastedMove_GainsNoMoreThanTheCap`
+- `ASmallHastedMove_KeepsItsWholeBonus`
+- `ASplitRoll_SharesOneBudget_RatherThanCollectingItTwice`
+- `ThePreview_ShowsWhatIsLeftOfTheBudget`
+- `EachOperator_HasItsOwnBudget`
+- `TheBudget_ResetsOnTheNextTurn`
+- `APassiveSpeedBonus_IsNotCountedAgainstTheCap`
+- `ACappedBonus_TrimsOnlyTheCellsTheBonusAdded`, `TheUnbonusedMove_KeepsItsOwnRounding`
+- `HasteBonus_ReportsOnlyTheHastenedStatus`
 - `KurbynRetainsEvasiveProtocol_AfterBeingNeutralized`
 
 **Compulsory and split movement — `GameEngine`**
@@ -1155,3 +1182,4 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - 2026-09-15 — **Luka repriced on first review** (designer): L 4 → 5, one above Zero-Day, which it out-damages on one target; Vendetta 9 → 6, out of Miracle Pull's price and beside Velvet Rope's. §2.2, §10.9 and §12 updated. Unmeasured.
 - 2026-09-15 — **Tech sources settled** (designer): damage from a guided or remote-operated device is Tech (§2.2). **Zero-Day and Drone Strike switch Normal → Tech**, joining Cryo-Pulse; Killzone is recorded as borderline and stays Normal. §5.12 states three consequences: the ward blocks damage but not riders, a warded holder still counts toward Drone Strike's split, and Mimi alone is fully shut out by the ward. A roster test pins the source list. §10.4, §10.6, §10.8, §10.9, §12 and §13 updated. Unmeasured.
 - 2026-09-15 — **"L" named Blind Spot** (designer). The device behind it and Hermes' Ring is one signal-spoofing ring: turned outward it hides him from every lens (the teleport), turned inward it jams guided tech (the ward). The fiction lives in `OPERATORS.md`. Ability id 901 unchanged. No rule or number changed.
+- 2026-09-16 — **Haste bonus capped at 3 cells** (designer balance note). §5.9 and §6.3 amended. Hastened still adds +0.5 speed, but at most 3 extra cells per operator per turn. The cap is per turn, not per move, so splitting a roll cannot collect it twice. It is a new config value, `CombatConfig.HasteBonusCellCap`, and `GameEngine` keeps the per-turn budget. `Move`, `PreviewLandings` and `HasLegalMove` now share one distance helper. `MatchFactory.Match` now exposes `Statuses` for tests. Sim before/after is noise-level (§12). Tests 496 → 512.

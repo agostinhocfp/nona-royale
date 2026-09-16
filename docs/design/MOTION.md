@@ -1,7 +1,7 @@
 # Nona Royale — Motion and Feedback (Stage 3)
 
 > Location in repo: `docs/design/MOTION.md` · Project copy: `claude/MOTION.md`
-> Status: **Open, 2026-09-16.** MO1 committed. MO2 built, awaiting Play Mode.
+> Status: **Closed, 2026-09-16.** MO1 and MO2 committed after Play Mode.
 > Related: `NEXT_PHASES.md` (Stage 3), `BOTS.md` (Stage 2), `PRESENTATION.md` §3 and §4, `ART_DIRECTION.md` §8, ADR-0008
 
 ## Goal
@@ -113,3 +113,11 @@ This covers the pitch's "simple animations (idle loops, move effects, card flips
   - **PRESENTATION:** §3 notes the hop; new §3.1 covers sequencing.
   - **Checks:** the view compiles with no warnings; 496 core tests pass; the sim compiles. No core change. The hit-stop, pause and `MotionSettings` logic was exercised in a scratch harness, including a mutation check. Every effect is world-space or uGUI drawing, so Play Mode is the only visual check.
   - **Choices made while building, for the designer to judge in Play Mode:** hop height and speed, how strongly pieces squash and breathe, the thresholds for the stop and the nudge, and that Reduced motion also turns idle off.
+- 2026-09-16 — **MO2 passed Play Mode** after one tweak: the hops were made subtler (0.08 cells high, about half the stretch and squash). Committed as `feat(motion): hops, rises, knockout shatter, cast tells and idle`.
+- 2026-09-16 — **Follow-up by the designer: a board-hover echo.** The piece under the pointer lights its row on the squad rail and on the dev panel (uGUI and OnGUI) with a faint gold wash (10% alpha).
+  - Toggled directly (`SetHovered`, one `Image.enabled`), not through a rebuild, since hover moves at pointer speed. Rows rebuilt while hovered re-apply it.
+  - Selection wins on the rail: a selected row keeps its cyan look and gets no wash. The uGUI dev panel lists only the current seat, so an enemy piece lights nothing there.
+  - Gold, not cyan: it echoes the pointer and is not a live control (ART_DIRECTION §2.1).
+  - `MatchBootstrap.SetHovered` is now the one place the hovered piece changes, and it feeds the rail and the panel.
+  - The first part landed in two commits under the MO2 message (`f69e4dc`, `8b79619`); the rest (the setup hand-off and the OnGUI wash) is committed separately.
+- 2026-09-16 — **Stage closed.** Next: Stage 5 (audio), chosen over Stage 4 because no finished Meshy renders are in hand yet. Audio hooks on `PresentationQueue.BeatStarted`.

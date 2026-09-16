@@ -124,7 +124,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition TaggedFromAbove { get; } = new AbilityDefinition(
             id: 203, name: "Tagged From Above",
             description:
-                "Paints an enemy for the squad and slips you out of sight. If your side finishes them while the mark holds, everyone moves faster.",
+                "Paints an enemy for the squad and slips you out of sight. If your side finishes them while the mark holds, everyone moves faster, up to 3 extra cells a turn.",
             energyCost: 9, cooldownTurns: 4, range: 3,
             effects: new[]
             {

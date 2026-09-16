@@ -93,6 +93,17 @@ namespace NonaRoyale.Core
 
         private bool _hasRolled;
 
+        /// <summary>
+        /// Haste bonus cells each operator has already used this turn, by
+        /// operator id (COMBAT_SYSTEMS §5.9). Reset in <see cref="ResetRollState"/>.
+        /// </summary>
+        /// <remarks>
+        /// Kept per turn rather than per roll so a doubles re-roll draws from the
+        /// same <c>CombatConfig.HasteBonusCellCap</c>, and per operator so one
+        /// hastened operator's move never eats another's allowance.
+        /// </remarks>
+        private readonly Dictionary<int, int> _hasteCellsUsed = new Dictionary<int, int>();
+
         private PlayerColor? _winner;
 
         private readonly Dictionary<PlayerColor, int> _knockoutsScored = new Dictionary<PlayerColor, int>();
@@ -618,7 +629,7 @@ namespace NonaRoyale.Core
                 pips = command.DieFace.Value;
             }
 
-            int cells = _movement.CellsFor(pips, SpeedOf(op));
+            int cells = CellsFor(op, pips, out int hasteCells);
 
             // A single low die under a heavy slow can floor to nothing. Spending
             // it would be a move that moves nobody, and it would ask
@@ -637,6 +648,11 @@ namespace NonaRoyale.Core
             var collision = _collisions.Resolve(op, move, _operators);
 
             op.MoveTo(collision.MoverFinalProgress);
+
+            // Charged on the attempted move, bounce or not: the cells were
+            // travelled, and a bounce is placement afterwards (§7.2).
+            if (hasteCells > 0)
+                _hasteCellsUsed[op.Id] = HasteCellsUsed(op) + hasteCells;
 
             if (command.DieFace == null) _unspentDice.Clear();
             else _unspentDice.Remove(command.DieFace.Value);
@@ -1015,16 +1031,14 @@ namespace NonaRoyale.Core
             {
                 if (!CanBeMoved(op)) continue;
 
-                double speed = SpeedOf(op);
-
-                AddPreview(previews, op, null, pooled, speed);
+                AddPreview(previews, op, null, pooled);
 
                 if (_unspentDice.Count < 2) continue;
 
                 for (int i = 0; i < _unspentDice.Count; i++)
                 {
                     if (IsRepeatedFace(i)) continue;
-                    AddPreview(previews, op, _unspentDice[i], _unspentDice[i], speed);
+                    AddPreview(previews, op, _unspentDice[i], _unspentDice[i]);
                 }
             }
 
@@ -1032,9 +1046,9 @@ namespace NonaRoyale.Core
         }
 
         private void AddPreview(
-            List<LandingPreview> into, OperatorState op, int? die, int pips, double speed)
+            List<LandingPreview> into, OperatorState op, int? die, int pips)
         {
-            int cells = _movement.CellsFor(pips, speed);
+            int cells = CellsFor(op, pips, out _);
             if (cells <= 0) return;
 
             var move = _movement.ResolveMove(op, cells);
@@ -1122,7 +1136,7 @@ namespace NonaRoyale.Core
             foreach (var op in player.Operators)
             {
                 if (!CanBeMoved(op)) continue;
-                if (_movement.CellsFor(pooled, SpeedOf(op)) > 0) return true;
+                if (CellsFor(op, pooled, out _) > 0) return true;
             }
 
             return false;
@@ -1144,10 +1158,47 @@ namespace NonaRoyale.Core
         /// <c>HasLegalMove</c> both needed it. Three copies of this expression
         /// would be three places for the aura rule to drift.
         /// </remarks>
-        private double SpeedOf(OperatorState op) =>
+        private double SpeedOf(OperatorState op, double adjustment = 0.0) =>
             _movement.EffectiveSpeed(
                 op.BaseSpeedMultiplier,
-                _statuses.SpeedModifier(op) + _auras.SpeedModifierFor(op, _operators));
+                _statuses.SpeedModifier(op) + _auras.SpeedModifierFor(op, _operators) + adjustment);
+
+        /// <summary>
+        /// Cells this operator moves for <paramref name="pips"/> right now, with
+        /// the haste bonus capped at what is left of this turn's
+        /// <c>HasteBonusCellCap</c> (COMBAT_SYSTEMS §5.9).
+        /// </summary>
+        /// <remarks>
+        /// <b>The one place movement distance is computed.</b> <see cref="Move"/>,
+        /// <see cref="PreviewLandings"/> and <see cref="HasLegalMove"/> all call
+        /// it, so the preview can never promise a landing the cap then trims.
+        /// Only <see cref="Move"/> charges <paramref name="hasteCells"/> to the
+        /// budget; the other two only ask.
+        ///
+        /// The unhasted speed is the same expression minus the haste, floored
+        /// by <c>EffectiveSpeed</c> on its own. So a slowed and hasted operator
+        /// sitting on the speed floor gets no phantom bonus: both speeds floor
+        /// to the same value and the difference is zero.
+        /// </remarks>
+        private int CellsFor(OperatorState op, int pips, out int hasteCells)
+        {
+            double speed = SpeedOf(op);
+            double haste = _statuses.HasteBonus(op);
+
+            if (haste <= 0.0)
+            {
+                hasteCells = 0;
+                return _movement.CellsFor(pips, speed);
+            }
+
+            int budget = Math.Max(0, _config.HasteBonusCellCap - HasteCellsUsed(op));
+
+            return _movement.CellsWithCappedBonus(
+                pips, speed, SpeedOf(op, -haste), budget, out hasteCells);
+        }
+
+        private int HasteCellsUsed(OperatorState op) =>
+            _hasteCellsUsed.TryGetValue(op.Id, out int used) ? used : 0;
 
         private int UnspentTotal()
         {
@@ -1170,6 +1221,7 @@ namespace NonaRoyale.Core
             _hasRolled = false;
             _sawDeployFace = false;
             _unspentDice.Clear();
+            _hasteCellsUsed.Clear();
         }
 
         private OperatorState FindOperator(int id)

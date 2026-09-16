@@ -35,13 +35,15 @@ namespace NonaRoyale.Core
                 IReadOnlyList<PlayerState> players,
                 IReadOnlyList<OperatorState> operators,
                 PathMap map,
-                IReadOnlyDictionary<int, IReadOnlyList<AbilityDefinition>> abilitiesByOperator)
+                IReadOnlyDictionary<int, IReadOnlyList<AbilityDefinition>> abilitiesByOperator,
+                StatusRegistry statuses)
             {
                 Engine = engine;
                 Players = players;
                 Operators = operators;
                 Map = map;
                 AbilitiesByOperator = abilitiesByOperator;
+                Statuses = statuses;
             }
 
             public GameEngine Engine { get; }
@@ -54,6 +56,14 @@ namespace NonaRoyale.Core
             /// by the view to draw an ability tray.
             /// </summary>
             public IReadOnlyDictionary<int, IReadOnlyList<AbilityDefinition>> AbilitiesByOperator { get; }
+
+            /// <summary>
+            /// The match's status registry. For tests and tools that need to
+            /// set up a status the dice would take many turns to produce — the
+            /// haste cap's tests are the first. The view reads statuses through
+            /// the engine and has no reason to touch this.
+            /// </summary>
+            public StatusRegistry Statuses { get; }
         }
 
         /// <summary>
@@ -195,7 +205,7 @@ namespace NonaRoyale.Core
     abilities, statuses, auraRules, neutralize, win, combatConfig, cellEffects, random);
 
 
-            return new Match(engine, players, operators, map, abilitiesByOperator);
+            return new Match(engine, players, operators, map, abilitiesByOperator, statuses);
         }
 
         /// <summary>

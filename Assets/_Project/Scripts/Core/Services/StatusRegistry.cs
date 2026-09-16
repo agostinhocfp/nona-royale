@@ -235,6 +235,23 @@ namespace NonaRoyale.Core.Services
             return total;
         }
 
+        /// <summary>
+        /// The speed <see cref="StatusKind.Hastened"/> is adding right now, or 0
+        /// if the operator is not hastened.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="SpeedModifier"/> already includes this; it is exposed on
+        /// its own so the engine can work out what a move would be <i>without</i>
+        /// the haste and cap the difference (COMBAT_SYSTEMS §5.9). Read through
+        /// <see cref="ActiveEntry"/>, the same precedence the sum uses, so the
+        /// two can never disagree about whether the operator is hastened.
+        /// </remarks>
+        public double HasteBonus(OperatorState op)
+        {
+            var entry = ActiveEntry(op, StatusKind.Hastened);
+            return entry == null ? 0.0 : Math.Max(0.0, entry.Magnitude);
+        }
+
         public int BleedStacks(OperatorState op)
         {
             var entry = ActiveEntry(op, StatusKind.Bleed);

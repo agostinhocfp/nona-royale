@@ -250,9 +250,9 @@ namespace NonaRoyale.Unity.View
 
             UiKit.Size(row, height: RowHeight);
 
-            // The hover wash is the row's first child, so it draws under the
-            // icon and labels; layout ignores it and it never catches the
-            // pointer (ADR-0008 consequence 9).
+            // The hover wash is added before the row's content, so it draws
+            // under the icon and labels; layout ignores it and it never
+            // catches the pointer (ADR-0008 consequence 9).
             var glowRect = UiKit.Rect("hover_glow", row);
             UiKit.Stretch(glowRect);
             glowRect.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
