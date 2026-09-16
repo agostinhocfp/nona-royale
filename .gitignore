@@ -112,3 +112,10 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# Local scratch from Claude sessions: audio sources, previews and renders (never shipped)
+/Claude outputs/au1_preview/
+/Claude outputs/lyria/
+/Claude outputs/kenney_casino-audio/
+/Claude outputs/*.wav
+/Claude outputs/*.mid
