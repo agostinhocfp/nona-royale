@@ -9,6 +9,7 @@ using NonaRoyale.Core.Commands;
 using NonaRoyale.Core.Events;
 using NonaRoyale.Core.Model;
 using NonaRoyale.Core.Services;
+using NonaRoyale.Unity.Audio;
 using NonaRoyale.Unity.View;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -59,6 +60,11 @@ namespace NonaRoyale.Unity.Composition
     /// knockout shatter, hit-stop and camera nudge to its hits. One
     /// <see cref="MotionSettings"/> object carries Reduced motion, the
     /// animation speed and the hurry to every animated view.
+    ///
+    /// <b>Sound follows the same steps</b> (AUDIO.md increment AU1). Each
+    /// presentation step asks the <see cref="AudioDirector"/> for its cue as
+    /// it starts, and <c>Update</c> tells the director which music fits the
+    /// screen and whether the pause menu is open.
     ///
     /// <b>Display settings persist</b> (increment J): health labels, the log
     /// and the dev panel are loaded from <c>PlayerPrefs</c> at Start, with the
@@ -228,6 +234,13 @@ namespace NonaRoyale.Unity.Composition
         private CameraNudge _nudge;
         private HitStop _hitStop;
 
+        /// <summary>Plays every sound (AU1). Built once, at Start; it outlives matches.</summary>
+        private AudioDirector _audio;
+
+        /// <summary>The volume settings, shared with the director and the sound page (AU1).</summary>
+        private readonly AudioLevels _levels = new AudioLevels();
+        private readonly AudioLevels _savedLevels = new AudioLevels();
+
         /// <summary>Reduced motion, animation speed and hurry, shared with every animated view (MO2).</summary>
         private readonly MotionSettings _motion = new MotionSettings();
 
@@ -281,6 +294,11 @@ namespace NonaRoyale.Unity.Composition
             _hitStop = Ensure<HitStop>();
             _hitStop.Bind(_motion);
 
+            _audio = Ensure<AudioDirector>();
+            _audio.Bind(_levels);
+            UiKit.ButtonPressed -= OnUiButton;
+            UiKit.ButtonPressed += OnUiButton;
+
             _hudRoot = GetComponent<HudRoot>() ?? gameObject.AddComponent<HudRoot>();
             BindScreens();
 
@@ -312,6 +330,9 @@ namespace NonaRoyale.Unity.Composition
             _savedSpeed = cpuSpeed;
             _savedReduced = reducedMotion;
             _savedAnimation = animationSpeed;
+
+            SettingsStore.LoadAudio(_levels);
+            _savedLevels.CopyFrom(_levels);
         }
 
         /// <summary>Saves when a flag changed, however it changed: a key, a menu toggle, the inspector.</summary>
@@ -328,6 +349,13 @@ namespace NonaRoyale.Unity.Composition
                 _savedReduced = reducedMotion;
                 _savedAnimation = animationSpeed;
                 SettingsStore.SaveMotion(reducedMotion, animationSpeed);
+            }
+
+            // Not mid-drag: a slider reports every frame it moves, and each save flushes to disk.
+            if (!_levels.SameAs(_savedLevels) && !Input.GetMouseButton(0))
+            {
+                _savedLevels.CopyFrom(_levels);
+                SettingsStore.SaveAudio(_levels);
             }
 
             if (showPieceHealth == _savedHealth && showFullLog == _savedLog && showDevPanel == _savedDev) return;
@@ -617,6 +645,37 @@ namespace NonaRoyale.Unity.Composition
         private void OnPieceStepped(OperatorPiece piece)
         {
             if (_queue != null) _queue.Raise(PresentationBeat.Step);
+            Sound(SoundCue.Step, piece.transform.position);
+        }
+
+        /// <summary>Plays a cue if the director exists. Positions pan it.</summary>
+        private void Sound(SoundCue cue, Vector3? at = null)
+        {
+            if (_audio != null) _audio.Play(cue, at);
+        }
+
+        private void OnUiButton() => Sound(SoundCue.UiClick);
+
+        private void OnDestroy() => UiKit.ButtonPressed -= OnUiButton;
+
+        /// <summary>
+        /// Which music fits the screen (AU1): the match loop while a live
+        /// match is on screen or paused, the title loop everywhere else,
+        /// including the results. In a match's final stretch (the engine says
+        /// a seat is one operator from winning) the showdown takes over, if a
+        /// file for it exists.
+        /// </summary>
+        private void SyncAudio()
+        {
+            if (_audio == null) return;
+
+            var screen = CurrentScreen;
+            bool live = _match != null && !_match.Engine.MatchOver;
+
+            _audio.Music = live && (screen == AppScreen.Match || screen == AppScreen.Paused)
+                ? (_match.Engine.IsFinalStretch ? MusicCue.Showdown : MusicCue.Match)
+                : MusicCue.Title;
+            _audio.Paused = screen == AppScreen.Paused;
         }
 
         /// <summary>Screen width the OnGUI panel occupies, including its margin. Pixels.</summary>
@@ -776,6 +835,8 @@ namespace NonaRoyale.Unity.Composition
             {
                 FrameCamera();
             }
+
+            SyncAudio();
 
             if (paused)
             {
@@ -1261,10 +1322,18 @@ namespace NonaRoyale.Unity.Composition
                 var seat = _match.Engine.CurrentPlayer.Color;
                 var centre = _layout.HomeGoalPosition;
 
-                _queue.Enqueue(PresentationBeat.DiceRolled,
-                    () => _dice.Play(roll.Roll.First, roll.Roll.Second, seat, centre, roll.GrantsAnotherRoll),
+                _queue.Enqueue(PresentationBeat.DiceRolled, () =>
+                    {
+                        _dice.Play(roll.Roll.First, roll.Roll.Second, seat, centre, roll.GrantsAnotherRoll);
+                        Sound(SoundCue.DiceShake);
+                    },
                     () => !_dice.IsTumbling);
-                _queue.Enqueue(PresentationBeat.DiceLanded, null, () => !_dice.IsRolling);
+                _queue.Enqueue(PresentationBeat.DiceLanded, () =>
+                    {
+                        Sound(SoundCue.DiceLand);
+                        if (roll.Roll.IsDouble) Sound(SoundCue.Doubles);
+                    },
+                    () => !_dice.IsRolling);
             }
 
             if (command is UseAbilityCommand use && !refused) QueueCastTell(use, castBy);
@@ -1279,7 +1348,11 @@ namespace NonaRoyale.Unity.Composition
                     foreach (var rise in rises)
                     {
                         var piece = PieceFor(rise.Key);
-                        if (piece != null) piece.Rise(_layout.PositionOf(rise.Value));
+                        if (piece == null) continue;
+
+                        var at = _layout.PositionOf(rise.Value);
+                        piece.Rise(at);
+                        Sound(SoundCue.Rise, at);
                     }
                 }, hold: _motion.Tween(RiseHoldSeconds));
             }
@@ -1318,10 +1391,14 @@ namespace NonaRoyale.Unity.Composition
 
             float hold = _tells.Duration(aimed);
 
-            _queue.Enqueue(PresentationBeat.CastTell, () => _tells.Play(
-                    caster.transform.position,
-                    target != null ? target.transform.position : (Vector3?)null,
-                    cell.HasValue ? _layout.PositionOf(cell.Value) : (Vector3?)null),
+            _queue.Enqueue(PresentationBeat.CastTell, () =>
+                {
+                    _tells.Play(
+                        caster.transform.position,
+                        target != null ? target.transform.position : (Vector3?)null,
+                        cell.HasValue ? _layout.PositionOf(cell.Value) : (Vector3?)null);
+                    Sound(cell.HasValue ? SoundCue.CastCell : SoundCue.CastTell, caster.transform.position);
+                },
                 hold: hold);
         }
 
@@ -1356,6 +1433,9 @@ namespace NonaRoyale.Unity.Composition
             {
                 _endQueued = true;
                 _end.OpenSoon();
+
+                // The settle of the winning action, walked or instant (a CPU at Instant speed).
+                if (_audio != null) _audio.Sting();
             }
         }
 
@@ -1382,7 +1462,10 @@ namespace NonaRoyale.Unity.Composition
             if (_banner == null) return;
 
             if (batch.TurnBegan != null && !engine.MatchOver)
+            {
                 _banner.Show(batch.TurnBegan.Player, engine.Round);
+                Sound(SoundCue.TurnStart);
+            }
 
             if (engine.MatchOver || engine.Phase != TurnPhase.AwaitingRoll)
                 _banner.Hide();
@@ -1582,6 +1665,7 @@ namespace NonaRoyale.Unity.Composition
         BotSpeed ISettingsHost.CpuSpeed { get => cpuSpeed; set => cpuSpeed = value; }
         bool ISettingsHost.ReducedMotion { get => reducedMotion; set => reducedMotion = value; }
         AnimationSpeed ISettingsHost.AnimationSpeed { get => animationSpeed; set => animationSpeed = value; }
+        AudioLevels ISettingsHost.Audio => _levels;
 
         void IPauseHost.MainMenu() => ShowTitle();
 
@@ -1736,6 +1820,7 @@ namespace NonaRoyale.Unity.Composition
                     bool big = damaged.RemainingHealth <= 0 ||
                                damaged.Amount >= BigHitFraction * damaged.Target.MaxHealth;
                     if (big) impact = piece;
+                    Sound(big ? SoundCue.HitBig : SoundCue.Hit, piece.transform.position);
                     continue;
                 }
 
@@ -1743,7 +1828,11 @@ namespace NonaRoyale.Unity.Composition
                 if (evaded != null)
                 {
                     var piece = PieceFor(evaded.Target);
-                    if (piece != null) _feedback.Evaded(piece.transform.position);
+                    if (piece != null)
+                    {
+                        _feedback.Evaded(piece.transform.position);
+                        Sound(SoundCue.Miss, piece.transform.position);
+                    }
                     continue;
                 }
 
@@ -1751,7 +1840,11 @@ namespace NonaRoyale.Unity.Composition
                 if (absorbed != null)
                 {
                     var piece = PieceFor(absorbed.Target);
-                    if (piece != null) _feedback.Absorbed(piece.transform.position);
+                    if (piece != null)
+                    {
+                        _feedback.Absorbed(piece.transform.position);
+                        Sound(SoundCue.Block, piece.transform.position);
+                    }
                     continue;
                 }
 
@@ -1763,6 +1856,7 @@ namespace NonaRoyale.Unity.Composition
                     {
                         _feedback.Heal(piece.transform.position, healed.Amount);
                         piece.ShowHealth(piece.ShownHealth + healed.Amount);
+                        Sound(SoundCue.Heal, piece.transform.position);
                     }
                     continue;
                 }
@@ -1775,6 +1869,7 @@ namespace NonaRoyale.Unity.Composition
                     {
                         _feedback.Heal(piece.transform.position, regen.Amount);
                         piece.ShowHealth(piece.ShownHealth + regen.Amount);
+                        Sound(SoundCue.Heal, piece.transform.position);
                     }
                     continue;
                 }
@@ -1789,6 +1884,7 @@ namespace NonaRoyale.Unity.Composition
                             piece.transform.position,
                             BoardLayout.ColourOf(down.Operator.Owner),
                             down.Cause);
+                        Sound(SoundCue.Knockout, piece.transform.position);
                         piece.Shatter();
                         impact = piece;
                     }

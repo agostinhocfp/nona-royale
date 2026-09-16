@@ -270,6 +270,46 @@ namespace NonaRoyale.Core.Tests.Engine
         }
 
         [Test]
+        public void IsFinalStretch_IsFalse_AtTheStart()
+        {
+            Assert.That(_engine.IsFinalStretch, Is.False);
+        }
+
+        [Test]
+        public void IsFinalStretch_IsFalse_WithOnlyOneOperatorHome()
+        {
+            Op(PlayerColor.Red, "Bouncer").MoveTo(BoardProfile.Standard.Journey);
+
+            Assert.That(_engine.IsFinalStretch, Is.False);
+        }
+
+        [Test]
+        public void IsFinalStretch_IsTrue_WhenASeatHasAllButOneHome()
+        {
+            // The alpha squad is three: two home leaves one to go.
+            Op(PlayerColor.Blue, "Bouncer").MoveTo(BoardProfile.Standard.Journey);
+            Op(PlayerColor.Blue, "Syla").MoveTo(BoardProfile.Standard.Journey);
+
+            Assert.That(_engine.IsFinalStretch, Is.True);
+        }
+
+        [Test]
+        public void IsFinalStretch_IsFalse_OnceTheMatchIsOver()
+        {
+            // Blue is one from home, but Red has already won.
+            Op(PlayerColor.Blue, "Bouncer").MoveTo(BoardProfile.Standard.Journey);
+            Op(PlayerColor.Blue, "Syla").MoveTo(BoardProfile.Standard.Journey);
+            foreach (var op in _match.Players[0].Operators)
+                op.MoveTo(BoardProfile.Standard.Journey);
+
+            _engine.Execute(new RollDiceCommand());
+            _engine.Execute(new EndTurnCommand());
+
+            Assert.That(_engine.MatchOver, Is.True);
+            Assert.That(_engine.IsFinalStretch, Is.False);
+        }
+
+        [Test]
         public void AnOperatorInTheYard_CannotMove()
         {
             _engine.Execute(new RollDiceCommand());

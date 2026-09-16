@@ -29,6 +29,9 @@ namespace NonaRoyale.Core.Services
     public sealed class TurnStateMachine
     {
         private readonly IReadOnlyList<PlayerState> _players;
+
+        /// <summary>The seats in turn order. Read-only; for queries that look across the table.</summary>
+        public IReadOnlyList<PlayerState> Players => _players;
         private readonly MatchClock _clock;
         private readonly GameConfig _config;
         private readonly IRandom _random;

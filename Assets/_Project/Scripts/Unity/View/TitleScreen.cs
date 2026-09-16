@@ -33,7 +33,7 @@ namespace NonaRoyale.Unity.View
     /// </remarks>
     public sealed class TitleScreen : ModalCard
     {
-        private enum Page { Main, Settings }
+        private enum Page { Main, Settings, Sound }
 
         private ITitleHost _host;
         private Page _page;
@@ -74,7 +74,8 @@ namespace NonaRoyale.Unity.View
         {
             if (!IsOpen) return;
 
-            if (_page == Page.Settings) _page = Page.Main;
+            if (_page == Page.Sound) _page = Page.Settings;
+            else if (_page == Page.Settings) _page = Page.Main;
             _quitArmed = false;
             Rebuild();
         }
@@ -103,6 +104,7 @@ namespace NonaRoyale.Unity.View
             Wordmark();
 
             if (_page == Page.Main) MainPage();
+            else if (_page == Page.Sound) SoundPage();
             else SettingsPage();
         }
 
@@ -176,8 +178,16 @@ namespace NonaRoyale.Unity.View
         private void SettingsPage()
         {
             Heading("Settings");
-            SettingsRows.Build(ColumnSlot, _host, Rebuild);
+            SettingsRows.Build(ColumnSlot, _host, Rebuild, () => { _page = Page.Sound; Rebuild(); });
             Note("Remembered between sessions.", UiTheme.TextNote);
+            Gap(6f);
+            Choice("BACK", "Esc", Back);
+        }
+
+        private void SoundPage()
+        {
+            Heading("Sound");
+            SettingsRows.BuildSound(ColumnSlot, _host, Rebuild);
             Gap(6f);
             Choice("BACK", "Esc", Back);
         }

@@ -38,6 +38,14 @@ namespace NonaRoyale.Unity.View
         /// <summary>Canvas units between a docked panel's two rules.</summary>
         private const float RuleGap = 3f;
 
+        /// <summary>
+        /// Raised after any kit button is pressed (AUDIO.md increment AU1), so
+        /// the audio director can click without every caller passing it along.
+        /// A plain event, not a service: the composition root subscribes and
+        /// unsubscribes, and nothing else reads it.
+        /// </summary>
+        public static event Action ButtonPressed;
+
         // ── Layout primitives ────────────────────────────────────────────
 
         public static RectTransform Rect(string name, Transform parent)
@@ -463,6 +471,87 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
+        /// A volume setting (AUDIO.md decision 5): its name, a slider, and the
+        /// value as a percentage. Dragging reports every change through
+        /// <paramref name="changed"/> and updates the percentage itself; it
+        /// never asks the page to rebuild, which would end the drag.
+        /// </summary>
+        public static Slider SliderRow(Transform parent, string label, float value, Action<float> changed,
+            bool dimmed = false)
+        {
+            var rect = Rect("slider_row", parent);
+            Sliced(rect, DecoSprites.ButtonFill, UiTheme.ButtonFill);
+            Overlay(rect, DecoSprites.ButtonEdge, UiTheme.WithAlpha(UiTheme.Line, dimmed ? 0.35f : 1f));
+
+            var row = Row(rect, 12f);
+            row.padding = new RectOffset(18, 14, 0, 0);
+            row.childAlignment = TextAnchor.MiddleLeft;
+            row.childForceExpandWidth = false;
+            row.childForceExpandHeight = false;
+
+            var name = Label(rect, label, UiTheme.FontBody, dimmed ? UiTheme.TextDim : UiTheme.Text);
+            Size(name, flexibleWidth: 1f, height: 28f);
+
+            // The track: the whole box catches the pointer, so the thin line is easy to grab.
+            var track = Rect("track", rect);
+            Fixed(track, 190f, 28f);
+            var hit = track.gameObject.AddComponent<Image>();
+            hit.color = new Color(0f, 0f, 0f, 0f);
+            hit.raycastTarget = true;
+
+            var line = Rect("line", track);
+            line.anchorMin = new Vector2(0f, 0.5f);
+            line.anchorMax = new Vector2(1f, 0.5f);
+            line.sizeDelta = new Vector2(0f, 6f);
+            Sliced(line, DecoSprites.ChipFill, UiTheme.PanelInset);
+
+            var fillArea = Rect("fill_area", track);
+            fillArea.anchorMin = new Vector2(0f, 0.5f);
+            fillArea.anchorMax = new Vector2(1f, 0.5f);
+            fillArea.sizeDelta = new Vector2(0f, 6f);
+
+            var fill = Rect("fill", fillArea);
+            fill.sizeDelta = Vector2.zero;
+            Sliced(fill, DecoSprites.ChipFill, dimmed ? UiTheme.TextOff : UiTheme.Cyan);
+
+            var handleArea = Rect("handle_area", track);
+            Stretch(handleArea);
+            handleArea.offsetMin = new Vector2(7f, 0f);
+            handleArea.offsetMax = new Vector2(-7f, 0f);
+
+            var handle = Rect("handle", handleArea);
+            handle.sizeDelta = new Vector2(14f, 0f);
+            var knob = Fill(handle, dimmed ? UiTheme.TextDim : UiTheme.GoldBright);
+            knob.sprite = DecoSprites.Diamond;
+            knob.preserveAspect = true;
+
+            var percent = Label(rect, "", 15f, UiTheme.TextDim, TextAlignmentOptions.MidlineRight);
+            Fixed(percent, 52f, 28f);
+
+            var slider = track.gameObject.AddComponent<Slider>();
+            slider.transition = Selectable.Transition.None;
+            slider.navigation = new Navigation { mode = Navigation.Mode.None };
+            slider.direction = Slider.Direction.LeftToRight;
+            slider.minValue = 0f;
+            slider.maxValue = 1f;
+            slider.wholeNumbers = false;
+            slider.fillRect = fill;
+            slider.handleRect = handle;
+            slider.targetGraphic = knob;
+            slider.SetValueWithoutNotify(Mathf.Clamp01(value));
+
+            percent.text = $"{Mathf.RoundToInt(slider.value * 100f)}%";
+
+            slider.onValueChanged.AddListener(v =>
+            {
+                percent.text = $"{Mathf.RoundToInt(v * 100f)}%";
+                changed?.Invoke(v);
+            });
+
+            return slider;
+        }
+
+        /// <summary>
         /// A setting with more than two values, as one wide button that cycles
         /// them: its name, a hint in gold, and a chip naming the current value
         /// (BOT3). Lit cyan when <paramref name="lit"/>.
@@ -544,6 +633,7 @@ namespace NonaRoyale.Unity.View
             {
                 if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
 
+                ButtonPressed?.Invoke();
                 onClick?.Invoke();
                 afterClick?.Invoke();
             });

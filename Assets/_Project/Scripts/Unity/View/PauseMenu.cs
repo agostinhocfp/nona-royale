@@ -36,7 +36,7 @@ namespace NonaRoyale.Unity.View
         private const float CardWidth = 440f;
         private const float ButtonHeight = 54f;
 
-        private enum Page { Main, Settings }
+        private enum Page { Main, Settings, Sound }
 
         private IPauseHost _host;
         private RectTransform _root;
@@ -83,9 +83,9 @@ namespace NonaRoyale.Unity.View
         {
             if (!IsOpen) return;
 
-            if (_page == Page.Settings)
+            if (_page != Page.Main)
             {
-                _page = Page.Main;
+                _page = _page == Page.Sound ? Page.Settings : Page.Main;
                 _armed = null;
                 Rebuild();
                 return;
@@ -144,6 +144,7 @@ namespace NonaRoyale.Unity.View
             }
 
             if (_page == Page.Main) MainPage();
+            else if (_page == Page.Sound) SoundPage();
             else SettingsPage();
 
             LayoutRebuilder.ForceRebuildLayoutImmediate(_card);
@@ -169,7 +170,17 @@ namespace NonaRoyale.Unity.View
         {
             Title("Settings", "Changes apply at once.");
 
-            if (_host != null) SettingsRows.Build(Content, _host, Rebuild);
+            if (_host != null) SettingsRows.Build(Content, _host, Rebuild, () => { _page = Page.Sound; Rebuild(); });
+
+            Space(4f);
+            Choice("BACK", "Esc", Back);
+        }
+
+        private void SoundPage()
+        {
+            Title("Sound", "Changes apply at once.");
+
+            if (_host != null) SettingsRows.BuildSound(Content, _host, Rebuild);
 
             Space(4f);
             Choice("BACK", "Esc", Back);

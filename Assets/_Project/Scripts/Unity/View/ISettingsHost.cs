@@ -1,4 +1,5 @@
 // Assets/_Project/Scripts/Unity/View/ISettingsHost.cs
+using NonaRoyale.Unity.Audio;
 using UnityEngine;
 
 namespace NonaRoyale.Unity.View
@@ -29,17 +30,29 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>How fast every seat's actions animate (MO2).</summary>
         AnimationSpeed AnimationSpeed { get; set; }
+
+        /// <summary>The volume settings (AU1). The sound page writes to this object directly.</summary>
+        AudioLevels Audio { get; }
     }
 
-    /// <summary>The settings page's rows, shared by the pause menu and the title screen.</summary>
+    /// <summary>The settings pages' rows, shared by the pause menu and the title screen.</summary>
     public static class SettingsRows
     {
         public const float RowHeight = 54f;
 
+        /// <summary>A volume row is a little shorter, so the sound page stays compact.</summary>
+        public const float SliderHeight = 48f;
+
         /// <param name="slot">Makes a laid-out slot on the caller's card.</param>
         /// <param name="rebuild">Called after a toggle, so the page redraws.</param>
-        public static void Build(System.Func<string, RectTransform> slot, ISettingsHost host, System.Action rebuild)
+        /// <param name="openSound">Opens the sound page (AU1).</param>
+        public static void Build(System.Func<string, RectTransform> slot, ISettingsHost host, System.Action rebuild,
+            System.Action openSound)
         {
+            var sound = UiKit.ChoiceRow(slot("cycle"), "Sound", "", SoundSummary(host.Audio), !host.Audio.Muted,
+                openSound);
+            UiKit.Size(sound, height: RowHeight);
+
             Row(slot, "Health above pieces", "H", host.ShowPieceHealth, v => host.ShowPieceHealth = v, rebuild);
             Row(slot, "Event log", "L", host.ShowFullLog, v => host.ShowFullLog = v, rebuild);
             Row(slot, "Dev panel", "Tab", host.ShowDevPanel, v => host.ShowDevPanel = v, rebuild);
@@ -65,6 +78,34 @@ namespace NonaRoyale.Unity.View
             var button = UiKit.ChoiceRow(slot("cycle"), "CPU speed", "hold Space", speed.ToString().ToUpperInvariant(),
                 speed != BotSpeed.Normal, () => { host.CpuSpeed = NextSpeed(speed); rebuild(); });
             UiKit.Size(button, height: RowHeight);
+        }
+
+        /// <summary>
+        /// The sound page (AUDIO.md decision 5): Mute, then Master, Music,
+        /// Effects and Voice. Sliders write straight into the levels and never
+        /// rebuild; Mute rebuilds, so the sliders dim.
+        /// </summary>
+        public static void BuildSound(System.Func<string, RectTransform> slot, ISettingsHost host, System.Action rebuild)
+        {
+            var levels = host.Audio;
+            bool muted = levels.Muted;
+
+            Row(slot, "Mute", "", muted, v => levels.Muted = v, rebuild);
+            Volume(slot, "Master", levels.Master, v => levels.Master = v, muted);
+            Volume(slot, "Music", levels.Music, v => levels.Music = v, muted);
+            Volume(slot, "Effects", levels.Sfx, v => levels.Sfx = v, muted);
+            Volume(slot, "Voice", levels.Voice, v => levels.Voice = v, muted);
+        }
+
+        /// <summary>"80%", or "MUTED".</summary>
+        public static string SoundSummary(AudioLevels levels) =>
+            levels.Muted ? "MUTED" : $"{AudioLevels.Percent(levels.Master)}%";
+
+        private static void Volume(System.Func<string, RectTransform> slot, string label, float value,
+            System.Action<float> set, bool dimmed)
+        {
+            var slider = UiKit.SliderRow(slot("slider"), label, value, set, dimmed);
+            UiKit.Size(slider.transform.parent.GetComponent<RectTransform>(), height: SliderHeight);
         }
 
         public static BotSpeed NextSpeed(BotSpeed speed) =>
@@ -97,6 +138,11 @@ namespace NonaRoyale.Unity.View
         public const string CpuSpeed = "nr.settings.cpuSpeed";
         public const string ReducedMotion = "nr.settings.reducedMotion";
         public const string AnimSpeed = "nr.settings.animationSpeed";
+        public const string VolumeMaster = "nr.audio.master";
+        public const string VolumeMusic = "nr.audio.music";
+        public const string VolumeSfx = "nr.audio.sfx";
+        public const string VolumeVoice = "nr.audio.voice";
+        public const string Mute = "nr.audio.mute";
 
         public static BotSpeed LoadSpeed(BotSpeed fallback)
         {
@@ -127,6 +173,30 @@ namespace NonaRoyale.Unity.View
             PlayerPrefs.SetInt(AnimSpeed, (int)speed);
             PlayerPrefs.Save();
         }
+
+        /// <summary>Reads the volume settings into <paramref name="into"/>, keeping its values where nothing was saved.</summary>
+        public static void LoadAudio(AudioLevels into)
+        {
+            into.Master = LoadVolume(VolumeMaster, into.Master);
+            into.Music = LoadVolume(VolumeMusic, into.Music);
+            into.Sfx = LoadVolume(VolumeSfx, into.Sfx);
+            into.Voice = LoadVolume(VolumeVoice, into.Voice);
+            into.Muted = Load(Mute, into.Muted);
+        }
+
+        /// <summary>Writes the volume settings (AU1) and flushes them to disk.</summary>
+        public static void SaveAudio(AudioLevels levels)
+        {
+            PlayerPrefs.SetFloat(VolumeMaster, levels.Master);
+            PlayerPrefs.SetFloat(VolumeMusic, levels.Music);
+            PlayerPrefs.SetFloat(VolumeSfx, levels.Sfx);
+            PlayerPrefs.SetFloat(VolumeVoice, levels.Voice);
+            PlayerPrefs.SetInt(Mute, levels.Muted ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+
+        private static float LoadVolume(string key, float fallback) =>
+            PlayerPrefs.HasKey(key) ? Mathf.Clamp01(PlayerPrefs.GetFloat(key)) : fallback;
 
         public static bool Load(string key, bool fallback) =>
             PlayerPrefs.HasKey(key) ? PlayerPrefs.GetInt(key) != 0 : fallback;
