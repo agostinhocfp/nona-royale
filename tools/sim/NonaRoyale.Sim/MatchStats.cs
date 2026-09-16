@@ -23,6 +23,15 @@ namespace NonaRoyale.Sim
         public int Evasions;
         public int Executes;
 
+        /// <summary>Completed-turn count when the first neutralize landed, or -1 if none did.</summary>
+        public int FirstNeutralizeTurn = -1;
+
+        /// <summary>Deaths per operator name, for sweeps that move health around.</summary>
+        public readonly Dictionary<string, int> DeathsByOperator = new Dictionary<string, int>();
+
+        /// <summary>Deaths per cause ("collision", "ability", ...), for sweeps that move damage around.</summary>
+        public readonly Dictionary<string, int> DeathsByCause = new Dictionary<string, int>();
+
         /// <summary>Turns in which a player had every operator on the board at once.</summary>
         public int FullSquadTurns;
 
@@ -80,7 +89,19 @@ namespace NonaRoyale.Sim
         {
             foreach (var e in events)
             {
-                if (e is OperatorNeutralized) Neutralizes++;
+                if (e is OperatorNeutralized neutralized)
+                {
+                    Neutralizes++;
+                    if (FirstNeutralizeTurn < 0) FirstNeutralizeTurn = Turns;
+
+                    string name = neutralized.Operator.Name;
+                    DeathsByOperator.TryGetValue(name, out int perOp);
+                    DeathsByOperator[name] = perOp + 1;
+
+                    string cause = neutralized.Cause ?? "unknown";
+                    DeathsByCause.TryGetValue(cause, out int perCause);
+                    DeathsByCause[cause] = perCause + 1;
+                }
                 else if (e is CollisionResolved) Collisions++;
                 else if (e is EnergySpent) AbilitiesFired++;
                 else if (e is DamageEvaded) Evasions++;
