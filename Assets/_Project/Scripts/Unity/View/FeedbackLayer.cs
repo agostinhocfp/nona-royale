@@ -19,6 +19,9 @@ namespace NonaRoyale.Unity.View
         private const string BleedCause = "bleed";
         private const string MarkCause = "mark";
         private const string FollowUpCause = "follow-up";
+
+        /// <summary>Kian's Zero-Day charge detonates at upkeep, so it is labelled like bleed.</summary>
+        private const string ZeroDayCause = NonaRoyale.Core.Services.DeferredOperatorEffects.ChargeCause;
         private const string CriticalCause = "critical";
 
         private static Color HitColour => UiTheme.Damage;
@@ -66,7 +69,7 @@ namespace NonaRoyale.Unity.View
         /// explain them. Luka's follow-up joins bleed and marks.
         /// </summary>
         private static bool IsUpkeepCause(string cause) =>
-            cause == BleedCause || cause == MarkCause || cause == FollowUpCause;
+            cause == BleedCause || cause == MarkCause || cause == FollowUpCause || cause == ZeroDayCause;
 
         public void Heal(Vector3 at, int amount) =>
             FloatingText.Spawn(transform, at, $"+{amount}", HealColour, _scale);

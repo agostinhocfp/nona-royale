@@ -12,8 +12,14 @@ namespace NonaRoyale.Unity.View
         DiceRolled,
         /// <summary>The dice show the engine's faces.</summary>
         DiceLanded,
+        /// <summary>A cast announces itself: the sweep on the caster and the line or drop to its aim (MO2).</summary>
+        CastTell,
         /// <summary>Pieces start walking their forward moves.</summary>
         Walk,
+        /// <summary>A walking piece lands on a cell. Raised per hop, mid-step (MO2).</summary>
+        Step,
+        /// <summary>A deployed operator rises onto the board (MO2).</summary>
+        Rise,
         /// <summary>Damage, healing, evasion or absorption shows on a piece.</summary>
         Hit,
         /// <summary>An operator is knocked out.</summary>
@@ -24,8 +30,8 @@ namespace NonaRoyale.Unity.View
 
     /// <summary>
     /// Plays the presentation of each batch one step after another: dice,
-    /// then walks, then hits, then knockouts, then the settle (MOTION.md
-    /// increment MO1).
+    /// the cast tell, walks, rises, hits, knockouts, then the settle
+    /// (MOTION.md increments MO1 and MO2).
     /// </summary>
     /// <remarks>
     /// <b>It sequences; it decides nothing.</b> The composition root turns a
@@ -37,8 +43,8 @@ namespace NonaRoyale.Unity.View
     /// driver wait on it, so one action reads before the next begins.
     ///
     /// <b>Scaled time</b>, so pause freezes the queue with the rest of the
-    /// board (MOTION.md rules). <see cref="Speed"/> multiplies it, for the
-    /// CPU hurry key.
+    /// board (MOTION.md rules). <see cref="Speed"/> multiplies it: the
+    /// animation speed setting and the CPU hurry key.
     ///
     /// <b>Essential steps always run.</b> <see cref="Flush"/> skips the
     /// cosmetic steps and runs the essential ones (the settle, which feeds the
@@ -54,7 +60,7 @@ namespace NonaRoyale.Unity.View
         /// <summary>The longest any step may keep the queue busy, in scaled seconds.</summary>
         public const float MaxStepSeconds = 6f;
 
-        /// <summary>Raised as each step starts, with the step's beat.</summary>
+        /// <summary>Raised as each step starts, with the step's beat, and for beats raised inside a step.</summary>
         public event Action<PresentationBeat> BeatStarted;
 
         /// <summary>Multiplier on the queue's clock. 1 is normal.</summary>
@@ -72,6 +78,9 @@ namespace NonaRoyale.Unity.View
         private readonly Queue<Step> _pending = new Queue<Step>();
         private Step _current;
         private float _elapsed;
+
+        /// <summary>Announces a beat that happens inside a step, such as each hop of a walk.</summary>
+        public void Raise(PresentationBeat beat) => BeatStarted?.Invoke(beat);
 
         /// <summary>Whether a step is playing or waiting to play.</summary>
         public bool IsBusy => _current != null || _pending.Count > 0;

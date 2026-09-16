@@ -337,8 +337,12 @@ namespace NonaRoyale.Unity.View
                 var op = entry.Piece.Operator;
                 var centre = entry.Piece.transform.position;
 
-                bool showHealth = Visible && !op.IsInYard;
-                bool showStatuses = !op.IsInYard && entry.Statuses.Count > 0;
+                // The label follows the piece, not the engine (MO2): a hit's
+                // number and the label change together, and a shattered piece
+                // shows nothing until it is seated again.
+                bool standing = !entry.Piece.Seated && !entry.Piece.IsHidden;
+                bool showHealth = Visible && standing;
+                bool showStatuses = standing && entry.Statuses.Count > 0;
 
                 if (showHealth != entry.Shown)
                 {
@@ -356,10 +360,11 @@ namespace NonaRoyale.Unity.View
                 {
                     // Text is rebuilt only on change — TMP re-layouts on every
                     // assignment, and health changes on events, not frames.
-                    if (op.Health != entry.LastHealth)
+                    int shown = entry.Piece.ShownHealth;
+                    if (shown != entry.LastHealth)
                     {
-                        entry.LastHealth = op.Health;
-                        entry.Text.text = $"{op.Health}/{op.MaxHealth}";
+                        entry.LastHealth = shown;
+                        entry.Text.text = $"{shown}/{op.MaxHealth}";
                     }
 
                     entry.Rect.anchoredPosition = ToCanvas(camera, centre + Vector3.up * _worldOffset)

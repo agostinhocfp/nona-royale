@@ -23,6 +23,12 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>How fast CPU seats act (BOT3).</summary>
         BotSpeed CpuSpeed { get; set; }
+
+        /// <summary>No shake, hit-stop, hop or idle sway; shorter tweens (MO2).</summary>
+        bool ReducedMotion { get; set; }
+
+        /// <summary>How fast every seat's actions animate (MO2).</summary>
+        AnimationSpeed AnimationSpeed { get; set; }
     }
 
     /// <summary>The settings page's rows, shared by the pause menu and the title screen.</summary>
@@ -37,7 +43,19 @@ namespace NonaRoyale.Unity.View
             Row(slot, "Health above pieces", "H", host.ShowPieceHealth, v => host.ShowPieceHealth = v, rebuild);
             Row(slot, "Event log", "L", host.ShowFullLog, v => host.ShowFullLog = v, rebuild);
             Row(slot, "Dev panel", "Tab", host.ShowDevPanel, v => host.ShowDevPanel = v, rebuild);
+            Row(slot, "Reduced motion", "", host.ReducedMotion, v => host.ReducedMotion = v, rebuild);
+            AnimationSpeedRow(slot, host, rebuild);
             CpuSpeedRow(slot, host, rebuild);
+        }
+
+        /// <summary>Animation speed: one wide button that cycles Normal and Fast.</summary>
+        private static void AnimationSpeedRow(System.Func<string, RectTransform> slot, ISettingsHost host, System.Action rebuild)
+        {
+            var speed = host.AnimationSpeed;
+            var next = speed == AnimationSpeed.Normal ? AnimationSpeed.Fast : AnimationSpeed.Normal;
+            var button = UiKit.ChoiceRow(slot("cycle"), "Animation speed", "", speed.ToString().ToUpperInvariant(),
+                speed != AnimationSpeed.Normal, () => { host.AnimationSpeed = next; rebuild(); });
+            UiKit.Size(button, height: RowHeight);
         }
 
         /// <summary>CPU speed: one wide button that cycles Normal, Fast, Instant.</summary>
@@ -77,6 +95,8 @@ namespace NonaRoyale.Unity.View
         public const string FullLog = "nr.settings.fullLog";
         public const string DevPanel = "nr.settings.devPanel";
         public const string CpuSpeed = "nr.settings.cpuSpeed";
+        public const string ReducedMotion = "nr.settings.reducedMotion";
+        public const string AnimSpeed = "nr.settings.animationSpeed";
 
         public static BotSpeed LoadSpeed(BotSpeed fallback)
         {
@@ -89,6 +109,22 @@ namespace NonaRoyale.Unity.View
         public static void SaveSpeed(BotSpeed speed)
         {
             PlayerPrefs.SetInt(CpuSpeed, (int)speed);
+            PlayerPrefs.Save();
+        }
+
+        public static AnimationSpeed LoadAnimationSpeed(AnimationSpeed fallback)
+        {
+            if (!PlayerPrefs.HasKey(AnimSpeed)) return fallback;
+
+            int value = PlayerPrefs.GetInt(AnimSpeed);
+            return value == (int)AnimationSpeed.Normal || value == (int)AnimationSpeed.Fast ? (AnimationSpeed)value : fallback;
+        }
+
+        /// <summary>Writes the motion settings (MO2) and flushes them to disk.</summary>
+        public static void SaveMotion(bool reducedMotion, AnimationSpeed speed)
+        {
+            PlayerPrefs.SetInt(ReducedMotion, reducedMotion ? 1 : 0);
+            PlayerPrefs.SetInt(AnimSpeed, (int)speed);
             PlayerPrefs.Save();
         }
 

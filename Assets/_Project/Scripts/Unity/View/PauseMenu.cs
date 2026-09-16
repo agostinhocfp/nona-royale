@@ -61,7 +61,8 @@ namespace NonaRoyale.Unity.View
             _page = Page.Main;
             _armed = null;
 
-            _timeScale = Time.timeScale;
+            // A hit-stop (MO2) may have slowed the clock; resuming must never keep that.
+            _timeScale = Time.timeScale >= 1f ? Time.timeScale : 1f;
             Time.timeScale = 0f;
 
             _root.gameObject.SetActive(true);

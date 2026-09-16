@@ -55,6 +55,10 @@ namespace NonaRoyale.Unity.Composition
     /// settle that repositions pieces and refreshes the HUD. Commands wait
     /// while it is busy. Space and E pressed near the end of a step are kept
     /// briefly and sent when it finishes; the CPU driver waits for it too.
+    /// MO2 adds the cast tell and the deploy rise to the sequence, and the
+    /// knockout shatter, hit-stop and camera nudge to its hits. One
+    /// <see cref="MotionSettings"/> object carries Reduced motion, the
+    /// animation speed and the hurry to every animated view.
     ///
     /// <b>Display settings persist</b> (increment J): health labels, the log
     /// and the dev panel are loaded from <c>PlayerPrefs</c> at Start, with the
@@ -108,6 +112,12 @@ namespace NonaRoyale.Unity.Composition
         // overlay: it now starts closed, whatever the scene saved.
         [Tooltip("Show the full text log over the board's right edge. L toggles it while playing.")]
         public bool showFullLog = false;
+
+        [Tooltip("No shake, hit-stop, hop or idle sway; shorter tweens. Remembered; this is the first-run default.")]
+        public bool reducedMotion = false;
+
+        [Tooltip("How fast every seat's actions animate. Remembered; this is the first-run default.")]
+        public AnimationSpeed animationSpeed = AnimationSpeed.Normal;
 
         [Tooltip("Health readout above every deployed piece (ADR-0008). " +
                  "H toggles it while playing — the stranger test decides its fate.")]
@@ -196,8 +206,30 @@ namespace NonaRoyale.Unity.Composition
 
         private enum BufferedIntent { None, Roll, EndTurn }
 
+        /// <summary>A hit this big, as a share of the target's maximum health, gets the hit-stop and the nudge.</summary>
+        private const float BigHitFraction = 0.3f;
+
+        /// <summary>How long a big hit freezes game time, in real seconds.</summary>
+        private const float HitStopSeconds = 0.06f;
+
+        /// <summary>A knockout's freeze, in real seconds.</summary>
+        private const float KnockoutStopSeconds = 0.09f;
+
+        /// <summary>Camera nudge on a big hit, and on a knockout, in cells.</summary>
+        private const float HitNudgeCells = 0.08f;
+        private const float KnockoutNudgeCells = 0.14f;
+
+        /// <summary>How long a deploy's rise owns the board, in scaled seconds.</summary>
+        private const float RiseHoldSeconds = 0.3f;
+
         private PresentationQueue _queue;
         private DiceRoller _dice;
+        private CastTell _tells;
+        private CameraNudge _nudge;
+        private HitStop _hitStop;
+
+        /// <summary>Reduced motion, animation speed and hurry, shared with every animated view (MO2).</summary>
+        private readonly MotionSettings _motion = new MotionSettings();
 
         /// <summary>True from a roll's arrival until its settle: the tray waits for the dice moment.</summary>
         private bool _diceHeld;
@@ -225,6 +257,8 @@ namespace NonaRoyale.Unity.Composition
 
         private bool _savedHealth, _savedLog, _savedDev;
         private BotSpeed _savedSpeed;
+        private bool _savedReduced;
+        private AnimationSpeed _savedAnimation;
 
         /// <summary>The seats the next deal uses. Squads and seed live in the inspector fields.</summary>
         private readonly List<PlayerColor> _seats = new List<PlayerColor>();
@@ -239,6 +273,13 @@ namespace NonaRoyale.Unity.Composition
                 foreach (var seat in cpuSeats) _seatPlan.SetKind(seat, SeatKind.Cpu);
 
             LoadSettings();
+            SyncMotion();
+
+            // Before the first framing, which hands the camera's resting place to the nudge.
+            _nudge = Ensure<CameraNudge>();
+            _nudge.Bind(_motion);
+            _hitStop = Ensure<HitStop>();
+            _hitStop.Bind(_motion);
 
             _hudRoot = GetComponent<HudRoot>() ?? gameObject.AddComponent<HudRoot>();
             BindScreens();
@@ -262,11 +303,15 @@ namespace NonaRoyale.Unity.Composition
             showDevPanel = SettingsStore.Load(SettingsStore.DevPanel, showDevPanel);
 
             cpuSpeed = SettingsStore.LoadSpeed(cpuSpeed);
+            reducedMotion = SettingsStore.Load(SettingsStore.ReducedMotion, reducedMotion);
+            animationSpeed = SettingsStore.LoadAnimationSpeed(animationSpeed);
 
             _savedHealth = showPieceHealth;
             _savedLog = showFullLog;
             _savedDev = showDevPanel;
             _savedSpeed = cpuSpeed;
+            _savedReduced = reducedMotion;
+            _savedAnimation = animationSpeed;
         }
 
         /// <summary>Saves when a flag changed, however it changed: a key, a menu toggle, the inspector.</summary>
@@ -276,6 +321,13 @@ namespace NonaRoyale.Unity.Composition
             {
                 _savedSpeed = cpuSpeed;
                 SettingsStore.SaveSpeed(cpuSpeed);
+            }
+
+            if (reducedMotion != _savedReduced || animationSpeed != _savedAnimation)
+            {
+                _savedReduced = reducedMotion;
+                _savedAnimation = animationSpeed;
+                SettingsStore.SaveMotion(reducedMotion, animationSpeed);
             }
 
             if (showPieceHealth == _savedHealth && showFullLog == _savedLog && showDevPanel == _savedDev) return;
@@ -319,7 +371,7 @@ namespace NonaRoyale.Unity.Composition
             _log.Clear();
             _match = null;
             _bots = null;
-            _hovered = null;
+            SetHovered(null);
             _selectedOperator = null;
             _selectedTarget = null;
             _selectedAbility = null;
@@ -449,7 +501,8 @@ namespace NonaRoyale.Unity.Composition
                 go.transform.SetParent(transform, false);
 
                 var piece = go.AddComponent<OperatorPiece>();
-                piece.Bind(op, _layout.CellSize, cellSpacing);
+                piece.Bind(op, _layout.CellSize, cellSpacing, _motion);
+                piece.Stepped += OnPieceStepped;
                 _pieces.Add(piece);
             }
 
@@ -489,6 +542,8 @@ namespace NonaRoyale.Unity.Composition
             _queue = Ensure<PresentationQueue>();
             _dice = Ensure<DiceRoller>();
             _dice.Bind(hud, () => _tray != null ? _tray.DiceFaces : null);
+            _tells = Ensure<CastTell>();
+            _tells.Bind(_layout.CellSize, _motion);
 
             // Last, so the menu draws over every other HUD layer.
             _pause = GetComponent<PauseMenu>() ?? gameObject.AddComponent<PauseMenu>();
@@ -535,9 +590,33 @@ namespace NonaRoyale.Unity.Composition
         {
             if (_queue != null) _queue.Clear();
             if (_dice != null) _dice.Skip();
+            if (_hitStop != null) _hitStop.Release();
+            if (_nudge != null) _nudge.Stop();
 
             _diceHeld = false;
             _buffered = BufferedIntent.None;
+        }
+
+        /// <summary>Copies the motion settings and the hurry into the shared object and the clocks that read it.</summary>
+        private void SyncMotion()
+        {
+            _motion.ReducedMotion = reducedMotion;
+            _motion.Speed = animationSpeed;
+
+            // Space hurries a CPU turn's animation as well as its thinking.
+            _motion.Hurry = _match != null && CpuTurn && Input.GetKey(KeyCode.Space) ? HurrySpeed : 1f;
+
+            if (_queue != null) _queue.Speed = _motion.Rate;
+            if (_dice != null)
+            {
+                _dice.Speed = _motion.Rate;
+                _dice.Reduced = _motion.ReducedMotion;
+            }
+        }
+
+        private void OnPieceStepped(OperatorPiece piece)
+        {
+            if (_queue != null) _queue.Raise(PresentationBeat.Step);
         }
 
         /// <summary>Screen width the OnGUI panel occupies, including its margin. Pixels.</summary>
@@ -626,6 +705,9 @@ namespace NonaRoyale.Unity.Composition
                 -centreY * 2f * halfHeight,
                 -10f);
 
+            // A nudge in progress continues around the new resting place.
+            if (_nudge != null) _nudge.SetBase(camera.transform.position);
+
             if (_tray != null) _tray.SetInsets(leftUnits, rightUnits);
             if (_toasts != null) _toasts.SetArea(leftUnits, rightUnits, TurnStrip.ReservedHeight);
             if (_banner != null) _banner.SetArea(leftUnits, rightUnits, TurnStrip.ReservedHeight);
@@ -701,12 +783,9 @@ namespace NonaRoyale.Unity.Composition
                 return;
             }
 
-            if (_match == null) return;
+            SyncMotion();
 
-            // Space hurries a CPU turn's animation as well as its thinking.
-            float speed = CpuTurn && Input.GetKey(KeyCode.Space) ? HurrySpeed : 1f;
-            if (_queue != null) _queue.Speed = speed;
-            if (_dice != null) _dice.Speed = speed;
+            if (_match == null) return;
 
             DriveBots();
 
@@ -792,7 +871,7 @@ namespace NonaRoyale.Unity.Composition
             var guard = _bots.Observe(seat, command, events);
             if (guard != null) _log.Add(guard);
 
-            Handle(events, immediate: cpuSpeed == BotSpeed.Instant, castBy, cast, fromBot: true);
+            Handle(events, immediate: cpuSpeed == BotSpeed.Instant, castBy, cast, fromBot: true, command: command);
         }
 
         /// <summary>"CPU · BRAWLER" for a CPU seat of the match on the table, else null.</summary>
@@ -952,10 +1031,25 @@ namespace NonaRoyale.Unity.Composition
                     hovered = piece;
             }
 
-            if (ReferenceEquals(hovered, _hovered)) return;
+            SetHovered(hovered);
+        }
 
-            _hovered = hovered;
+        /// <summary>
+        /// Moves the hover lift to another piece, or drops it. The one place
+        /// <see cref="_hovered"/> changes, so every view that mirrors the hover
+        /// hears about it: the piece marks, and the panels whose operator rows
+        /// echo the hovered piece with a soft wash.
+        /// </summary>
+        private void SetHovered(OperatorPiece piece)
+        {
+            if (ReferenceEquals(piece, _hovered)) return;
+
+            _hovered = piece;
             RefreshMarks();
+
+            var op = piece != null ? piece.Operator : null;
+            if (_rail != null) _rail.SetHovered(op);
+            if (_controls != null) _controls.SetHovered(op);
         }
 
         /// <summary>
@@ -1078,11 +1172,12 @@ namespace NonaRoyale.Unity.Composition
         // ── Driving the engine ───────────────────────────────────────────
 
         private void Send(ICommand command, OperatorState castBy = null, AbilityDefinition cast = null) =>
-            Handle(_match.Engine.Execute(command), immediate: false, castBy, cast);
+            Handle(_match.Engine.Execute(command), immediate: false, castBy, cast, command: command);
 
         private void Handle(
             IReadOnlyList<IGameEvent> events, bool immediate,
-            OperatorState castBy = null, AbilityDefinition cast = null, bool fromBot = false)
+            OperatorState castBy = null, AbilityDefinition cast = null, bool fromBot = false,
+            ICommand command = null)
         {
             foreach (var e in events)
             {
@@ -1115,32 +1210,41 @@ namespace NonaRoyale.Unity.Composition
                 return;
             }
 
-            Present(events, castBy, cast, fromBot);
+            Present(events, castBy, cast, fromBot, command);
         }
 
         /// <summary>
-        /// Queues a batch's presentation: dice, walks, hits, knockouts, then
-        /// the settle (MOTION.md decision 2). Steps with nothing to show are
-        /// left out.
+        /// Queues a batch's presentation: dice, the cast tell, walks, rises,
+        /// hits, knockouts, then the settle (MOTION.md decision 2, PRESENTATION
+        /// §3.1). Steps with nothing to show are left out.
         /// </summary>
         /// <remarks>
         /// <b>Hits play after the walk, before the settle.</b> The mover has
         /// arrived and the victim has not been moved yet, so a number or a
         /// burst lands on the cell where the thing happened, which is what
         /// playing feedback before repositioning always meant to do.
+        ///
+        /// <b>The cast tell reads the command, not the effects.</b> An accepted
+        /// <see cref="UseAbilityCommand"/> says who cast and what it aimed at;
+        /// the effects that follow show what the engine did with it.
         /// </remarks>
         private void Present(
-            IReadOnlyList<IGameEvent> events, OperatorState castBy, AbilityDefinition cast, bool fromBot)
+            IReadOnlyList<IGameEvent> events, OperatorState castBy, AbilityDefinition cast, bool fromBot,
+            ICommand command)
         {
             DiceRolled roll = null;
-            bool walks = false, hits = false, knockouts = false;
+            bool walks = false, hits = false, knockouts = false, refused = false;
+            var rises = new List<KeyValuePair<OperatorState, CellRef>>();
 
             foreach (var e in events)
             {
                 switch (e)
                 {
+                    case CommandRejected _: refused = true; break;
                     case DiceRolled rolled: roll = rolled; break;
                     case OperatorMoved moved when moved.AttemptedTo > moved.From: walks = true; break;
+                    case OperatorDeployed deployed: rises.Add(new KeyValuePair<OperatorState, CellRef>(deployed.Operator, deployed.Cell)); break;
+                    case OperatorPityDeployed pity: rises.Add(new KeyValuePair<OperatorState, CellRef>(pity.Operator, pity.Cell)); break;
                     case OperatorNeutralized _: knockouts = true; break;
                     case DamageDealt damaged when damaged.Amount > 0: hits = true; break;
                     case DamageEvaded _:
@@ -1167,18 +1271,62 @@ namespace NonaRoyale.Unity.Composition
                 _queue.Enqueue(PresentationBeat.DiceLanded, null, () => !_dice.IsRolling);
             }
 
+            if (command is UseAbilityCommand use && !refused) QueueCastTell(use, castBy);
+
             if (walks)
                 _queue.Enqueue(PresentationBeat.Walk, () => WalkMoves(events), () => !AnyPieceMoving());
 
+            if (rises.Count > 0)
+            {
+                _queue.Enqueue(PresentationBeat.Rise, () =>
+                {
+                    foreach (var rise in rises)
+                    {
+                        var piece = PieceFor(rise.Key);
+                        if (piece != null) piece.Rise(_layout.PositionOf(rise.Value));
+                    }
+                }, hold: _motion.Tween(RiseHoldSeconds));
+            }
+
             if (hits)
-                _queue.Enqueue(PresentationBeat.Hit, () => PlayFeedback(events, knockouts: false), hold: HitHoldSeconds);
+                _queue.Enqueue(PresentationBeat.Hit, () => PlayFeedback(events, knockouts: false),
+                    hold: _motion.Tween(HitHoldSeconds));
 
             if (knockouts)
-                _queue.Enqueue(PresentationBeat.Knockout, () => PlayFeedback(events, knockouts: true), hold: KnockoutHoldSeconds);
+                _queue.Enqueue(PresentationBeat.Knockout, () => PlayFeedback(events, knockouts: true),
+                    hold: _motion.Tween(KnockoutHoldSeconds));
 
             _queue.Enqueue(PresentationBeat.Settle,
                 () => SettleBatch(events, immediate: false, castBy, cast, fromBot),
                 essential: true);
+        }
+
+        /// <summary>
+        /// The sweep on the caster, then the line to its target or the drop on
+        /// its cell. The caster comes from the command, so a CPU's aim reads
+        /// the same way a human's does.
+        /// </summary>
+        private void QueueCastTell(UseAbilityCommand use, OperatorState castBy)
+        {
+            if (_tells == null) return;
+
+            var caster = castBy != null ? PieceFor(castBy) : _pieces.Find(p => p.Operator.Id == use.CasterOperatorId);
+            if (caster == null) return;
+
+            var target = use.TargetOperatorId.HasValue
+                ? _pieces.Find(p => p.Operator.Id == use.TargetOperatorId.Value)
+                : null;
+            var cell = use.TargetCell;
+
+            bool aimed = target != null || cell.HasValue;
+
+            float hold = _tells.Duration(aimed);
+
+            _queue.Enqueue(PresentationBeat.CastTell, () => _tells.Play(
+                    caster.transform.position,
+                    target != null ? target.transform.position : (Vector3?)null,
+                    cell.HasValue ? _layout.PositionOf(cell.Value) : (Vector3?)null),
+                hold: hold);
         }
 
         /// <summary>
@@ -1436,6 +1584,8 @@ namespace NonaRoyale.Unity.Composition
         bool ISettingsHost.ShowFullLog { get => showFullLog; set => showFullLog = value; }
         bool ISettingsHost.ShowDevPanel { get => showDevPanel; set => showDevPanel = value; }
         BotSpeed ISettingsHost.CpuSpeed { get => cpuSpeed; set => cpuSpeed = value; }
+        bool ISettingsHost.ReducedMotion { get => reducedMotion; set => reducedMotion = value; }
+        AnimationSpeed ISettingsHost.AnimationSpeed { get => animationSpeed; set => animationSpeed = value; }
 
         void IPauseHost.MainMenu() => ShowTitle();
 
@@ -1560,9 +1710,18 @@ namespace NonaRoyale.Unity.Composition
         /// on the cell it fell on.
         /// </remarks>
         /// <param name="knockouts">True for the knockout bursts only, false for everything else.</param>
+        /// <remarks>
+        /// <b>MO2:</b> a hit also shows the health the event reports on the
+        /// piece's bar and label, so the number and the bar change together. A
+        /// big hit (<see cref="BigHitFraction"/> or a finishing blow) and every
+        /// knockout get a hit-stop and a camera nudge; a knocked-out piece
+        /// shatters. Reduced motion drops the stop and the nudge.
+        /// </remarks>
         private void PlayFeedback(IReadOnlyList<IGameEvent> events, bool knockouts)
         {
             if (_feedback == null) return;
+
+            OperatorPiece impact = null;
 
             foreach (var e in events)
             {
@@ -1576,6 +1735,11 @@ namespace NonaRoyale.Unity.Composition
 
                     _feedback.Damage(piece.transform.position, damaged.Amount, damaged.Cause);
                     piece.Flash();
+                    piece.ShowHealth(damaged.RemainingHealth);
+
+                    bool big = damaged.RemainingHealth <= 0 ||
+                               damaged.Amount >= BigHitFraction * damaged.Target.MaxHealth;
+                    if (big) impact = piece;
                     continue;
                 }
 
@@ -1599,7 +1763,11 @@ namespace NonaRoyale.Unity.Composition
                 if (healed != null)
                 {
                     var piece = PieceFor(healed.Target);
-                    if (piece != null) _feedback.Heal(piece.transform.position, healed.Amount);
+                    if (piece != null)
+                    {
+                        _feedback.Heal(piece.transform.position, healed.Amount);
+                        piece.ShowHealth(piece.ShownHealth + healed.Amount);
+                    }
                     continue;
                 }
 
@@ -1607,7 +1775,11 @@ namespace NonaRoyale.Unity.Composition
                 if (regen != null)
                 {
                     var piece = PieceFor(regen.Target);
-                    if (piece != null) _feedback.Heal(piece.transform.position, regen.Amount);
+                    if (piece != null)
+                    {
+                        _feedback.Heal(piece.transform.position, regen.Amount);
+                        piece.ShowHealth(piece.ShownHealth + regen.Amount);
+                    }
                     continue;
                 }
 
@@ -1621,8 +1793,21 @@ namespace NonaRoyale.Unity.Composition
                             piece.transform.position,
                             BoardLayout.ColourOf(down.Operator.Owner),
                             down.Cause);
+                        piece.Shatter();
+                        impact = piece;
                     }
                 }
+            }
+
+            if (impact == null) return;
+
+            if (_hitStop != null) _hitStop.Stop(knockouts ? KnockoutStopSeconds : HitStopSeconds);
+
+            if (_nudge != null && _layout != null)
+            {
+                // Away from the board's centre, toward the hit.
+                var away = (Vector2)(impact.transform.position - _layout.HomeGoalPosition);
+                _nudge.Nudge(away, (knockouts ? KnockoutNudgeCells : HitNudgeCells) * _layout.CellSize);
             }
         }
 
@@ -1652,9 +1837,8 @@ namespace NonaRoyale.Unity.Composition
         ///
         /// <b>A split roll produces two walks, one per command</b> (§6). On two
         /// different pieces they run side by side and read fine. On the same
-        /// piece twice they arrive back to back, and whether the second
-        /// interrupts the first is <c>OperatorPiece.Walk</c>'s business —
-        /// PRESENTATION §3 wants them sequenced, not overlapping.
+        /// piece twice they are two batches, and the presentation queue plays
+        /// the second only once the first has landed (PRESENTATION §3.1).
         /// </remarks>
         private void WalkMoves(IReadOnlyList<IGameEvent> events)
         {
@@ -1880,7 +2064,10 @@ namespace NonaRoyale.Unity.Composition
                         ? _layout.YardSeat(piece.Operator.Owner, SeatOf(piece.Operator))
                         : basePosition + _layout.Offset(i, pair.Value.Count);
 
-                    if (immediate) piece.Place(position);
+                    // A shattered piece comes back seated with a pop (MO2);
+                    // everything else snaps or settles as before.
+                    if (piece.IsHidden) piece.Reappear(position);
+                    else if (immediate) piece.Place(position);
                     else piece.Settle(position);
 
                     // Statuses come from the engine, never from replaying

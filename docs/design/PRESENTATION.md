@@ -72,6 +72,29 @@ The implementation test is simple: a move reporting equal or lower progress is s
 
 **A bounced move shows the cell it contested.** `OperatorMoved` carries the attempted landing beside the final one (`AttemptedTo`, `Bounced`). The piece walks to the contested cell, rests there briefly, and then settles back to the bounce cell. The walk is movement; the step back is placement, so it settles like a pull rather than walking. _Closed 2026-09-15; until then the event carried only the final progress, and the collision was legible in the log but not on the board._
 
+Since MOTION.md increment MO2 the walk is a **hop per cell** with a small squash on landing (a glide under Reduced motion). It still visits every cell; only the drawing changed.
+
+### 3.1 Sequencing
+
+_Added 2026-09-16 (MOTION.md, increments MO1 and MO2)._ The engine answers a command at once. The board catches up **one action after another**, through the presentation queue:
+
+1. **Dice**: the tumble over the vault, the landing on the engine's faces, the flight to the tray. The tray shows the new faces only when the dice arrive.
+2. **Cast tell**: a cyan sweep on the caster, then a line to the target or a drop onto the cell. It reads the accepted command, so a CPU's aim shows the same way.
+3. **Walks**: forward travel only (§3), all of the batch's walks together.
+4. **Rises**: deployed operators snap onto their cell and stand up.
+5. **Hits**: numbers, flashes, misses and blocks, at the cell where each happened. The bar and the label change with the number (they show what the event reports, not the engine's current value). Big hits get a short hit-stop and a camera nudge.
+6. **Knockouts**: the burst, the shatter in the seat colour, a stronger stop and nudge.
+7. **Settle**: pieces reposition (a shattered piece reappears seated with a pop), marks and devices redraw, and the top bar, turn button, history, toasts and end screen catch up.
+
+Rules that keep it honest:
+
+- **Nothing is invented.** Every step shows an event or the command that caused it. A step with nothing to show is skipped.
+- **Commands wait while the board is busy.** Board clicks, Enter and the ability keys wait. Deploy, move and cast requests are dropped. Space and E are kept for 0.4 s and sent when the board is free. Esc, right-click and selection always work. The CPU driver waits too.
+- **The settle always runs.** An instant batch (the opening deal, CPU Instant) skips the cosmetic steps of anything still playing but never its settle, so the history never loses a batch. No step can hold the board for more than 6 s.
+- **Clocks.** Gameplay animation runs on scaled time, times the animation speed and the CPU hurry (Space). Pause freezes it; HUD pulses keep unscaled time. A hit-stop never touches a paused clock, and the pause never resumes into a slowed one.
+- **Reduced motion** removes the hop, squash, idle sway, hit-stop and nudge, and shortens holds and tweens.
+- **Beats.** The queue announces `DiceRolled`, `DiceLanded`, `CastTell`, `Walk`, `Step` (each hop), `Rise`, `Hit`, `Knockout` and `Settle` for audio (Stage 5).
+
 ---
 
 ## 4. Commitment needs a look first

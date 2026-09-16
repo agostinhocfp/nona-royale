@@ -1,7 +1,7 @@
 # Nona Royale — Motion and Feedback (Stage 3)
 
 > Location in repo: `docs/design/MOTION.md` · Project copy: `claude/MOTION.md`
-> Status: **Open, 2026-09-16.** MO1 built, awaiting Play Mode. MO2 next.
+> Status: **Open, 2026-09-16.** MO1 committed. MO2 built, awaiting Play Mode.
 > Related: `NEXT_PHASES.md` (Stage 3), `BOTS.md` (Stage 2), `PRESENTATION.md` §3 and §4, `ART_DIRECTION.md` §8, ADR-0008
 
 ## Goal
@@ -82,3 +82,34 @@ This covers the pitch's "simple animations (idle loops, move effects, card flips
   - **`OperatorPiece.IsMoving`:** walking, or resting on a contested cell before a bounce.
   - **Checks:** the view compiles against the editor DLLs with no warnings; 496 core tests pass; the sim compiles. No core change. The queue's sequencing was exercised in a scratch harness (order, hold, flush, clear, pause, speed, 6 s cap), and a mutation to `Flush` was caught. The roller and the tray are uGUI, so Play Mode is their only layout check.
   - **Known and left for MO2:** the piece health readout and the rail read the engine at once, so a health drop can show a moment before its hit number. Walks still glide at 11 cells/s (the hop is MO2). The CPU speed setting doesn't shorten the dice moment; only the Space hurry does. MO2's animation speed setting covers that.
+- 2026-09-16 — **MO1 passed Play Mode** and was committed (`feat(motion): presentation queue and centre dice roll`), with a separate note-colour fix (`style(ui): brighter note text on the title, setup and end cards`).
+- 2026-09-16 — **MO2 built: pieces, hits, casts, idle.**
+  - **New `View/MotionSettings.cs`:** one object, owned by `MatchBootstrap` and handed to every animated view. It holds Reduced motion, the animation speed (Normal, or Fast at ×1.75) and the hurry (Space on a CPU turn, ×3). `Rate` = speed × hurry; `Tween` shortens holds by ×0.6 under Reduced motion.
+  - **New `View/FxSprite.cs`:** a self-destroying world sprite that tweens between two poses. Used for shards, cast tells and deploy rings.
+  - **`OperatorPiece`, rewritten around a logical ground point.** Hop, squash, pop and idle are drawn on top of it.
+    - **Walk:** a hop per cell at 8 cells/s, 0.08 cells high, with a slight stretch in the air and a slight squash on landing. (First built at 0.2 cells with twice the squash; made subtler on the designer's Play Mode note.) Each landing raises `Stepped`. Under Reduced motion it glides at 11 cells/s.
+    - **Rise** (deploy): the piece snaps onto the cell, stands up with a pop, and a ring opens in the seat colour.
+    - **Shatter** (knockout): nine shards in the seat colour, then the piece is hidden. `Reappear` brings it back seated with a pop at the settle.
+    - **Idle:** standing figures breathe (±2% height); seated busts sway (±1.8°). Each piece has its own phase. Off under Reduced motion.
+    - **Health:** `ShownHealth` and `ShowHealth(int)` let a hit update the bar at the moment its number appears, using `DamageDealt.RemainingHealth`. A heal adds its amount to the shown value.
+  - **`PieceHudLayer`:** the health label reads the piece's shown health and pose, not the engine, and hides while a piece is shattered. This closes MO1's "health drops before the number" gap.
+  - **New `View/CastTell.cs`:** a cyan glow and ring on the caster. A targeted cast then draws a beam that grows to the target and a ring that closes on it. A cell cast drops a diamond onto the cell, with the same closing ring. A cast with no aim gets a wider sweep. It plays for every accepted `UseAbilityCommand`, CPU casts included, which covers the pre-move flash deferred from BOT2.
+  - **New `View/HitStop.cs`:** game time drops to ×0.02 for 60 ms on a big hit and 90 ms on a knockout.
+    - It only slows a clock running at 1 and only restores the scale it set.
+    - `PauseMenu` now never saves a slowed scale, so a pause during a stop resumes at normal speed. This was exercised in a scratch harness, and removing the guard fails it.
+  - **New `View/CameraNudge.cs`:** a damped shove away from the board centre, 0.08 cells on a big hit and 0.14 on a knockout. `FrameCamera` hands it the resting position.
+  - **"Big hit":** a finishing blow, or at least 30% of the target's maximum health.
+  - **`MatchBootstrap`:**
+    - The sequence is now dice → cast tell → walks → rises (0.3 s) → hits → knockouts → settle.
+    - `Handle` carries the command, so the tell can read the caster and the aim.
+    - Hits update health and trigger the stop and nudge. Knockouts shatter.
+    - The settle's `Reposition` brings shattered pieces back.
+    - New inspector fields `reducedMotion` and `animationSpeed`, remembered as `nr.settings.reducedMotion` and `nr.settings.animationSpeed`.
+    - `SyncMotion` runs each frame and feeds the queue, the dice and everything else through `MotionSettings`.
+  - **`PresentationQueue`:** new beats `CastTell`, `Step` (raised per hop through `Raise`) and `Rise`.
+  - **`DiceRoller`:** under Reduced motion the dice don't spin or bounce, and the tumble and hold are shorter.
+  - **Settings pages** (title and pause): new rows "Reduced motion" (toggle) and "Animation speed" (Normal/Fast), above CPU speed.
+  - **`FeedbackLayer`:** Zero-Day damage and knockouts at upkeep are labelled ("-N zero-day", "DOWN — zero-day"). This closes the carried-over item.
+  - **PRESENTATION:** §3 notes the hop; new §3.1 covers sequencing.
+  - **Checks:** the view compiles with no warnings; 496 core tests pass; the sim compiles. No core change. The hit-stop, pause and `MotionSettings` logic was exercised in a scratch harness, including a mutation check. Every effect is world-space or uGUI drawing, so Play Mode is the only visual check.
+  - **Choices made while building, for the designer to judge in Play Mode:** hop height and speed, how strongly pieces squash and breathe, the thresholds for the stop and the nudge, and that Reduced motion also turns idle off.

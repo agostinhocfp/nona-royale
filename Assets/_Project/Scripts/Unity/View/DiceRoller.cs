@@ -69,6 +69,11 @@ namespace NonaRoyale.Unity.View
         /// <summary>Multiplier on the roller's clock. 1 is normal.</summary>
         public float Speed { get; set; } = 1f;
 
+        /// <summary>Reduced motion (MO2): no spin or bounce, and a shorter tumble and hold.</summary>
+        public bool Reduced { get; set; }
+
+        private float Tumbling => Reduced ? TumbleSeconds * MotionSettings.ReducedTween : TumbleSeconds;
+
         /// <summary>Whether the dice are still on screen: tumbling, holding or flying.</summary>
         public bool IsRolling => _phase != Phase.Idle;
 
@@ -131,6 +136,7 @@ namespace NonaRoyale.Unity.View
                 : "";
             _callout.gameObject.SetActive(false);
             _hold = doubles ? DoublesHoldSeconds : HoldSeconds;
+            if (Reduced) _hold *= MotionSettings.ReducedTween;
 
             _group.alpha = 1f;
             _root.gameObject.SetActive(true);
@@ -152,7 +158,7 @@ namespace NonaRoyale.Unity.View
             die.Face = face;
             die.Rest = rest;
             die.From = from;
-            die.Spin = (_faces.Next(2) == 0 ? -1f : 1f) * SpinTurns * 360f;
+            die.Spin = Reduced ? 0f : (_faces.Next(2) == 0 ? -1f : 1f) * SpinTurns * 360f;
             die.Root.anchoredPosition = from;
             die.Root.localScale = Vector3.one;
             ShowFace(die, RandomFace(0));
@@ -183,7 +189,7 @@ namespace NonaRoyale.Unity.View
 
         private void Tumble(float delta)
         {
-            float t = Mathf.Clamp01(_time / TumbleSeconds);
+            float t = Mathf.Clamp01(_time / Tumbling);
 
             // Fast at first, easing into the landing.
             float eased = 1f - (1f - t) * (1f - t) * (1f - t);
@@ -197,7 +203,7 @@ namespace NonaRoyale.Unity.View
                 var along = Vector2.Lerp(die.From, die.Rest, eased);
 
                 // Two shrinking bounces on the way in.
-                float bounce = Mathf.Abs(Mathf.Sin(t * Mathf.PI * 2f)) * (1f - t) * 26f;
+                float bounce = Reduced ? 0f : Mathf.Abs(Mathf.Sin(t * Mathf.PI * 2f)) * (1f - t) * 26f;
                 die.Root.anchoredPosition = along + new Vector2(0f, bounce);
                 die.Root.localRotation = Quaternion.Euler(0f, 0f, die.Spin * (1f - eased));
                 die.Root.localScale = Vector3.one * (1f + 0.12f * (1f - t));

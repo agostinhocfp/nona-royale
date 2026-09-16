@@ -39,10 +39,26 @@ namespace NonaRoyale.Unity.View
     /// slight lift under the pointer. Cyan is the tech register for live,
     /// interactive states (ART_DIRECTION §8). Which marks apply is decided
     /// elsewhere.
+    ///
+    /// <b>Motion (MOTION.md increment MO2).</b> The piece keeps a logical
+    /// ground point and draws itself above it: a hop per cell with a small
+    /// squash on landing, a rise when it deploys, a shatter when it is knocked
+    /// out and a pop when it reappears seated, and idle breathing (standing)
+    /// or a slow sway (seated). Reduced motion keeps the walk as a glide and
+    /// drops the hop, the squash and the idle. Every clock is scaled time,
+    /// times <see cref="MotionSettings.Rate"/>, so pause freezes the piece.
     /// </remarks>
     public sealed class OperatorPiece : MonoBehaviour
     {
-        private const float CellsPerSecond = 11f;
+        /// <summary>Cells per second while hopping.</summary>
+        private const float HopsPerSecond = 8f;
+
+        /// <summary>Cells per second while gliding under Reduced motion.</summary>
+        private const float GlidePerSecond = 11f;
+
+        /// <summary>Peak hop height, in cells. Kept low on the designer's note (2026-09-16): a step, not a jump.</summary>
+        private const float HopHeight = 0.08f;
+
         private const float SettleSpeed = 12f;
 
         /// <summary>
@@ -66,6 +82,10 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>Health bar height above the figure's centre, in figure units.</summary>
         private const float BarHeight = 0.6f;
+
+        private const float PopSeconds = 0.3f;
+        private const float ShatterSeconds = 0.45f;
+        private const int ShardCount = 9;
 
         private static Color SelectColour => UiTheme.Select;   // holo cyan, a live state
         private static Color TargetColour => UiTheme.Threat;   // amber, a warning
@@ -91,6 +111,26 @@ namespace NonaRoyale.Unity.View
         private PieceMark _marks;
         private float _baseScale = 1f;
 
+        private MotionSettings _motion;
+
+        /// <summary>Where the piece stands, before hop, squash and idle are drawn on top.</summary>
+        private Vector3 _ground;
+        private bool _hopping;
+        private Vector3 _hopFrom;
+        private float _hopT;
+        private float _lift;
+        private float _land;
+        private float _hover = 1f;
+        private float _pop = -1f;
+        private float _popFrom = 1f;
+        private bool _popRise;
+        private bool _hidden;
+        private float _idleTime;
+        private float _idlePhase;
+
+        /// <summary>Raised each time a hop lands on a cell, for the presentation beats.</summary>
+        public event System.Action<OperatorPiece> Stepped;
+
         public OperatorState Operator { get; private set; }
 
         /// <summary>True while the piece is still travelling, so the view can wait before re-posing it.</summary>
@@ -103,20 +143,37 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         public bool IsMoving => _path.Count > 0 || _hold > 0f;
 
+        /// <summary>True between a knockout's shatter and the piece reappearing in its yard.</summary>
+        public bool IsHidden => _hidden;
+
+        /// <summary>Whether the piece is drawn seated. Follows the presentation, not the engine.</summary>
+        public bool Seated => _seated ?? true;
+
+        /// <summary>The health the piece last showed. The HUD label reads this, so it never runs ahead of the hit.</summary>
+        public int ShownHealth { get; private set; }
+
         /// <summary>The drawn radius in world units, for hit testing. Ignores the hover lift.</summary>
         public float Radius => _baseScale * 0.4f;
 
         public PieceMark Marks => _marks;
 
-        public void Bind(OperatorState op, float cellSize, float cellSpacing)
+        private bool Reduced => _motion != null && _motion.ReducedMotion;
+        private float Rate => _motion != null ? _motion.Rate : 1f;
+
+        public void Bind(OperatorState op, float cellSize, float cellSpacing, MotionSettings motion)
         {
             Operator = op;
             name = $"{op.Owner}_{op.Name}";
+            _motion = motion;
+            ShownHealth = op.Health;
 
             // The figure's shading darkens the tint, so the seat colour is
             // lifted a little to land on its true value.
             _seatColour = Color.Lerp(BoardLayout.ColourOf(op.Owner), Color.white, UiTheme.FigureLift);
             _stepDistance = cellSpacing;
+
+            // Pieces breathe out of step with each other.
+            _idlePhase = (op.Id * 0.618f) % 1f * Mathf.PI * 2f;
 
             _body = gameObject.AddComponent<SpriteRenderer>();
             _body.color = _seatColour;
@@ -137,6 +194,8 @@ namespace NonaRoyale.Unity.View
 
             _baseScale = cellSize * PieceShape.SizeFor(op) * FigureScale;
             transform.localScale = Vector3.one * _baseScale;
+            _ground = transform.position;
+            _target = _ground;
         }
 
         /// <summary>
@@ -179,12 +238,16 @@ namespace NonaRoyale.Unity.View
             _targetRing.transform.localScale = Vector3.one * (target ? 1.15f : 1f);
         }
 
-        /// <summary>Places the piece with no animation. For the opening layout.</summary>
+        /// <summary>Places the piece with no animation. For the opening layout and for snaps.</summary>
         public void Place(Vector3 position)
         {
             _path.Clear();
+            _hopping = false;
+            _hold = 0f;
+            _lift = 0f;
             _target = position;
-            transform.position = position;
+            _ground = position;
+            Draw();
         }
 
         /// <summary>Walks a sequence of cells, ending at the last.</summary>
@@ -202,6 +265,7 @@ namespace NonaRoyale.Unity.View
         public void Walk(IReadOnlyList<Vector3> waypoints, Vector3? bouncedTo)
         {
             _path.Clear();
+            _hopping = false;
 
             foreach (var point in waypoints) _path.Enqueue(point);
 
@@ -225,10 +289,88 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
+        /// A deploy: the piece snaps onto its cell and rises from the seated
+        /// bust to the standing figure with a pop and a ring in its seat colour.
+        /// </summary>
+        public void Rise(Vector3 position)
+        {
+            Place(position);
+            SetPose(false);
+            DrawHealth(Operator.Health);
+            StartPop(0.45f, rise: true);
+
+            var ring = UiTheme.WithAlpha(BoardLayout.ColourOf(Operator.Owner), 0.9f);
+            FxSprite.Spawn(transform.parent, Primitives.Ring, ring, 2,
+                new FxPose(position, Vector3.one * (_baseScale * 0.5f)),
+                new FxPose(position, Vector3.one * (_baseScale * 1.8f), 0f, 0f),
+                _motion != null ? _motion.Tween(0.4f) : 0.4f, _motion);
+        }
+
+        /// <summary>
+        /// A knockout: the figure breaks into shards in its seat colour and is
+        /// hidden until <see cref="Reappear"/>.
+        /// </summary>
+        public void Shatter()
+        {
+            if (_hidden) return;
+
+            var at = transform.position;
+            var colour = BoardLayout.ColourOf(Operator.Owner);
+            float seconds = _motion != null ? _motion.Tween(ShatterSeconds) : ShatterSeconds;
+            float reach = (Reduced ? 0.5f : 0.9f) * _stepDistance;
+
+            for (int i = 0; i < ShardCount; i++)
+            {
+                float angle = (i + 0.35f * Mathf.Sin(i * 2.3f + _idlePhase)) / ShardCount * Mathf.PI * 2f;
+                var direction = new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f);
+                float size = _baseScale * (0.16f + 0.06f * ((i * 7) % 3));
+                float spin = (i % 2 == 0 ? 1f : -1f) * 220f;
+
+                FxSprite.Spawn(transform.parent, Primitives.Polygon(3, 90f), colour, 7,
+                    new FxPose(at, Vector3.one * size, 0f),
+                    new FxPose(at + direction * reach * (0.7f + 0.1f * (i % 4)), Vector3.one * (size * 0.4f), spin, 0f),
+                    seconds, _motion);
+            }
+
+            _hidden = true;
+            _path.Clear();
+            _hopping = false;
+            _hold = 0f;
+            Draw();
+        }
+
+        /// <summary>Shows a hidden piece again, snapped to <paramref name="position"/>, with a small pop.</summary>
+        public void Reappear(Vector3 position)
+        {
+            _hidden = false;
+            Place(position);
+            StartPop(0.4f, rise: false);
+        }
+
+        private void StartPop(float from, bool rise)
+        {
+            _pop = 0f;
+            _popFrom = from;
+            _popRise = rise;
+        }
+
+        /// <summary>
         /// A brief white-out on the silhouette. The floater says how much; this
         /// says <i>who</i>, which a number rising off a crowded cell does not.
         /// </summary>
         public void Flash() => _flash = 1f;
+
+        /// <summary>
+        /// Shows <paramref name="health"/> on the bar and the label at the
+        /// moment a hit or a heal lands, rather than at the settle. The value
+        /// comes from the event (<c>DamageDealt.RemainingHealth</c>, or the shown
+        /// health plus a heal). A seated piece shows no bar and ignores it.
+        /// </summary>
+        public void ShowHealth(int health)
+        {
+            if (Operator == null || Seated) return;
+            DrawHealth(Mathf.Clamp(health, 0, Operator.MaxHealth));
+        }
 
         /// <summary>Redraws health and tint from the operator's state.</summary>
         /// <param name="evasive">
@@ -244,26 +386,31 @@ namespace NonaRoyale.Unity.View
             // The pose says "waiting"; the figure keeps its full colour.
             SetPose(Operator.IsInYard);
 
-            float health = Mathf.Clamp01((float)Operator.Health / Operator.MaxHealth);
-            var tint = _seatColour;
-
-            _body.color = WithAlpha(Color.Lerp(tint, Color.white, _flash));
+            _body.color = WithAlpha(Color.Lerp(_seatColour, Color.white, _flash));
             _outline.color = WithAlpha(_outline.color);
             _pin.color = WithAlpha(_pin.color);
 
+            DrawHealth(Operator.Health);
+        }
+
+        private void DrawHealth(int shown)
+        {
+            ShownHealth = shown;
+
             // A seated operator is at full health by the rules; no bar.
-            bool showBar = !Operator.IsInYard;
+            bool showBar = !Seated;
             _healthBack.enabled = showBar;
             _healthFill.enabled = showBar;
 
-            if (showBar)
-            {
-                // Anchored left so the bar drains rightward rather than shrinking
-                // toward its centre, which reads as distance rather than loss.
-                _healthFill.transform.localScale = new Vector3(0.66f * health, 0.08f, 1f);
-                _healthFill.transform.localPosition = new Vector3(-0.33f * (1f - health), BarHeight, 0f);
-                _healthFill.color = Color.Lerp(UiTheme.Danger, tint, health);
-            }
+            if (!showBar) return;
+
+            float health = Mathf.Clamp01((float)shown / Mathf.Max(1, Operator.MaxHealth));
+
+            // Anchored left so the bar drains rightward rather than shrinking
+            // toward its centre, which reads as distance rather than loss.
+            _healthFill.transform.localScale = new Vector3(0.66f * health, 0.08f, 1f);
+            _healthFill.transform.localPosition = new Vector3(-0.33f * (1f - health), BarHeight, 0f);
+            _healthFill.color = Color.Lerp(UiTheme.Danger, _seatColour, health);
         }
 
         private Color WithAlpha(Color colour)
@@ -317,46 +464,124 @@ namespace NonaRoyale.Unity.View
             return go.AddComponent<SpriteRenderer>();
         }
 
+        // ── Frame ────────────────────────────────────────────────────────
+
         private void Update()
         {
-            AnimateMarks();
+            float delta = Time.deltaTime;
+            float rated = delta * Rate;
+
+            AnimateMarks(delta);
 
             if (_flash > 0f)
             {
-                _flash = Mathf.Max(0f, _flash - Time.deltaTime * 4f);
+                _flash = Mathf.Max(0f, _flash - delta * 4f);
                 // The flash must not undo the evasive fade, so alpha is put back.
                 if (_body != null) _body.color = WithAlpha(Color.Lerp(_body.color, Color.white, _flash * 0.5f));
             }
 
-            if (_path.Count > 0)
+            _land = Mathf.Max(0f, _land - rated * 10f);
+            if (_pop >= 0f)
             {
-                var next = _path.Peek();
-                float step = CellsPerSecond * _stepDistance * Time.deltaTime;
+                _pop += rated;
+                float length = _motion != null ? _motion.Tween(PopSeconds) : PopSeconds;
+                if (_pop >= length) _pop = -1f;
+            }
 
-                transform.position = Vector3.MoveTowards(transform.position, next, step);
+            if (_path.Count > 0) Hop(rated);
+            else if (_hold > 0f) _hold -= rated;   // a bounced piece rests on the contested cell
+            else _ground = Vector3.Lerp(_ground, _target, Mathf.Clamp01(rated * SettleSpeed));
 
-                if (Vector3.Distance(transform.position, next) < 0.01f) _path.Dequeue();
+            if (!_hopping && _path.Count == 0 && _hold <= 0f) _idleTime += delta;
+
+            Draw();
+        }
+
+        /// <summary>One step of the walk: a hop (or a glide under Reduced motion) toward the next cell.</summary>
+        private void Hop(float rated)
+        {
+            var next = _path.Peek();
+
+            if (!_hopping)
+            {
+                _hopping = true;
+                _hopFrom = _ground;
+                _hopT = 0f;
+            }
+
+            // A segment is normally one cell; a longer one takes proportionally longer.
+            float cells = Mathf.Max(0.25f, Vector3.Distance(_hopFrom, next) / Mathf.Max(0.01f, _stepDistance));
+            float speed = Reduced ? GlidePerSecond : HopsPerSecond;
+            _hopT += rated * speed / cells;
+
+            if (_hopT < 1f)
+            {
+                _ground = Vector3.Lerp(_hopFrom, next, _hopT);
+                _lift = Reduced ? 0f : Mathf.Sin(_hopT * Mathf.PI) * HopHeight * _stepDistance;
                 return;
             }
 
-            // A bounced piece rests on the contested cell before settling back.
-            if (_hold > 0f)
+            _ground = next;
+            _lift = 0f;
+            _path.Dequeue();
+            _hopping = false;
+            if (!Reduced) _land = 1f;
+
+            Stepped?.Invoke(this);
+        }
+
+        /// <summary>Puts the transform where the ground, the hop, the pop and the idle say.</summary>
+        private void Draw()
+        {
+            float sx = 1f, sy = 1f, roll = 0f;
+
+            if (!Reduced)
             {
-                _hold -= Time.deltaTime;
-                return;
+                // Stretch in the air, squash on landing.
+                float air = _hopping ? Mathf.Sin(_hopT * Mathf.PI) : 0f;
+                sx *= 1f - 0.015f * air + 0.04f * _land;
+                sy *= 1f + 0.025f * air - 0.06f * _land;
+
+                if (!_hopping && _path.Count == 0)
+                {
+                    if (Seated)
+                    {
+                        roll = 1.8f * Mathf.Sin(_idleTime * 0.9f + _idlePhase);
+                    }
+                    else
+                    {
+                        float breath = Mathf.Sin(_idleTime * 1.8f + _idlePhase);
+                        sy *= 1f + 0.02f * breath;
+                        sx *= 1f - 0.01f * breath;
+                    }
+                }
             }
 
-            transform.position = Vector3.Lerp(transform.position, _target, Time.deltaTime * SettleSpeed);
+            float pop = 1f;
+            if (_pop >= 0f)
+            {
+                float length = _motion != null ? _motion.Tween(PopSeconds) : PopSeconds;
+                float t = Mathf.Clamp01(_pop / length);
+                pop = t < 0.55f
+                    ? Mathf.Lerp(_popFrom, 1.15f, t / 0.55f)
+                    : Mathf.Lerp(1.15f, 1f, (t - 0.55f) / 0.45f);
+
+                // A rise stands up: taller before it is wider.
+                if (_popRise) sy *= 1f + 0.18f * Mathf.Sin(t * Mathf.PI);
+            }
+
+            float scale = _hidden ? 0f : _baseScale * _hover * pop;
+
+            transform.position = _ground + Vector3.up * _lift;
+            transform.localScale = new Vector3(scale * sx, scale * sy, 1f);
+            transform.localRotation = Quaternion.Euler(0f, 0f, roll);
         }
 
         /// <summary>The hover lift, and the pulse that says "click to deploy".</summary>
-        private void AnimateMarks()
+        private void AnimateMarks(float delta)
         {
-            float wanted = _baseScale * ((_marks & PieceMark.Hovered) != 0 ? HoverLift : 1f);
-            float current = transform.localScale.x;
-
-            if (!Mathf.Approximately(current, wanted))
-                transform.localScale = Vector3.one * Mathf.MoveTowards(current, wanted, _baseScale * Time.deltaTime * 2f);
+            float wanted = (_marks & PieceMark.Hovered) != 0 ? HoverLift : 1f;
+            _hover = Mathf.MoveTowards(_hover, wanted, delta * 2f);
 
             if (_glow == null || !_glow.enabled) return;
 
