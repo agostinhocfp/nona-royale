@@ -45,10 +45,11 @@ namespace NonaRoyale.Sim
             if (args.Length > 1 && args[1] == "dynamic") { Dynamic.Run(matches); return; }
             if (args.Length > 1 && args[1] == "policy") { Policies.Run(matches); return; }
             if (args.Length > 1 && args[1] == "usage") { Usage.Run(matches); return; }
+            if (args.Length > 1 && args[1] == "bots") { BotSweep.Run(matches); return; }
 
             if (args.Length > 1)
             {
-                Console.WriteLine($"Unknown sweep '{args[1]}'. Try: laps, opening, reach, dynamic, policy, usage.");
+                Console.WriteLine($"Unknown sweep '{args[1]}'. Try: laps, opening, reach, dynamic, policy, usage, bots.");
                 return;
             }
 

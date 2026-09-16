@@ -24,6 +24,8 @@ The `--` separates `dotnet`'s own arguments from the program's. Without it the m
 | `opening` | Operators pre-deployed, and ability reach                 |
 | `reach`   | Ability reach on Standard and Sprint                      |
 | `policy`  | Energy-spending policy, 2v2 — does spending win matches?  |
+| `usage`   | How often each ability is cast, per policy                |
+| `bots`    | The game's CPU players: against scripted players, against each other, and per-operator win share (BOTS.md) |
 
 Roughly a minute per sweep at 800 matches per row.
 
