@@ -1,7 +1,7 @@
 # Nona Royale — Art Pipeline
 
 > Location in repo: `docs/art/ART_PIPELINE.md`
-> Status: **Reconstructed skeleton, 2026-09-11.** Amended 2026-09-12 (board geometry corrected). The original was cited by `ART_DIRECTION.md`, ADR-0001 and the project tooling notes, but no copy survives in project knowledge. What follows is everything recoverable from those references plus proposals for the gaps. **Sections marked NEEDS DECISION are not settled** — confirm or overwrite them before generating art at volume.
+> Status: **Reconstructed skeleton, 2026-09-11.** Amended 2026-09-12 (board geometry corrected) and 2026-09-16 (URP 2D and Linear colour actually set up, ADR-0010). The original was cited by `ART_DIRECTION.md`, ADR-0001 and the project tooling notes, but no copy survives in project knowledge. What follows is everything recoverable from those references plus proposals for the gaps. **Sections marked NEEDS DECISION are not settled** — confirm or overwrite them before generating art at volume.
 > Related: `docs/art/ART_DIRECTION.md` (what it should look like — wins on aesthetics), ADR-0001 (2D locked), ADR-0003 (board geometry the art must match), `docs/design/PRESENTATION.md` (what the view must show)
 
 Division of labour: **ART_DIRECTION says what it should look like. This says how it gets made.** Where they conflict, ART_DIRECTION wins on aesthetics and this doc wins on process.
@@ -12,7 +12,7 @@ Division of labour: **ART_DIRECTION says what it should look like. This says how
 
 2D, locked (ADR-0001). Sprites, painted board, orthographic top-down. `SpriteRenderer` only — the `MeshRenderer` fallback in the old code is dead.
 
-Render pipeline is **URP with the 2D renderer** (Universal 2D template). This matters for the art bible's focal lighting, glossy reflections, and the cool-register glow on powered tiles: URP gives real 2D lights, per-sprite normal maps and bloom. Built-in would mean faking all of it with additive quads.
+Render pipeline is **URP with the 2D renderer**. The project began on the Built-in pipeline by mistake and was switched on 2026-09-16 (ADR-0010): `Assets/_Project/Settings/NonaURP` with `NonaURP_Renderer`, lit sprites, and a white global 2D light built in code. This matters for the art bible's focal lighting, glossy reflections, and the cool-register glow on powered tiles: URP gives real 2D lights, per-sprite normal maps and bloom. Built-in would mean faking all of it with additive quads.
 
 **Consequence for asset production:** any sprite meant to receive lighting needs a **normal map** alongside its albedo. Decide per asset class rather than blanket — see §4.
 
@@ -86,7 +86,7 @@ These numbers are proposals, not decisions. Settle them before batch generation,
 | Compression            | None in editor, platform default in builds             |                                                                                                                                      |
 | Sprite atlases         | One per class: `Board`, `Operators`, `UI`, `FX`        | Keeps draw calls down without one giant atlas that rebuilds constantly                                                               |
 | Normal maps            | Board and environment **yes**; operators and UI **no** | Lighting does atmospheric work on the floor; pieces stay readable and near-unlit (`ART_DIRECTION.md` §6, readability beats richness) |
-| Colour space           | **Linear**                                             | Required for URP lighting to behave                                                                                                  |
+| Colour space           | **Linear** (set 2026-09-16, ADR-0010)                  | Required for URP lighting to behave                                                                                                  |
 
 ---
 

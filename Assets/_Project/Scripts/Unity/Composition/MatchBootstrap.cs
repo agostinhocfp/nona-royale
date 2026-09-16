@@ -233,6 +233,7 @@ namespace NonaRoyale.Unity.Composition
         private CastTell _tells;
         private CameraNudge _nudge;
         private HitStop _hitStop;
+        private SceneLighting _lighting;
 
         /// <summary>Plays every sound (AU1). Built once, at Start; it outlives matches.</summary>
         private AudioDirector _audio;
@@ -287,6 +288,10 @@ namespace NonaRoyale.Unity.Composition
 
             LoadSettings();
             SyncMotion();
+
+            // URP's 2D Renderer lights every sprite; a white global light keeps them at their own colour (ADR-0010).
+            _lighting = Ensure<SceneLighting>();
+            _lighting.Build();
 
             // Before the first framing, which hands the camera's resting place to the nudge.
             _nudge = Ensure<CameraNudge>();
