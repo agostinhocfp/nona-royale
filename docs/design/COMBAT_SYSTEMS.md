@@ -127,6 +127,16 @@ _(Added 2026-09-15 with Luka's Vendetta — the first damage roll in the game.)_
 
 **One cast never neutralizes a target twice.** A cast's effects resolve before the engine yards anyone, so a later damage or execute effect in the same cast skips a recipient an earlier one already brought to zero. Vendetta is the first ability that lands several hits on one target, and without this a first-blow kill would report three neutralizes and pay three bounties.
 
+### 2.5 Lifesteal
+
+_(Added 2026-09-17 with Vendetta's drain, designer.)_
+
+- **A damage effect may steal life.** After the hit resolves, the caster heals the health the hit **actually removed** (`DamageResult.AmountApplied`), up to its own maximum.
+- **What was removed, not what the hit was worth.** Overkill heals nothing, a shield's share heals nothing, and an evaded or absorbed hit heals nothing. Against Atomic, which nothing mitigates, the drain equals the damage up to the target's remaining health.
+- **Per hit.** Vendetta's three blows drain three times, and each is reported as its own heal. A blow that is not thrown (§2.4) drains nothing.
+- **The heal reports what the caster gained**, so a Luka at full health shows no heal at all.
+- **Only outgoing damage.** `WithLifesteal` refuses non-damage effects and damage aimed at the caster, and it composes with `WithCritical` in either order.
+
 ---
 
 ## 3. Energy
@@ -208,7 +218,7 @@ Statuses do not stack unless stated. Re-application refreshes duration and keeps
 
 **Expiry sweeps the turn it is called in, not the turn after.** At End of turn _N_, everything whose last active turn is _N_ is removed. Queries made _during_ a turn are stricter — a status is still active throughout its final turn — because the two answer different questions at different moments. Getting this backwards reinstates exactly the off-by-one the absolute-index timers exist to remove.
 
-**Speed is one summed channel.** Every status that affects speed carries its size as a signed magnitude — Slow −0.5, Evasive Protocol +0.5 — and the registry sums them. Hastened is not speed since 2026-09-16: it adds flat cells (§5.9). That is what lets a passive carry a speed effect without a special case, and what makes a per-source slow strength expressible at all.
+**Speed is one summed channel.** Every status that affects speed carries its size as a signed magnitude — Slow −0.5, Evasive Protocol +0.5 — and the registry sums them. Hastened is not speed since 2026-09-16: it adds flat cells (§5.9). Burdened, its mirror, takes flat cells away (§5.16). That is what lets a passive carry a speed effect without a special case, and what makes a per-source slow strength expressible at all.
 
 ### 5.1 Stun
 
@@ -391,6 +401,18 @@ _(Added 2026-09-16, with Kurbyn's Predator's Read — §6.7, §10.3.)_
 - **Duration 2**, for §5.10's reason: the watch lapses at the same moment a charge detonates or a follow-up resolves, and the marker must outlive every counterplay window without outliving the lapse.
 - **Its own kind, not a reused Hunted,** for §5.13's reason: one entry per status kind per operator, so a target carrying both a follow-up and a watch (Luka and Kurbyn can share a squad) keeps both. The fiction overlaps and the trigger is the exact opposite — Hunted punishes staying close, Watched punishes moving — so confusing the two on the board would misstate the counterplay, not just the badge.
 
+### 5.16 Burdened
+
+_(Added 2026-09-17, designer: Sanity's crawl, moved out of his speed.)_
+
+- **Effect:** the holder's first move from each roll is **1 cell shorter if the roll totals 6 or less, 2 shorter if it totals 7 or more** (`BurdenCellsAtOrBelowThreshold`, `BurdenCellsAboveThreshold`, sharing `HasteRollThreshold`). Not a speed change: the cells come off after the move's own speed and rounding (§6.3).
+- **Haste's rules, mirrored.** The whole roll decides; the burden is paid once per roll, on the first move. A second move from the same roll pays nothing.
+- **A move never drops below one cell.** The §6.3 clamp applies after the burden, so a die of 1 or 2 spent alone on a high roll still moves 1. No per-turn cap: a penalty needs no ceiling.
+- **Haste and burden cancel.** A hastened, burdened operator adds the bonus and takes the burden on the same move, once. Lethe's Catalyst or Tagged From Above's payout lifts Sanity to a plain 1.0 for as long as it lasts. The haste budget is still charged the full bonus.
+- **Slows bite first.** A burdened operator at 1.0 is slowed to 0.5 like anyone (§5.2), and the burden comes off the slowed move: a slowed Sanity on a 7 moves 4 − 2 = 2.
+- **A passive**, so cleanses and neutralize leave it alone (§1.2). The view tags it `BURDEN`, not "heavy", because "heavy" already means Luka's maximum-health line (§2.4).
+- **Source:** Sanity's passive (§10.8), and only that.
+
 ---
 
 ## 6. Turn structure and resolution order
@@ -426,7 +448,7 @@ Expiry sits at End and application takes hold at the target's next turn, so a 1-
 
 **Movement:** `cells = floor(Pips × EffectiveSpeed)` at 1.0× and above; **below 1.0×, half cells round up** (amendment, 2026-09-15). `Pips` is the sum of the dice being spent on this move — the whole unspent roll, or one die. `EffectiveSpeed` is the moving operator's multiplier after auras and slows, floored at `MinSpeedMultiplier`.
 
-**Amendment (2026-09-15): below 1.0×, the half cell rounds up.** Sanity is the first operator who lives under 1.0× permanently, and the floor taxed him twice — once by the multiplier, then again on every odd die: a 5 always moved 2, never 3. For a fast operator the floored half is a rounding tax on a long move; for the slowest operator ever fielded it is half of everything he has. So below 1.0× the half rounds up: a 5 moves 3, a 7 moves 4. The rule is general — anyone slowed to 0.5× gets the same grace — but 1.5× is deliberately untouched: at or above 1.0× a half-step multiplier still never gifts a cell, and the player can still halve the roll in their head. Same family as the 2026-09-14 "a spent die always moves at least one cell" clamp: slows may shrink a move, never erase one — and now, never tax the odd die twice.
+**Amendment (2026-09-15): below 1.0×, the half cell rounds up.** Sanity was the first operator who lived under 1.0× permanently (until 2026-09-17, below), and the floor taxed him twice — once by the multiplier, then again on every odd die: a 5 always moved 2, never 3. For a fast operator the floored half is a rounding tax on a long move; for the slowest operator ever fielded it is half of everything he has. So below 1.0× the half rounds up: a 5 moves 3, a 7 moves 4. The rule is general — anyone slowed to 0.5× gets the same grace — but 1.5× is deliberately untouched: at or above 1.0× a half-step multiplier still never gifts a cell, and the player can still halve the roll in their head. Same family as the 2026-09-14 "a spent die always moves at least one cell" clamp: slows may shrink a move, never erase one — and now, never tax the odd die twice.
 
 **The rounding applies per move, which is what splitting costs.** Two dice pooled lose at most one half-cell to it; spent separately they lose one each. So splitting costs a **whole cell exactly when both dice are odd** — 9 rolls in 36 — and nothing otherwise. At whole-number speeds it costs nothing at all.
 
@@ -439,7 +461,9 @@ Expiry sits at End and application takes hold at the target's next turn, so a 1-
 - **A slow operator no longer taxes the match** the way it did before opening deployments landed. The pacing cost that pushed Bouncer up to 1.5 in Amendment 2 was paid for elsewhere, which freed the tank to be genuinely the slow one again.
 - **Above 1.5 a single move stops being readable.** The ceiling exists so a mean move stays near a fifth of the loop — the figure that actually governs whether a player can follow a piece across the board.
 
-**The band has one recorded exception.** Sanity fields at 0.5 — below the floor, permanently on `MinSpeedMultiplier`, and therefore immune to every slow and aura in the game as a side effect. That is a deliberate designer override (2026-09-15), recorded with its reasoning at §10.8; it does not reopen the band for anyone else.
+**The band has no exceptions since 2026-09-17.** Sanity fielded at 0.5 as a recorded designer override (2026-09-15), immune to every slow and aura as a side effect. His crawl is now the Burdened passive (§5.16) at 1.0, and the roster test that named him as its one exception no longer does.
+
+**A burden subtracts flat cells after the formula (amendment, 2026-09-17).** A burdened operator's first move from a roll is `max(1, cells + haste − (1 or 2))` (§5.16).
 
 **Lethe sits inside the band at 1.0** (2026-09-17). Her mobility is permanent haste, which is flat cells and not speed, and her Catalyst aura grants haste rather than a speed bonus for the same reason: the speed channel has a floor and **no ceiling**, so a positive speed aura would have pushed 1.5 operators to 2.0 (§10.10). No shipped effect adds positive speed except Kurbyn's passive. A ceiling is still unenforced (§12).
 
@@ -827,9 +851,11 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 ### 10.8 Sanity — Engineer
 
-**HP 10 · Speed 0.5× · Complete — all three abilities implemented**
+**HP 10 · Speed 1.0×, Burdened (§5.16) · Complete — all three abilities implemented**
 
-> **He transgresses a precedent, knowingly, recorded here as a designer override (2026-09-15), not drift.** Speed 0.5 sits below the 1.0–1.5 band (ADR-0002 Amendment 4, §6.3) — the first operator outside it — signed off as the price of the "immovable object" fantasy. He shipped at health 12, tying the maximum the Bouncer cut had vacated, as a second override; a later balance pass the same day took him to **9**, level with the Bouncer.
+> **Burdened since 2026-09-17 (designer).** His speed is 1.0 and his crawl is a permanent passive: −1 cell on a roll of 6 or less, −2 above, once per roll. The two blockquotes below are the history of the 0.5 override it replaced.
+
+> **He transgressed a precedent, knowingly, recorded here as a designer override (2026-09-15), not drift.** Speed 0.5 sits below the 1.0–1.5 band (ADR-0002 Amendment 4, §6.3) — the first operator outside it — signed off as the price of the "immovable object" fantasy. He shipped at health 12, tying the maximum the Bouncer cut had vacated, as a second override; a later balance pass the same day took him to **9**, level with the Bouncer.
 >
 > **The slow-immunity side effect is accepted, not overlooked.** At 0.5 he sits permanently on `MinSpeedMultiplier`, so no slow and no aura can move his speed at all — the floor swallows them (§5.2). That cuts both ways: his own Zero-Day slow is something he can never suffer in a mirror match.
 
@@ -856,6 +882,20 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 - **Zero-Day at range 3** matches From the Hip and Blind Spot. He no longer has to stand inside the fight to throw it.
 - **Collision is no longer priced as an ultimate.** At 6 energy and cooldown 3 it has the same price and cooldown as Ace Shards, Cryo-Pulse, Vendetta and Neural Purge. Range 6 ties Translocation for the longest targeted reach on the roster (Drone Strike's is unlimited, but it aims at a cell). The dash now covers up to seven cells.
+
+**Burdened instead of 0.5 (designer, 2026-09-17).** The designer's read: he was too slow to matter (21% in the bots sweep, after the Lethe and lifesteal changes). Two ideas were weighed, both about 5.4 cells a roll against 0.5's 3.75: **speed 0.75**, or **haste in reverse**. The burden won. It is a subtraction a player can do at a glance, where 0.75 breaks the half-step band and its rounding. It cancels cleanly against haste. And it hands his slow immunity back to the roster as counterplay. A **+1 to each ability's primary damage** (Short Circuit 2, Zero-Day's marked target +2, Collision 4) was also proposed, measured, and not adopted: on top of the burden it overshot.
+
+| Bots against bots, 800 matches, 4 seats | Sanity win share | Turns per seat |
+| --------------------------------------- | ---------------- | -------------- |
+| Before (0.5, current damage)            | 21%              | 26.5           |
+| +1 damage only                          | 24%              | 27.8           |
+| **Burdened only (adopted)**             | **27%**          | **25.1**       |
+| Burdened + 1 damage                     | 31%              | 25.8           |
+| 0.75 + 1 damage                         | 35%              | 25.2           |
+
+- **Adopted row, everyone:** Syla 32%, Kurbyn 30%, Sanity 27%, Javi 26%, Luka 25%, Nuetu 25%, Bouncer 25%, Lethe 22%, Mimi 19%, Kian 19%.
+- **Matches got about 1.4 turns per seat shorter**, the largest single cut since the health pass. The slowest piece on the board is usually the one a match waits for.
+- **Mimi and Kian slipped** (20% → 19%, 21% → 19%, inside noise), and they were already the weakest. Their buffs are the next pass.
 
 **Measured: the matches changed more than Sanity did.** Bots sweep, 800 matches per row, same seeds. Sanity is not in the alpha squad, so the standard sweep can't see this change.
 
@@ -886,7 +926,7 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 | --- | ---------------- | ------------ | ---- | --- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | **Blind Spot**   | Active       | 5    | 3   | 3     | **Teleport** to the enemy (§7.6 landing, no path damage); **2 Normal**. **Follow-up** (§6.5): at Luka's next upkeep, if he is within **2** of the target, **1 Normal** — **2** if its max HP is above 6. Hunted marker; cleansable. |
 | 2   | **Hermes' Ring** | Active, self | 3    | 4   | —     | **TechWard 3 turns** on Luka (§5.12): Tech damage blocked outright.                                                                                                                                                                 |
-| 3   | **Vendetta**     | Active (Ult) | 6    | 3   | 3     | **3 × 1 Atomic** to the target; each blow rolls a **10% critical** (§2.4): ×2, or **×3** if the target's max HP is above 6.                                                                                                         |
+| 3   | **Vendetta**     | Active (Ult) | 6    | 3   | 3     | **3 × 1 Atomic** to the target; each blow rolls a **10% critical** (§2.4): ×2, or **×3** if the target's max HP is above 7. **Lifesteal** (§2.5): Luka heals what each blow removes.                                                 |
 
 **"Heavy" is maximum health above 7** (6 until the roster-wide +1 of 2026-09-16) — today the Bouncer and Sanity. Both of his damage riders read it.
 
@@ -895,6 +935,8 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 **Hermes' Ring counters three abilities, one per operator** (§2.2, §5.12): Cryo-Pulse, Zero-Day and Drone Strike, at Ablative Plating's price. It fully shut out only Mimi until Cryo Field landed (2026-09-16) — a self-centred field is Normal, so it now bills a warded Luka through the ward. Three turns on a self-cast covers two full rounds of opponents' turns.
 
 **Vendetta costs 6** (dropped at 9, lowered by the designer 2026-09-15): expected 3.3 damage, 3.6 against a heavy target. At least one blow crits about 27% of the time; the ceiling is 6, or 9 against a heavy target. At 9 it lost to Miracle Pull at the same price; at 6 it sits beside Velvet Rope, the other single-target Atomic cast — 3 certain damage and a pull against 3.3 expected and a swing. A blow that finds its target already down is not thrown (§2.4), so a first-blow kill pays one bounty.
+
+**Vendetta steals life (designer, 2026-09-17; §2.5).** Luka heals what each blow removes: 3.3 expected against a healthy target, up to 9 against a heavy one, capped at his 7 health, and nothing for overkill. Atomic makes the drain dependable, because nothing mitigates the hits it reads. The ultimate stops being pure burst and becomes the duelist's way back into a fight he is losing. It is also the first cast that heals its own caster out of an enemy. **Bots sweep, 800 matches:** Luka's win share rose from 23% to 26%, the largest move on the table, and nobody else moved more than 2 points. Turns per seat went from 26.9 to 26.5.
 
 **All numbers are the designer's, as dropped, and unmeasured.** Adding him shifts the draft's dice stream, so no figure taken before him compares with one after.
 
@@ -1455,3 +1497,5 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - 2026-09-16 — **Kurbyn completed: Predator's Read built** (id 303 — cost 3, cooldown 2, range 3). `StatusKind` gains `Watched` (§5.15); `EffectKind` gains `Watch`, the fifteenth kind; `DeferredOperatorEffects` gains a fourth shape — the watch (§6.7), the follow-up's mirror: anchored to the victim like a charge, but its moment is the target's first **dice movement**, not the upkeep, and its condition is the target's conduct rather than the caster's proximity. Placement never trips it (§7.4); standing still is the other escape hatch; the lapse is silent and the strike is once, spent landed or absorbed. It outlives its caster (the charge precedent, ADR-0006 — the condition never reads his position) and dies with its target (neutralize strips the marker, §1.2). Balance intent: his cheapest cast was 6; this fills the 3-energy rung with Short Circuit and From the Hip (§10.3). `GameEngine` gains the registry on its move path (the only trigger a watch has); §9.1 lists fifteen kinds; §9.3 gains `WatchMarked` and `WatchTripped`; §2.1's cause list gains "watch" and the "cryo-field" it had never recorded. `OPERATORS.md`'s Kurbyn paragraph gains the read; `Roster.cs`'s "the pool is even" remark was stale from the moment the Cryo Field commit wrote it — Kurbyn still had two abilities — and is true as of this change. Tests +16 (`PredatorsReadTests`), 533 → 549.
 - 2026-09-16 — **Haste nerfed to flat cells** (designer): +1 extra cell when the roll totals 6 or less, +2 above, once per roll per operator, still capped at 3 per operator per turn (§5.9, §6.3). Replaces +0.5 speed, which averaged 2.6–2.8 cells per roll even under the cap; the new rule averages 1.6 at any speed. `CombatConfig.HasteSpeedBonus` removed; `StatusRegistry.HasteBonus` became `IsHastened`, and Hastened no longer enters the speed sum. `MovementResolver.CellsWithCappedBonus` removed as dead. Syla's payout copy updated. Bots sweep: noise only (§12).
 - 2026-09-17 — **Lethe added as §10.10**, complete (designer's numbers after a review of the handoff). HP 7, speed 1.0 with a permanent Hastened passive (flat cells, not the handoff's +0.5 speed, which the 2026-09-16 haste nerf retired). **Nano Cell** (1001; 4 / 4 / 4) combines a 99-point shield and a stun, each for 2 turns. **Catalyst** is an ally-only aura that grants haste within 2, not speed, so the missing ceiling is never tested. **Eris' Exploit** (1002; 6 / 4 / 3) is a radius-2 zone that bills each enemy N−1 per tick for two ticks. `AuraDefinition` gains a side and a haste flag; `AuraRules` resolves speed auras as strongest bonus plus strongest penalty, and answers `GrantsHaste`; `GameEngine` reads aura haste where a move starts and lists it in `ActiveStatusesOn`. ADR-0007 Amendment 1: crowd zones and zones without a status. Cell effects are keyed on source as well as cell and seat, and Bio-Link Rage's rider reads only Nuetu's own zones. Bots learned real shield pools, ally stuns and crowd zones. Bots sweep: Lethe 24%, turns per seat 28.2 → 26.9. §5.6, §5.9, §6.3, §9.1, §10, §12 amended.
+- 2026-09-17 — **Lifesteal added (§2.5); Vendetta drains** (designer). A damage effect can heal its caster for the health the hit actually removed, per hit, capped at the caster's maximum. Luka heals up to 3.3 expected per Vendetta. The bots value the drain by what Luka is missing. §10.9's heavy line corrected to "above 7".
+- 2026-09-17 — **Sanity burdened** (designer). New status Burdened (§5.16): −1 cell on a roll of 6 or less, −2 above, once per roll, never below 1 cell, cancelling against haste. Sanity moves to speed 1.0 with Burdened as his passive, so the §6.3 band has no exceptions and he is no longer immune to slows. `CombatConfig` gains `BurdenCellsAtOrBelowThreshold`, `BurdenCellsAboveThreshold` and `BurdenCellsFor`. The bots draft haste and burden passives at their average worth. A +1 damage package was measured and not adopted. Bots sweep: Sanity 21% → 27%, turns per seat 26.5 → 25.1. §5, §6.3, §10.8 amended.

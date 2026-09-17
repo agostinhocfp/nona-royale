@@ -665,6 +665,7 @@ namespace NonaRoyale.Core
             // Read before the move: an aura's haste belongs to where the mover
             // started, and the move may carry it out of range (§5.9).
             bool hastened = IsHastenedNow(op);
+            bool burdened = _statuses.IsBurdened(op);
             int cells = CellsFor(op, pips, out int hasteCells);
 
             // A single low die under a heavy slow can floor to nothing. Spending
@@ -688,7 +689,8 @@ namespace NonaRoyale.Core
             // Charged on the attempted move, bounce or not: the cells were
             // travelled, and a bounce is placement afterwards (§7.2). The roll's
             // bonus is spent by this move even if the turn cap trimmed it to 0.
-            if (hastened)
+            // A burden is paid the same way, once per roll (§5.16).
+            if (hastened || burdened)
             {
                 _hastePaidThisRoll.Add(op.Id);
                 if (hasteCells > 0) _hasteCellsUsed[op.Id] = HasteCellsUsed(op) + hasteCells;
@@ -1303,19 +1305,34 @@ namespace NonaRoyale.Core
         /// if one of its dice went on a deploy or to another operator. A move
         /// the dice alone would not make (0 cells) gets no bonus either, so
         /// haste never turns a refused move into a legal one.
+        ///
+        /// <b>A burden is the same adjustment with the sign flipped</b>
+        /// (§5.16, 2026-09-17): −1 or −2 on the first move from a roll, never
+        /// below 1 cell, with no turn budget. It is paid under the same
+        /// once-per-roll flag, so a hastened, burdened operator nets the two
+        /// once. The haste budget is charged the full bonus even when a burden
+        /// cancels it — the bonus was granted, the burden took it back.
         /// </remarks>
         private int CellsFor(OperatorState op, int pips, out int hasteCells)
         {
             int cells = _movement.CellsFor(pips, SpeedOf(op));
             hasteCells = 0;
 
-            if (cells <= 0 || !IsHastenedNow(op) || _hastePaidThisRoll.Contains(op.Id))
+            bool hastened = IsHastenedNow(op);
+            bool burdened = _statuses.IsBurdened(op);
+
+            if (cells <= 0 || (!hastened && !burdened) || _hastePaidThisRoll.Contains(op.Id))
                 return cells;
 
-            int budget = Math.Max(0, _config.HasteBonusCellCap - HasteCellsUsed(op));
-            hasteCells = Math.Min(_config.HasteCellsFor(_rollTotal), budget);
+            if (hastened)
+            {
+                int budget = Math.Max(0, _config.HasteBonusCellCap - HasteCellsUsed(op));
+                hasteCells = Math.Min(_config.HasteCellsFor(_rollTotal), budget);
+            }
 
-            return cells + hasteCells;
+            int burden = burdened ? _config.BurdenCellsFor(_rollTotal) : 0;
+
+            return Math.Max(1, cells + hasteCells - burden);
         }
 
         /// <summary>

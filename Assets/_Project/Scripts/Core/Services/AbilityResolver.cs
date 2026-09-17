@@ -358,7 +358,9 @@ namespace NonaRoyale.Core.Services
                         // pay a second bounty. Vendetta is the first ability
                         // that lands more than one hit on one target.
                         if (IsAlreadyDown(recipient)) break;
-                        outcomes.Add(ApplyDamage(effect, caster, recipient));
+                        var damaged = ApplyDamage(effect, caster, recipient);
+                        outcomes.Add(damaged);
+                        if (effect.Lifesteal) StealLife(caster, recipient, damaged, outcomes);
                         break;
 
                     case EffectKind.Heal:
@@ -782,6 +784,35 @@ namespace NonaRoyale.Core.Services
                 : _damage.Apply(recipient, new DamageInstance(amount, effect.DamageType, caster.Id, cause));
 
             return EffectOutcome.Damaged(recipient, result);
+        }
+
+        /// <summary>
+        /// Heals the caster for the health a lifesteal hit actually removed
+        /// (§2.5), capped at the caster's maximum. Reports the health gained,
+        /// and nothing when there was none.
+        /// </summary>
+        /// <remarks>
+        /// <b>Per hit.</b> Vendetta's three blows drain three times, each
+        /// reading its own result, so a blow that is not thrown (the target
+        /// already down) drains nothing.
+        ///
+        /// <b>A downed caster drains nothing.</b> Nothing in the kit can bring
+        /// Luka to zero mid-cast today; the check is there so the rule does
+        /// not depend on that staying true.
+        /// </remarks>
+        private static void StealLife(
+            OperatorState caster, OperatorState recipient, EffectOutcome damaged, List<EffectOutcome> outcomes)
+        {
+            if (ReferenceEquals(caster, recipient) || caster.Health <= 0) return;
+
+            int removed = damaged.Damage.AmountApplied;
+            if (removed <= 0) return;
+
+            int before = caster.Health;
+            caster.Heal(removed);
+            int gained = caster.Health - before;
+
+            if (gained > 0) outcomes.Add(EffectOutcome.Healed(caster, gained));
         }
 
         /// <summary>

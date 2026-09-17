@@ -28,7 +28,9 @@ namespace NonaRoyale.Core.Config
             int neutralizeEnergyBounty = 3,
             int shieldPoolDefault = 2,
             int regenEveryTurns = 3,
-            int regenAmount = 1)
+            int regenAmount = 1,
+            int burdenCellsAtOrBelowThreshold = 1,
+            int burdenCellsAboveThreshold = 2)
         {
             if (slowSpeedPenalty < 0) throw new ArgumentOutOfRangeException(nameof(slowSpeedPenalty));
             if (collisionDamage < 0) throw new ArgumentOutOfRangeException(nameof(collisionDamage));
@@ -55,6 +57,10 @@ namespace NonaRoyale.Core.Config
                     "Negative makes no sense; zero disables regeneration.");
             if (regenAmount < 0)
                 throw new ArgumentOutOfRangeException(nameof(regenAmount));
+            if (burdenCellsAtOrBelowThreshold < 0)
+                throw new ArgumentOutOfRangeException(nameof(burdenCellsAtOrBelowThreshold));
+            if (burdenCellsAboveThreshold < 0)
+                throw new ArgumentOutOfRangeException(nameof(burdenCellsAboveThreshold));
 
             CollisionDamage = collisionDamage;
             EvasionChance = evasionChance;
@@ -70,6 +76,8 @@ namespace NonaRoyale.Core.Config
             ShieldPoolDefault = shieldPoolDefault;
             RegenEveryTurns = regenEveryTurns;
             RegenAmount = regenAmount;
+            BurdenCellsAtOrBelowThreshold = burdenCellsAtOrBelowThreshold;
+            BurdenCellsAboveThreshold = burdenCellsAboveThreshold;
         }
 
         /// <summary>
@@ -184,6 +192,25 @@ namespace NonaRoyale.Core.Config
         /// </summary>
         public int HasteCellsFor(int rollTotal) =>
             rollTotal <= HasteRollThreshold ? HasteCellsAtOrBelowThreshold : HasteCellsAboveThreshold;
+
+        /// <summary>Cells a burdened operator loses on a roll at or below <see cref="HasteRollThreshold"/> (§5.16).</summary>
+        /// <remarks>
+        /// <b>Haste run backwards (designer, 2026-09-17)</b>, with the same
+        /// threshold, so a hastened and burdened operator nets to nothing. It
+        /// replaced Sanity's 0.5 speed: the same crawl in spirit, at about 5.4
+        /// cells a roll instead of 3.75, and countable without halving.
+        /// </remarks>
+        public int BurdenCellsAtOrBelowThreshold { get; }
+
+        /// <summary>Cells a burdened operator loses on a roll above <see cref="HasteRollThreshold"/>.</summary>
+        public int BurdenCellsAboveThreshold { get; }
+
+        /// <summary>
+        /// The burden a roll with this total costs (§5.16). No per-turn cap: a
+        /// penalty needs no ceiling, and a move never drops below one cell.
+        /// </summary>
+        public int BurdenCellsFor(int rollTotal) =>
+            rollTotal <= HasteRollThreshold ? BurdenCellsAtOrBelowThreshold : BurdenCellsAboveThreshold;
 
         /// <summary>
         /// How many of the squad's own turns the payout's haste lasts.

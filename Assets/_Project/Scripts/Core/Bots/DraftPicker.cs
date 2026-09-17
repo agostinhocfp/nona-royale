@@ -87,7 +87,7 @@ namespace NonaRoyale.Core.Bots
                 }
             }
 
-            double speed = op.BaseSpeed + op.PassiveMagnitude;
+            double speed = EffectiveSpeed(op);
 
             return offence * weights.DraftOffence
                    + Burst(op) * weights.DraftBurst
@@ -95,6 +95,24 @@ namespace NonaRoyale.Core.Bots
                    + speed * weights.DraftSpeed
                    + op.MaxHealth * weights.DraftHealth
                    + control * weights.DraftControl;
+        }
+
+        /// <summary>
+        /// Speed as a multiplier, with a haste or burden passive folded in at
+        /// its average worth: ±1.58 cells on a mean roll of 7, about ±0.23.
+        /// </summary>
+        /// <remarks>
+        /// Without this a burdened Sanity would draft as a 1.0 operator and a
+        /// hastened Lethe as a plain one (2026-09-17).
+        /// </remarks>
+        public static double EffectiveSpeed(OperatorDefinition op)
+        {
+            const double RollAdjustment = 57.0 / 36.0 / 7.0;   // P(≤6)·1 + P(>6)·2, per mean pip total
+
+            double speed = op.BaseSpeed + op.PassiveMagnitude;
+            if (op.Passive == StatusKind.Hastened) speed += RollAdjustment;
+            if (op.Passive == StatusKind.Burdened) speed -= RollAdjustment;
+            return speed;
         }
 
         /// <summary>The operator's largest single-ability damage.</summary>

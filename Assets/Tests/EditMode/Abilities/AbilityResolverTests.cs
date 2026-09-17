@@ -818,16 +818,11 @@ namespace NonaRoyale.Core.Tests.Abilities
             // whether a player can follow a piece.
             foreach (var op in Roster.All)
             {
-                // Sanity is the one documented exception, and it is an
-                // exception by decision, not by drift: 0.5, a deliberate
-                // designer override recorded as the 2026-09-15 amendment in
-                // COMBAT_SYSTEMS §10.8 — the "immovable object" fantasy, with
-                // the slow-immunity side effect of sitting permanently on
-                // MinSpeedMultiplier accepted with it. The band still binds
-                // everyone else, and this test is what makes the next
-                // transgression a deliberate act too.
-                if (op.Name == "Sanity") continue;
-
+                // No exceptions since 2026-09-17. Sanity sat at 0.5 as a
+                // recorded override (COMBAT_SYSTEMS §10.8) until his crawl
+                // moved into the Burdened passive, which is flat cells and not
+                // speed. This test is what makes the next transgression a
+                // deliberate act.
                 Assert.That(op.BaseSpeed, Is.InRange(1.0, 1.5), op.Name);
                 Assert.That(op.BaseSpeed + op.PassiveMagnitude, Is.InRange(1.0, 1.5),
                     $"{op.Name} with its passive");

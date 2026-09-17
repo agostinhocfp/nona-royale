@@ -540,6 +540,108 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(hits[0].Damage.Outcome, Is.EqualTo(DamageOutcome.Neutralized));
         }
 
+        // ── Vendetta: lifesteal (§2.5, 2026-09-17) ───────────────────────
+
+        private static int HealedBy(AbilityResolution result, OperatorState who) =>
+            result.Outcomes.Where(o => o.Kind == EffectOutcomeKind.Healed && ReferenceEquals(o.Recipient, who))
+                .Sum(o => o.Amount);
+
+        [Test]
+        public void Vendetta_EveryBlowFeedsLukaWhatItTook()
+        {
+            _luka.SetHealth(2);
+
+            var result = _abilities.Use(_luka, Luka.Vendetta, _target, _red, _board);
+
+            Assert.That(_target.Health, Is.EqualTo(3));
+            Assert.That(_luka.Health, Is.EqualTo(5), "three blows of 1, three points back");
+            Assert.That(result.Outcomes.Count(o => o.Kind == EffectOutcomeKind.Healed), Is.EqualTo(3),
+                "one heal per blow, so the view can pulse each one");
+        }
+
+        [Test]
+        public void Vendetta_ACritDrainsTheWholeCrit()
+        {
+            _luka.SetHealth(1);
+
+            var result = WithRoll(0.0).Use(_luka, Luka.Vendetta, _heavy, _red, _board);
+
+            Assert.That(_heavy.Health, Is.EqualTo(0));
+            Assert.That(_luka.Health, Is.EqualTo(Luka.MaxHealth), "nine drained, capped at seven");
+            Assert.That(HealedBy(result, _luka), Is.EqualTo(Luka.MaxHealth - 1), "reports what he gained, not what he drained");
+        }
+
+        [Test]
+        public void Vendetta_OverkillDrainsNothing()
+        {
+            // A 2-health target and a crit of 2 on the first blow: 2 removed,
+            // and the other two blows are never thrown.
+            _luka.SetHealth(1);
+            _target.SetHealth(1);
+
+            var result = WithRoll(0.0).Use(_luka, Luka.Vendetta, _target, _red, _board);
+
+            Assert.That(_luka.Health, Is.EqualTo(2), "the blow removed 1 health, not the 2 it was worth");
+            Assert.That(HealedBy(result, _luka), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Vendetta_AtFullHealth_ReportsNoHeal()
+        {
+            var result = _abilities.Use(_luka, Luka.Vendetta, _target, _red, _board);
+
+            Assert.That(_luka.Health, Is.EqualTo(Luka.MaxHealth));
+            Assert.That(result.Outcomes.Any(o => o.Kind == EffectOutcomeKind.Healed), Is.False);
+        }
+
+        [Test]
+        public void Lifesteal_DrainsOnlyWhatGetsThrough()
+        {
+            // A Normal drain against a plate: 3 dealt into a 2-point pool, 1
+            // removed, 1 healed. Vendetta is Atomic, so this pins the rule
+            // for whoever gets a mitigable drain next.
+            var drain = new AbilityDefinition(
+                id: 99901, name: "Test Drain", description: "Test double.",
+                energyCost: 0, cooldownTurns: 0, range: 3,
+                effects: new[]
+                {
+                    AbilityEffect.Damage(EffectScope.PrimaryTarget, 3, DamageType.Normal).WithLifesteal()
+                });
+            _luka.SetHealth(2);
+            // Plated on Blue's own turn, so the plate is up when Red strikes.
+            _clock.BeginTurnFor(PlayerColor.Blue);
+            _statuses.Apply(_target, StatusKind.Shield, duration: 2, magnitude: 2);
+            _clock.BeginTurnFor(PlayerColor.Red);
+
+            _abilities.Use(_luka, drain, _target, _red, _board);
+
+            Assert.That(_target.Health, Is.EqualTo(5));
+            Assert.That(_luka.Health, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void Lifesteal_IsRefusedOnAnythingButOutgoingDamage()
+        {
+            Assert.Throws<System.InvalidOperationException>(() =>
+                AbilityEffect.Heal(EffectScope.Caster, 1).WithLifesteal());
+            Assert.Throws<System.InvalidOperationException>(() =>
+                AbilityEffect.Damage(EffectScope.Caster, 1, DamageType.Normal).WithLifesteal());
+        }
+
+        [Test]
+        public void Lifesteal_SurvivesTheCriticalCopy_InEitherOrder()
+        {
+            var a = AbilityEffect.Damage(EffectScope.PrimaryTarget, 1, DamageType.Atomic)
+                .WithLifesteal().WithCritical(0.1, 2);
+            var b = AbilityEffect.Damage(EffectScope.PrimaryTarget, 1, DamageType.Atomic)
+                .WithCritical(0.1, 2).WithLifesteal();
+
+            Assert.That(a.Lifesteal && b.Lifesteal, Is.True);
+            Assert.That(a.CritChance, Is.EqualTo(0.1));
+            Assert.That(b.CritChance, Is.EqualTo(0.1));
+            Assert.That(Luka.Vendetta.Effects.All(e => e.Lifesteal), Is.True);
+        }
+
         // ── Roster ───────────────────────────────────────────────────────
 
         [Test]

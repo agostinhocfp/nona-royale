@@ -159,6 +159,14 @@ namespace NonaRoyale.Core.Abilities
         /// <b>Atomic is no longer concentrated in two operators</b> (§2.2):
         /// he is the third source, and the only one whose Atomic is a single
         /// target.
+        ///
+        /// <b>Every blow steals life (designer, 2026-09-17).</b> Luka heals the
+        /// health each blow actually removed (§2.5): 3.3 expected on a healthy
+        /// target, up to 9 on a heavy one, never past his maximum and never
+        /// for overkill. Atomic makes the drain dependable, since nothing
+        /// mitigates the hit it reads. It turns the ultimate from a pure burst
+        /// into the duelist's way back into a fight he is losing, and it is
+        /// the first heal a cast pays its own caster out of an enemy.
         /// </remarks>
         public static AbilityDefinition Vendetta { get; } = new AbilityDefinition(
             id: 903, name: "Vendetta",
@@ -184,6 +192,7 @@ namespace NonaRoyale.Core.Abilities
         /// </summary>
         private static AbilityEffect VendettaBlow() =>
             AbilityEffect.Damage(EffectScope.PrimaryTarget, 1, DamageType.Atomic, EffectAudience.EnemyOnly)
-                .WithCritical(chance: 0.1, multiplier: 2, heavyMultiplier: 3, heavyAboveMaxHealth: HeavyAbove);
+                .WithCritical(chance: 0.1, multiplier: 2, heavyMultiplier: 3, heavyAboveMaxHealth: HeavyAbove)
+                .WithLifesteal();
     }
 }

@@ -6,13 +6,19 @@ namespace NonaRoyale.Core.Abilities
 {
     /// <summary>
     /// Operator #8 — the engineer. The roster's immovable object: tied for the
-    /// most health on the roster, the slowest by half the band, and the first whose
+    /// most health on the roster, the only burdened operator, and the first whose
     /// kit needed two new mechanics at once. Content, not logic — but content
     /// that arrived with an amendment (COMBAT_SYSTEMS §10.8, 2026-09-15).
     /// </summary>
     /// <remarks>
-    /// <b>He transgresses a precedent, knowingly, recorded as a designer
-    /// override rather than drift.</b> Speed 0.5 sits below the 1.0–1.5 band
+    /// <b>Burdened, not slow (designer, 2026-09-17).</b> He moves at 1.0 with
+    /// a permanent Burdened passive: −1 cell on a roll of 6 or less, −2 above,
+    /// once per roll (§5.16). That replaced a speed of 0.5, which sat below
+    /// the 1.0–1.5 band as a recorded override; he is inside the band now.
+    /// The history that follows is the override as it stood.
+    ///
+    /// <b>He transgressed a precedent, knowingly, recorded as a designer
+    /// override rather than drift.</b> Speed 0.5 sat below the 1.0–1.5 band
     /// (ADR-0002 Amendment 4). He shipped with a second override — health 12,
     /// tying the maximum the Bouncer cut (2026-09-12) had just vacated — and
     /// the balance pass the same day (<c>46488b6</c>) took him to 9, level
@@ -20,12 +26,11 @@ namespace NonaRoyale.Core.Abilities
     /// §10.8 owns the decision; the roster test that enforces the band names
     /// him as its one documented exception.
     ///
-    /// <b>The slow-immunity side effect is accepted, not overlooked.</b> At 0.5
-    /// he sits permanently on <c>GameConfig.MinSpeedMultiplier</c>, so no slow
-    /// and no aura can move his speed at all — the floor swallows them. That is
-    /// part of the "immovable object" fantasy the designer signed off, and it
-    /// is worth knowing it cuts both ways: his own Zero-Day slow is something
-    /// he can never suffer from a mirror match.
+    /// <b>The slow immunity went with the 0.5.</b> On the floor, no slow and
+    /// no aura could move him. At 1.0 a slow takes him to 0.5 and the burden
+    /// still applies on top, so slows bite him harder than anyone: a slowed
+    /// Sanity on a 7 moves 4 − 2 = 2. That is the price of the faster crawl,
+    /// and it gives Bouncer, Syla, Mimi and Kian a real answer to him.
     ///
     /// <b>He needed two new engine capabilities, which is the point of the
     /// amendment trail.</b> Zero-Day is the first effect anchored to a victim
@@ -68,13 +73,19 @@ namespace NonaRoyale.Core.Abilities
         public const int MaxHealth = 10;
 
         /// <summary>
-        /// Half the band's floor — the first operator outside 1.0–1.5
-        /// (ADR-0002 Amendment 4), and a recorded exception to it (2026-09-15).
-        /// He closes at a crawl and never leaves: every die moves him at most
-        /// three cells, and the whole of his kit is built to make standing
-        /// still a threat rather than a stall.
+        /// 1.0, with the crawl carried by <see cref="Definition"/>'s Burdened
+        /// passive rather than by the multiplier (designer, 2026-09-17).
         /// </summary>
-        public const double Speed = 0.5;
+        /// <remarks>
+        /// <b>Was 0.5, the first operator outside the band</b> (2026-09-15):
+        /// 3.75 cells a roll on average, and a match-length tax the bots sweep
+        /// measured as his 21% win share. The designer weighed 0.75 against
+        /// haste in reverse. 0.75 breaks the half-step band a player can count
+        /// in their head; the burden is a subtraction. Both average about 5.4
+        /// cells a roll. Measured with his damage unchanged: 21% → 27%, and
+        /// turns per seat 26.5 → 25.1 (COMBAT_SYSTEMS §10.8).
+        /// </remarks>
+        public const double Speed = 1.0;
 
         /// <summary>
         /// A charged prod, driven in at arm's length. It shorts the target's
@@ -176,8 +187,8 @@ namespace NonaRoyale.Core.Abilities
         /// enemy-audience effects, so the cast-mode system filters them out
         /// for an ally anchor instead of the dash branching on it.
         ///
-        /// <b>It is the mobility his speed denies him.</b> At 0.5 he moves
-        /// three cells on a six; this moves him up to seven — six to the target
+        /// <b>It is the mobility his burden denies him.</b> A roll of 7 moves
+        /// him five cells; this moves him up to seven — six to the target
         /// and one past it — in either direction, for 6 energy once every three
         /// of his turns. Range 6 ties Translocation for the longest targeted
         /// reach on the roster (Drone Strike's is unlimited, but it aims at a
@@ -217,13 +228,14 @@ namespace NonaRoyale.Core.Abilities
             new[] { ShortCircuit, ZeroDay, Collision };
 
         /// <summary>
-        /// His uniform shape, for drafting. No aura, no passive — the
-        /// immovability is in the numbers, not in a rule.
+        /// His uniform shape, for drafting. No aura; the passive is his burden,
+        /// and it carries no magnitude — a burden is not speed.
         /// </summary>
         public static OperatorDefinition Definition { get; } = new OperatorDefinition(
             name: "Sanity",
             maxHealth: MaxHealth,
             baseSpeed: Speed,
-            abilities: All);
+            abilities: All,
+            passive: StatusKind.Burdened);
     }
 }

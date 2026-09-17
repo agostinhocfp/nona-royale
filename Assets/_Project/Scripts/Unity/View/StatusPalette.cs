@@ -37,6 +37,7 @@ namespace NonaRoyale.Unity.View
                 case StatusKind.Hunted: return new Color(0.95f, 0.30f, 0.45f);        // crimson, a pending strike
                 case StatusKind.CryoField: return new Color(0.60f, 0.90f, 0.95f);     // pale ice, a carried chill
                 case StatusKind.Watched: return new Color(0.75f, 0.55f, 0.95f);       // pale violet, a read pending
+                case StatusKind.Burdened: return new Color(0.62f, 0.52f, 0.40f);      // dull bronze, weighed down
                 default: return new Color(0.65f, 0.65f, 0.68f);
             }
         }
@@ -69,6 +70,7 @@ namespace NonaRoyale.Unity.View
                 case StatusKind.Hunted: return "HUNTED";
                 case StatusKind.CryoField: return "CRYO";
                 case StatusKind.Watched: return "WATCHED";
+                case StatusKind.Burdened: return "BURDEN";
                 default: return kind.ToString().ToUpperInvariant();
             }
         }

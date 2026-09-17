@@ -72,9 +72,10 @@ namespace NonaRoyale.Core.Services
         /// is the readability constraint that fixed the speed band in the
         /// first place.
         ///
-        /// <b>Below 1.0× the half cell rounds up (2026-09-15).</b> Sanity is
-        /// the first operator who lives under 1.0× permanently, and the floor
-        /// taxed him twice: once by the multiplier, then again on every odd
+        /// <b>Below 1.0× the half cell rounds up (2026-09-15).</b> Sanity was
+        /// the first operator who lived under 1.0× permanently (his crawl is a
+        /// Burdened passive since 2026-09-17, so today only slows reach here),
+        /// and the floor taxed him twice: once by the multiplier, then again on every odd
         /// die — a 5 always moved 2, never 3. For a fast operator the floored
         /// half is a rounding tax on a long move; for the slowest operator
         /// ever fielded it is half of everything he has. So below 1.0× the

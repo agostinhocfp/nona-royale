@@ -178,7 +178,21 @@ namespace NonaRoyale.Core.Bots
 
                         double hit = board.ExpectedHit(r, amount, effect.DamageType);
                         if (r.Owner == own) defence -= SelfHarm(w, r, hit);
-                        else offence += Hit(board, w, r, hit);
+                        else
+                        {
+                            offence += Hit(board, w, r, hit);
+
+                            // Lifesteal (Vendetta): the caster heals what the hit
+                            // removes, up to what it is missing. Each blow is
+                            // valued alone, so a nearly-full caster is slightly
+                            // over-credited across several blows.
+                            if (effect.Lifesteal)
+                            {
+                                int missing = caster.MaxHealth - caster.Health;
+                                double drained = Math.Min(Math.Min(hit, r.Health), missing);
+                                if (drained > 0.0) defence += drained * w.Heal;
+                            }
+                        }
                     }
                     break;
 

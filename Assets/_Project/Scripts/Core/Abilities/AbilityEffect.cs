@@ -25,7 +25,8 @@ namespace NonaRoyale.Core.Abilities
             int bonusInOwnZone = 0,
             double critChance = 0.0, int critMultiplier = 1, int heavyCritMultiplier = 1,
             int heavyAboveMaxHealth = 0, int heavyBonus = 0,
-            bool scalesWithCrowd = false)
+            bool scalesWithCrowd = false,
+            bool lifesteal = false)
         {
             Kind = kind;
             Scope = scope;
@@ -47,6 +48,7 @@ namespace NonaRoyale.Core.Abilities
             HeavyAboveMaxHealth = heavyAboveMaxHealth;
             HeavyBonus = heavyBonus;
             ScalesWithCrowd = scalesWithCrowd;
+            Lifesteal = lifesteal;
         }
 
         public EffectKind Kind { get; }
@@ -146,6 +148,12 @@ namespace NonaRoyale.Core.Abilities
         /// </summary>
         public bool CarriesStatus => Duration > 0;
 
+        /// <summary>
+        /// For a damage effect: the caster heals the health the hit actually
+        /// removed (§2.5). Luka's Vendetta.
+        /// </summary>
+        public bool Lifesteal { get; }
+
         /// <summary>Whether an operator with this maximum health counts as heavy for this effect.</summary>
         public bool CountsAsHeavy(int maxHealth) =>
             HeavyAboveMaxHealth > 0 && maxHealth > HeavyAboveMaxHealth;
@@ -156,7 +164,7 @@ namespace NonaRoyale.Core.Abilities
                 Status, Duration, Stacks, Magnitude, BonusIfBleeding,
                 ExecuteNumerator, ExecuteDenominator, BonusInOwnZone,
                 CritChance, CritMultiplier, HeavyCritMultiplier, HeavyAboveMaxHealth, HeavyBonus,
-                ScalesWithCrowd);
+                ScalesWithCrowd, Lifesteal);
 
         /// <summary>
         /// A copy of a damage effect that can land as a critical hit: on a roll
@@ -189,7 +197,33 @@ namespace NonaRoyale.Core.Abilities
             return new AbilityEffect(Kind, Scope, Audience, Amount, DamageType, Radius,
                 Status, Duration, Stacks, Magnitude, BonusIfBleeding,
                 ExecuteNumerator, ExecuteDenominator, BonusInOwnZone,
-                chance, multiplier, heavyMultiplier, heavyAboveMaxHealth, HeavyBonus);
+                chance, multiplier, heavyMultiplier, heavyAboveMaxHealth, HeavyBonus,
+                ScalesWithCrowd, Lifesteal);
+        }
+
+        /// <summary>
+        /// A copy of a damage effect whose caster heals the health the hit
+        /// actually removed (§2.5). Vendetta.
+        /// </summary>
+        /// <remarks>
+        /// <b>What the hit removed, not what it was worth.</b> Overkill heals
+        /// nothing, a plate's share heals nothing, an evaded or absorbed hit
+        /// heals nothing, and the heal stops at the caster's maximum. A copy
+        /// method, like <see cref="WithCritical"/>, so the crit and the drain
+        /// compose in either order.
+        /// </remarks>
+        public AbilityEffect WithLifesteal()
+        {
+            if (Kind != EffectKind.Damage)
+                throw new InvalidOperationException("Only a damage effect can steal life.");
+            if (Scope == EffectScope.Caster)
+                throw new InvalidOperationException("Damage aimed at the caster cannot heal the caster.");
+
+            return new AbilityEffect(Kind, Scope, Audience, Amount, DamageType, Radius,
+                Status, Duration, Stacks, Magnitude, BonusIfBleeding,
+                ExecuteNumerator, ExecuteDenominator, BonusInOwnZone,
+                CritChance, CritMultiplier, HeavyCritMultiplier, HeavyAboveMaxHealth, HeavyBonus,
+                ScalesWithCrowd, lifesteal: true);
         }
 
         public static AbilityEffect Damage(

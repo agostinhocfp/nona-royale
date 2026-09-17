@@ -247,8 +247,15 @@ namespace NonaRoyale.Core.Services
         /// </summary>
         public bool IsHastened(OperatorState op) => Has(op, StatusKind.Hastened);
 
+        /// <summary>
+        /// Whether <see cref="StatusKind.Burdened"/> is active on this operator
+        /// — Sanity's passive. The engine turns it into fewer cells per roll
+        /// (COMBAT_SYSTEMS §5.16).
+        /// </summary>
+        public bool IsBurdened(OperatorState op) => Has(op, StatusKind.Burdened);
+
         private static bool IsNotSpeed(StatusKind kind) =>
-            kind == StatusKind.Shield || kind == StatusKind.Hastened;
+            kind == StatusKind.Shield || kind == StatusKind.Hastened || kind == StatusKind.Burdened;
 
         public int BleedStacks(OperatorState op)
         {

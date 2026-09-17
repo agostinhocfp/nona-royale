@@ -124,6 +124,19 @@ namespace NonaRoyale.Core.Model
         /// near-identical and the trigger is the opposite: Hunted punishes
         /// staying, Watched punishes moving.
         /// </remarks>
-        Watched = 12
+        Watched = 12,
+
+        /// <summary>
+        /// The mirror of <see cref="Hastened"/>: the holder's first move from
+        /// each roll is 1 cell shorter when the roll totals 6 or less, 2
+        /// shorter above, and never shorter than 1 cell (§5.16). Sanity's
+        /// passive.
+        /// </summary>
+        /// <remarks>
+        /// <b>Not speed.</b> Like haste it is flat cells applied after the
+        /// speed formula, so it stays countable and skips the speed channel.
+        /// A holder that is also hastened collects both, and they cancel.
+        /// </remarks>
+        Burdened = 13
     }
 }

@@ -126,7 +126,7 @@ Read at the table: _the one you have to kill twice._
 
 The house's maintenance man, and the first operator who looks like work rather than violence. A broad, hulking silhouette — an octagon where everyone else is a dart or a disc — in a heavy canvas apron over the livery, tool roll across the chest, and a charged prod slung at the hip like a sidearm. He does not hurry. He has never once hurried.
 
-His kit is the fantasy of the immovable object. He is the toughest operator ever fielded and the slowest by half the band, and everything he carries is built to make standing still a threat: a prod that shorts out whatever he can reach, a magnetized grenade that snaps onto a victim and follows it home, and a winch-anchor that fires him along the track at a target — enemy or ally — raking everyone between. The grenade is the tell of the whole design: a delayed certainty you can see coming, and the counterplay is to cleanse it off before it goes off.
+His kit is the fantasy of the immovable object. He is the toughest operator ever fielded and the slowest, weighed down on every roll (the Burdened passive since 2026-09-17), and everything he carries is built to make standing still a threat: a prod that shorts out whatever he can reach, a magnetized grenade that snaps onto a victim and follows it home, and a winch-anchor that fires him along the track at a target — enemy or ally — raking everyone between. The grenade is the tell of the whole design: a delayed certainty you can see coming, and the counterplay is to cleanse it off before it goes off.
 
 He is tagged **Engineer**, which is a sixth archetype and as undefined as Brawler — the same open question, now twice as pressing. Both should be settled together.
 
