@@ -153,6 +153,18 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         public static readonly Color CrossFloor = Hex("1B161E");
 
+        /// <summary>
+        /// The cross's tint when a painted marble is in use (G4): white, so
+        /// the painting shows in its own colours.
+        /// </summary>
+        public static readonly Color PaintedFloor = Color.white;
+
+        /// <summary>
+        /// A painted carpet's tint on the square table (G4): dimmed well down,
+        /// so the table stays the darkest surface and its corners stay quiet.
+        /// </summary>
+        public static readonly Color CarpetTint = new Color(0.42f, 0.4f, 0.42f, 1f);
+
         /// <summary>The Deco sunburst set into the cross floor (G3): texture, not ornament.</summary>
         public static readonly Color FloorPattern = WithAlpha(Gold, 0.04f);
 

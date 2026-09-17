@@ -435,6 +435,9 @@ namespace NonaRoyale.Unity.View
             return centre + new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f) * radius;
         }
 
+        /// <summary>The square table's border beyond the outermost cells, in cell spacings.</summary>
+        public const float TableMargin = 0.8f;
+
         /// <summary>A seat's distance from the table's centre, as a fraction of its radius.</summary>
         public const float SeatRadius = 0.55f;
 

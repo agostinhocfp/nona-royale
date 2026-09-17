@@ -96,6 +96,7 @@ These numbers are proposals, not decisions. Settle them before batch generation,
 ```
 Assets/_Project/Art/
   Resources/Art/Operators/   luka_standing · luka_seated · luka_portrait   (loaded by name, ART1)
+  Resources/Art/Board/       board_marble · board_felt · board_carpet      (optional, loaded by name, G4)
   Board/       cell_normal_01 · cell_safe_start · cell_home_red · corner_ne · arm_tip · yard_blue
   Operators/   (retired: operator art lives under Resources, above)
   UI/          frame_deco_corner · icon_ability_velvetrope · hud_energy_pip
@@ -106,6 +107,8 @@ Assets/_Project/Art/
 Rules: `lowercase_snake_case`; class prefix first (`cell_`, `fx_`, `icon_`); numbered frames zero-padded to two digits; **no spaces, no version suffixes in filenames** — that is what git is for.
 
 **Operators** are the exception to the class prefix: `<key>_<pose>`, where the key is the operator's name, lowercased, with accents stripped (`Revú` → `revu`, `OperatorArtNames.Key`). Poses: `standing`, `seated`, `portrait`; later `rise_01…`, `tell`, `ko_01…`.
+
+**Board textures** (G4) are optional and loaded by exact name: `board_marble`, `board_felt`, `board_carpet`. Any missing one leaves the procedural surface in place.
 
 **Outside `Assets/`** (never imported by Unity):
 
@@ -166,6 +169,20 @@ The original doc covered this and the content is lost. Settle and record before 
 4. No atlas and no normal map for operators.
 5. Add a row to `docs/art/PROVENANCE.md`.
 6. Check at gameplay zoom and in a phone-sized Game view (the ART1 checklist in `ART_HOOKUP.md`).
+
+### Board textures (G4)
+
+Painted, seamless, square tiles. Prompts are in the project's `ART_PROMPTS.md` (board textures).
+
+1. Make sure Unity has compiled `NonaRoyale.EditorTools` before copying files in.
+2. Copy PNGs into `Assets/_Project/Art/Resources/Art/Board/` with the exact names above. `BoardTextureImporter` sets, on first import: Default texture, sRGB, no alpha, **Read/Write on, uncompressed**, mipmaps, bilinear, **Repeat**, max 1024.
+3. What each becomes (`BoardTextures`):
+   - `board_marble`: fills the cross in its own colours, one tile every 4 cells. Paint it as dark as the floor should look; the gold edge, the sunburst, the crack and the lights still go over it.
+   - `board_felt`: read as brightness only, divided by its average, and multiplied into the seat-tinted felt, two tiles across a table. Neutral grey, grain only.
+   - `board_carpet`: the square table around the cross, tiled every 2 cells, dimmed by `UiTheme.CarpetTint`. The table's grain lines are dropped when it is present.
+4. The board bakes marble and felt once per session: restart Play Mode to see a changed file.
+5. Add a row to `docs/art/PROVENANCE.md`.
+6. Check at gameplay zoom that the path still reads as a whisper and the corners stay quiet (ART_DIRECTION §6.1).
 
 ---
 

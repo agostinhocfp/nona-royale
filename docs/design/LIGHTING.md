@@ -1,7 +1,7 @@
 # Nona Royale — Lighting
 
 > Location in repo: `docs/design/LIGHTING.md` · Project copy: `claude/LIGHTING.md`
-> Status: **Open, 2026-09-16.** LT1 (room lighting, powered cells, bloom, the setting) is in the repo, awaiting Play Mode.
+> Status: **Open.** LT1 (room lighting, powered cells, bloom, the setting) is committed (`de1abcf`). G3's pool haze (`46c1ce1`, `GUI_PHASE.md`) rides on its switches. LT2 (event light) is written, awaiting Play Mode (2026-09-17).
 > Related: ADR-0010 (URP with the 2D Renderer), `ART_DIRECTION.md` §2.1, §3, §6 and §6.1, `BoardView`, `MOTION.md` (Reduced motion)
 
 ## Goal
@@ -29,7 +29,7 @@ The room reads as a casino after hours: low ambient light, warm pools where play
 | #   | Increment | What it delivers |
 | --- | --------- | ---------------- |
 | LT1 | **Room lighting** | Ambient 0.7; pools over the vault, the four arms and the four tables; cyan additive lights on safe cells; a bloom Volume; the Lighting effects setting; the `Board` sorting layer; `LightPulse` and its tests. |
-| LT2 | **Event light** (proposed) | A cool light on the selected operator, a flash on cast tells, a warm burst on a knockout, and a lit vault when a piece reaches HOME. |
+| LT2 | **Event light** | A cool light on the selected operator, a flash on cast tells, a warm burst on a knockout, and a lit vault when a piece reaches HOME. |
 
 ## Log
 
@@ -67,3 +67,21 @@ The room reads as a casino after hours: low ambient light, warm pools where play
     - Reduced motion stills the swells.
     - The frame rate holds, including on a phone-sized Game view.
 - 2026-09-16 — **LT1 review.** The designer added the `Board` sorting layer; since the editor hides it, it was written into `ProjectSettings/TagManager.asset` with Unity closed (`Board`, uniqueID 2847561903, ahead of Default). Everything checks out. The powered-cell glow is a nice touch but a bit strong: `poweredIntensity` 0.5 → **0.35** (30% less).
+- 2026-09-17 — **LT2 written: event light.** The designer took all four proposed lights (picker, all recommended), LT2 before the board's corner and texture work, as its own commit.
+  - **New `View/EventLights`** (a component beside `SceneLighting`, bound after each `Arrange`):
+    - **Selected operator:** a cyan additive pool under the selected piece, 0.9 cells, intensity 0.3, breathing ±12% every 2.6 s. It fades in and out at 2.5 per second on unscaled time and follows the piece, so it rides the hover lift and the walk. The floor only, so the figure keeps its seat colour.
+    - **Cast flash:** a cyan additive flash (1.5 cells, peak 0.9, 0.45 s) on the caster as the tell starts, and a second on the target or aimed cell 45% of the way through the tell, when its line arrives. The floor only.
+    - **Knockout burst:** a warm multiply flash (2.2 cells, peak 0.9, 0.6 s, `#FFB875`) on the fallen piece with the knockout beat. Every layer, so the burst touches the neighbouring figures too, and bloom catches its peak.
+    - **Vault on HOME:** a warm multiply swell at the vault, with the room's vault colour and reach, adding up to 0.7 over 1.6 s. It fires as the settle step starts, which is when the walk has landed.
+    - **Rules:** floor-only lights need the `Board` sorting layer and are skipped without it (as the powered cells are). With Lighting effects off nothing new is lit and the pool fades. Flashes run on scaled time times the animation speed, so pause and hit-stop hold them, and Fast plays them faster. Every value is an inspector field read each frame.
+  - **`LightPulse.Flash(elapsed, duration, reduced)`:** a smoothstep rise over the first 8% and a squared fall; 0 outside the span, before a delay, or with no duration. Under Reduced motion the rise takes 30% and the peak is `ReducedFlashPeak` (0.5).
+  - **`MatchBootstrap`:** `_eventLights` made at Start next to the room's lights; `Bind` after both `Arrange` calls; `Clear` in `StopPresentation`; the selected piece pushed every frame; `CastFlash` in the cast tell step (with its hold); `Knockout` beside `FeedbackLayer.Neutralized`; `OperatorReachedHome` in a batch sets `home`, and the settle step calls `VaultSwell` first.
+  - **Checks:** the view compiles against the 6000.6 DLLs. Seven new `LightPulseTests` for `Flash` (13 in the file); 731 passing in the cloud harness. Every mutant of `Flash` fails a test: the end bound, both guards, the reduced peak, the reduced rise, the rise shape and the squared fall.
+  - **Play Mode watch-list:**
+    - Selecting a piece (on the floor or seated) lays a faint cyan pool under it that follows the hover lift and fades on deselect; the piece itself stays its seat colour.
+    - A cast flashes on the caster, then on the target or cell as the tell's line arrives. A self-cast flashes once.
+    - A knockout gives a short warm flash with the shatter and hit-stop, and the bloom doesn't blow out the frame.
+    - An operator reaching HOME makes the vault swell briefly.
+    - Lighting effects off: no event light at all. Reduced motion: softer flashes and a steady pool.
+    - CPU turns on Fast and with Space held: the flashes keep up and none are left behind.
+    - Main menu mid-flash, and a new deal: no stray lights.

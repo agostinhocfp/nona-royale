@@ -4,8 +4,9 @@ using System;
 namespace NonaRoyale.Unity.View
 {
     /// <summary>
-    /// The slow swell of the room's lights (LIGHTING.md, LT1). Plain C#, so
-    /// the curve is testable outside the editor.
+    /// The slow swell of the room's lights (LIGHTING.md, LT1) and the shape of
+    /// a one-shot flash (LT2). Plain C#, so the curves are testable outside
+    /// the editor.
     /// </summary>
     public static class LightPulse
     {
@@ -22,6 +23,38 @@ namespace NonaRoyale.Unity.View
 
             double angle = 2.0 * Math.PI * (time / period + phase);
             return 1f + Math.Min(depth, 1f) * (float)Math.Sin(angle);
+        }
+
+        /// <summary>How bright a flash peaks under Reduced motion, as a fraction of its full peak (LT2).</summary>
+        public const float ReducedFlashPeak = 0.5f;
+
+        /// <summary>
+        /// A one-shot flash's intensity multiplier, <paramref name="elapsed"/>
+        /// seconds into a flash lasting <paramref name="duration"/> (LT2): a
+        /// quick rise to 1, then a falling curve to 0. Outside the flash, or
+        /// with no duration, it is 0.
+        /// </summary>
+        /// <remarks>
+        /// Under Reduced motion the rise is slower and the peak is
+        /// <see cref="ReducedFlashPeak"/>: the moment still reads, without
+        /// the punch.
+        /// </remarks>
+        public static float Flash(double elapsed, float duration, bool reduced)
+        {
+            if (!(duration > 0f) || !(elapsed >= 0.0) || elapsed >= duration) return 0f;
+
+            double t = elapsed / duration;
+            double attack = reduced ? 0.3 : 0.08;
+            double peak = reduced ? ReducedFlashPeak : 1.0;
+
+            if (t < attack)
+            {
+                double rise = t / attack;
+                return (float)(peak * rise * rise * (3.0 - 2.0 * rise));
+            }
+
+            double fall = 1.0 - (t - attack) / (1.0 - attack);
+            return (float)(peak * fall * fall);
         }
 
         /// <summary>

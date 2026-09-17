@@ -29,6 +29,12 @@ namespace NonaRoyale.Unity.View
     /// hash, so the room looks the same every run. Painted textures can
     /// replace any of these later through the same properties.
     ///
+    /// <b>Painted textures slot in</b> (G4). When <see cref="BoardTextures"/>
+    /// finds a painted marble or felt, the cross and the tables bake it in
+    /// place of the procedural surface; everything else (the crack, the
+    /// vignette, the edges) stays. Sprites are cached for the session, so a
+    /// texture added while playing shows on the next run.
+    ///
     /// <b>Stand-ins for the art pass.</b> The figures follow ART_DIRECTION §6.1
     /// (operators sit at their table and rise on deploy) until the rendered
     /// character models replace them. The operator's shape stays on the figure
@@ -50,7 +56,7 @@ namespace NonaRoyale.Unity.View
         public static Sprite TableRim => _rim ?? (_rim = BuildRim(256, 0.9f));
 
         /// <summary>The felt inside the rim: bright at the centre, darkening to the edge.</summary>
-        public static Sprite Felt => _felt ?? (_felt = BuildFelt(256, 0.875f));
+        public static Sprite Felt => _felt ?? (_felt = BuildFelt(256, 0.875f, BoardTextures.Felt));
 
         /// <summary>A dashed ring just inside the rim.</summary>
         public static Sprite DottedRing => _dotted ?? (_dotted = BuildDotted(256, 0.79f, 64));
@@ -135,15 +141,16 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         public static Sprite[] Cross(int gridCells, int armWidth)
         {
-            int key = gridCells * 100 + armWidth;
+            var marble = BoardTextures.Marble;
+            int key = gridCells * 100 + armWidth + (marble != null ? 100000 : 0);
             if (Crosses.TryGetValue(key, out var sprites)) return sprites;
 
             sprites = new[]
             {
-                BuildCross(gridCells, armWidth, CrossPart.Fill),
-                BuildCross(gridCells, armWidth, CrossPart.Edge),
-                BuildCross(gridCells, armWidth, CrossPart.Shadow),
-                BuildCross(gridCells, armWidth, CrossPart.Pattern),
+                BuildCross(gridCells, armWidth, CrossPart.Fill, marble),
+                BuildCross(gridCells, armWidth, CrossPart.Edge, null),
+                BuildCross(gridCells, armWidth, CrossPart.Shadow, null),
+                BuildCross(gridCells, armWidth, CrossPart.Pattern, null),
             };
 
             Crosses[key] = sprites;
@@ -205,8 +212,11 @@ namespace NonaRoyale.Unity.View
             }, size, Vector4.zero);
         }
 
-        private static Sprite BuildFelt(int size, float radius)
+        private static Sprite BuildFelt(int size, float radius, TileSampler painted)
         {
+            // A painted felt shows its grain around its own average, so the seat tint holds.
+            float mean = painted != null ? Mathf.Max(0.02f, painted.MeanLuminance) : 1f;
+
             float half = size * 0.5f;
 
             return DecoSprites.RasterizeShaded(size, size, (px, py) =>
@@ -228,10 +238,19 @@ namespace NonaRoyale.Unity.View
                 lum *= 0.85f + 0.15f * highlight;
                 lum *= 1f - 0.35f * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.72f, radius, r));
 
-                // Fibre (G3): grain per texel, and a faint nap running one way.
-                float grain = Hash(Mathf.FloorToInt(px), Mathf.FloorToInt(py), 11) * 2f - 1f;
-                float nap = ValueNoise(px * 0.9f, py * 0.14f, 12) * 2f - 1f;
-                lum *= 1f + 0.045f * grain + 0.035f * nap;
+                if (painted != null)
+                {
+                    float u = px / size * BoardTextures.FeltRepeats;
+                    float v = py / size * BoardTextures.FeltRepeats;
+                    lum *= Mathf.Clamp(painted.Brightness(u, v) / mean, 0.6f, 1.4f);
+                }
+                else
+                {
+                    // Fibre (G3): grain per texel, and a faint nap running one way.
+                    float grain = Hash(Mathf.FloorToInt(px), Mathf.FloorToInt(py), 11) * 2f - 1f;
+                    float nap = ValueNoise(px * 0.9f, py * 0.14f, 12) * 2f - 1f;
+                    lum *= 1f + 0.045f * grain + 0.035f * nap;
+                }
 
                 return Grey(lum, alpha);
             }, size, Vector4.zero);
@@ -456,7 +475,7 @@ namespace NonaRoyale.Unity.View
         /// <summary>Rays in the floor's sunburst, all the way round.</summary>
         private const int PatternRays = 48;
 
-        private static Sprite BuildCross(int gridCells, int armWidth, CrossPart part)
+        private static Sprite BuildCross(int gridCells, int armWidth, CrossPart part, TileSampler marble)
         {
             int ppc = CrossTexelsPerCell;
             int size = Mathf.RoundToInt((gridCells + 2f * CrossMargin) * ppc);
@@ -480,7 +499,14 @@ namespace NonaRoyale.Unity.View
                     case CrossPart.Fill:
                     {
                         float alpha = Coverage(d);
-                        return alpha <= 0f ? Color.clear : Grey(Marble(x, y, crack, ppc), alpha);
+                        if (alpha <= 0f) return Color.clear;
+
+                        if (marble == null) return Grey(Marble(x, y) * CrackShade(x, y, crack, ppc), alpha);
+
+                        // A painted marble, in its own colours, with the same crack.
+                        var paint = marble.Sample(x / BoardTextures.MarbleTileCells, y / BoardTextures.MarbleTileCells);
+                        float shade = CrackShade(x, y, crack, ppc);
+                        return new Color(paint.r * shade, paint.g * shade, paint.b * shade, alpha);
                     }
 
                     case CrossPart.Edge:
@@ -526,11 +552,11 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
-        /// Marble luminance at a cell coordinate: a soft cloud, two sets of
-        /// thin veins bent by noise, and the hairline crack beside the broken
-        /// trim. Kept between about 0.8 and 1, so the floor stays dark.
+        /// Marble luminance at a cell coordinate: a soft cloud and two sets of
+        /// thin veins bent by noise. Kept between about 0.8 and 1, so the
+        /// floor stays dark.
         /// </summary>
-        private static float Marble(float x, float y, Vector2 crack, int ppc)
+        private static float Marble(float x, float y)
         {
             float cloud = Fbm(x * 1.1f, y * 1.1f, 3, 21);
             float warp = Fbm(x * 0.45f + 7.1f, y * 0.45f - 3.3f, 3, 22);
@@ -542,16 +568,22 @@ namespace NonaRoyale.Unity.View
             float threads = 1f - Mathf.SmoothStep(0f, 1f, Mathf.Abs(fine) / 0.05f);
 
             float lum = 0.84f + 0.08f * (cloud - 0.5f) * 2f + 0.09f * veins + 0.045f * threads;
+            return Mathf.Min(lum, 1f);
+        }
 
-            // A short jagged crack running in from the break, clear of the cells.
+        /// <summary>
+        /// The hairline crack in the marble beside the broken trim: a short
+        /// jagged line running in from the break, clear of the cells. A
+        /// multiplier, 1 away from the crack.
+        /// </summary>
+        private static float CrackShade(float x, float y, Vector2 crack, int ppc)
+        {
             float off = Mathf.Min(
                 Segment(x, y, crack, crack + new Vector2(0.06f, -0.035f)),
                 Mathf.Min(
                     Segment(x, y, crack + new Vector2(0.06f, -0.035f), crack + new Vector2(0.11f, 0.015f)),
                     Segment(x, y, crack + new Vector2(0.11f, 0.015f), crack + new Vector2(0.16f, -0.03f))));
-            lum *= 1f - 0.45f * DecoSprites.Line(off * ppc, 0.8f);
-
-            return Mathf.Min(lum, 1f);
+            return 1f - 0.45f * DecoSprites.Line(off * ppc, 0.8f);
         }
 
         /// <summary>

@@ -239,6 +239,9 @@ namespace NonaRoyale.Unity.Composition
         private HitStop _hitStop;
         private SceneLighting _lighting;
 
+        /// <summary>Light that answers play: selection, casts, knockouts, HOME (LT2).</summary>
+        private EventLights _eventLights;
+
         /// <summary>Plays every sound (AU1). Built once, at Start; it outlives matches.</summary>
         private AudioDirector _audio;
 
@@ -297,6 +300,7 @@ namespace NonaRoyale.Unity.Composition
             // URP's 2D Renderer lights every sprite, so the room's lights come before any board (ADR-0010, LT1).
             _lighting = Ensure<SceneLighting>();
             _lighting.Build();
+            _eventLights = Ensure<EventLights>();
 
             // Before the first framing, which hands the camera's resting place to the nudge.
             _nudge = Ensure<CameraNudge>();
@@ -451,6 +455,7 @@ namespace NonaRoyale.Unity.Composition
             var map = new PathMap(board);
             boardView.Build(map, _layout, 3);
             if (_lighting != null) _lighting.Arrange(_layout, map);
+            if (_eventLights != null) _eventLights.Bind(_lighting, _layout, _motion);
 
             FrameCamera();
         }
@@ -532,6 +537,7 @@ namespace NonaRoyale.Unity.Composition
 
             boardView.Build(_match.Map, _layout, seatsPerTable);
             if (_lighting != null) _lighting.Arrange(_layout, _match.Map);
+            if (_eventLights != null) _eventLights.Bind(_lighting, _layout, _motion);
 
             _highlights = GetComponent<HighlightLayer>() ?? gameObject.AddComponent<HighlightLayer>();
             _highlights.Bind(_layout);
@@ -647,6 +653,7 @@ namespace NonaRoyale.Unity.Composition
             if (_dice != null) _dice.Skip();
             if (_hitStop != null) _hitStop.Release();
             if (_nudge != null) _nudge.Stop();
+            if (_eventLights != null) _eventLights.Clear();
 
             _diceHeld = false;
             _buffered = BufferedIntent.None;
@@ -879,6 +886,13 @@ namespace NonaRoyale.Unity.Composition
             {
                 _lighting.Effects = lightingEffects;
                 _lighting.Reduced = reducedMotion;
+            }
+
+            // The selection pool follows whichever piece is selected (LT2).
+            if (_eventLights != null)
+            {
+                var selectedPiece = _match != null ? PieceFor(_selectedOperator) : null;
+                _eventLights.Selected = selectedPiece != null ? selectedPiece.transform : null;
             }
 
             SaveSettingsIfChanged();
@@ -1362,7 +1376,7 @@ namespace NonaRoyale.Unity.Composition
             ICommand command)
         {
             DiceRolled roll = null;
-            bool walks = false, hits = false, knockouts = false, refused = false;
+            bool walks = false, hits = false, knockouts = false, refused = false, home = false;
             var rises = new List<KeyValuePair<OperatorState, CellRef>>();
 
             foreach (var e in events)
@@ -1375,6 +1389,7 @@ namespace NonaRoyale.Unity.Composition
                     case OperatorDeployed deployed: rises.Add(new KeyValuePair<OperatorState, CellRef>(deployed.Operator, deployed.Cell)); break;
                     case OperatorPityDeployed pity: rises.Add(new KeyValuePair<OperatorState, CellRef>(pity.Operator, pity.Cell)); break;
                     case OperatorNeutralized _: knockouts = true; break;
+                    case OperatorReachedHome _: home = true; break;
                     case DamageDealt damaged when damaged.Amount > 0: hits = true; break;
                     case DamageEvaded _:
                     case DamageAbsorbed _:
@@ -1444,7 +1459,12 @@ namespace NonaRoyale.Unity.Composition
                     hold: _motion.Tween(KnockoutHoldSeconds));
 
             _queue.Enqueue(PresentationBeat.Settle,
-                () => SettleBatch(events, immediate: false, castBy, cast, fromBot),
+                () =>
+                {
+                    // The vault answers an arrival as the walk lands (LT2).
+                    if (home && _eventLights != null) _eventLights.VaultSwell();
+                    SettleBatch(events, immediate: false, castBy, cast, fromBot);
+                },
                 essential: true);
         }
 
@@ -1476,6 +1496,13 @@ namespace NonaRoyale.Unity.Composition
                         target != null ? target.transform.position : (Vector3?)null,
                         cell.HasValue ? _layout.PositionOf(cell.Value) : (Vector3?)null);
                     Sound(cell.HasValue ? SoundCue.CastCell : SoundCue.CastTell, caster.transform.position);
+
+                    if (_eventLights != null)
+                    {
+                        Vector3? aim = target != null ? target.transform.position
+                            : cell.HasValue ? _layout.PositionOf(cell.Value) : (Vector3?)null;
+                        _eventLights.CastFlash(caster.transform.position, aim, hold);
+                    }
                     Speak(VoiceSlot.Cast, caster.Operator);
                 },
                 hold: hold);
@@ -1983,6 +2010,7 @@ namespace NonaRoyale.Unity.Composition
                             BoardLayout.ColourOf(down.Operator.Owner),
                             down.Cause);
                         Sound(SoundCue.Knockout, piece.transform.position);
+                        if (_eventLights != null) _eventLights.Knockout(piece.transform.position);
                         piece.Shatter();
                         impact = piece;
                     }

@@ -18,6 +18,11 @@ namespace NonaRoyale.Unity.View
     /// each arm and a gold lane down each arm's middle; four felt tables with
     /// gilt rims, one per seat; and a vault door at the centre, glowing.
     ///
+    /// <b>Painted surfaces</b> (G4). Painted marble, felt and carpet replace
+    /// the procedural surfaces when they exist (<see cref="BoardTextures"/>).
+    /// The table's corners stay dark; the corner lamps G4 tried were taken
+    /// out.
+    ///
     /// <b>Quiet where it matters</b> (G3). Nothing here competes with the lit
     /// cells or sits loud under a piece: the pattern and the veining stay
     /// within a few percent of the floor, and the table's corners stay dark.
@@ -73,9 +78,6 @@ namespace NonaRoyale.Unity.View
         private const int VaultTrimOrder = -13;
         private const int VaultBossOrder = -12;
 
-        /// <summary>Table border beyond the outermost cells, in cell spacings.</summary>
-        private const float TableMargin = 0.8f;
-
         /// <summary>How far the table's gilt rule sits in from its edge, in cell spacings.</summary>
         private const float TableRuleInset = 0.3f;
 
@@ -118,11 +120,23 @@ namespace NonaRoyale.Unity.View
         {
             float spacing = layout.Spacing;
             var centre = layout.HomeGoalPosition;
-            float sideCells = layout.GridSize + 2f * TableMargin;
+            float sideCells = layout.GridSize + 2f * BoardLayout.TableMargin;
             float side = sideCells * spacing;
 
-            Sprite("table", BoardArt.Solid, centre, side, UiTheme.BoardField, TableOrder);
-            Sprite("table_grain", BoardArt.Veins, centre, side, UiTheme.BoardVeins, GrainOrder);
+            // A painted carpet replaces the plain table and its grain (G4).
+            var carpet = BoardTextures.Carpet;
+            if (carpet != null)
+            {
+                var table = Sprite("table_carpet", carpet, centre, spacing, UiTheme.CarpetTint, TableOrder);
+                table.drawMode = SpriteDrawMode.Tiled;
+                table.tileMode = SpriteTileMode.Continuous;
+                table.size = new Vector2(sideCells, sideCells);
+            }
+            else
+            {
+                Sprite("table", BoardArt.Solid, centre, side, UiTheme.BoardField, TableOrder);
+                Sprite("table_grain", BoardArt.Veins, centre, side, UiTheme.BoardVeins, GrainOrder);
+            }
             Sprite("table_rule", BoardArt.TableRule(sideCells, TableRuleInset), centre, side,
                 UiTheme.TableRule, TableRuleOrder);
 
@@ -130,7 +144,8 @@ namespace NonaRoyale.Unity.View
             var cross = BoardArt.Cross(layout.GridSize, ArmCells);
             var shadowOffset = new Vector3(0.12f, -0.2f, 0f) * spacing;
             Sprite("cross_shadow", cross[BoardArt.CrossShadow], centre + shadowOffset, spacing, UiTheme.Shadow, CrossShadowOrder);
-            Sprite("cross", cross[BoardArt.CrossFill], centre, spacing, UiTheme.CrossFloor, CrossOrder);
+            var floorTint = BoardTextures.Marble != null ? UiTheme.PaintedFloor : UiTheme.CrossFloor;
+            Sprite("cross", cross[BoardArt.CrossFill], centre, spacing, floorTint, CrossOrder);
             Sprite("cross_pattern", cross[BoardArt.CrossPattern], centre, spacing, UiTheme.FloorPattern, PatternOrder);
             Sprite("cross_edge", cross[BoardArt.CrossEdge], centre, spacing, UiTheme.CrossEdge, CrossEdgeOrder);
 

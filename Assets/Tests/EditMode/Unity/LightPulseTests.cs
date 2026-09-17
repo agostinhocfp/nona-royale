@@ -71,5 +71,90 @@ namespace NonaRoyale.Unity.Tests.View
 
             Assert.AreEqual(LightPulse.Phase(3), LightPulse.Phase(-3));
         }
-    }
+    
+
+        // ── Flash (LT2) ─────────────────────────────────────────────────
+
+        [Test]
+        public void Flash_IsDarkOutsideItsSpan()
+        {
+            Assert.AreEqual(0f, LightPulse.Flash(-0.01, 1f, false));
+            Assert.AreEqual(0f, LightPulse.Flash(1.0, 1f, false));
+            Assert.AreEqual(0f, LightPulse.Flash(1.5, 1f, false));
+            Assert.AreEqual(0f, LightPulse.Flash(2.5, 1f, false));
+        }
+
+        [Test]
+        public void Flash_WithNoDuration_IsDark()
+        {
+            Assert.AreEqual(0f, LightPulse.Flash(0.1, 0f, false));
+            Assert.AreEqual(0f, LightPulse.Flash(0.1, -1f, false));
+            Assert.AreEqual(0f, LightPulse.Flash(0.1, float.NaN, false));
+            Assert.AreEqual(0f, LightPulse.Flash(double.NaN, 1f, false));
+        }
+
+        [Test]
+        public void Flash_PeaksAtOne_EarlyInItsSpan()
+        {
+            Assert.AreEqual(1f, LightPulse.Flash(0.08, 1f, false), 1e-4f);
+
+            float peak = 0f;
+            double peakAt = 0;
+            for (int i = 0; i < 1000; i++)
+            {
+                float v = LightPulse.Flash(i / 1000.0, 1f, false);
+                if (v > peak) { peak = v; peakAt = i / 1000.0; }
+            }
+
+            Assert.AreEqual(1f, peak, 1e-3f);
+            Assert.Less(peakAt, 0.15);
+        }
+
+        [Test]
+        public void Flash_RisesThenOnlyFalls()
+        {
+            float previous = 0f;
+            bool falling = false;
+            for (int i = 0; i < 1000; i++)
+            {
+                float v = LightPulse.Flash(i / 1000.0 * 0.6, 0.6f, false);
+                Assert.That(v, Is.InRange(0f, 1f));
+                if (v < previous - 1e-6f) falling = true;
+                else if (falling) Assert.LessOrEqual(v, previous + 1e-6f, "a flash never brightens again once it falls");
+                previous = v;
+            }
+
+            Assert.IsTrue(falling);
+            Assert.Less(LightPulse.Flash(0.599, 0.6f, false), 0.01f);
+        }
+
+        [Test]
+        public void Flash_UnderReducedMotion_PeaksLowerAndLater()
+        {
+            float peak = 0f;
+            double peakAt = 0;
+            for (int i = 0; i < 1000; i++)
+            {
+                float v = LightPulse.Flash(i / 1000.0, 1f, true);
+                if (v > peak) { peak = v; peakAt = i / 1000.0; }
+            }
+
+            Assert.AreEqual(LightPulse.ReducedFlashPeak, peak, 1e-3f);
+            Assert.Greater(peakAt, 0.2);
+            Assert.Less(LightPulse.Flash(0.05, 1f, true), LightPulse.Flash(0.05, 1f, false));
+        }
+
+        [Test]
+        public void Flash_FallsFastAtFirst_ThenLingers()
+        {
+            // Halfway down the fall, the light is a quarter of its peak: a curve, not a ramp.
+            Assert.AreEqual(0.25f, LightPulse.Flash(0.54, 1f, false), 1e-3f);
+        }
+
+        [Test]
+        public void Flash_ScalesWithItsDuration()
+        {
+            Assert.AreEqual(LightPulse.Flash(0.25, 1f, false), LightPulse.Flash(0.5, 2f, false), 1e-5f);
+        }
+}
 }
