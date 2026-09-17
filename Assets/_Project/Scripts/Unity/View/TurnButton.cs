@@ -156,8 +156,9 @@ namespace NonaRoyale.Unity.View
             title.characterSpacing = UiTheme.HeadingSpacing * 0.5f;
             UiKit.Label(rect, hint, 13f, enabled ? accent : UiTheme.TextOff, TextAlignmentOptions.Center);
 
-            // The showpiece control gets the panel's corner fans.
-            UiKit.CornerFans(rect, UiTheme.WithAlpha(enabled ? accent : UiTheme.Line, 0.45f));
+            // The showpiece control floats over the board, so it gets a floating
+            // card's fans: small and dim (G3), and none while it waits.
+            if (enabled) UiKit.CornerFans(rect, UiTheme.WithAlpha(accent, UiTheme.FanAlpha));
 
             if (pulse) UiKit.Pulse(button, accent);
         }

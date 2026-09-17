@@ -5,7 +5,8 @@ using UnityEngine;
 namespace NonaRoyale.Unity.View
 {
     /// <summary>
-    /// Every colour and type size the view draws with (GUI phase, increment G).
+    /// Every colour and type size the view draws with (GUI phase, increments
+    /// G and G3).
     /// </summary>
     /// <remarks>
     /// <b>One file for the look.</b> The palette is ART_DIRECTION §3, still
@@ -28,6 +29,13 @@ namespace NonaRoyale.Unity.View
     /// <b>Seat colours stay saturated.</b> They are gameplay information, and
     /// the palette's "accents, not base colours" rule is for the world, not
     /// for telling four players apart.
+    ///
+    /// <b>Gold is rationed</b> (increment G3, 2026-09-17). ART_DIRECTION §3
+    /// allows roughly a fifth of a frame in gold; G and G2 ran past it with
+    /// double rules everywhere. Resting edges are now one hairline of
+    /// <see cref="Line"/>, and full-strength gold marks only headings, the
+    /// active seat's plate and ROLL. The richness moved into the board's
+    /// surfaces instead.
     ///
     /// Static values, not a ScriptableObject (decided 2026-09-15): the HUD is
     /// built from code and caches colours when it builds, so Inspector tuning
@@ -63,11 +71,15 @@ namespace NonaRoyale.Unity.View
         /// <summary>Floating things over the board: toasts, the turn pill, cell labels.</summary>
         public static readonly Color Scrim = WithAlpha(Obsidian, 0.88f);
 
-        /// <summary>Thin rules and resting frame lines.</summary>
-        public static readonly Color Line = WithAlpha(Brass, 0.95f);
+        /// <summary>
+        /// Every resting edge and rule: one gilt hairline at half strength
+        /// (GUI increment G3). Full gold is kept for headings, the active
+        /// seat's plate and ROLL, so it means something where it appears.
+        /// </summary>
+        public static readonly Color Line = WithAlpha(Gold, 0.5f);
 
-        /// <summary>The bright half of a double rule.</summary>
-        public static readonly Color LineBright = WithAlpha(Gold, 0.9f);
+        /// <summary>Corner fans on floating cards: present, never loud (G3).</summary>
+        public const float FanAlpha = 0.4f;
 
         public static readonly Color ButtonFill = Hex("231B20");
         public static readonly Color ButtonOff = Hex("120E11");
@@ -128,14 +140,33 @@ namespace NonaRoyale.Unity.View
         /// <summary>Faint gold veins in the table.</summary>
         public static readonly Color BoardVeins = WithAlpha(Gold, 0.07f);
 
-        /// <summary>The cross-shaped floor the track runs on.</summary>
-        public static readonly Color CrossFloor = Hex("17131A");
+        /// <summary>
+        /// The table's single gilt rule, inset from its edge (G3). Kept low:
+        /// the table's corners stay dark.
+        /// </summary>
+        public static readonly Color TableRule = WithAlpha(Gold, 0.32f);
 
-        /// <summary>The cross's gilt edge.</summary>
-        public static readonly Color CrossEdge = WithAlpha(Brass, 0.95f);
+        /// <summary>
+        /// The cross-shaped floor the track runs on. The marble sprite shades
+        /// it down by up to a sixth, so it starts a touch above the old flat
+        /// value.
+        /// </summary>
+        public static readonly Color CrossFloor = Hex("1B161E");
+
+        /// <summary>The Deco sunburst set into the cross floor (G3): texture, not ornament.</summary>
+        public static readonly Color FloorPattern = WithAlpha(Gold, 0.04f);
+
+        /// <summary>The cross's gilt edge, thinner since G3.</summary>
+        public static readonly Color CrossEdge = WithAlpha(Color.Lerp(Brass, Gold, 0.45f), 0.9f);
 
         /// <summary>The lane down the middle of each arm: the home column's road.</summary>
-        public static readonly Color CrossLane = WithAlpha(Brass, 0.55f);
+        public static readonly Color CrossLane = WithAlpha(Brass, 0.42f);
+
+        /// <summary>
+        /// Warm haze drifting in the light pools (G3). The pools' lights tint
+        /// it further, so it all but vanishes in the dark.
+        /// </summary>
+        public static readonly Color Haze = WithAlpha(Hex("FFE6C4"), 0.035f);
 
         /// <summary>Warm light pooled in each arm.</summary>
         public static readonly Color ArmGlow = WithAlpha(Gold, 0.07f);
@@ -166,8 +197,8 @@ namespace NonaRoyale.Unity.View
         /// <summary>Felt: the seat colour, darkened. The felt sprite shades it further toward the rim.</summary>
         public const float FeltBrightness = 0.62f;
 
-        /// <summary>The tables' gilt rim: gold warmed toward the highlight.</summary>
-        public static readonly Color TableRim = Color.Lerp(Gold, GoldBright, 0.45f);
+        /// <summary>The tables' gilt rim: gold warmed toward the highlight. The sprite adds the streak.</summary>
+        public static readonly Color TableRim = Color.Lerp(Gold, GoldBright, 0.6f);
 
         /// <summary>Dotted ring, arc and chips on the felt.</summary>
         public static readonly Color FeltTrim = WithAlpha(Gold, 0.5f);

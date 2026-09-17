@@ -207,7 +207,7 @@ namespace NonaRoyale.Unity.View
             var personality = _edit.PersonalityOf(seat);
             var chip = UiKit.Button(button.transform, personality.Label(), () =>
                 _edit.SetPersonality(seat, NextPersonality(personality)), Rebuild,
-                size: 12f, tint: UiTheme.GoldDeep, edge: UiTheme.Gold);
+                size: 12f, tint: UiTheme.GoldDeep, edge: UiTheme.Line);
             UiKit.Size(chip, 120f, 26f);
         }
 

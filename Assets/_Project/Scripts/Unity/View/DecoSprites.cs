@@ -5,12 +5,12 @@ using UnityEngine;
 namespace NonaRoyale.Unity.View
 {
     /// <summary>
-    /// The Art Deco frame kit, drawn in code (GUI phase, increment G).
+    /// The Art Deco frame kit, drawn in code (GUI phase, increments G and G3).
     /// </summary>
     /// <remarks>
     /// <b>Why procedural.</b> PRESENTATION §6 keeps the prototype free of art
     /// assets until the art pass, and these shapes are simple enough to
-    /// describe exactly: chamfered boxes, double rules, corner fans, tall
+    /// describe exactly: chamfered boxes, hairline rules, corner fans, tall
     /// diamonds (ART_DIRECTION §8: sharp corners, no soft shapes). The art
     /// pass can swap any of them for a painted sprite with the same borders.
     ///
@@ -35,17 +35,29 @@ namespace NonaRoyale.Unity.View
 
         private static Sprite _panelFill, _panelEdge, _buttonFill, _buttonEdge, _buttonEdgeDouble, _chipFill;
 
+        /// <summary>
+        /// Width of every resting edge, in canvas units (G3).
+        /// </summary>
+        /// <remarks>
+        /// Not 1: at the 1080 reference with match 0.5, a 1366×768 screen
+        /// scales the canvas by about 0.71, so a 1-unit line would fall under
+        /// a pixel and shimmer. 1.5 units stays at least a pixel wide there,
+        /// and the edge is anti-aliased from a signed distance, so it lands
+        /// soft rather than stepped at any scale.
+        /// </remarks>
+        public const float HairlineWidth = 1.5f;
+
         /// <summary>A docked or floating panel's body. Corners cut at 10.</summary>
         public static Sprite PanelFill => _panelFill ?? (_panelFill = Chamfer(10, null));
 
-        /// <summary>A panel's frame: a 2-unit rule and a 1-unit rule 5 inside it.</summary>
-        public static Sprite PanelEdge => _panelEdge ?? (_panelEdge = Chamfer(10, new[] { new Band(0f, 2f), new Band(5f, 1f) }));
+        /// <summary>A floating panel's frame: one hairline on the edge (G3; was a double rule).</summary>
+        public static Sprite PanelEdge => _panelEdge ?? (_panelEdge = Chamfer(10, new[] { new Band(0f, HairlineWidth) }));
 
         /// <summary>A button, card or die. Corners cut at 6.</summary>
         public static Sprite ButtonFill => _buttonFill ?? (_buttonFill = Chamfer(6, null));
 
-        /// <summary>A button's resting edge, 1.5 units.</summary>
-        public static Sprite ButtonEdge => _buttonEdge ?? (_buttonEdge = Chamfer(6, new[] { new Band(0f, 1.5f) }));
+        /// <summary>A button's resting edge: one hairline.</summary>
+        public static Sprite ButtonEdge => _buttonEdge ?? (_buttonEdge = Chamfer(6, new[] { new Band(0f, HairlineWidth) }));
 
         /// <summary>The edge of a control that wants pressing: 2 units and a 1-unit rule inside.</summary>
         public static Sprite ButtonEdgeDouble => _buttonEdgeDouble ?? (_buttonEdgeDouble = Chamfer(6, new[] { new Band(0f, 2f), new Band(4f, 1f) }));
@@ -55,16 +67,30 @@ namespace NonaRoyale.Unity.View
 
         // ── HUD ornaments (simple) ──────────────────────────────────────
 
-        private static Sprite _fan, _diamond, _diamondOutline;
+        private static Sprite _fan, _diamond, _diamondOutline, _ruleAlong, _ruleUp;
 
-        /// <summary>Size of <see cref="CornerFan"/> in canvas units.</summary>
-        public const float FanSize = 22f;
+        /// <summary>Size of <see cref="CornerFan"/> in canvas units (G3: was 22).</summary>
+        public const float FanSize = 16f;
 
         /// <summary>
         /// How far inside a panel's corner the fan's origin sits, so the fan
-        /// springs from the inner rule rather than spilling over the chamfer.
+        /// clears the chamfer and the hairline.
         /// </summary>
-        public const float FanInset = 7f;
+        public const float FanInset = 5f;
+
+        /// <summary>Thickness, in canvas units, of the box a <see cref="RuleAlong"/> is drawn in.</summary>
+        public const float RuleBox = 4f;
+
+        /// <summary>
+        /// A straight hairline, for a docked panel's edge or a divider: an
+        /// anti-aliased line of <see cref="HairlineWidth"/> down the middle of
+        /// a <see cref="RuleBox"/>-thick box. Runs along x; stretch it as a
+        /// simple (not sliced) image.
+        /// </summary>
+        public static Sprite RuleAlong => _ruleAlong ?? (_ruleAlong = BuildRule(horizontal: true));
+
+        /// <summary>The same hairline, running along y.</summary>
+        public static Sprite RuleUp => _ruleUp ?? (_ruleUp = BuildRule(horizontal: false));
 
         /// <summary>
         /// A quarter sunburst radiating from its bottom-left corner. Placed at a
@@ -151,17 +177,20 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         private static Sprite BuildFan(int size)
         {
-            float arc = size - 2.5f;
+            // Proportions from the original 22-unit fan, so a smaller fan is
+            // the same drawing and not a crop of it.
+            float k = size / 22f;
+            float arc = size - 2.5f * k;
 
             return Rasterize(size, size, (px, py) =>
             {
                 float r = Mathf.Sqrt(px * px + py * py);
                 float angle = Mathf.Atan2(py, px) * Mathf.Rad2Deg;
 
-                float alpha = Coverage(r - 3.5f);
+                float alpha = Coverage(r - 3.5f * k);
                 alpha = Mathf.Max(alpha, Line(Mathf.Abs(r - arc), 1f));
 
-                if (r > 6f && r < arc - 2.5f)
+                if (r > 6f * k && r < arc - 2.5f * k)
                 {
                     foreach (float ray in new[] { 22.5f, 45f, 67.5f })
                     {
@@ -172,6 +201,20 @@ namespace NonaRoyale.Unity.View
 
                 return alpha;
             }, HudPixelsPerUnit, Vector4.zero, new Vector2(0f, 0f));
+        }
+
+        private static Sprite BuildRule(bool horizontal)
+        {
+            // Three texels per canvas unit across the line, two along it.
+            const int across = 12;
+            const int along = 2;
+            float texelsPerUnit = across / RuleBox;
+
+            return Rasterize(horizontal ? along : across, horizontal ? across : along, (px, py) =>
+            {
+                float offset = Mathf.Abs((horizontal ? py : px) - across * 0.5f) / texelsPerUnit;
+                return Line(offset, HairlineWidth);
+            }, HudPixelsPerUnit, Vector4.zero);
         }
 
         private static Sprite BuildDiamond(int width, int height, float stroke)

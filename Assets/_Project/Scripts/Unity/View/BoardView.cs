@@ -1,75 +1,3 @@
-// // Assets/_Project/Scripts/Unity/View/BoardView.cs
-// using System.Collections.Generic;
-// using NonaRoyale.Core.Board;
-// using UnityEngine;
-
-// namespace NonaRoyale.Unity.View
-// {
-//     /// <summary>
-//     /// Draws the cells. Static: it renders the board's shape and never changes
-//     /// after construction, because the board itself never changes.
-//     /// </summary>
-//     public sealed class BoardView : MonoBehaviour
-//     {
-//         private readonly List<SpriteRenderer> _cells = new List<SpriteRenderer>();
-
-//         public void Build(PathMap map, BoardLayout layout)
-//         {
-//             foreach (var cell in _cells)
-//                 if (cell != null) Destroy(cell.gameObject);
-
-//             _cells.Clear();
-
-//             var profile = map.Profile;
-
-//             for (int i = 0; i < profile.CircuitLength; i++)
-//             {
-//                 var cell = CellRef.Track(i);
-
-//                 // Safe cells are drawn brighter. They are the only cells with a
-//                 // rule attached that a player must be able to see at a glance.
-//                 Spawn($"cell_{i}", layout.PositionOf(cell), layout.CellSize,
-//                     map.IsSafe(cell) ? new Color(0.95f, 0.9f, 0.6f) : new Color(0.28f, 0.28f, 0.32f));
-//             }
-
-//             foreach (PlayerColor colour in new[]
-//                      { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Violet })
-//             {
-//                 var tint = BoardLayout.ColourOf(colour);
-
-//                 for (int depth = 0; depth < profile.HomeColumnLength; depth++)
-//                 {
-//                     Spawn($"home_{colour}_{depth}",
-//                         layout.PositionOf(CellRef.HomeColumn(colour, depth)),
-//                         layout.CellSize * 0.85f, tint * 0.55f);
-//                 }
-
-//                 // Kept dim and slightly smaller than before: a yard is a holding
-//                 // area, and at 2.4x it overlapped the track cells beside it.
-//                 Spawn($"yard_{colour}", layout.PositionOf(CellRef.Yard(colour)),
-//                     layout.CellSize * 1.9f, tint * 0.25f);
-//             }
-
-//             Spawn("home", Vector3.zero, layout.CellSize * 1.6f, new Color(0.9f, 0.85f, 0.55f));
-//         }
-
-//         private void Spawn(string name, Vector3 position, float size, Color colour)
-//         {
-//             var go = new GameObject(name);
-//             go.transform.SetParent(transform, false);
-//             go.transform.position = position;
-//             go.transform.localScale = Vector3.one * size;
-
-//             var renderer = go.AddComponent<SpriteRenderer>();
-//             renderer.sprite = Primitives.Disc;
-//             renderer.color = colour;
-//             renderer.sortingOrder = 0;
-
-//             _cells.Add(renderer);
-//         }
-//     }
-// }
-
 // Assets/_Project/Scripts/Unity/View/BoardView.cs
 using System.Collections.Generic;
 using NonaRoyale.Core.Board;
@@ -82,12 +10,19 @@ namespace NonaRoyale.Unity.View
     /// itself never changes during a match.
     /// </summary>
     /// <remarks>
-    /// <b>The casino floor</b> (GUI increments G and G2, ART_DIRECTION §6.1,
-    /// and the designer's reference image of 2026-09-15). A dark square table
-    /// with a faint gold grain; a cross-shaped floor with a gilt edge, a
-    /// shadow, warm light pooled in each arm and a gold lane down each arm's
-    /// middle; four felt tables with gilt rims, one per seat; and a vault door
-    /// at the centre, glowing.
+    /// <b>The casino floor</b> (GUI increments G, G2 and G3, ART_DIRECTION
+    /// §6.1, and the designer's reference image of 2026-09-15). A dark square
+    /// table with a faint gold grain and one gilt rule; a cross-shaped marble
+    /// floor with a faint inlaid sunburst, a thin gilt edge (stepped where the
+    /// arms meet, cracked along one length), a shadow, warm light pooled in
+    /// each arm and a gold lane down each arm's middle; four felt tables with
+    /// gilt rims, one per seat; and a vault door at the centre, glowing.
+    ///
+    /// <b>Quiet where it matters</b> (G3). Nothing here competes with the lit
+    /// cells or sits loud under a piece: the pattern and the veining stay
+    /// within a few percent of the floor, and the table's corners stay dark.
+    /// The room still reads finished with Lighting effects off, since all of
+    /// it is painted into the sprites.
     ///
     /// <b>The path is a whisper at rest</b> (decided 2026-09-15): faint marble
     /// and a faint inlay, enough to count squares. The turn's landings, reach
@@ -116,10 +51,12 @@ namespace NonaRoyale.Unity.View
         };
 
         // Back to front.
-        private const int TableOrder = -30;
-        private const int GrainOrder = -29;
-        private const int CrossShadowOrder = -28;
-        private const int CrossOrder = -27;
+        private const int TableOrder = -33;
+        private const int GrainOrder = -32;
+        private const int TableRuleOrder = -31;
+        private const int CrossShadowOrder = -30;
+        private const int CrossOrder = -29;
+        private const int PatternOrder = -28;
         private const int ArmGlowOrder = -26;
         private const int CrossEdgeOrder = -25;
         private const int LaneOrder = -24;
@@ -138,6 +75,9 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>Table border beyond the outermost cells, in cell spacings.</summary>
         private const float TableMargin = 0.8f;
+
+        /// <summary>How far the table's gilt rule sits in from its edge, in cell spacings.</summary>
+        private const float TableRuleInset = 0.3f;
 
         /// <summary>Width of the cross's arms, in cells: the three lanes.</summary>
         private const int ArmCells = 3;
@@ -170,22 +110,29 @@ namespace NonaRoyale.Unity.View
 
         // ── Floor ────────────────────────────────────────────────────────
 
-        /// <summary>The square table, its grain, and the cross with its shadow, glow, edge and lanes.</summary>
+        /// <summary>
+        /// The square table with its grain and rule, and the cross with its
+        /// shadow, pattern, glow, edge and lanes.
+        /// </summary>
         private void DrawFloor(BoardLayout layout)
         {
             float spacing = layout.Spacing;
             var centre = layout.HomeGoalPosition;
-            float side = (layout.GridSize + 2f * TableMargin) * spacing;
+            float sideCells = layout.GridSize + 2f * TableMargin;
+            float side = sideCells * spacing;
 
             Sprite("table", BoardArt.Solid, centre, side, UiTheme.BoardField, TableOrder);
             Sprite("table_grain", BoardArt.Veins, centre, side, UiTheme.BoardVeins, GrainOrder);
+            Sprite("table_rule", BoardArt.TableRule(sideCells, TableRuleInset), centre, side,
+                UiTheme.TableRule, TableRuleOrder);
 
             // The cross sprites are sized in cells, so their scale is the spacing.
             var cross = BoardArt.Cross(layout.GridSize, ArmCells);
             var shadowOffset = new Vector3(0.12f, -0.2f, 0f) * spacing;
-            Sprite("cross_shadow", cross[2], centre + shadowOffset, spacing, UiTheme.Shadow, CrossShadowOrder);
-            Sprite("cross", cross[0], centre, spacing, UiTheme.CrossFloor, CrossOrder);
-            Sprite("cross_edge", cross[1], centre, spacing, UiTheme.CrossEdge, CrossEdgeOrder);
+            Sprite("cross_shadow", cross[BoardArt.CrossShadow], centre + shadowOffset, spacing, UiTheme.Shadow, CrossShadowOrder);
+            Sprite("cross", cross[BoardArt.CrossFill], centre, spacing, UiTheme.CrossFloor, CrossOrder);
+            Sprite("cross_pattern", cross[BoardArt.CrossPattern], centre, spacing, UiTheme.FloorPattern, PatternOrder);
+            Sprite("cross_edge", cross[BoardArt.CrossEdge], centre, spacing, UiTheme.CrossEdge, CrossEdgeOrder);
 
             // Per arm: a pool of light, and the lane from the tip to the vault.
             float reach = layout.GridSize * 0.5f * spacing;

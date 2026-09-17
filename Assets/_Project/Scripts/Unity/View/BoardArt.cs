@@ -20,6 +20,15 @@ namespace NonaRoyale.Unity.View
     /// renderer's scale is its size. The cross is built for a given grid and
     /// cached per grid.
     ///
+    /// <b>Material detail</b> (increment G3). The richness lives in the
+    /// surfaces, not the trim: low-contrast veining in the cross's marble, a
+    /// faint Deco sunburst set into it, fibre in the felt, one highlight
+    /// streak across each gilt rim, stepped corners where the arms meet, and
+    /// one cracked, tarnished length of the cross's edge (ART_DIRECTION §6:
+    /// symmetry with a deliberate break). Noise comes from a fixed integer
+    /// hash, so the room looks the same every run. Painted textures can
+    /// replace any of these later through the same properties.
+    ///
     /// <b>Stand-ins for the art pass.</b> The figures follow ART_DIRECTION §6.1
     /// (operators sit at their table and rise on deploy) until the rendered
     /// character models replace them. The operator's shape stays on the figure
@@ -31,7 +40,13 @@ namespace NonaRoyale.Unity.View
 
         private static Sprite _rim, _felt, _dotted, _arc, _softDisc;
 
-        /// <summary>A table's gilt rim: a bevelled ring, lit from the top left.</summary>
+        /// <summary>Where the rim's highlight streak sits, in degrees counter-clockwise from east.</summary>
+        private const float RimStreakDegrees = 128f;
+
+        /// <summary>The streak's half-width, in degrees.</summary>
+        private const float RimStreakWidth = 9f;
+
+        /// <summary>A table's gilt rim: a bevelled ring, lit from the top left, with one highlight streak.</summary>
         public static Sprite TableRim => _rim ?? (_rim = BuildRim(256, 0.9f));
 
         /// <summary>The felt inside the rim: bright at the centre, darkening to the edge.</summary>
@@ -84,8 +99,12 @@ namespace NonaRoyale.Unity.View
 
         // ── Floor ───────────────────────────────────────────────────────
 
-        private static Sprite _veins, _solid;
+        private static Sprite _veins, _solid, _haze;
         private static readonly Dictionary<int, Sprite[]> Crosses = new Dictionary<int, Sprite[]>();
+        private static readonly Dictionary<int, Sprite> TableRules = new Dictionary<int, Sprite>();
+
+        /// <summary>Index of each part in the array <see cref="Cross"/> returns.</summary>
+        public const int CrossFill = 0, CrossEdge = 1, CrossShadow = 2, CrossPattern = 3;
 
         /// <summary>Texels per cell in the cross sprites.</summary>
         public const int CrossTexelsPerCell = 40;
@@ -100,10 +119,19 @@ namespace NonaRoyale.Unity.View
         public static Sprite Solid => _solid ?? (_solid = DecoSprites.Rasterize(4, 4, (x, y) => 1f, 4f, Vector4.zero));
 
         /// <summary>
+        /// Soft drifting haze for the light pools (G3): a cloud of noise that
+        /// fades to nothing at its edge. One world unit across.
+        /// </summary>
+        public static Sprite Haze => _haze ?? (_haze = BuildHaze(192));
+
+        /// <summary>
         /// The cross-shaped floor for a grid of <paramref name="gridCells"/>
-        /// with arms <paramref name="armWidth"/> cells wide: fill, gilt edge and
-        /// shadow, in that order. Each is (grid + 2 x margin) cells across at
-        /// <see cref="CrossTexelsPerCell"/>, so its scale is the cell spacing.
+        /// with arms <paramref name="armWidth"/> cells wide: shaded marble fill,
+        /// gilt edge, shadow and the inlaid sunburst, at the indices
+        /// <see cref="CrossFill"/>, <see cref="CrossEdge"/>,
+        /// <see cref="CrossShadow"/> and <see cref="CrossPattern"/>. Each is
+        /// (grid + 2 x margin) cells across at <see cref="CrossTexelsPerCell"/>,
+        /// so its scale is the cell spacing.
         /// </summary>
         public static Sprite[] Cross(int gridCells, int armWidth)
         {
@@ -115,10 +143,27 @@ namespace NonaRoyale.Unity.View
                 BuildCross(gridCells, armWidth, CrossPart.Fill),
                 BuildCross(gridCells, armWidth, CrossPart.Edge),
                 BuildCross(gridCells, armWidth, CrossPart.Shadow),
+                BuildCross(gridCells, armWidth, CrossPart.Pattern),
             };
 
             Crosses[key] = sprites;
             return sprites;
+        }
+
+        /// <summary>
+        /// The table's single gilt rule (G3): a thin square line
+        /// <paramref name="insetCells"/> in from the edge of a table
+        /// <paramref name="sideCells"/> across. One world unit across, so its
+        /// scale is the table's side. No corner ornament: the corners stay dark.
+        /// </summary>
+        public static Sprite TableRule(float sideCells, float insetCells)
+        {
+            int key = Mathf.RoundToInt(sideCells * 100f) * 1000 + Mathf.RoundToInt(insetCells * 100f);
+            if (TableRules.TryGetValue(key, out var sprite)) return sprite;
+
+            sprite = BuildTableRule(512, sideCells, insetCells);
+            TableRules[key] = sprite;
+            return sprite;
         }
 
         // ── Builders: tables ────────────────────────────────────────────
@@ -145,7 +190,13 @@ namespace NonaRoyale.Unity.View
                 float ny = dy / Mathf.Max(r, 0.0001f);
                 float light = Mathf.Clamp01(0.5f + 0.5f * (-0.6f * nx + 0.8f * ny));
 
-                float lum = bead * (0.62f + 0.5f * light);
+                // The body stays under full brightness so the streak has room
+                // above it: one glint across the bead, facing the light (G3).
+                float lum = bead * (0.5f + 0.36f * light);
+
+                float fromStreak = Mathf.DeltaAngle(Mathf.Atan2(dy, dx) * Mathf.Rad2Deg, RimStreakDegrees);
+                float streak = Mathf.Exp(-(fromStreak * fromStreak) / (RimStreakWidth * RimStreakWidth));
+                lum += 0.42f * streak * Mathf.Pow(Mathf.Sin(Mathf.PI * t), 1.5f);
 
                 // A thin groove where the rim meets the felt.
                 lum *= 1f - 0.45f * DecoSprites.Line(Mathf.Abs(r - (inner + 0.018f)) * half, 1.2f);
@@ -176,6 +227,11 @@ namespace NonaRoyale.Unity.View
                 float highlight = Mathf.Clamp01(1f - Mathf.Sqrt(hx * hx + hy * hy));
                 lum *= 0.85f + 0.15f * highlight;
                 lum *= 1f - 0.35f * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.72f, radius, r));
+
+                // Fibre (G3): grain per texel, and a faint nap running one way.
+                float grain = Hash(Mathf.FloorToInt(px), Mathf.FloorToInt(py), 11) * 2f - 1f;
+                float nap = ValueNoise(px * 0.9f, py * 0.14f, 12) * 2f - 1f;
+                lum *= 1f + 0.045f * grain + 0.035f * nap;
 
                 return Grey(lum, alpha);
             }, size, Vector4.zero);
@@ -378,34 +434,190 @@ namespace NonaRoyale.Unity.View
 
         // ── Builders: floor ─────────────────────────────────────────────
 
-        private enum CrossPart { Fill, Edge, Shadow }
+        private enum CrossPart { Fill, Edge, Shadow, Pattern }
+
+        /// <summary>Padding around the cells, in cells: how far the floor reaches past them.</summary>
+        private const float CrossPad = 0.12f;
+
+        /// <summary>The cross's gilt edge, in texels (G3: was 2.2).</summary>
+        private const float CrossEdgeWidth = 1.4f;
+
+        /// <summary>
+        /// Stepped Deco corners where the arms meet (ART_DIRECTION §6): three
+        /// boxes stacked in each inner corner, as (width, height) in cells
+        /// measured out from the corner. Each box also reaches half a cell
+        /// back into the floor, so the joins are interior and draw no edge.
+        /// </summary>
+        private static readonly Vector2[] CornerSteps =
+        {
+            new Vector2(0.42f, 0.14f), new Vector2(0.28f, 0.28f), new Vector2(0.14f, 0.42f),
+        };
+
+        /// <summary>Rays in the floor's sunburst, all the way round.</summary>
+        private const int PatternRays = 48;
 
         private static Sprite BuildCross(int gridCells, int armWidth, CrossPart part)
         {
-            const float pad = 0.12f;
             int ppc = CrossTexelsPerCell;
             int size = Mathf.RoundToInt((gridCells + 2f * CrossMargin) * ppc);
 
-            float length = gridCells * 0.5f + pad;
-            float arm = armWidth * 0.5f + pad;
+            float length = gridCells * 0.5f + CrossPad;
+            float arm = armWidth * 0.5f + CrossPad;
 
-            return DecoSprites.Rasterize(size, size, (px, py) =>
+            // The deliberate break: one length of the south arm's west edge,
+            // a little under halfway out (ART_DIRECTION §6).
+            var crack = new Vector2(-arm, -(armWidth * 0.5f + (length - armWidth * 0.5f) * 0.45f));
+
+            return DecoSprites.RasterizeShaded(size, size, (px, py) =>
             {
-                float x = Mathf.Abs((px - size * 0.5f) / ppc);
-                float y = Mathf.Abs((py - size * 0.5f) / ppc);
-
-                // Two bars, unioned. Distances in texels.
-                float across = Mathf.Max(x - length, y - arm);
-                float down = Mathf.Max(x - arm, y - length);
-                float d = Mathf.Min(across, down) * ppc;
+                // Signed cell coordinates, y up; distances in texels.
+                float x = (px - size * 0.5f) / ppc;
+                float y = (py - size * 0.5f) / ppc;
+                float d = CrossDistance(Mathf.Abs(x), Mathf.Abs(y), length, arm) * ppc;
 
                 switch (part)
                 {
-                    case CrossPart.Fill: return Coverage(d);
-                    case CrossPart.Edge: return DecoSprites.BandCoverage(d, 0f, 2.2f);
-                    default: return 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0f, 0.9f * ppc, d));
+                    case CrossPart.Fill:
+                    {
+                        float alpha = Coverage(d);
+                        return alpha <= 0f ? Color.clear : Grey(Marble(x, y, crack, ppc), alpha);
+                    }
+
+                    case CrossPart.Edge:
+                    {
+                        float alpha = DecoSprites.BandCoverage(d, 0f, CrossEdgeWidth);
+                        return alpha <= 0f ? Color.clear : new Color(1f, 1f, 1f, alpha * CrackedTrim(x, y, crack, arm, ppc));
+                    }
+
+                    case CrossPart.Shadow:
+                        return new Color(1f, 1f, 1f, 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0f, 0.9f * ppc, d)));
+
+                    default:
+                    {
+                        // Kept off the edge and out of the vault's light.
+                        float inside = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.15f * ppc, -0.4f * ppc, d));
+                        if (inside <= 0f) return Color.clear;
+
+                        float r = Mathf.Sqrt(x * x + y * y);
+                        float centre = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(1.3f, 2.1f, r));
+                        return new Color(1f, 1f, 1f, Sunburst(x, y, r, ppc) * inside * centre);
+                    }
                 }
             }, ppc, Vector4.zero);
+        }
+
+        /// <summary>Signed distance, in cells, to the cross with its stepped corners. Takes |x| and |y|.</summary>
+        private static float CrossDistance(float ax, float ay, float length, float arm)
+        {
+            // Two bars, unioned.
+            float across = Mathf.Max(ax - length, ay - arm);
+            float down = Mathf.Max(ax - arm, ay - length);
+            float d = Mathf.Min(across, down);
+
+            foreach (var step in CornerSteps)
+            {
+                float from = arm - 0.5f;
+                float halfX = (step.x + 0.5f) * 0.5f;
+                float halfY = (step.y + 0.5f) * 0.5f;
+                d = Mathf.Min(d, BoxDistance(ax - (from + halfX), ay - (from + halfY), halfX, halfY));
+            }
+
+            return d;
+        }
+
+        /// <summary>
+        /// Marble luminance at a cell coordinate: a soft cloud, two sets of
+        /// thin veins bent by noise, and the hairline crack beside the broken
+        /// trim. Kept between about 0.8 and 1, so the floor stays dark.
+        /// </summary>
+        private static float Marble(float x, float y, Vector2 crack, int ppc)
+        {
+            float cloud = Fbm(x * 1.1f, y * 1.1f, 3, 21);
+            float warp = Fbm(x * 0.45f + 7.1f, y * 0.45f - 3.3f, 3, 22);
+
+            float main = Mathf.Sin((x * 0.55f + y * 0.35f) * 2.1f + warp * 7f);
+            float veins = 1f - Mathf.SmoothStep(0f, 1f, Mathf.Abs(main) / 0.07f);
+
+            float fine = Mathf.Sin((x * -0.3f + y * 0.62f) * 4.3f + warp * 11f);
+            float threads = 1f - Mathf.SmoothStep(0f, 1f, Mathf.Abs(fine) / 0.05f);
+
+            float lum = 0.84f + 0.08f * (cloud - 0.5f) * 2f + 0.09f * veins + 0.045f * threads;
+
+            // A short jagged crack running in from the break, clear of the cells.
+            float off = Mathf.Min(
+                Segment(x, y, crack, crack + new Vector2(0.06f, -0.035f)),
+                Mathf.Min(
+                    Segment(x, y, crack + new Vector2(0.06f, -0.035f), crack + new Vector2(0.11f, 0.015f)),
+                    Segment(x, y, crack + new Vector2(0.11f, 0.015f), crack + new Vector2(0.16f, -0.03f))));
+            lum *= 1f - 0.45f * DecoSprites.Line(off * ppc, 0.8f);
+
+            return Mathf.Min(lum, 1f);
+        }
+
+        /// <summary>
+        /// The broken length of trim: tarnished for about a cell and a half,
+        /// with a slanted gap at its middle. 1 everywhere else.
+        /// </summary>
+        private static float CrackedTrim(float x, float y, Vector2 crack, float arm, int ppc)
+        {
+            // Only the west edge of the south arm.
+            if (x > -arm + 0.1f || x < -arm - 0.1f || y > -arm) return 1f;
+
+            float along = y - crack.y;
+            float tarnish = 1f - 0.5f * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.8f, 0.45f, Mathf.Abs(along)));
+
+            float gap = Mathf.Abs(along + 0.6f * (x + arm)) * ppc;
+            return tarnish * Mathf.Clamp01(gap - 1.4f);
+        }
+
+        /// <summary>
+        /// The floor's Deco sunburst: rays from the vault, every other one
+        /// starting further out, crossed by rings every two cells.
+        /// </summary>
+        private static float Sunburst(float x, float y, float r, int ppc)
+        {
+            float step = 360f / PatternRays;
+            float angle = Mathf.Atan2(y, x) * Mathf.Rad2Deg;
+            int index = Mathf.RoundToInt(angle / step);
+            float delta = (angle - index * step) * Mathf.Deg2Rad;
+
+            float start = (index & 1) == 0 ? 1.8f : 3.2f;
+            float ray = r < start ? 0f : DecoSprites.Line(r * ppc * Mathf.Abs(Mathf.Sin(delta)), 1f);
+
+            int ringIndex = Mathf.RoundToInt((r - 1f) * 0.5f);
+            float ring = ringIndex < 1 ? 0f : DecoSprites.Line(Mathf.Abs(r - (1f + 2f * ringIndex)) * ppc, 1.2f);
+
+            return Mathf.Max(ray, ring);
+        }
+
+        private static Sprite BuildTableRule(int size, float sideCells, float insetCells)
+        {
+            float texelsPerCell = size / sideCells;
+            float half = size * 0.5f;
+            float edge = half - insetCells * texelsPerCell;
+
+            return DecoSprites.Rasterize(size, size, (px, py) =>
+            {
+                float d = Mathf.Max(Mathf.Abs(px - half), Mathf.Abs(py - half)) - edge;
+                return DecoSprites.Line(Mathf.Abs(d), 1.2f);
+            }, size, Vector4.zero);
+        }
+
+        private static Sprite BuildHaze(int size)
+        {
+            float half = size * 0.5f;
+
+            return DecoSprites.Rasterize(size, size, (px, py) =>
+            {
+                float u = (px - half) / half;
+                float v = (py - half) / half;
+                float r = Mathf.Sqrt(u * u + v * v);
+                if (r >= 1f) return 0f;
+
+                float falloff = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.3f, 1f, r));
+                float cloud = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.3f, 0.85f, Fbm(u * 2.4f + 3f, v * 2.4f, 4, 31)));
+                return cloud * falloff;
+            }, size, Vector4.zero);
         }
 
         private static Sprite BuildVeins(int size, int seed)
@@ -461,6 +673,69 @@ namespace NonaRoyale.Unity.View
             float nx = (u - cx) / rx;
             float ny = (v - cy) / ry;
             return (Mathf.Sqrt(nx * nx + ny * ny) - 1f) * Mathf.Min(rx, ry);
+        }
+
+        private static float BoxDistance(float x, float y, float halfX, float halfY)
+        {
+            float qx = Mathf.Abs(x) - halfX;
+            float qy = Mathf.Abs(y) - halfY;
+            float outside = Mathf.Sqrt(Mathf.Max(qx, 0f) * Mathf.Max(qx, 0f) + Mathf.Max(qy, 0f) * Mathf.Max(qy, 0f));
+            return outside + Mathf.Min(Mathf.Max(qx, qy), 0f);
+        }
+
+        /// <summary>Distance from a point to the segment a–b.</summary>
+        private static float Segment(float x, float y, Vector2 a, Vector2 b)
+        {
+            var ab = b - a;
+            var ap = new Vector2(x - a.x, y - a.y);
+            float t = Mathf.Clamp01(Vector2.Dot(ap, ab) / Vector2.Dot(ab, ab));
+            return (ap - ab * t).magnitude;
+        }
+
+        /// <summary>A fixed pseudo-random value in [0, 1] per lattice point: the same room every run.</summary>
+        internal static float Hash(int x, int y, int seed)
+        {
+            unchecked
+            {
+                uint h = (uint)(x * 374761393 + y * 668265263 + seed * 144665 + 1013904223);
+                h = (h ^ (h >> 13)) * 1274126177u;
+                h ^= h >> 16;
+                return (h & 0xFFFFFF) / 16777215f;
+            }
+        }
+
+        /// <summary>Smoothly interpolated lattice noise in [0, 1].</summary>
+        internal static float ValueNoise(float x, float y, int seed)
+        {
+            int ix = Mathf.FloorToInt(x);
+            int iy = Mathf.FloorToInt(y);
+            float fx = x - ix;
+            float fy = y - iy;
+            fx = fx * fx * (3f - 2f * fx);
+            fy = fy * fy * (3f - 2f * fy);
+
+            float bottom = Mathf.Lerp(Hash(ix, iy, seed), Hash(ix + 1, iy, seed), fx);
+            float top = Mathf.Lerp(Hash(ix, iy + 1, seed), Hash(ix + 1, iy + 1, seed), fx);
+            return Mathf.Lerp(bottom, top, fy);
+        }
+
+        /// <summary>Layered <see cref="ValueNoise"/>, each octave twice as fine, in [0, 1].</summary>
+        internal static float Fbm(float x, float y, int octaves, int seed)
+        {
+            float sum = 0f;
+            float amplitude = 0.5f;
+            float total = 0f;
+
+            for (int i = 0; i < octaves; i++)
+            {
+                sum += amplitude * ValueNoise(x, y, seed + i);
+                total += amplitude;
+                x *= 2.03f;
+                y *= 2.03f;
+                amplitude *= 0.5f;
+            }
+
+            return sum / total;
         }
 
         private static float Range(System.Random random, float min, float max) =>

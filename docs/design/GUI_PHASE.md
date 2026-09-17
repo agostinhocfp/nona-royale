@@ -1,7 +1,7 @@
 # Nona Royale — GUI Phase
 
 > Location in repo: `docs/design/GUI_PHASE.md`
-> Status: **Closed at J, 2026-09-16.** E through J are committed. K (stranger test, then the OnGUI cut) is parked until testers are available. What comes next is `NEXT_PHASES.md`.
+> Status: **Closed at J, 2026-09-16; reopened 2026-09-17 for G3 (polish pass), written and awaiting Play Mode.** E through J are committed. K (stranger test, then the OnGUI cut) is parked until testers are available. What comes next is `NEXT_PHASES.md`.
 > Related: ADR-0008 (uGUI; its removal order stays binding), `PRESENTATION.md` (what the view may do and must show), `ART_DIRECTION.md` §3 and §8 (palette, UI registers), `STRANGER_TEST.md` (the gate before `OnGUI` is deleted)
 
 ## Goal
@@ -21,6 +21,7 @@ Each increment ends with a Play Mode check and a commit.
 | E   | **Board-first input**     | Click a piece to select, click a landing to move, click a yard piece to deploy, click to aim. Pip labels on landings. Selection, target and deploy rings. Hover lift. Right-click or Esc steps back. Keys: Space, E, 1–3, Enter. (PRESENTATION §4.1)                                  | `CanDeploy`, `IsHome` (added)                                   |
 | F   | **In-match layout**       | Top bar: seat, energy with its cap, round. Bottom tray: dice (spent and unspent), selected-operator card (shape, health, statuses), ability buttons (cost, range, cooldown turns left, reason), cast. Side rail: every seat's squad as waiting, on board or home. Collapsible log. The dev panel is retired behind a toggle. | `EnergyCap`, `CooldownRemaining`, round number                  |
 | G   | **Skin pass** (G2: board and figures to the reference image)             | `UiTheme` tokens from ART_DIRECTION §3. Gold on black for static chrome, cyan for live states (§8). Deco frames from procedural sliced sprites. Board background and landing colours brought into the palette.                                                                          | —                                                               |
+| G3  | **Polish pass** (quiet trim, richer surfaces)                          | HUD edges become one anti-aliased gilt hairline at about 50% alpha. Bright gold only for headings, the active seat's plate and ROLL. Corner fans smaller and dimmer, on floating cards only. Cyan live edges unchanged. Board: procedural material detail (marble veining, felt fibre, a gilt highlight streak, a faint Deco floor pattern), a single gilt rule on the table, a thinner cross-floor edge, stepped Deco corners, one cracked length of trim, a faint haze in the light pools. The table's corners stay dark. Painted textures come later through the same sprite seams. | —                                                               |
 | H   | **Pause**                 | Esc with nothing selected: resume, restart, settings (health labels, log), quit to menu.                                                                                                                                                                                               | —                                                               |
 | I   | **Match setup and end**   | Setup: seats 2–4, alpha or drafted squads, seed. End: winner, turns, neutralizes per seat, rematch or menu.                                                                                                                                                                             | `Winner`                                                        |
 | J   | **Title menu**            | Play, settings, quit. One scene, with screens as canvas states behind a small app-flow state machine.                                                                                                                                                                                  | —                                                               |
@@ -124,3 +125,44 @@ Each increment ends with a Play Mode check and a commit.
 - 2026-09-16 — **J committed** (designer: "you nailed the menu").
 - 2026-09-16 — **Informal test at home: the GUI passed easily.** One note: the dice roll could be more obvious, either by catching the eye or by sitting more centrally. Carried to `NEXT_PHASES.md` Stage 3 (dice moment).
 - 2026-09-16 — **Phase closed at J.** K is parked: the formal stranger test has no date, and the OnGUI dev panel stays behind Tab until it passes (ADR-0008 consequence 6). Next work, in order: All Pick Draft, CPU opponents, motion and feedback, art hookup (ADR-0009), audio (`NEXT_PHASES.md`).
+- 2026-09-17 — **Increment G3 planned: the polish pass.** Designer: the in-match borders are "screaming gold"; the HUD should be slick and effective, and the board should look more high-end. The phase reopens for this one increment.
+  - **Decided with the designer** (picker):
+    - Board: procedural polish now; tileable painted textures (marble, felt, carpet) later, through the same sprite seams.
+    - HUD edge: a single gilt hairline at about 50% alpha replaces the gold-and-brass double rule.
+    - Table corners: left dark. Corner decor is deferred; the notes are in the hand-off.
+  - **Why.** G and G2 run past ART_DIRECTION §3's rough 20% gold per frame. The richness moves from trim into surfaces and light.
+  - **HUD.**
+    - Bright gold (`#F4D98B`) is kept for section headings, the active seat's plate and the ROLL state.
+    - Corner fans shrink and drop to about 40% alpha, on floating cards only; docks lose them.
+    - Cyan live-state edges are unchanged; against quieter gold they read more clearly.
+  - **Board.**
+    - Materials: low-contrast marble veining, felt fibre noise, gilt with one highlight streak, a Deco chevron or fan pattern in the cross floor at 5–8% contrast.
+    - Trim: a thinner cross-floor edge, stepped Deco corners where the arms meet (§6), a single gilt rule on the table instead of the double one, and one cracked length of trim (§6, the deliberate break).
+    - Atmosphere: a very faint drifting haze in the warm pools, stilled under Reduced motion and absent with Lighting effects off.
+  - **Rules.** Nothing decorative sits under a piece or competes with the lit cells (§6.1). The room with Lighting effects off must still look finished. Display-only graphics never catch the pointer (ADR-0008 consequence 9).
+  - **Technical note.** At the 1080 reference with match 0.5, a 1-unit line falls under a pixel on 1366×768 and shimmers. The hairline should be an anti-aliased signed-distance edge at about 1.5 units.
+- 2026-09-17 — **Increment G3 written** (on HEAD `6c9e75e`; the uncommitted ART1 follow-ups in `OperatorPiece`, `ART_HOOKUP.md`, `PROVENANCE.md` and `render_operator.py` are not part of it).
+  - **HUD.**
+    - `UiTheme.Line` is now gold at 50% (was brass at 95%) and serves every resting edge; `LineBright` is gone. New `FanAlpha` (0.4).
+    - `DecoSprites`: `HairlineWidth` 1.5 units. `PanelEdge` is one hairline (was a 2-unit and a 1-unit rule). New `RuleAlong` and `RuleUp`: anti-aliased straight hairlines in a 4-unit box, since a solid quad that thin snaps to whole pixels. `FanSize` 22 → 16, `FanInset` 7 → 5; the fan is drawn at its size rather than scaled.
+    - `UiKit.Dock`: one hairline on the inner edge, no diamond. `Panel`: hairline frame, fans at `FanAlpha`. `Divider`: hairline and a smaller diamond, both at `Line` strength.
+    - `TurnButton`: fans at `FanAlpha`, and none while the button waits (MOVE FIRST, a CPU seat). `SetupScreen`: the CPU style chip's edge is `Line`, not full gold.
+    - Kept at full gold: headings, the active seat's plate on the rail, the winner's row, ROLL and its pulse, the dice. Cyan edges unchanged.
+  - **Board** (`BoardArt`, `BoardView`, `UiTheme`).
+    - The cross fill is shaded marble: a soft cloud and two sets of noise-bent veins, luminance 0.8–1 (`CrossFloor` lifted to `#1B161E` to match). Noise is a fixed integer hash (`Hash`, `ValueNoise`, `Fbm`), so the room is the same every run.
+    - A new cross part, the sunburst: 48 rays from the vault (alternate rays start further out) and rings every two cells, gold at 4%, kept off the edge and out of the vault's light. `Cross` returns four sprites, indexed by `CrossFill`, `CrossEdge`, `CrossShadow`, `CrossPattern`.
+    - The cross edge is 1.4 texels (was 2.2) and steps in three notches at each inner corner. The boxes reach half a cell back into the floor, so their joins draw no edge.
+    - The deliberate break: on the south arm's west edge, a little under halfway out, the trim tarnishes to half for about a cell and a half, with a slanted gap at its middle and a short hairline crack in the marble beside it, clear of the cells.
+    - Felt: per-texel grain and a faint one-way nap. Rims: body dimmed to leave room for one highlight streak at 128°; `TableRim` warmed to 60% of the way to bright gold.
+    - The table gets one gilt rule 0.3 cells in from its edge (`UiTheme.TableRule`, gold at 32%, `BoardArt.TableRule`), plain at the corners. The old table had no frame since G2, so this adds one rather than replacing a double.
+    - Lanes dimmed (brass 55% → 42%). Sorting orders shifted down by three to fit the rule and the pattern; still all below zero.
+    - The commented-out first version of `BoardView` at the top of the file was removed.
+  - **Haze** (`SceneLighting`). Five puffs of `BoardArt.Haze` (fbm cloud with a soft edge) over the vault and arm pools, on the board layer at order −5, warm white at 3.5%. They loop slowly (46 s), turn slower still and swell ±25%. Reduced motion holds them at home; Lighting effects off hides them. Inspector: `hazeStrength`, `hazeDriftPeriod`, `hazeDrift`.
+  - **Checked:** the view compiles against the 6000.6 DLLs. No core changes, so the tests are unchanged. The board was previewed in numpy (linear blending, approximate room lights) before and after, and the pattern, veins and haze were toned down once from that preview. The HUD can't be previewed here.
+  - **Play Mode checklist:**
+    - Docked panels (top bar, rail, tray, history strip) show one thin gilt line on their inner edge and no diamond; nothing flickers at 1366×768 or when the Game view is resized.
+    - Floating cards (pause, setup, end, title settings, log, history hover) have a single hairline frame and small, dim fans.
+    - The rail's active seat plate, headings and ROLL still read as the brightest gold on screen.
+    - Board: the veining and sunburst are visible up close and do not fight the lit landings or the pieces; the stepped corners and the cracked length (south arm, west side) are there; the table rule sits inside the view.
+    - Haze drifts in the pools; it holds still with Reduced motion and disappears with Lighting effects off. The room still looks finished with effects off.
+    - The first board build does not hitch noticeably (the cross is now shaded with noise; it is built once per grid and cached).

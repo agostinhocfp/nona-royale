@@ -16,13 +16,15 @@ namespace NonaRoyale.Unity.View
     /// The top bar, squad rail, action tray, history strip and overlays all
     /// build their widgets here. Increment G moved every colour and type size
     /// to <see cref="UiTheme"/> and gave the widgets their Deco frames from
-    /// <see cref="DecoSprites"/>: chamfered corners, double gilt rules, corner
-    /// fans, diamond pips (ART_DIRECTION §8).
+    /// <see cref="DecoSprites"/>: chamfered corners, gilt rules, corner fans,
+    /// diamond pips (ART_DIRECTION §8). Increment G3 quietened the trim: every
+    /// resting edge is one anti-aliased hairline at half strength, and live
+    /// states keep their cyan double edge, which now reads more clearly.
     ///
     /// <b>Two kinds of panel.</b> A docked panel (<see cref="Dock"/>) is flush
-    /// with a screen edge, so it is a plain dark field with a double rule along
-    /// its inner edge. A floating panel (<see cref="Panel"/>) is a chamfered
-    /// card with a double frame and corner fans.
+    /// with a screen edge, so it is a plain dark field with a hairline along
+    /// its inner edge and no ornament. A floating panel (<see cref="Panel"/>)
+    /// is a chamfered card with a hairline frame and small, dim corner fans.
     ///
     /// <b>Creation-time defaults carry the ADR-0008 rules.</b> Text, frames and
     /// ornaments never catch the pointer (consequence 9). Buttons have no
@@ -35,9 +37,6 @@ namespace NonaRoyale.Unity.View
     /// </remarks>
     public static class UiKit
     {
-        /// <summary>Canvas units between a docked panel's two rules.</summary>
-        private const float RuleGap = 3f;
-
         /// <summary>
         /// Raised after any kit button is pressed (AUDIO.md increment AU1), so
         /// the audio director can click without every caller passing it along.
@@ -103,49 +102,25 @@ namespace NonaRoyale.Unity.View
         // ── Panels ───────────────────────────────────────────────────────
 
         /// <summary>
-        /// A panel docked to a screen edge: a dark field with a double rule,
-        /// gold outside and brass inside, along <paramref name="rule"/>, and a
-        /// diamond at the rule's middle.
+        /// A panel docked to a screen edge: a dark field with one gilt
+        /// hairline along <paramref name="rule"/> (G3; it was a double rule
+        /// with a diamond at its middle).
         /// </summary>
         public static void Dock(RectTransform rect, bool blocksPointer, RectTransform.Edge rule)
         {
             Fill(rect, UiTheme.Panel, blocksPointer);
-
-            EdgeLine(rect, rule, 0f, 2f, UiTheme.LineBright);
-            EdgeLine(rect, rule, 2f + RuleGap, 1f, UiTheme.Line);
-
-            // The diamond straddles the outer rule.
-            var gem = Rect("rule_gem", rect);
-            Decoration(gem);
-            var image = Fill(gem, UiTheme.Gold);
-            image.sprite = DecoSprites.Diamond;
-
-            bool horizontal = rule == RectTransform.Edge.Top || rule == RectTransform.Edge.Bottom;
-            // Lying along the rule: a horizontal rule turns the tall diamond on its side.
-            gem.sizeDelta = new Vector2(10f, 15f);
-            if (horizontal) gem.localEulerAngles = new Vector3(0f, 0f, 90f);
-
-            switch (rule)
-            {
-                case RectTransform.Edge.Top: gem.anchorMin = gem.anchorMax = new Vector2(0.5f, 1f); break;
-                case RectTransform.Edge.Bottom: gem.anchorMin = gem.anchorMax = new Vector2(0.5f, 0f); break;
-                case RectTransform.Edge.Left: gem.anchorMin = gem.anchorMax = new Vector2(0f, 0.5f); break;
-                default: gem.anchorMin = gem.anchorMax = new Vector2(1f, 0.5f); break;
-            }
-
-            gem.pivot = new Vector2(0.5f, 0.5f);
-            gem.anchoredPosition = Vector2.zero;
+            EdgeRule(rect, rule, UiTheme.Line);
         }
 
         /// <summary>
-        /// A floating chamfered panel: raised fill, double gilt frame, and a
-        /// fan in each corner.
+        /// A floating chamfered panel: raised fill, a gilt hairline frame,
+        /// and a small, dim fan in each corner.
         /// </summary>
         public static Image Panel(RectTransform rect, bool blocksPointer, bool fans = true, Color? fill = null)
         {
             var body = Sliced(rect, DecoSprites.PanelFill, fill ?? UiTheme.PanelRaised, blocksPointer);
             Overlay(rect, DecoSprites.PanelEdge, UiTheme.Line);
-            if (fans) CornerFans(rect, UiTheme.WithAlpha(UiTheme.Gold, 0.55f));
+            if (fans) CornerFans(rect, UiTheme.WithAlpha(UiTheme.Gold, UiTheme.FanAlpha));
             return body;
         }
 
@@ -177,40 +152,45 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
-        /// A line along one edge, <paramref name="inset"/> in from it and
-        /// <paramref name="thickness"/> thick.
+        /// An anti-aliased hairline along one inside edge of
+        /// <paramref name="rect"/>, flush with it.
         /// </summary>
-        private static void EdgeLine(RectTransform rect, RectTransform.Edge edge, float inset, float thickness, Color colour)
+        /// <remarks>
+        /// Drawn from <see cref="DecoSprites.RuleAlong"/> rather than a solid
+        /// quad: a quad's edge snaps to whole pixels, so a thin one comes and
+        /// goes as the canvas scales. The sprite's box is centred on the line,
+        /// half a line in from the edge.
+        /// </remarks>
+        private static void EdgeRule(RectTransform rect, RectTransform.Edge edge, Color colour)
         {
             var line = Rect("rule", rect);
-            Fill(line, colour);
+            var image = Fill(line, colour);
             Decoration(line);
+
+            bool horizontal = edge == RectTransform.Edge.Top || edge == RectTransform.Edge.Bottom;
+            image.sprite = horizontal ? DecoSprites.RuleAlong : DecoSprites.RuleUp;
+
+            float centre = DecoSprites.HairlineWidth * 0.5f;
+            line.pivot = new Vector2(0.5f, 0.5f);
+            line.sizeDelta = horizontal ? new Vector2(0f, DecoSprites.RuleBox) : new Vector2(DecoSprites.RuleBox, 0f);
 
             switch (edge)
             {
                 case RectTransform.Edge.Top:
                     line.anchorMin = new Vector2(0f, 1f); line.anchorMax = Vector2.one;
-                    line.pivot = new Vector2(0.5f, 1f);
-                    line.sizeDelta = new Vector2(0f, thickness);
-                    line.anchoredPosition = new Vector2(0f, -inset);
+                    line.anchoredPosition = new Vector2(0f, -centre);
                     break;
                 case RectTransform.Edge.Bottom:
                     line.anchorMin = Vector2.zero; line.anchorMax = new Vector2(1f, 0f);
-                    line.pivot = new Vector2(0.5f, 0f);
-                    line.sizeDelta = new Vector2(0f, thickness);
-                    line.anchoredPosition = new Vector2(0f, inset);
+                    line.anchoredPosition = new Vector2(0f, centre);
                     break;
                 case RectTransform.Edge.Left:
                     line.anchorMin = Vector2.zero; line.anchorMax = new Vector2(0f, 1f);
-                    line.pivot = new Vector2(0f, 0.5f);
-                    line.sizeDelta = new Vector2(thickness, 0f);
-                    line.anchoredPosition = new Vector2(inset, 0f);
+                    line.anchoredPosition = new Vector2(centre, 0f);
                     break;
                 default:
                     line.anchorMin = new Vector2(1f, 0f); line.anchorMax = Vector2.one;
-                    line.pivot = new Vector2(1f, 0.5f);
-                    line.sizeDelta = new Vector2(thickness, 0f);
-                    line.anchoredPosition = new Vector2(-inset, 0f);
+                    line.anchoredPosition = new Vector2(-centre, 0f);
                     break;
             }
         }
@@ -361,8 +341,9 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
-        /// A divider between tray sections: a brass rule with a diamond at its
-        /// middle. Vertical in a row, horizontal in a column.
+        /// A divider between tray sections: a gilt hairline with a small
+        /// diamond at its middle, both at <see cref="UiTheme.Line"/> strength.
+        /// Vertical in a row, horizontal in a column.
         /// </summary>
         public static void Divider(Transform parent, bool vertical)
         {
@@ -371,16 +352,19 @@ namespace NonaRoyale.Unity.View
             else Size(box, height: 12f);
 
             var line = Rect("line", box);
-            Fill(line, UiTheme.Line);
+            var rule = Fill(line, UiTheme.Line);
+            rule.sprite = vertical ? DecoSprites.RuleUp : DecoSprites.RuleAlong;
             line.anchorMin = vertical ? new Vector2(0.5f, 0f) : new Vector2(0f, 0.5f);
             line.anchorMax = vertical ? new Vector2(0.5f, 1f) : new Vector2(1f, 0.5f);
-            line.sizeDelta = vertical ? new Vector2(1f, -16f) : new Vector2(-16f, 1f);
+            line.sizeDelta = vertical
+                ? new Vector2(DecoSprites.RuleBox, -16f)
+                : new Vector2(-16f, DecoSprites.RuleBox);
 
             var gem = Rect("gem", box);
-            var image = Fill(gem, UiTheme.Gold);
+            var image = Fill(gem, UiTheme.Line);
             image.sprite = DecoSprites.Diamond;
             gem.anchorMin = gem.anchorMax = new Vector2(0.5f, 0.5f);
-            gem.sizeDelta = new Vector2(8f, 12f);
+            gem.sizeDelta = new Vector2(6f, 9f);
             if (!vertical) gem.localEulerAngles = new Vector3(0f, 0f, 90f);
         }
 

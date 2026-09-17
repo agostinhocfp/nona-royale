@@ -38,6 +38,12 @@ namespace NonaRoyale.Unity.View
     /// Default). Without it, the board stays on Default and the powered
     /// lights are skipped, with one warning.
     ///
+    /// <b>Haze</b> (GUI increment G3). A very faint cloud drifts in the vault's
+    /// and each arm's pool: a sprite on the board layer, so the pools' lights
+    /// warm it and the dark swallows it. It is part of the effects, so it is
+    /// gone with Lighting effects off, and it holds still under Reduced
+    /// motion.
+    ///
     /// <b>Bloom</b> is a global Volume built in code, with its threshold at
     /// 1: only what a light pushes past white glows, never the flat HUD
     /// (a Screen Space Overlay canvas is drawn after post-processing).
@@ -46,7 +52,7 @@ namespace NonaRoyale.Unity.View
     /// all of it off: ambient back to 1, the pools and bloom disabled. That
     /// is the look the game had on Built-in, and the cheap path for weak
     /// devices. <b>Reduced motion</b> (<see cref="Reduced"/>) stills the
-    /// swells.
+    /// swells and the haze.
     ///
     /// <b>Tuning.</b> The fields below are read every frame, so they can be
     /// dragged in the inspector during Play Mode. Those edits are lost when
@@ -99,6 +105,14 @@ namespace NonaRoyale.Unity.View
         public float poweredBreathPeriod = 3.4f;
         [Range(0f, 0.5f)] public float poweredBreathDepth = 0.15f;
 
+        [Header("Haze (G3)")]
+        [Tooltip("Multiplies the haze's alpha from UiTheme. 0 hides it.")]
+        [Range(0f, 3f)] public float hazeStrength = 1f;
+        [Tooltip("Seconds for one slow drift loop.")]
+        public float hazeDriftPeriod = 46f;
+        [Tooltip("How far the haze wanders, as a fraction of its size.")]
+        [Range(0f, 0.2f)] public float hazeDrift = 0.05f;
+
         [Header("Bloom")]
         [Tooltip("Brightness where glow starts. 1 means only what a light pushes past white.")]
         [Range(0f, 3f)] public float bloomThreshold = 1f;
@@ -114,15 +128,20 @@ namespace NonaRoyale.Unity.View
         /// <summary>The global light in use, found or built.</summary>
         public Light2D Ambient { get; private set; }
 
-        private enum Kind { Vault, Arm, Table, Powered }
+        private enum Kind { Vault, Arm, Table, Powered, Haze }
 
         private sealed class Rig
         {
             public Light2D Light;
+            public SpriteRenderer Haze;
+            public Vector3 Home;
             public Kind Kind;
             public float Phase;
-            public float Scale; // world units the reach is a fraction of
+            public float Scale; // world units the reach is a fraction of; a haze's size
         }
+
+        /// <summary>Above every board sprite, still under the pieces (Default layer, order 1 and up).</summary>
+        private const int HazeOrder = -5;
 
         private static bool s_warned;
 
@@ -167,6 +186,11 @@ namespace NonaRoyale.Unity.View
             }
 
             int? board = BoardLayerId;
+
+            AddHaze(centre, extent * 0.75f, board, index++);
+            foreach (var direction in new[] { Vector3.up, Vector3.left, Vector3.down, Vector3.right })
+                AddHaze(centre + direction * extent * 0.6f, extent * 0.6f, board, index++);
+
             if (map != null && board == null)
             {
                 if (!s_warned)
@@ -214,6 +238,15 @@ namespace NonaRoyale.Unity.View
             double time = Time.timeAsDouble;
             foreach (var rig in _rigs)
             {
+                if (rig.Kind == Kind.Haze)
+                {
+                    if (rig.Haze == null) continue;
+                    bool shown = on && hazeStrength > 0f;
+                    if (rig.Haze.enabled != shown) rig.Haze.enabled = shown;
+                    if (shown) Drift(rig, time);
+                    continue;
+                }
+
                 if (rig.Light == null) continue;
                 if (rig.Light.enabled != on) rig.Light.enabled = on;
                 if (on) Shape(rig, time);
@@ -272,6 +305,38 @@ namespace NonaRoyale.Unity.View
 
             light.pointLightOuterRadius = Mathf.Max(0.01f, outer);
             light.pointLightInnerRadius = Mathf.Clamp(inner, 0f, light.pointLightOuterRadius);
+        }
+
+        /// <summary>
+        /// A slow loop around the haze's home, a slower turn and a gentle
+        /// swell. Under Reduced motion it sits at home, unturned, at its
+        /// base strength.
+        /// </summary>
+        private void Drift(Rig rig, double time)
+        {
+            var colour = UiTheme.Haze;
+            colour.a = Mathf.Clamp01(colour.a * hazeStrength);
+
+            var puff = rig.Haze.transform;
+
+            if (Reduced || !(hazeDriftPeriod > 0f))
+            {
+                puff.position = rig.Home;
+                puff.localRotation = Quaternion.identity;
+                rig.Haze.color = colour;
+                return;
+            }
+
+            double cycle = time / hazeDriftPeriod + rig.Phase;
+            float angle = (float)(2.0 * System.Math.PI * cycle);
+            float reach = rig.Scale * hazeDrift;
+
+            // A Lissajous loop, so the path never visibly repeats.
+            puff.position = rig.Home + new Vector3(Mathf.Sin(angle), Mathf.Sin(angle * 0.5f + 1.3f), 0f) * reach;
+            puff.localRotation = Quaternion.Euler(0f, 0f, (float)((cycle * 0.25 % 1.0) * 360.0));
+
+            colour.a *= LightPulse.Breath(time, hazeDriftPeriod * 0.37f, 0.25f, rig.Phase, false);
+            rig.Haze.color = colour;
         }
 
         /// <summary>Post-processing is a per-camera switch; bloom needs it, the flat room doesn't.</summary>
@@ -363,6 +428,22 @@ namespace NonaRoyale.Unity.View
 
             _rigs.Add(new Rig { Light = light, Kind = kind, Phase = LightPulse.Phase(index), Scale = scale });
             return light;
+        }
+
+        private void AddHaze(Vector3 at, float size, int? layer, int index)
+        {
+            var go = new GameObject("haze");
+            go.transform.SetParent(_room, false);
+            go.transform.position = at;
+            go.transform.localScale = Vector3.one * size;
+
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = BoardArt.Haze;
+            renderer.color = UiTheme.Haze;
+            renderer.sortingOrder = HazeOrder;
+            if (layer.HasValue) renderer.sortingLayerID = layer.Value;
+
+            _rigs.Add(new Rig { Haze = renderer, Home = at, Kind = Kind.Haze, Phase = LightPulse.Phase(index), Scale = size });
         }
 
         private void ClearRoom()
