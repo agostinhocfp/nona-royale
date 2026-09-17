@@ -311,6 +311,10 @@ namespace NonaRoyale.Core.Bots
                     break;
                 }
 
+                case EffectKind.Watch:
+                    offence += WatchValue(board, w, target, effect);
+                    break;
+
                 case EffectKind.DrainEnergy:
                 {
                     if (target == null || target.Owner == own) break;
@@ -345,6 +349,48 @@ namespace NonaRoyale.Core.Bots
                     // real payload is the effects that follow it in the list.
                     break;
             }
+        }
+
+        /// <summary>
+        /// What a watch on one enemy is worth (Predator's Read, §6.7): the
+        /// strike if it moves, and the move it gives up if it doesn't.
+        /// </summary>
+        /// <remarks>
+        /// <b>The target's seat chooses.</b> Movement is compulsory, but a seat
+        /// with another piece on the loop can spend its dice there. With a
+        /// single piece on the loop the watched one has to move, so the strike
+        /// is all but certain. Otherwise the bot assumes
+        /// <see cref="BotWeights.WatchMoveOdds"/> that it moves anyway, and
+        /// credits <see cref="BotWeights.WatchDenial"/> for the rest.
+        ///
+        /// <b>Read for the target's next turn</b>
+        /// (<see cref="BotBoard.WillHave"/>), since that is when it moves. A
+        /// piece that will be stunned can't move, so the watch would lapse:
+        /// worth nothing, and stunned squadmates aren't alternatives either. A
+        /// piece already carrying a watch is worth nothing too; a second one
+        /// would only refresh it. So is a piece off the loop (in its yard or
+        /// its home column), whose next move the planner can't read.
+        /// </remarks>
+        public static double WatchValue(BotBoard board, BotWeights w, OperatorState target, AbilityEffect effect)
+        {
+            if (target == null || !board.OnLoop(target)) return 0.0;
+
+            // Read for the target's coming turn, which is when a watch trips.
+            if (board.WillHave(target, StatusKind.Watched)) return 0.0;
+
+            // A piece stunned then can't move: the watch would lapse unsprung.
+            if (board.WillHave(target, StatusKind.Stun)) return 0.0;
+
+            var seat = board.SeatOf(target.Owner);
+            int onLoop = 0;
+            if (seat != null)
+                foreach (var op in seat.Operators)
+                    if (op.Health > 0 && board.OnLoop(op) && !board.WillHave(op, StatusKind.Stun)) onLoop++;
+
+            double moves = onLoop <= 1 ? 1.0 : w.WatchMoveOdds;
+            double strike = Hit(board, w, target, board.ExpectedHit(target, effect.Amount, effect.DamageType));
+
+            return moves * strike + (1.0 - moves) * w.WatchDenial;
         }
 
         /// <summary>

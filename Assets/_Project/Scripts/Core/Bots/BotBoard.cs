@@ -200,6 +200,13 @@ namespace NonaRoyale.Core.Bots
         }
 
         /// <summary>
+        /// Whether an operator will carry a status on its owner's next turn
+        /// (<see cref="GameEngine.HasStatusOnNextTurn"/>). <see cref="Has"/>
+        /// answers for now, which is the wrong turn for "will it move".
+        /// </summary>
+        public bool WillHave(OperatorState op, StatusKind kind) => Engine.HasStatusOnNextTurn(op, kind);
+
+        /// <summary>
         /// What is left of an operator's shield pool, as the engine reports it.
         /// </summary>
         /// <remarks>

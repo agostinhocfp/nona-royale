@@ -181,6 +181,24 @@ namespace NonaRoyale.Core.Services
 
         public bool Has(OperatorState op, StatusKind kind) => ActiveEntry(op, kind) != null;
 
+        /// <summary>
+        /// Whether <paramref name="op"/> will carry <paramref name="kind"/> on
+        /// its owner's <b>next</b> turn (2026-09-17, for the bots).
+        /// </summary>
+        /// <remarks>
+        /// <see cref="Has"/> answers for the owner's current or most recent
+        /// turn. Planning against an enemy's coming turn needs this instead: a
+        /// stun cast on it during your turn doesn't count as active yet by
+        /// <see cref="Has"/>, though it will stop the enemy moving, and a stun
+        /// that ran through its last turn still counts, though it is spent.
+        /// Passives count, as in <see cref="Has"/>.
+        /// </remarks>
+        public bool HasOnNextTurn(OperatorState op, StatusKind kind)
+        {
+            if (op == null) throw new ArgumentNullException(nameof(op));
+            return EntryAt(op, kind, _clock.TurnIndexOf(op.Owner) + 1) != null;
+        }
+
         /// <summary>Cannot move and cannot spend energy this turn (§5.1).</summary>
         public bool IsStunned(OperatorState op) => Has(op, StatusKind.Stun);
 
@@ -633,9 +651,12 @@ namespace NonaRoyale.Core.Services
         private Entry ActiveEntry(OperatorState op, StatusKind kind)
         {
             if (op == null) throw new ArgumentNullException(nameof(op));
+            return EntryAt(op, kind, _clock.TurnIndexOf(op.Owner));
+        }
 
-            int ownerTurn = _clock.TurnIndexOf(op.Owner);
-
+        /// <summary><see cref="ActiveEntry"/> for a given turn of the owner's.</summary>
+        private Entry EntryAt(OperatorState op, StatusKind kind, int ownerTurn)
+        {
             if (_byOperator.TryGetValue(op.Id, out var applied)
                 && applied.TryGetValue(kind, out var entry)
                 && IsActive(entry, ownerTurn))

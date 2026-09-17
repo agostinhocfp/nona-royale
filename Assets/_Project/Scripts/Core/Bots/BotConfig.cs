@@ -72,6 +72,19 @@ namespace NonaRoyale.Core.Bots
         /// <summary>A further multiplier for beacons, which sit on show for a round and are easy to step off.</summary>
         public double BeaconDiscount { get; set; } = 0.6;
 
+        /// <summary>
+        /// The chance a watched enemy moves anyway, when its seat has another
+        /// piece on the loop it could move instead (Predator's Read, §6.7).
+        /// A seat with one piece on the loop must move it, so the chance is 1.
+        /// </summary>
+        public double WatchMoveOdds { get; set; } = 0.55;
+
+        /// <summary>
+        /// What a watch is worth when it works as a deterrent: the watched
+        /// piece stays put and its seat loses the move it would have made.
+        /// </summary>
+        public double WatchDenial { get; set; } = 1.5;
+
         /// <summary>Per cell a push moves an enemy backwards (negative when it carries them forward).</summary>
         public double PushProgress { get; set; } = 0.6;
 

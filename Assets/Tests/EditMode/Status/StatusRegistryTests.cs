@@ -598,5 +598,45 @@ namespace NonaRoyale.Core.Tests.Status
             Assert.Throws<ArgumentOutOfRangeException>(
                 () => _statuses.Apply(_blue, StatusKind.Stun, duration: 0));
         }
-    }
+    
+
+        // ── Next turn (2026-09-17, for the bots) ─────────────────────────
+
+        [Test]
+        public void HasOnNextTurn_SeesAStunCastDuringTheOpponentsTurn()
+        {
+            _statuses.Apply(_blue, StatusKind.Stun, 1);
+
+            Assert.That(_statuses.Has(_blue, StatusKind.Stun), Is.False, "not active until Blue's turn");
+            Assert.That(_statuses.HasOnNextTurn(_blue, StatusKind.Stun), Is.True);
+        }
+
+        [Test]
+        public void HasOnNextTurn_DropsAStunThatEndsThisTurn()
+        {
+            _clock.BeginTurnFor(PlayerColor.Blue);
+            _statuses.Apply(_blue, StatusKind.Stun, 1);
+
+            Assert.That(_statuses.Has(_blue, StatusKind.Stun), Is.True);
+            Assert.That(_statuses.HasOnNextTurn(_blue, StatusKind.Stun), Is.False);
+        }
+
+        [Test]
+        public void HasOnNextTurn_KeepsAStunThatLastsLonger()
+        {
+            _clock.BeginTurnFor(PlayerColor.Blue);
+            _statuses.Apply(_blue, StatusKind.Stun, 2);
+
+            Assert.That(_statuses.HasOnNextTurn(_blue, StatusKind.Stun), Is.True);
+        }
+
+        [Test]
+        public void HasOnNextTurn_CountsPassives()
+        {
+            _statuses.ApplyPassive(_blue, StatusKind.Evasion);
+
+            Assert.That(_statuses.HasOnNextTurn(_blue, StatusKind.Evasion), Is.True);
+            Assert.That(_statuses.HasOnNextTurn(_blue, StatusKind.Stun), Is.False);
+        }
+}
 }

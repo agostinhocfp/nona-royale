@@ -1201,6 +1201,18 @@ namespace NonaRoyale.Core
         }
 
         /// <summary>
+        /// Whether an operator will carry a status on its owner's next turn,
+        /// for callers that plan against that turn — the bots, weighing a
+        /// watch against a stun (2026-09-17). Auras are not included: they
+        /// depend on where pieces stand then.
+        /// </summary>
+        public bool HasStatusOnNextTurn(OperatorState op, StatusKind kind)
+        {
+            if (op == null) throw new ArgumentNullException(nameof(op));
+            return _statuses.HasOnNextTurn(op, kind);
+        }
+
+        /// <summary>
         /// What is left of an operator's shield pool (§5.6), for callers that
         /// weigh a hit before making it — the bots. Zero without a shield.
         /// </summary>
