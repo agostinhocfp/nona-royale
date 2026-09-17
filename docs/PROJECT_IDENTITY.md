@@ -12,6 +12,10 @@ _"Nona Royale" is the canonical title (ADR/ART_DIRECTION §0). "Mystic Heist" an
 
 A strategic 2D dice-rolling board game where operators use tech-enabled abilities to outmaneuver and defeat opponents on the race home.
 
+## One-sentence Reason for the audience to care
+
+A stylish near-future casino where operators manipulate, bluff and betray each other to control the tables – and the house always has a trick.
+
 ## What this game is
 
 A competitive multiplayer digital board game that blends tactical decision-making with dice-driven movement. Each player commands a squad of **three operators** (chosen from a pool of nine), navigating a modular grid board while deploying abilities, managing energy, and using positioning to eliminate rivals and get all their operators home safely.
