@@ -729,13 +729,11 @@ namespace NonaRoyale.Unity.View
             var topRow = UiKit.Row(top, 12f);
             topRow.childForceExpandHeight = false;
 
-            float iconSize = Mathf.Lerp(36f, 52f, Mathf.InverseLerp(0.52f, 0.84f, PieceShape.SizeFor(op.MaxHealth)));
             var iconBox = UiKit.Rect("shape", top);
             UiKit.Fixed(iconBox, 52f, 52f);
-            var icon = UiKit.Icon(iconBox, PieceShape.For(op.Name), open ? seatColour : UiTheme.PieceWaiting, iconSize);
-            var iconRect = (RectTransform)icon.transform;
-            iconRect.anchorMin = iconRect.anchorMax = new Vector2(0.5f, 0.5f);
-            iconRect.sizeDelta = new Vector2(iconSize, iconSize);
+            var portrait = OperatorArtLibrary.Portrait(op.Name);
+            if (portrait != null) PortraitIcon(iconBox, portrait, op, open, seatColour);
+            else ShapeIcon(iconBox, op, open, seatColour);
 
             var names = UiKit.Rect("names", top);
             UiKit.Size(names, flexibleWidth: 1f);
@@ -830,6 +828,40 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>What an aura does and to whom, in the detail panel's words.</summary>
+        /// <summary>The operator's shape, sized by health and tinted for the picking seat.</summary>
+        private static void ShapeIcon(RectTransform box, OperatorDefinition op, bool open, Color seatColour)
+        {
+            float iconSize = Mathf.Lerp(36f, 52f, Mathf.InverseLerp(0.52f, 0.84f, PieceShape.SizeFor(op.MaxHealth)));
+            var icon = UiKit.Icon(box, PieceShape.For(op.Name), open ? seatColour : UiTheme.PieceWaiting, iconSize);
+            Centre(icon, iconSize);
+        }
+
+        /// <summary>
+        /// A rendered portrait, drawn as painted, with the shape as a small
+        /// seat-tinted pin in its corner (ART_HOOKUP.md, ART1). The pin keeps
+        /// the shape the board uses in view, so the card still teaches it.
+        /// </summary>
+        private static void PortraitIcon(RectTransform box, Sprite portrait, OperatorDefinition op, bool open, Color seatColour)
+        {
+            var image = UiKit.Icon(box, portrait, open ? Color.white : UiTheme.PieceWaiting, 52f);
+            Centre(image, 52f);
+
+            const float pinSize = 18f;
+            var pin = UiKit.Icon(box, PieceShape.For(op.Name), open ? seatColour : UiTheme.PieceWaiting, pinSize);
+            var pinRect = (RectTransform)pin.transform;
+            pinRect.anchorMin = pinRect.anchorMax = new Vector2(1f, 0f);
+            pinRect.pivot = new Vector2(1f, 0f);
+            pinRect.anchoredPosition = new Vector2(2f, -2f);
+            pinRect.sizeDelta = new Vector2(pinSize, pinSize);
+        }
+
+        private static void Centre(Image image, float size)
+        {
+            var rect = (RectTransform)image.transform;
+            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(size, size);
+        }
+
         private static string AuraReach(AuraDefinition aura)
         {
             string who = aura.Side == AuraSide.Allies ? "allies" : "enemies";

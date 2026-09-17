@@ -14,9 +14,25 @@ namespace NonaRoyale.Unity.View
     /// <b>A person, not a token</b> (GUI increment G2, ART_DIRECTION §6.1).
     /// In the yard the operator is a bust seated at its table; on the floor it
     /// is a standing figure. Both wear the operator's shape
-    /// (<see cref="PieceShape"/>) as a gilt pin, so identity reads at a glance
-    /// until the rendered character models replace the figures. Size still
-    /// carries maximum health.
+    /// (<see cref="PieceShape"/>) as a gilt pin, so identity reads at a glance.
+    /// Size still carries maximum health.
+    ///
+    /// <b>Rendered art, pose by pose</b> (ART_HOOKUP.md, increment ART1). When
+    /// <see cref="OperatorArtLibrary"/> has a render for the pose, the body
+    /// shows it instead of the procedural bust or pawn:
+    /// <list type="bullet">
+    /// <item>It is fitted into the procedural figure's frame
+    /// (<see cref="FigureLayout.Fit"/>): feet on the pawn's feet, the pawn's
+    /// height. The pin, halo and bar follow the fitted figure.</item>
+    /// <item>It is drawn untinted. The seat is shown by a tinted disc and ring
+    /// under the feet (standing only; a seated operator sits at its own seat's
+    /// table), and by the pin (designer, 2026-09-17).</item>
+    /// <item>The outline child is hidden: the render has its own.</item>
+    /// <item>The hit flash is a white silhouette drawn over the body, since
+    /// lerping an untinted sprite's colour toward white changes nothing.</item>
+    /// </list>
+    /// A missing pose falls back to the procedural figure on its own, so an
+    /// operator with only a standing render still sits as a bust.
     ///
     /// Status badges used to live here, as world-space squares. They moved to
     /// <see cref="PieceHudLayer"/> as named screen-space tags (ADR-0008
@@ -47,6 +63,9 @@ namespace NonaRoyale.Unity.View
     /// or a slow sway (seated). Reduced motion keeps the walk as a glide and
     /// drops the hop, the squash and the idle. Every clock is scaled time,
     /// times <see cref="MotionSettings.Rate"/>, so pause freezes the piece.
+    /// Since ART1 the squash and the breathing keep the feet on the floor
+    /// (<see cref="FigureLayout.FootAnchorOffset"/>); the transform's origin is
+    /// still the figure's centre, which the floaters and sounds read.
     /// </remarks>
     public sealed class OperatorPiece : MonoBehaviour
     {
@@ -77,11 +96,26 @@ namespace NonaRoyale.Unity.View
         /// <summary>A figure is drawn this much larger than the old shape token, since a person is mostly air.</summary>
         private const float FigureScale = 1.45f;
 
-        /// <summary>The shape pin's size, as a fraction of the figure.</summary>
+        /// <summary>The shape pin's size on a procedural figure, as a fraction of the figure.</summary>
         private const float PinSize = 0.18f;
 
-        /// <summary>Health bar height above the figure's centre, in figure units.</summary>
-        private const float BarHeight = 0.6f;
+        /// <summary>
+        /// The pin's size on a rendered figure. Smaller than on the pawn, since
+        /// it sits on painted clothes rather than a flat body. Tune in Play Mode.
+        /// </summary>
+        private const float ArtPinSize = 0.12f;
+
+        /// <summary>A rendered figure's height against the procedural one's. Tune in Play Mode.</summary>
+        private const float ArtHeightScale = 1f;
+
+        /// <summary>Peak opacity of the white silhouette on a rendered figure's hit flash.</summary>
+        private const float ArtFlashStrength = 0.75f;
+
+        /// <summary>The seat disc under a rendered figure: width and depth, in figure units.</summary>
+        private const float SeatBaseWidth = 0.9f;
+        private const float SeatBaseDepth = 0.36f;
+        private const float SeatBaseAlpha = 0.45f;
+        private const float SeatRingAlpha = 0.9f;
 
         private const float PopSeconds = 0.3f;
         private const float ShatterSeconds = 0.45f;
@@ -93,10 +127,13 @@ namespace NonaRoyale.Unity.View
         private readonly Queue<Vector3> _path = new Queue<Vector3>();
 
         private SpriteRenderer _body;
+        private SpriteRenderer _flashOverlay;
         private SpriteRenderer _outline;
         private SpriteRenderer _pin;
         private SpriteRenderer _healthBack;
         private SpriteRenderer _healthFill;
+        private SpriteRenderer _seatBase;
+        private SpriteRenderer _seatRing;
         private float _alpha = 1f;
         private Color _seatColour;
         private Vector3 _target;
@@ -108,6 +145,8 @@ namespace NonaRoyale.Unity.View
         private SpriteRenderer _halo;
         private SpriteRenderer _targetRing;
         private bool? _seated;
+        private bool _rendered;
+        private FigureLayout _layout = FigureLayout.Bust;
         private PieceMark _marks;
         private float _baseScale = 1f;
 
@@ -149,6 +188,9 @@ namespace NonaRoyale.Unity.View
         /// <summary>Whether the piece is drawn seated. Follows the presentation, not the engine.</summary>
         public bool Seated => _seated ?? true;
 
+        /// <summary>Whether the current pose is a rendered figure rather than the procedural one.</summary>
+        public bool ShowsRenderedArt => _rendered;
+
         /// <summary>The health the piece last showed. The HUD label reads this, so it never runs ahead of the hit.</summary>
         public int ShownHealth { get; private set; }
 
@@ -159,6 +201,9 @@ namespace NonaRoyale.Unity.View
 
         private bool Reduced => _motion != null && _motion.ReducedMotion;
         private float Rate => _motion != null ? _motion.Rate : 1f;
+
+        /// <summary>A procedural figure takes the seat colour; a rendered one is drawn as painted.</summary>
+        private Color BodyColour => _rendered ? Color.white : _seatColour;
 
         public void Bind(OperatorState op, float cellSize, float cellSpacing, MotionSettings motion)
         {
@@ -175,9 +220,17 @@ namespace NonaRoyale.Unity.View
             // Pieces breathe out of step with each other.
             _idlePhase = (op.Id * 0.618f) % 1f * Mathf.PI * 2f;
 
-            _body = gameObject.AddComponent<SpriteRenderer>();
+            // The body is a child so a render can be scaled and moved inside
+            // the figure's frame. For the procedural figure it sits at the
+            // origin, exactly where the root's own renderer used to be.
+            _body = Child("body", 1f, Vector3.zero);
             _body.color = _seatColour;
             _body.sortingOrder = 4;
+
+            // Same order as the body, a hair nearer the camera, so it draws on top.
+            _flashOverlay = Child("flash", 1f, new Vector3(0f, 0f, -0.001f), _body.transform);
+            _flashOverlay.sortingOrder = 4;
+            _flashOverlay.enabled = false;
 
             _outline = Child("outline", 1f, Vector3.zero);
             _outline.color = UiTheme.PieceOutline;
@@ -188,6 +241,7 @@ namespace NonaRoyale.Unity.View
             _pin.color = UiTheme.PieceEmblem;
             _pin.sortingOrder = 5;
 
+            BuildSeatBase();
             BuildHealthBar();
             BuildMarks();
             SetPose(op.IsInYard);
@@ -199,21 +253,59 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
-        /// Seated in the yard, standing anywhere else. Swaps sprites and moves
-        /// the pin and the halo; cheap, and a no-op when the pose is unchanged.
+        /// Seated in the yard, standing anywhere else. Swaps the figure, then
+        /// moves the pin, the halo, the bar and the seat disc to fit it. Cheap,
+        /// and a no-op when the pose is unchanged.
         /// </summary>
         private void SetPose(bool seated)
         {
             if (_seated == seated) return;
             _seated = seated;
 
-            _body.sprite = seated ? BoardArt.Bust : BoardArt.Pawn;
-            _outline.sprite = seated ? BoardArt.BustOutline : BoardArt.PawnOutline;
-            _pin.transform.localPosition = seated ? BoardArt.BustPin : BoardArt.PawnPin;
+            var frame = seated ? FigureLayout.Bust : FigureLayout.Pawn;
+            var art = OperatorArtLibrary.Figure(Operator.Name, seated ? FigurePose.Seated : FigurePose.Standing);
+            _rendered = art != null;
 
-            // The halo sits over the head; a seated bust's head is lower.
-            var head = seated ? new Vector2(0f, 0.16f) : BoardArt.PawnHead;
-            _halo.transform.localPosition = head;
+            if (_rendered)
+            {
+                _layout = FigureLayout.Fit(art.OpaqueBottom, art.OpaqueTop, frame, ArtHeightScale,
+                    seated ? FigureLayout.SeatedChest : FigureLayout.StandingChest);
+
+                _body.sprite = art.Sprite;
+                _flashOverlay.sprite = art.Silhouette;
+                _outline.enabled = false;
+                _pin.transform.localPosition = new Vector3(0f, _layout.PinY, 0f);
+                _pin.transform.localScale = Vector3.one * ArtPinSize;
+            }
+            else
+            {
+                _layout = frame;
+
+                _body.sprite = seated ? BoardArt.Bust : BoardArt.Pawn;
+                _flashOverlay.sprite = null;
+                _outline.enabled = true;
+                _outline.sprite = seated ? BoardArt.BustOutline : BoardArt.PawnOutline;
+                _pin.transform.localPosition = seated ? BoardArt.BustPin : BoardArt.PawnPin;
+                _pin.transform.localScale = Vector3.one * PinSize;
+            }
+
+            _flashOverlay.enabled = false;
+            _body.transform.localPosition = new Vector3(0f, _layout.ArtY, 0f);
+            _body.transform.localScale = Vector3.one * _layout.ArtScale;
+
+            // The halo sits over the head; a seated figure's head is lower.
+            _halo.transform.localPosition = new Vector3(0f, _layout.HeadY, 0f);
+
+            _healthBack.transform.localPosition = new Vector3(0f, _layout.BarY, 0f);
+
+            // The seat disc stands in for the tint a render does not take.
+            bool showBase = _rendered && !seated;
+            _seatBase.enabled = showBase;
+            _seatRing.enabled = showBase;
+            _seatBase.transform.localPosition = new Vector3(0f, _layout.Feet, 0f);
+            _seatRing.transform.localPosition = new Vector3(0f, _layout.Feet, 0f);
+
+            _body.color = WithAlpha(BodyColour);
         }
 
         /// <summary>
@@ -386,9 +478,10 @@ namespace NonaRoyale.Unity.View
             // The pose says "waiting"; the figure keeps its full colour.
             SetPose(Operator.IsInYard);
 
-            _body.color = WithAlpha(Color.Lerp(_seatColour, Color.white, _flash));
+            _body.color = _rendered ? WithAlpha(BodyColour) : WithAlpha(Color.Lerp(BodyColour, Color.white, _flash));
             _outline.color = WithAlpha(_outline.color);
             _pin.color = WithAlpha(_pin.color);
+            TintSeatBase();
 
             DrawHealth(Operator.Health);
         }
@@ -409,7 +502,7 @@ namespace NonaRoyale.Unity.View
             // Anchored left so the bar drains rightward rather than shrinking
             // toward its centre, which reads as distance rather than loss.
             _healthFill.transform.localScale = new Vector3(0.66f * health, 0.08f, 1f);
-            _healthFill.transform.localPosition = new Vector3(-0.33f * (1f - health), BarHeight, 0f);
+            _healthFill.transform.localPosition = new Vector3(-0.33f * (1f - health), _layout.BarY, 0f);
             _healthFill.color = Color.Lerp(UiTheme.Danger, _seatColour, health);
         }
 
@@ -419,15 +512,40 @@ namespace NonaRoyale.Unity.View
             return colour;
         }
 
+        private void TintSeatBase()
+        {
+            var seat = BoardLayout.ColourOf(Operator.Owner);
+            _seatBase.color = UiTheme.WithAlpha(seat, SeatBaseAlpha * _alpha);
+            _seatRing.color = UiTheme.WithAlpha(seat, SeatRingAlpha * _alpha);
+        }
+
+        private void BuildSeatBase()
+        {
+            // Under everything the piece draws: the floor it stands on.
+            _seatBase = Child("seat_base", 1f, Vector3.zero);
+            _seatBase.sprite = BoardArt.SoftDisc;
+            _seatBase.sortingOrder = 0;
+            _seatBase.transform.localScale = new Vector3(SeatBaseWidth, SeatBaseDepth, 1f);
+            _seatBase.enabled = false;
+
+            _seatRing = Child("seat_ring", 1f, Vector3.zero);
+            _seatRing.sprite = Primitives.Ring;
+            _seatRing.sortingOrder = 1;
+            _seatRing.transform.localScale = new Vector3(SeatBaseWidth, SeatBaseDepth, 1f);
+            _seatRing.enabled = false;
+
+            TintSeatBase();
+        }
+
         private void BuildHealthBar()
         {
-            _healthBack = Child("health_back", 1f, new Vector3(0f, BarHeight, 0f));
+            _healthBack = Child("health_back", 1f, new Vector3(0f, FigureLayout.Pawn.BarY, 0f));
             _healthBack.sprite = Primitives.Square;
             _healthBack.color = UiTheme.PieceBarBack;
             _healthBack.sortingOrder = 5;
             _healthBack.transform.localScale = new Vector3(0.74f, 0.13f, 1f);
 
-            _healthFill = Child("health_fill", 1f, new Vector3(0f, BarHeight, 0f));
+            _healthFill = Child("health_fill", 1f, new Vector3(0f, FigureLayout.Pawn.BarY, 0f));
             _healthFill.sprite = Primitives.Square;
             _healthFill.sortingOrder = 6;
         }
@@ -454,10 +572,10 @@ namespace NonaRoyale.Unity.View
             _targetRing.enabled = false;
         }
 
-        private SpriteRenderer Child(string childName, float scale, Vector3 localPosition)
+        private SpriteRenderer Child(string childName, float scale, Vector3 localPosition, Transform parent = null)
         {
             var go = new GameObject(childName);
-            go.transform.SetParent(transform, false);
+            go.transform.SetParent(parent != null ? parent : transform, false);
             go.transform.localPosition = localPosition;
             go.transform.localScale = Vector3.one * scale;
 
@@ -472,13 +590,7 @@ namespace NonaRoyale.Unity.View
             float rated = delta * Rate;
 
             AnimateMarks(delta);
-
-            if (_flash > 0f)
-            {
-                _flash = Mathf.Max(0f, _flash - delta * 4f);
-                // The flash must not undo the evasive fade, so alpha is put back.
-                if (_body != null) _body.color = WithAlpha(Color.Lerp(_body.color, Color.white, _flash * 0.5f));
-            }
+            AnimateFlash(delta);
 
             _land = Mathf.Max(0f, _land - rated * 10f);
             if (_pop >= 0f)
@@ -495,6 +607,32 @@ namespace NonaRoyale.Unity.View
             if (!_hopping && _path.Count == 0 && _hold <= 0f) _idleTime += delta;
 
             Draw();
+        }
+
+        private void AnimateFlash(float delta)
+        {
+            if (_body == null) return;
+
+            if (_flash <= 0f)
+            {
+                if (_flashOverlay.enabled) _flashOverlay.enabled = false;
+                return;
+            }
+
+            _flash = Mathf.Max(0f, _flash - delta * 4f);
+
+            if (_rendered)
+            {
+                // A painted figure cannot be tinted whiter; a white silhouette
+                // is laid over it instead. No silhouette (unreadable texture): no flash.
+                _flashOverlay.enabled = _flashOverlay.sprite != null && _flash > 0f;
+                _flashOverlay.color = new Color(1f, 1f, 1f, _flash * ArtFlashStrength * _alpha);
+            }
+            else
+            {
+                // The flash must not undo the evasive fade, so alpha is put back.
+                _body.color = WithAlpha(Color.Lerp(_body.color, Color.white, _flash * 0.5f));
+            }
         }
 
         /// <summary>One step of the walk: a hop (or a glide under Reduced motion) toward the next cell.</summary>
@@ -572,7 +710,13 @@ namespace NonaRoyale.Unity.View
 
             float scale = _hidden ? 0f : _baseScale * _hover * pop;
 
-            transform.position = _ground + Vector3.up * _lift;
+            // Squash, the rise's stretch and breathing scale about the centre;
+            // this puts the feet back where they were, so a rise stands up from
+            // the floor. The pop and the hover lift are meant to grow the whole
+            // figure, so they are left alone.
+            float anchor = _layout.FootAnchorOffset(scale, sy);
+
+            transform.position = _ground + Vector3.up * (_lift + anchor);
             transform.localScale = new Vector3(scale * sx, scale * sy, 1f);
             transform.localRotation = Quaternion.Euler(0f, 0f, roll);
         }

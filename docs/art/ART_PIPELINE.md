@@ -1,7 +1,7 @@
 # Nona Royale — Art Pipeline
 
 > Location in repo: `docs/art/ART_PIPELINE.md`
-> Status: **Reconstructed skeleton, 2026-09-11.** Amended 2026-09-12 (board geometry corrected) and 2026-09-16 (URP 2D and Linear colour actually set up, ADR-0010). The original was cited by `ART_DIRECTION.md`, ADR-0001 and the project tooling notes, but no copy survives in project knowledge. What follows is everything recoverable from those references plus proposals for the gaps. **Sections marked NEEDS DECISION are not settled** — confirm or overwrite them before generating art at volume.
+> Status: **Reconstructed skeleton, 2026-09-11.** Amended 2026-09-12 (board geometry corrected), 2026-09-16 (URP 2D and Linear colour actually set up, ADR-0010) and 2026-09-17 (2.5D operator production adopted, ADR-0009; operator specs, folders and import settled with ART1, `docs/design/ART_HOOKUP.md`). The original was cited by `ART_DIRECTION.md`, ADR-0001 and the project tooling notes, but no copy survives in project knowledge. What follows is everything recoverable from those references plus proposals for the gaps. **Sections marked NEEDS DECISION are not settled** — confirm or overwrite them before generating art at volume.
 > Related: `docs/art/ART_DIRECTION.md` (what it should look like — wins on aesthetics), ADR-0001 (2D locked), ADR-0003 (board geometry the art must match), `docs/design/PRESENTATION.md` (what the view must show)
 
 Division of labour: **ART_DIRECTION says what it should look like. This says how it gets made.** Where they conflict, ART_DIRECTION wins on aesthetics and this doc wins on process.
@@ -16,9 +16,9 @@ Render pipeline is **URP with the 2D renderer**. The project began on the Built-
 
 **Consequence for asset production:** any sprite meant to receive lighting needs a **normal map** alongside its albedo. Decide per asset class rather than blanket — see §4.
 
-**3D is concept-vision only** (ADR-0001). A 3D render may be produced as a one-off "here's the world" beauty shot to align on mood. It never enters the production pipeline. The cheapest correct path for such a shot is a 3D-_looking_ painted image from the 2D tools using a board schematic as reference, not an actual 3D toolchain.
+**3D is concept-vision only** (ADR-0001), **with one exception: operators.** A 3D render may be produced as a one-off "here's the world" beauty shot to align on mood. It never enters the production pipeline. The cheapest correct path for such a shot is a 3D-_looking_ painted image from the 2D tools using a board schematic as reference, not an actual 3D toolchain.
 
-**2.5D is available but not adopted.** Modelling assets in 3D and rendering them down to 2D sprites from the fixed top-down angle is the standard indie route to dimensional, consistently-lit characters — including the seated → rise → standing frames the art bible requires. Adopting it changes art _production_ only, not the game, and would be its own ADR.
+**2.5D is adopted for operators (ADR-0009, 2026-09-17).** Each operator is modelled and rigged in Meshy, then rendered to 2D sprites by a Blender script (`tools/blender/render_operator.py`) at the board angle, with toon shading and an outline. The game stays 2D: Unity sees only PNGs. Board, environment, UI and FX art stay painted 2D.
 
 ---
 
@@ -28,7 +28,8 @@ Render pipeline is **URP with the 2D renderer**. The project began on the Built-
 | ------------------ | --------------- | ------------------------------------------------------------------------------------------------ |
 | AI art — primary   | **Scenario**    | Custom model trained on locked references, so the whole set inherits one identity                |
 | AI art — secondary | **Leonardo.Ai** | Fallback and variation                                                                           |
-| 3D                 | **Meshy**       | Only if 2.5D is ever adopted, or for a one-off concept render                                    |
+| 3D — operators     | **Meshy**       | Model, texture and auto-rig (Mixamo bones), exported as GLB (ADR-0009)                           |
+| 3D → sprite        | **Blender** 4.0+ | `tools/blender/render_operator.py`: proportions, poses, camera, toon, outline, render           |
 | Board layout       | **GeoGebra**    | Geometry worked out there, then recreated in Unity                                               |
 | Raster editing     | NEEDS DECISION  | Photoshop / Affinity / Krita / Aseprite — whichever, pick one so source files are openable later |
 
@@ -81,10 +82,10 @@ These numbers are proposals, not decisions. Settle them before batch generation,
 | ---------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
 | Pixels Per Unit        | **100**                                                | Unity default; 1 board cell = 1 world unit keeps grid maths trivial                                                                  |
 | Cell source resolution | **256×256**                                            | Downsamples cleanly; leaves headroom for a future higher-DPI pass                                                                    |
-| Operator sprite        | **256×384**                                            | Room for a standing pose above a 1-cell footprint                                                                                    |
+| Operator sprite        | **Settled 2026-09-17:** standing 512×768, seated and portrait 512×512, PPU 512 | The piece fits a render by its opaque rows and scales it to the procedural figure's height, so PPU and padding do not matter (ART_HOOKUP decision 2) |
 | Filter mode            | Bilinear                                               | Painted art, not pixel art. Point/no-filter would be wrong here                                                                      |
 | Compression            | None in editor, platform default in builds             |                                                                                                                                      |
-| Sprite atlases         | One per class: `Board`, `Operators`, `UI`, `FX`        | Keeps draw calls down without one giant atlas that rebuilds constantly                                                               |
+| Sprite atlases         | One per class: `Board`, `Operators`, `UI`, `FX`        | Keeps draw calls down without one giant atlas that rebuilds constantly. **Not operators yet:** a packed render cannot be read back for the hit flash (ART1) |
 | Normal maps            | Board and environment **yes**; operators and UI **no** | Lighting does atmospheric work on the floor; pieces stay readable and near-unlit (`ART_DIRECTION.md` §6, readability beats richness) |
 | Colour space           | **Linear** (set 2026-09-16, ADR-0010)                  | Required for URP lighting to behave                                                                                                  |
 
@@ -94,14 +95,24 @@ These numbers are proposals, not decisions. Settle them before batch generation,
 
 ```
 Assets/_Project/Art/
+  Resources/Art/Operators/   luka_standing · luka_seated · luka_portrait   (loaded by name, ART1)
   Board/       cell_normal_01 · cell_safe_start · cell_home_red · corner_ne · arm_tip · yard_blue
-  Operators/   bouncer_idle · bouncer_seated · bouncer_rise_01 · syla_idle …
+  Operators/   (retired: operator art lives under Resources, above)
   UI/          frame_deco_corner · icon_ability_velvetrope · hud_energy_pip
   FX/          fx_powered_glow · fx_stun_ring · fx_bleed_tick
   Materials/
 ```
 
 Rules: `lowercase_snake_case`; class prefix first (`cell_`, `fx_`, `icon_`); numbered frames zero-padded to two digits; **no spaces, no version suffixes in filenames** — that is what git is for.
+
+**Operators** are the exception to the class prefix: `<key>_<pose>`, where the key is the operator's name, lowercased, with accents stripped (`Revú` → `revu`, `OperatorArtNames.Key`). Poses: `standing`, `seated`, `portrait`; later `rise_01…`, `tell`, `ko_01…`.
+
+**Outside `Assets/`** (never imported by Unity):
+
+```
+art/source/characters/<name>/   <name>_walk.glb · <name>_run.glb   (Meshy exports, LFS)
+art/renders/<name>/             script output, reviewed, then copied into Resources (not committed)
+```
 
 ## 6. Required character content
 
@@ -134,7 +145,8 @@ The original doc covered this and the content is lost. Settle and record before 
 
 - Commercial-use terms for Scenario and Leonardo output under the current plans, including whether a paid tier is required for commercial rights.
 - Whether AI-generated assets are acceptable for **Steam** publishing and what disclosure Valve currently requires.
-- Provenance record: for each asset, which tool and which model produced it. A one-line manifest per batch is enough, and it is much cheaper to keep now than to reconstruct later.
+- Provenance record: for each asset, which tool and which model produced it. A one-line manifest per batch is enough, and it is much cheaper to keep now than to reconstruct later. **Started 2026-09-17: `docs/art/PROVENANCE.md`.**
+- **Meshy** (ADR-0009): per its help centre, as of 2026-09-17, Free-plan output is CC BY 4.0 with attribution ("Model created with Meshy – CC BY 4.0 License"); on paid plans the customer owns the output. Record the plan per model.
 - Terms for any purchased Asset Store or font licence, kept with the repo.
 
 ## 9. Unity import workflow
@@ -146,11 +158,20 @@ The original doc covered this and the content is lost. Settle and record before 
 5. For lit assets, import the normal map as **Normal map** type and attach via the sprite's secondary texture.
 6. Check it at board scale in the Match scene before generating more in that style. Readability at gameplay zoom is the acceptance test, not how it looks at 100%.
 
+### Operators (ART1)
+
+1. Render with `tools/blender/render_operator.py` into `art/renders/<name>/` and review the three images.
+2. Make sure Unity has compiled `NonaRoyale.EditorTools` (the import postprocessor) **before** copying images in.
+3. Copy them into `Assets/_Project/Art/Resources/Art/Operators/`. `OperatorArtImporter` sets the settings on first import: Sprite, bottom-centre pivot, Full Rect, PPU 512, no mipmaps, **Read/Write on, uncompressed**, bilinear, clamp, max 1024.
+4. No atlas and no normal map for operators.
+5. Add a row to `docs/art/PROVENANCE.md`.
+6. Check at gameplay zoom and in a phone-sized Game view (the ART1 checklist in `ART_HOOKUP.md`).
+
 ---
 
 ## Open items
 
-- [ ] Confirm or replace every **NEEDS DECISION** above — §2 raster editor, §4 asset specs, §8 licensing.
+- [ ] Confirm or replace every **NEEDS DECISION** above — §2 raster editor, §4 asset specs (operators settled 2026-09-17), §8 licensing (Meshy plan still to record).
 - [ ] Lock the `ART_DIRECTION.md` §3 hex palette, especially the holo-cyan tech accent. Still the one item needing a designer's eye.
 - [ ] **Re-check any existing board schematic or reference against 52 cells** (§3). Anything drawn to the old 48 is wrong by four cells, and the arm-tip cell it was missing is structural rather than decorative.
 - [ ] Decide whether art targets **one grid size or the family** (§3). If Standard is the only board that ever ships, arm pieces can be sized for L=6; if Sprint or the 44-cell fallback might, they cannot.

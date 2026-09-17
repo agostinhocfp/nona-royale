@@ -123,3 +123,8 @@ InitTestScene*.unity*
 
 # Local build helper for the cloud test runner
 /tools/tests-verify/csc.core.rsp
+
+# Blender render output (reproducible from art/source and tools/blender, ADR-0009)
+/art/renders/
+# Meshy download bundles (the GLBs inside are kept one by one)
+/art/source/**/*.zip
