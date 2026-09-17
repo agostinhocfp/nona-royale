@@ -135,7 +135,7 @@ namespace NonaRoyale.Unity.View
             }, Rebuild, size: UiTheme.FontSmall);
             UiKit.Size(shuffle, flexibleWidth: 1f);
 
-            Note("The seed fixes the dice and any random picks. Same seed, same dice.", UiTheme.TextNote);
+            Note("The seed fixes the dice and, outside ALL PICK, any random picks. Same seed, same dice.", UiTheme.TextNote);
 
             // ── Go ──
             Gap(10f);

@@ -132,11 +132,24 @@ namespace NonaRoyale.Unity.View
             if (_host == null || settings == null || !settings.Squads.IsDraft()) return;
 
             _settings = settings.Clone();
-            _draft = DraftState.ForMatch(_settings.Seats, _settings.Squads.ToDraftMode(), _settings.Seed);
+            var mode = _settings.Squads.ToDraftMode();
+
+            // ALL PICK's draft RNG is freshly seeded, not match-seeded
+            // (2026-09-17, designer). Its picks are human and its timeouts are
+            // wall-clock, so the seed never made it reproducible anyway — all
+            // the anchor did was deal the same "random" fills and CPU picks
+            // whenever a seed repeated. The measured modes (RANDOM, and SNAKE's
+            // fills) keep the match-seeded stream. The dice are unaffected:
+            // the match RNG never fed the draft (DRAFT.md decision 9).
+            int draftSeed = mode == DraftMode.AllPick
+                ? Random.Range(1, 100000000)
+                : _settings.Seed;
+
+            _draft = DraftState.ForMatch(_settings.Seats, mode, draftSeed);
 
             // One brain per CPU seat, on the bots' draft stream (BOTS.md decision 4).
             _cpu.Clear();
-            var random = BotConfig.Default.DraftRandomFor(_settings.Seed);
+            var random = BotConfig.Default.DraftRandomFor(draftSeed);
             foreach (var seat in _settings.Seats)
                 if (_settings.IsCpu(seat)) _cpu[seat] = new BotBrain(_settings.PersonalityOf(seat), random);
 
@@ -152,8 +165,8 @@ namespace NonaRoyale.Unity.View
             _root.SetAsLastSibling();
             Rebuild();
 
-            UiTween.FadeIn(_fader, 0.2f);
-            UiTween.SlideIn(_frame, new Vector2(0f, -14f), 0.22f);
+            UiTween.FadeIn(_fader, 0.28f);
+            UiTween.SlideIn(_frame, new Vector2(0f, -22f), 0.3f);
         }
 
         public void Close()

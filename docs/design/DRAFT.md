@@ -35,6 +35,7 @@ Before the match, the seats choose their three operators from the full roster in
 9. **Random picks draw from a draft RNG**, `new SeededRandom(seed ^ DraftConfig.SeedSalt)`, never from the match RNG. The dice stream therefore doesn't depend on how many picks were random.
    - Consequence: explicit squads skip `Roster.DraftRandom`. The same seed gives different dice under ALL PICK than under RANDOM. That's expected.
    - Timeout picks depend on wall-clock timing, so a draft is reproducible only from the same picks, not from the seed alone.
+   - **Amendment (2026-09-17, designer): ALL PICK's draft RNG is freshly seeded, not match-seeded.** Its picks are human and its timeouts wall-clock, so the match seed never made it reproducible anyway — all the anchor did was deal the same "random" fills and CPU picks whenever a seed repeated. The draft screen draws a fresh seed for ALL PICK; SNAKE's fills and RANDOM keep the match-seeded stream. The dice are unaffected either way (decision 9's separation is unchanged).
 
 ## Increments
 
