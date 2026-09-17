@@ -14,8 +14,8 @@ namespace NonaRoyale.Unity.View
     public sealed class UiSliderFeel : MonoBehaviour,
         IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
     {
-        private const float HoverScale = 1.2f;
-        private const float DragScale = 1.35f;
+        private const float HoverScale = 1.3f;
+        private const float DragScale = 1.5f;
         private const float Seconds = 0.1f;
 
         private RectTransform _knob;

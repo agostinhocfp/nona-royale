@@ -106,7 +106,7 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>Fades the layout children named <paramref name="prefix"/> in, one after another.</summary>
         public static void StaggerIn(RectTransform parent, string prefix = "content_",
-            float perItem = 0.035f, float seconds = 0.16f)
+            float perItem = 0.055f, float seconds = 0.22f)
         {
             if (parent == null) return;
 

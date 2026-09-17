@@ -74,8 +74,8 @@ namespace NonaRoyale.Unity.View
             _root.SetAsLastSibling();
             Rebuild();
 
-            UiTween.FadeIn(_fader, 0.18f);
-            UiTween.SlideIn(_card, new Vector2(0f, -18f), 0.22f);
+            UiTween.FadeIn(_fader, 0.28f);
+            UiTween.SlideIn(_card, new Vector2(0f, -28f), 0.3f);
             UiTween.StaggerIn(_card);
         }
 
@@ -150,8 +150,8 @@ namespace NonaRoyale.Unity.View
         /// <summary>A quick fade and settle for a page swap inside the card (U1).</summary>
         private void PageTransition()
         {
-            UiTween.FadeIn(_cardFader, 0.12f);
-            UiTween.ScaleIn(_card, 0.99f, 0.12f);
+            UiTween.FadeIn(_cardFader, 0.18f);
+            UiTween.ScaleIn(_card, 0.985f, 0.18f);
         }
 
         private void Rebuild()

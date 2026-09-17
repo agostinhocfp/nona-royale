@@ -321,6 +321,7 @@ namespace NonaRoyale.Unity.View
         {
             var label = Label(parent, text.ToUpperInvariant(), 13f, UiTheme.Heading, align, bold: true);
             label.characterSpacing = UiTheme.HeadingSpacing;
+            UiFonts.ApplyDisplay(label);
             return label;
         }
 

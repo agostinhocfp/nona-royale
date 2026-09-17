@@ -65,8 +65,8 @@ namespace NonaRoyale.Unity.View
             // The hand-over cue drops in from under the top bar (U2); the
             // fade-out below stays as it was.
             _group.alpha = 0f;
-            UiTween.Fade(_group, 1f, 0.2f);
-            UiTween.SlideIn(_root, new Vector2(0f, 14f), 0.2f);
+            UiTween.Fade(_group, 1f, 0.25f);
+            UiTween.SlideIn(_root, new Vector2(0f, 20f), 0.25f);
         }
 
         /// <summary>Fades the pill out.</summary>

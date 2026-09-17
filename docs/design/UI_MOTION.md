@@ -37,6 +37,7 @@ Each increment ends with a Play Mode check and a commit.
   - Type: Cinzel on screen titles, the NONA ROYALE wordmark, the draft title and clock. `FloatingText` is TMP on the default face, bold, with a 1.35× birth pop.
   - Elevation: `UiTheme.PanelShadowNear`/`Far` (with offsets) and `PanelSheen`; `UiKit.Panel` elevates and sheens every floating panel.
   - 67 passing in the stand-in run (the csc harness: `dotnet restore` is broken machine-wide, SDK 10.0.401, so the harness compiles straight with csc — see `Temp/audio-tests`).
+- 2026-09-17 — **Presence pass, after the first Play Mode look** ("not seeing much different"). The first tuning was too quiet to perceive: 0.18 s fades, black shadows at 0.30/0.16 on a near-black theme, a 0.045 sheen. Strengthened: screen fades 0.28 s with a 28-unit rise, cascade 0.055 s per row, page swaps 0.18 s, panel shadows 0.55/0.32 at −8/−24, sheen 0.10, button dip 0.93, slider knob ×1.3/×1.5. The display face now also covers every `UiKit.Heading` (DICE, OPERATOR, ABILITIES, …), not just titles — the one change visible on every screen at rest.
 
 ## Play Mode checklist
 

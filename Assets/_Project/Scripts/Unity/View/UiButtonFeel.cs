@@ -17,9 +17,9 @@ namespace NonaRoyale.Unity.View
     public sealed class UiButtonFeel : MonoBehaviour,
         IPointerDownHandler, IPointerUpHandler, IPointerExitHandler
     {
-        private const float PressedScale = 0.96f;
-        private const float DownSeconds = 0.06f;
-        private const float UpSeconds = 0.14f;
+        private const float PressedScale = 0.93f;
+        private const float DownSeconds = 0.07f;
+        private const float UpSeconds = 0.18f;
 
         private UnityEngine.UI.Button _button;
         private UiTween _tween;
