@@ -90,6 +90,21 @@ namespace NonaRoyale.Core.Services
         /// aims are refused: Dargin Pulse and Ace Shards still radiate
         /// backwards, because a self-origin area is presence, not aggression.
         /// </remarks>
-        AimedBehindFromSafeCell = 9
+        AimedBehindFromSafeCell = 9,
+
+        /// <summary>
+        /// The caster aimed at itself, and the ability does not opt in to
+        /// self-targeting (§10, settled 2026-09-17).
+        /// </summary>
+        /// <remarks>
+        /// Self-cast resolves as a friendly cast under the cast-mode rule, so
+        /// blanket self-cast would have made every friendly mode reachable by
+        /// its own caster — All-In Mauling's friendly mode is a heal, and
+        /// Bouncer self-sustaining was never intended. Opt-in on the ability
+        /// instead: Javi's defensive toolkit and Lethe's Nano Cell declare it,
+        /// everything else answers with this verdict. Like every refusal it
+        /// costs nothing.
+        /// </remarks>
+        CannotTargetSelf = 10
     }
 }

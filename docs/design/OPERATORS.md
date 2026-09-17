@@ -110,7 +110,7 @@ He is the first operator who makes an enemy harder to kill rather than easier, w
 
 Read at the table: _the one you have to kill twice._
 
-**Draftable and playable with two of three abilities.** His live kit is in `COMBAT_SYSTEMS.md` §10.5, marked incomplete.
+**Complete and in the pool.** His live kit is in `COMBAT_SYSTEMS.md` §10.5 — all three abilities implemented, and all three may target himself under the self-cast opt-in settled on 2026-09-17.
 
 **One blocker, and it is the roster's most consequential:**
 

@@ -294,7 +294,8 @@ namespace NonaRoyale.Core
         /// field added to <see cref="AbilityDefinition"/> and forgotten here is
         /// silently dropped from every swept match. Adding a field to that type
         /// means editing this method — the description was the first to catch it,
-        /// and only because the constructor refuses an empty one.
+        /// and only because the constructor refuses an empty one; the self-target
+        /// opt-in (§10, 2026-09-17) is the second.
         /// </remarks>
         private static IReadOnlyList<AbilityDefinition> Retune(
             IReadOnlyList<AbilityDefinition> abilities, int rangeBonus)
@@ -321,7 +322,7 @@ namespace NonaRoyale.Core
                 tuned.Add(new AbilityDefinition(
                     ability.Id, ability.Name, ability.Description,
                     ability.EnergyCost, ability.CooldownTurns,
-                    range, effects, ability.Targeting));
+                    range, effects, ability.Targeting, ability.AllowsSelfTarget));
 
             }
 

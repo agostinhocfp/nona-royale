@@ -81,6 +81,9 @@ namespace NonaRoyale.Core.Abilities
             description:
                 "Nanites seal an ally's wounds. Turned on an enemy they do the opposite, and your squad standing near them catches the runoff.",
             energyCost: 3, cooldownTurns: 2, range: 5,
+            // Opts in to self-cast (§10, 2026-09-17): his toolkit is defensive,
+            // and a healer who cannot treat himself is half one.
+            allowsSelfTarget: true,
             effects: new[]
             {
                 AbilityEffect.Heal(EffectScope.PrimaryTarget, 2, EffectAudience.AllyOnly),
@@ -139,6 +142,9 @@ namespace NonaRoyale.Core.Abilities
             description:
                 "Bolts a ballistic insert onto an ally's carrier. It takes what comes until it is spent, then fails.",
             energyCost: 4, cooldownTurns: 3, range: 4,
+            // Opts in to self-cast (§10, 2026-09-17): defensive toolkit — a
+            // support plates himself when the fight comes to him.
+            allowsSelfTarget: true,
             effects: new[]
             {
                 AbilityEffect.Status_(
@@ -176,6 +182,9 @@ namespace NonaRoyale.Core.Abilities
             description:
                 "Floods an ally's nerves with inhibitory signals, washing out everything riding them.",
             energyCost: 6, cooldownTurns: 3, range: 5,
+            // Opts in to self-cast (§10, 2026-09-17): defensive toolkit — he
+            // washes his own stuns and marks like anyone else's.
+            allowsSelfTarget: true,
             effects: new[] { AbilityEffect.Cleanse() });
 
         /// <remarks>Cast order, and id order — 501, 502, 503.</remarks>

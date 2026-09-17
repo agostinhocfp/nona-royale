@@ -1753,10 +1753,13 @@ namespace NonaRoyale.Unity.Composition
         /// target list showed enemies only, so the roster's healing had never
         /// been castable at all.
         ///
-        /// The caster is filtered out here rather than in the engine. Aiming at
-        /// yourself is legal by §10's mode rule and would let the Bouncer heal
-        /// himself for the price of the ability — defensible, undecided, and not
-        /// something the UI should settle by offering it.
+        /// The caster is included when the ability opts in to self-cast
+        /// (<see cref="AbilityDefinition.AllowsSelfTarget"/>). Self-cast was
+        /// settled on 2026-09-17 as per-ability opt-in — blanket self-cast was
+        /// rejected because All-In Mauling's friendly mode is a heal — so the
+        /// rule lives in the core's legality query, and this list simply passes
+        /// it through. Javi's three and Lethe's Nano Cell declare it; nothing
+        /// else does.
         /// </remarks>
         IReadOnlyList<OperatorState> IControlPanelHost.CastTargets()
         {
@@ -1765,7 +1768,6 @@ namespace NonaRoyale.Unity.Composition
 
             return _match.Engine
                 .LegalTargetsFor(_selectedOperator, _selectedAbility)
-                .Where(o => !ReferenceEquals(o, _selectedOperator))
                 .ToList();
         }
 

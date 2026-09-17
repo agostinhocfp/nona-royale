@@ -37,7 +37,8 @@ namespace NonaRoyale.Core.Abilities
             int cooldownTurns,
             int range,
             IEnumerable<AbilityEffect> effects,
-            AbilityTargeting targeting = AbilityTargeting.Operator)
+            AbilityTargeting targeting = AbilityTargeting.Operator,
+            bool allowsSelfTarget = false)
         {
             if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("An ability needs a name.", nameof(name));
             if (string.IsNullOrWhiteSpace(description))
@@ -56,6 +57,7 @@ namespace NonaRoyale.Core.Abilities
             CooldownTurns = cooldownTurns;
             Range = range;
             Targeting = targeting;
+            AllowsSelfTarget = allowsSelfTarget;
             Effects = new List<AbilityEffect>(effects);
 
             if (Effects.Count == 0)
@@ -103,6 +105,24 @@ namespace NonaRoyale.Core.Abilities
 
         /// <summary>What the player must pick before this can be cast.</summary>
         public AbilityTargeting Targeting { get; }
+
+        /// <summary>
+        /// Whether the caster is a legal target of its own cast (COMBAT_SYSTEMS
+        /// §10, settled 2026-09-17).
+        /// </summary>
+        /// <remarks>
+        /// <b>Opt-in, per ability, never a default.</b> Self-targeting resolves
+        /// as a friendly cast under §10's mode rule, and blanket self-cast was
+        /// rejected precisely because of what that rule does to All-In Mauling:
+        /// its friendly mode is a heal, and Bouncer self-sustaining was never
+        /// intended. So the ability declares it. Defensive abilities do —
+        /// Javi's three and Lethe's Nano Cell, whose self-bubble pays the stun
+        /// as its price — and nothing else on the roster does. The refusal and
+        /// the target-list exclusion both live in <c>AbilityResolver</c>, not in
+        /// the view (PRESENTATION §1), and a refused self-cast costs nothing,
+        /// like every other refusal.
+        /// </remarks>
+        public bool AllowsSelfTarget { get; }
 
         /// <summary>
         /// True only for abilities aimed at one operator.

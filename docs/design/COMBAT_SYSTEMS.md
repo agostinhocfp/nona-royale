@@ -713,6 +713,8 @@ Eleven operators are in the draft pool, and **all eleven are complete**. Mimi's 
 
 **An ability with a hostile and a friendly mode picks its mode once, from who was targeted.** All-In Mauling's self-damage belongs to the _hostile_ cast: used on an ally it heals and costs the Bouncer nothing. The same rule governs Velvet Rope and Nanite Infusion. Deciding per _recipient_ rather than per _cast_ gives a nonsense answer for any effect aimed at the caster's own side, since the caster is always friendly to himself.
 
+**Self-targeting is per-ability opt-in, declared on the ability** (designer, 2026-09-17). A self-cast resolves as a friendly cast under the mode rule above — the caster is always friendly to himself — and blanket self-cast was rejected on exactly that ground: All-In Mauling's friendly mode is a heal, and Bouncer self-sustaining was never intended. So `AbilityDefinition` carries an `allowsSelfTarget` flag, the resolver excludes the caster from the target list unless the ability sets it and refuses a self-aimed cast without it (`TargetingVerdict.CannotTargetSelf`, costing nothing like every refusal), and the UI offers exactly what the list holds. Four defensive abilities opt in: Javi's Nanite Infusion, Trauma Plate and Neural Purge, and Lethe's Nano Cell, whose self-bubble pays the stun as its price. Nothing else — not Translocation, not All-In Mauling, not Velvet Rope. No effect-shape heuristics: the declaration is the rule.
+
 **An ability every one of whose effects is scoped away by the cast mode is refused**, and costs nothing. A cleanse aimed at an enemy was never a legal cast; without the check it would resolve, do nothing, and charge for it.
 
 ### 10.1 Bouncer — Tank
@@ -828,6 +830,8 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 | 3   | **Neural Purge**    | Active | 6    | 3   | 5     | Remove **every applied status** from an ally (§5.8). Passives untouched.                                           |
 
 **He is the first operator who makes a target harder to kill**, which changes what the whole board is doing rather than adding to one side of it. Everything before him moved damage around; he removes it. He is also why the shield layer matters: a board space could never give a mitigation type enough uptime to mean anything.
+
+**All three abilities may be aimed at himself** (§10's self-cast opt-in, 2026-09-17). His toolkit is defensive, and a healer who cannot treat himself is half one — heal, plate and cleanse all take him as a legal target. Nothing else on the roster self-casts.
 
 **Ranges 5 / 4 / 5.** The kit was designed at range 3 across the board — a support who cannot reach the fight is a dead ability list, so he paid for reach in fragility rather than speed — and the 2026-09-15 balance pass (`e85d710`) raised Nanite Infusion and Neural Purge to 5 and Trauma Plate to 4. That is a deliberate designer change; `Javi.cs` records it. Note that §10.4 makes Mimi's range 6 her sole compensation for 5 health, and Neural Purge now sits one cell short of it — the gap to watch if either moves again.
 
@@ -1021,7 +1025,7 @@ Casts per match: Drone Strike 4.58 → 5.87, Sonic Disrupter 2.72 → 3.70, Inve
 - **Neural Purge strips both halves** (§5.8). A Javi on her side can free the ally early; an enemy cannot, because a cleanse only reaches allies. A blanket immunity with no answer would be oppressive, so this is intended. Do not "fix" it.
 - **"Cannot be stunned inside" is redundant**, not contradicted: the bubble already stuns. **Status immunity was proposed and dropped**, because it needed an immunity system with a carve-out on day one.
 - **Cost 4, not the spec's 3.** At 3 it blanked a 9-energy Killzone or Drone Strike on one ally for a third of the price. At 4 it costs the same as Trauma Plate, and the stun pays the rest.
-- **She may bubble herself.** Auras survive stun (§10.1), so a bubbled Lethe keeps hastening her squad from a cell that Normal and Tech damage cannot hurt.
+- **She may bubble herself.** Auras survive stun (§10.1), so a bubbled Lethe keeps hastening her squad from a cell that Normal and Tech damage cannot hurt. Nano Cell is one of the four abilities carrying §10's self-cast opt-in flag (2026-09-17); the self-bubble pays the stun as its price.
 
 **Catalyst is haste, not speed, and it is local** (designer, 2026-09-17). A +0.5 speed aura would have put Syla and Javi at 2.0×, where a mean roll covers a quarter of the loop, because `MovementResolver.EffectiveSpeed` has a floor and no ceiling. Haste is flat cells under a per-turn cap, so nothing can overflow. It is also **not a copy of Tagged From Above's payout**: that one follows the squad anywhere for two turns, while Catalyst ends two cells from Lethe. Its rules:
 
@@ -1506,6 +1510,22 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - `CryoPulse_HitsThePrimaryTargetAsWellAsTheRingAroundIt`
 - `NaniteInfusionOnEnemy_DamagesItAndHealsAlliesAroundIt`
 
+**Self-targeting — `SelfTargetTests`** (§10, 2026-09-17)
+
+- `NaniteInfusion_OnHimself_Heals_AndTheHostileModeStaysOff`
+- `TraumaPlate_OnHimself_Shields`
+- `NeuralPurge_OnHimself_Cleanses`
+- `NanoCell_OnHerself_ShieldsAndStuns_TheStunIsThePrice`
+- `AllInMauling_OnHimself_IsRefused_AndCostsNothing`
+- `VelvetRope_OnHimself_IsRefused_AndStaysReady`
+- `ASelfCast_NamesTheSelf_BeforeItNamesThePrice`
+- `LegalTargets_ExcludesTheCaster_ForUnflaggedAbilities`
+- `LegalTargets_IncludesTheCaster_ForTheFlaggedFour`
+- `LegalTargets_ForAFlaggedAbility_StillListsEveryoneElseItAlwaysDid`
+- `AFlaggedAbility_OnAnAlly_StillResolvesAsItDid`
+- `AFlaggedAbility_OnAnEnemy_StillResolvesAsItDid`
+- `ARangeRetune_KeepsTheOptIn`
+
 **Roster — `Roster`**
 
 - `AbilityIdsAreUnique`
@@ -1619,3 +1639,4 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - 2026-09-17 — **Revú tuned** (designer): health 7 → 8, Leech Round 1 → 2 damage and cooldown 2 → 1, Sadist cooldown 5 → 4. Bots sweep: Revú 21% → 24%, Leech Round 1.53 → 2.87 casts per match. §10.11 amended.
 - 2026-09-17 — **Mimi repriced** (designer): Cryo-Pulse and Cryo Field 6 → 4. The bots learned to cast Cryo Field (a `ProjectField` scoring branch; it had been cast 0.00 times). Bots sweep: Mimi 16% → 20%, Lethe 25% → 20% (watch). §10.4 amended.
 - 2026-09-17 — **Kian buffed** (designer): Inversion Matrix 4 → 3 energy and 1 Normal → 2 Tech; Sonic Disrupter 4 → 3 energy, 2 Normal → 2 Tech, radius 2 → 3; Drone Strike 6 → 4 energy. The two emitters are Tech by designer exception to §2.2, so a warded Luka blocks all of Kian's damage. Bots sweep: Kian 19% → 23%, Mimi 20% → 18% (watch). §2.2, §10.6 and §13 amended.
+- 2026-09-17 — **Self-targeting settled: per-ability opt-in** (designer). §10's cast-mode rule made every friendly mode reachable by its own caster, and blanket self-cast was rejected on that ground — All-In Mauling's friendly mode is a heal, and Bouncer self-sustaining was never intended. `AbilityDefinition` gains `allowsSelfTarget`; the resolver excludes the caster from `LegalTargets` unless it is set and refuses a self-aimed cast without it (`TargetingVerdict.CannotTargetSelf`, costing nothing); the UI filter that had been settling the question by omission is removed, so the board offers the caster's own piece exactly when the ability declares it. Four defensive abilities opt in: Javi's Nanite Infusion, Trauma Plate and Neural Purge, and Lethe's Nano Cell, whose self-bubble pays the stun as its price. Bots keep their no-self-cast policy. §10, §10.5, §10.10 amended. Tests +13 (`SelfTargetTests`).

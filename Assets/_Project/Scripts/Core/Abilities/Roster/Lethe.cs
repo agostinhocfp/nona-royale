@@ -137,6 +137,9 @@ namespace NonaRoyale.Core.Abilities
             description:
                 "Seals an ally inside a lattice of nanites. Ordinary harm slides off it, but nothing inside can move or act until it dissolves.",
             energyCost: 4, cooldownTurns: 4, range: 4,
+            // Opts in to self-cast (§10, 2026-09-17): the self-bubble pays the
+            // stun as its price, and her aura survives it (§10.1).
+            allowsSelfTarget: true,
             effects: new[]
             {
                 AbilityEffect.Status_(

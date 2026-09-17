@@ -51,9 +51,10 @@ namespace NonaRoyale.Core.Bots
     /// <b>Only what the engine allows is considered.</b> Casters and abilities
     /// come through <c>CheckAbility</c>; operator targets through
     /// <c>LegalTargetsFor</c>; cells through <c>LegalCellsFor</c>. Never the
-    /// caster itself: self-targeting is legal by §10's mode rule, and a bot
-    /// that used it would find the Velvet Rope hole at once (see the sim's
-    /// <c>Casting</c> notes).
+    /// caster itself: self-cast is now per-ability opt-in (§10, 2026-09-17), so
+    /// the list only contains it when the ability asks for it, and bots skip it
+    /// anyway by policy — scoring a self-bubble is a judgement the planner has
+    /// not been taught to make.
     ///
     /// <b>The value of a cast is estimated from its effect list</b>, effect by
     /// effect, in the cast mode the target implies, the same way the resolver

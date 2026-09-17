@@ -144,11 +144,14 @@ namespace NonaRoyale.Core.Services
         /// <i>caster</i> — stun, cooldown, energy — because those do not vary by
         /// target and <c>GameEngine.CheckAbility</c> already reports them.
         ///
-        /// <b>The caster is included when it is a legal target of its own
-        /// ability.</b> Aiming at yourself resolves as a friendly cast by §10's
-        /// mode rule, which is a real question the rules have not settled — so
-        /// this reports it rather than quietly deciding it. A view that does not
-        /// want to offer it can filter one entry.
+        /// <b>The caster appears only when the ability opts in</b>
+        /// (<see cref="AbilityDefinition.AllowsSelfTarget"/>). Self-cast was an
+        /// open question when this list first reported it; the designer settled
+        /// it on 2026-09-17 as per-ability opt-in — blanket self-cast would have
+        /// made every friendly mode reachable by its own caster, and All-In
+        /// Mauling's friendly mode is a heal. The four defensive abilities
+        /// declare it; everything else excludes the caster here and refuses it
+        /// in <see cref="Use"/>.
         ///
         /// <b>A cell-targeted ability answers empty</b>, the same as one that
         /// takes no target: there is no operator to list, and the view picks a
@@ -171,6 +174,10 @@ namespace NonaRoyale.Core.Services
             foreach (var candidate in allOperators)
             {
                 if (candidate == null) continue;
+
+                // Self-cast is per-ability opt-in (§10, 2026-09-17): only an
+                // ability that declares AllowsSelfTarget lists its own caster.
+                if (ReferenceEquals(candidate, caster) && !ability.AllowsSelfTarget) continue;
 
                 if (!_targeting.CanSingleTarget(caster, candidate, ability.Range).IsLegal) continue;
                 if (!AnyEffectApplies(ability, CastMode(caster, candidate))) continue;
@@ -257,6 +264,13 @@ namespace NonaRoyale.Core.Services
                 var verdict = _targeting.CanSingleTarget(caster, primaryTarget, ability.Range);
                 if (!verdict.IsLegal)
                     return AbilityResolution.Refused(AbilityRefusal.IllegalTarget, verdict.Verdict);
+
+                // Self-cast is per-ability opt-in (§10, 2026-09-17), refused
+                // here like every other illegal target — before payment, so it
+                // costs nothing. LegalTargets already hides the caster, so a
+                // refusal here means the caller went around the list.
+                if (!ability.AllowsSelfTarget && ReferenceEquals(primaryTarget, caster))
+                    return AbilityResolution.Refused(AbilityRefusal.IllegalTarget, TargetingVerdict.CannotTargetSelf);
             }
 
             // A cell-targeted ability is checked on the same terms and in the
