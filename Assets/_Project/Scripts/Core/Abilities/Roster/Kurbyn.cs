@@ -83,7 +83,7 @@ namespace NonaRoyale.Core.Abilities
             id: 302, name: "Miracle Pull",
             description:
                 "A gravitic tether no defence can stop, collapsing in on everything around the target. An enemy already wounded is finished outright.",
-            energyCost: 9, cooldownTurns: 2, range: 2,
+            energyCost: 9, cooldownTurns: 3, range: 2,
             effects: new[]
             {
                 AbilityEffect.Execute(1, 2, fallbackAmount: 3, fallbackType: DamageType.Atomic),

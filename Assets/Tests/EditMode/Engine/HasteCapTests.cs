@@ -37,6 +37,14 @@ namespace NonaRoyale.Core.Tests.Engine
 
         private static int Cells(int pips, double speed) => (int)Math.Floor(pips * speed);
 
+        /// <summary>
+        /// Distance at <paramref name="speed"/> with the per-turn speed bonus
+        /// cap applied (§6.3, 2026-09-17): the pips, plus at most
+        /// <c>SpeedBonusCellCap</c> of bonus. Fresh budget assumed.
+        /// </summary>
+        private static int SpeedCells(int pips, double speed) =>
+            pips + Math.Min(Math.Max(0, Cells(pips, speed) - pips), Config.SpeedBonusCellCap);
+
         private static int Bonus(int rollTotal) => Config.HasteCellsFor(rollTotal);
 
         private static bool Low(DiceRoll r) => r.Total <= Config.HasteRollThreshold;
@@ -120,13 +128,15 @@ namespace NonaRoyale.Core.Tests.Engine
         public void HasteNoLongerScalesWithSpeed()
         {
             // Syla at 1.5 gets the same flat +2 as the Bouncer. Under the old
-            // +0.5 speed a pooled 11 at 2.0 would have gained 6 cells.
+            // +0.5 speed a pooled 11 at 2.0 would have gained 6 cells. The
+            // speed itself is now capped per turn (§6.3), so her distance is
+            // the capped speed plus the flat bonus.
             var match = RolledSolo(r => !r.IsDouble && !Low(r), out var roll);
             var syla = Named(match, "Syla");
             Hasten(match, syla);
 
             Assert.That(Travelled(match, new MoveCommand(syla.Id)),
-                Is.EqualTo(Cells(roll.Total, Syla.Speed) + 2));
+                Is.EqualTo(SpeedCells(roll.Total, Syla.Speed) + 2));
             Assert.That(match.Statuses.SpeedModifier(syla), Is.EqualTo(0.0), "haste is not speed");
         }
 
@@ -134,14 +144,15 @@ namespace NonaRoyale.Core.Tests.Engine
         public void APassiveSpeedBonus_StillApplies()
         {
             // Kurbyn's Evasive Protocol is speed, not haste: his move is his
-            // passive speed, plus the flat bonus.
+            // passive speed — inside the per-turn cap like any speed (§6.3) —
+            // plus the flat bonus.
             double kurbyn = Kurbyn.BaseSpeed + Kurbyn.PassiveSpeedBonus;
             var match = RolledSolo(r => !r.IsDouble && !Low(r), out var roll);
             var op = Named(match, "Kurbyn");
             Hasten(match, op);
 
             Assert.That(Travelled(match, new MoveCommand(op.Id)),
-                Is.EqualTo(Cells(roll.Total, kurbyn) + 2));
+                Is.EqualTo(SpeedCells(roll.Total, kurbyn) + 2));
         }
 
         [Test]

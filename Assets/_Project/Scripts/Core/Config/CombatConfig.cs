@@ -32,7 +32,8 @@ namespace NonaRoyale.Core.Config
             int burdenCellsAtOrBelowThreshold = 1,
             int burdenCellsAboveThreshold = 2,
             int equilibriumCheapCostMax = 3,
-            int equilibriumDearCostMin = 6)
+            int equilibriumDearCostMin = 6,
+            int speedBonusCellCap = 2)
         {
             if (slowSpeedPenalty < 0) throw new ArgumentOutOfRangeException(nameof(slowSpeedPenalty));
             if (collisionDamage < 0) throw new ArgumentOutOfRangeException(nameof(collisionDamage));
@@ -66,6 +67,9 @@ namespace NonaRoyale.Core.Config
             if (equilibriumDearCostMin <= equilibriumCheapCostMax)
                 throw new ArgumentOutOfRangeException(nameof(equilibriumDearCostMin),
                     "The dear band must start above the cheap one, or a cost would be both.");
+            if (speedBonusCellCap < 0)
+                throw new ArgumentOutOfRangeException(nameof(speedBonusCellCap),
+                    "Zero means speed pays no bonus at all; pass int.MaxValue to lift the cap.");
 
             CollisionDamage = collisionDamage;
             EvasionChance = evasionChance;
@@ -85,6 +89,7 @@ namespace NonaRoyale.Core.Config
             BurdenCellsAboveThreshold = burdenCellsAboveThreshold;
             EquilibriumCheapCostMax = equilibriumCheapCostMax;
             EquilibriumDearCostMin = equilibriumDearCostMin;
+            SpeedBonusCellCap = speedBonusCellCap;
         }
 
         /// <summary>
@@ -272,6 +277,21 @@ namespace NonaRoyale.Core.Config
         /// the same turn.
         /// </remarks>
         public int HasteBonusCellCap { get; }
+
+        /// <summary>
+        /// The most cells a move may gain from a speed above 1.0×, per operator
+        /// per turn (COMBAT_SYSTEMS §6.3, 2026-09-17). The bonus is
+        /// <c>floor(pips × speed) − pips</c>; the cap trims it, never the pips.
+        /// </summary>
+        /// <remarks>
+        /// <b>Per operator, per turn, charged on every move</b> — unlike haste,
+        /// speed is who the operator is, not a status paid once per roll, so
+        /// each move draws what is left of the budget. Doubles re-rolls draw
+        /// from the same budget because they are the same turn. A slowed
+        /// operator whose effective speed drops to 1.0× or below pays nothing
+        /// and charges nothing. Pass <c>int.MaxValue</c> to lift the cap.
+        /// </remarks>
+        public int SpeedBonusCellCap { get; }
 
         /// <summary>
         /// Energy paid to whoever lands a neutralize (COMBAT_SYSTEMS §1.2).

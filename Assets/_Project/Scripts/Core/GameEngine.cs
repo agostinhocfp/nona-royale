@@ -106,6 +106,14 @@ namespace NonaRoyale.Core
         private readonly Dictionary<int, int> _hasteCellsUsed = new Dictionary<int, int>();
 
         /// <summary>
+        /// Cells of speed bonus already collected this turn, per operator
+        /// (§6.3, 2026-09-17). Unlike haste, speed pays on every move, so the
+        /// budget is charged on each one; per operator so one speedster's
+        /// moves never eat another's allowance.
+        /// </summary>
+        private readonly Dictionary<int, int> _speedCellsUsed = new Dictionary<int, int>();
+
+        /// <summary>
         /// Operators that have already collected the haste bonus from the roll
         /// in hand. Cleared on every roll (§5.9): the bonus is paid once per
         /// roll, on the operator's first move with it.
@@ -666,7 +674,7 @@ namespace NonaRoyale.Core
             // started, and the move may carry it out of range (§5.9).
             bool hastened = IsHastenedNow(op);
             bool burdened = _statuses.IsBurdened(op);
-            int cells = CellsFor(op, pips, out int hasteCells);
+            int cells = CellsFor(op, pips, out int hasteCells, out int speedBonusCells);
 
             // A single low die under a heavy slow can floor to nothing. Spending
             // it would be a move that moves nobody, and it would ask
@@ -695,6 +703,12 @@ namespace NonaRoyale.Core
                 _hastePaidThisRoll.Add(op.Id);
                 if (hasteCells > 0) _hasteCellsUsed[op.Id] = HasteCellsUsed(op) + hasteCells;
             }
+
+            // The speed bonus is charged on every move that collected it —
+            // speed is who the operator is, not a status spent once per roll
+            // (§6.3). Charged on the attempted move, bounce or not, as haste is.
+            if (speedBonusCells > 0)
+                _speedCellsUsed[op.Id] = SpeedCellsUsed(op) + speedBonusCells;
 
             if (command.DieFace == null) _unspentDice.Clear();
             else _unspentDice.Remove(command.DieFace.Value);
@@ -1154,7 +1168,7 @@ namespace NonaRoyale.Core
         private void AddPreview(
             List<LandingPreview> into, OperatorState op, int? die, int pips)
         {
-            int cells = CellsFor(op, pips, out _);
+            int cells = CellsFor(op, pips, out _, out _);
             if (cells <= 0) return;
 
             var move = _movement.ResolveMove(op, cells);
@@ -1277,7 +1291,7 @@ namespace NonaRoyale.Core
             foreach (var op in player.Operators)
             {
                 if (!CanBeMoved(op)) continue;
-                if (CellsFor(op, pooled, out _) > 0) return true;
+                if (CellsFor(op, pooled, out _, out _) > 0) return true;
             }
 
             return false;
@@ -1330,10 +1344,25 @@ namespace NonaRoyale.Core
         /// once. The haste budget is charged the full bonus even when a burden
         /// cancels it — the bonus was granted, the burden took it back.
         /// </remarks>
-        private int CellsFor(OperatorState op, int pips, out int hasteCells)
+        private int CellsFor(OperatorState op, int pips, out int hasteCells, out int speedBonusCells)
         {
             int cells = _movement.CellsFor(pips, SpeedOf(op));
             hasteCells = 0;
+            speedBonusCells = 0;
+
+            // The speed bonus over a 1.0× move is capped per operator per turn
+            // (§6.3, 2026-09-17). The cap trims the bonus, never the pips, and
+            // a slowed operator — effective speed at or under 1.0× — has no
+            // bonus to trim. PreviewLandings and HasLegalMove call this too,
+            // so a preview can never promise a landing the cap then claws back;
+            // only Move charges the budget.
+            int speedBonus = cells - pips;
+            if (speedBonus > 0)
+            {
+                speedBonusCells = Math.Min(speedBonus,
+                    Math.Max(0, _config.SpeedBonusCellCap - SpeedCellsUsed(op)));
+                cells = pips + speedBonusCells;
+            }
 
             bool hastened = IsHastenedNow(op);
             bool burdened = _statuses.IsBurdened(op);
@@ -1375,6 +1404,9 @@ namespace NonaRoyale.Core
         private int HasteCellsUsed(OperatorState op) =>
             _hasteCellsUsed.TryGetValue(op.Id, out int used) ? used : 0;
 
+        private int SpeedCellsUsed(OperatorState op) =>
+            _speedCellsUsed.TryGetValue(op.Id, out int used) ? used : 0;
+
         private int UnspentTotal()
         {
             int total = 0;
@@ -1397,6 +1429,7 @@ namespace NonaRoyale.Core
             _sawDeployFace = false;
             _unspentDice.Clear();
             _hasteCellsUsed.Clear();
+            _speedCellsUsed.Clear();
             _hastePaidThisRoll.Clear();
             _rollTotal = 0;
         }

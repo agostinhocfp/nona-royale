@@ -866,33 +866,52 @@ namespace NonaRoyale.Core.Tests.Engine
         {
             // The same greedy scripted match as the black-box test below. The
             // losses counted must equal the neutralize events announced, and the
-            // knockouts counted must equal the credited ones.
-            var match = MatchFactory.CreateAlphaMatch(
-                new[] { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Violet },
-                seed: 20260911, board: BoardProfile.Sprint);
+            // knockouts counted must equal the credited ones. The seed is
+            // searched, not hard-coded, so a rule change that moves the match —
+            // the 2026-09-17 speed cap (§6.3) cost seed 20260911 its collisions
+            // — moves the seed, not the assertion.
+            List<IGameEvent> log = null;
+            GameEngine engine = null;
+            MatchFactory.Match match = null;
 
-            var engine = match.Engine;
-            var log = new List<IGameEvent>(engine.Start());
-
-            for (int turn = 0; turn < 4000 && !engine.MatchOver; turn++)
+            for (int seed = 1; seed < 200 && log == null; seed++)
             {
-                var rolled = engine.Execute(new RollDiceCommand());
-                log.AddRange(rolled);
+                var candidate = MatchFactory.CreateAlphaMatch(
+                    new[] { PlayerColor.Red, PlayerColor.Blue, PlayerColor.Green, PlayerColor.Violet },
+                    seed: seed, board: BoardProfile.Sprint);
 
-                var squad = engine.CurrentPlayer.Operators;
+                var candidateEngine = candidate.Engine;
+                var candidateLog = new List<IGameEvent>(candidateEngine.Start());
 
-                var waiting = squad.FirstOrDefault(o => o.IsInYard);
-                if (waiting != null) log.AddRange(engine.Execute(new DeployCommand(waiting.Id)));
+                for (int turn = 0; turn < 4000 && !candidateEngine.MatchOver; turn++)
+                {
+                    var rolled = candidateEngine.Execute(new RollDiceCommand());
+                    candidateLog.AddRange(rolled);
 
-                var leader = squad
-                    .Where(o => !o.IsInYard && o.Progress < BoardProfile.Sprint.Journey)
-                    .OrderByDescending(o => o.Progress)
-                    .FirstOrDefault();
+                    var squad = candidateEngine.CurrentPlayer.Operators;
 
-                if (leader != null) log.AddRange(engine.Execute(new MoveCommand(leader.Id)));
+                    var waiting = squad.FirstOrDefault(o => o.IsInYard);
+                    if (waiting != null) candidateLog.AddRange(candidateEngine.Execute(new DeployCommand(waiting.Id)));
 
-                log.AddRange(engine.Execute(new EndTurnCommand()));
+                    var leader = squad
+                        .Where(o => !o.IsInYard && o.Progress < BoardProfile.Sprint.Journey)
+                        .OrderByDescending(o => o.Progress)
+                        .FirstOrDefault();
+
+                    if (leader != null) candidateLog.AddRange(candidateEngine.Execute(new MoveCommand(leader.Id)));
+
+                    candidateLog.AddRange(candidateEngine.Execute(new EndTurnCommand()));
+                }
+
+                if (candidateLog.OfType<OperatorNeutralized>().Any())
+                {
+                    match = candidate;
+                    engine = candidateEngine;
+                    log = candidateLog;
+                }
             }
+
+            Assert.That(log, Is.Not.Null, "no seed in range produced a collision");
 
             var downs = log.OfType<OperatorNeutralized>().ToList();
             Assert.That(downs.Count, Is.GreaterThan(0), "the scripted match should produce collisions");
