@@ -1,7 +1,7 @@
 # Nona Royale — Lighting
 
 > Location in repo: `docs/design/LIGHTING.md` · Project copy: `claude/LIGHTING.md`
-> Status: **Open.** LT1 (room lighting, powered cells, bloom, the setting) is committed (`de1abcf`). G3's pool haze (`46c1ce1`, `GUI_PHASE.md`) rides on its switches. LT2 (event light) is written, awaiting Play Mode (2026-09-17).
+> Status: **Open.** LT1 (room lighting, powered cells, bloom, the setting) is committed (`de1abcf`). G3's pool haze (`46c1ce1`, `GUI_PHASE.md`) rides on its switches. LT2 (event light) is committed as `9514e90` (2026-09-17), in one commit with GUI G4.
 > Related: ADR-0010 (URP with the 2D Renderer), `ART_DIRECTION.md` §2.1, §3, §6 and §6.1, `BoardView`, `MOTION.md` (Reduced motion)
 
 ## Goal
@@ -85,3 +85,4 @@ The room reads as a casino after hours: low ambient light, warm pools where play
     - Lighting effects off: no event light at all. Reduced motion: softer flashes and a steady pool.
     - CPU turns on Fast and with Space held: the flashes keep up and none are left behind.
     - Main menu mid-flash, and a new deal: no stray lights.
+- 2026-09-17 — **LT2 committed** as `9514e90`. The same commit carries GUI G4 (the board texture hookup, `GUI_PHASE.md`).

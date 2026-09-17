@@ -18,7 +18,7 @@ Real operator art on the board, starting with Luka, without breaking what the pr
 3. **Loading by naming convention** (designer). `Assets/_Project/Art/Resources/Art/Operators/<key>_<pose>.png`, where the key is the operator's name, lowercased, accents stripped (`Revú` → `revu`). A ScriptableObject comes later only if per-operator tuning appears.
 4. **Seat identity: a tinted base disc and ring under a rendered standing figure, plus the gold shape pin on the chest** (designer). The render is never tinted. A seated operator shows no disc; it sits at its own seat's table.
 5. **First drop: Luka** (standing, seated, portrait). Rise, tell and knockout frames wait; the motion system already animates any sprite.
-6. **Licensing:** still open. Meshy's terms depend on the plan (ADR-0009). The provenance file is started (`docs/art/PROVENANCE.md`).
+6. **Licensing:** Luka was made on a paid Meshy plan (designer, 2026-09-17), so the model is owned outright. Recorded in `docs/art/PROVENANCE.md`.
 7. **Source layout** (designer): models in `art/source/characters/<name>/`, GLB, through LFS. Renders go to `art/renders/<name>/`, which is not committed.
 
 ## Increments
@@ -46,7 +46,7 @@ Real operator art on the board, starting with Luka, without breaking what the pr
   - For a render: body untinted, outline hidden, pin 0.12 (not 0.18) at the chest, halo and bar from the fitted top, seat disc and ring at the feet.
   - The hit flash on a render is a white silhouette child (`flash`), faded from 0.75. Lerping an untinted sprite toward white shows nothing.
   - **Behaviour change for every piece:** squash, the rise's stretch and breathing now keep the feet on the floor (before, they scaled about the centre, so the feet moved a few percent). The pop and the hover lift still grow the whole figure. `transform.position` is still the figure's centre, give or take that anchor, so floaters, sounds, hit testing and the health label are unaffected.
-  - New `ShowsRenderedArt`. Tuning constants: `ArtPinSize`, `ArtHeightScale`, `ArtFlashStrength`, `SeatBase*`.
+  - New `ShowsRenderedArt`. Tuning constants: `ArtPinSize`, `ArtStandingHeightScale`, `ArtSeatedHeightScale`, `ArtFlashStrength`, `SeatBase*`.
 - **`View/DraftScreen.cs`:** a roster card shows the portrait when there is one, drawn as painted, with the shape as an 18 px seat-tinted pin in its corner. Seat slots (24 px) and the end screen (20 px) keep the shapes: a portrait is unreadable at that size.
 - **New `Scripts/Editor/OperatorArtImporter.cs`** in a new editor-only assembly, `NonaRoyale.EditorTools`. On the first import of a texture in the operators folder, it sets: Sprite, Single, bottom-centre pivot, Full Rect mesh, PPU 512, alpha is transparency, no mipmaps, **Read/Write on**, **uncompressed**, bilinear, clamp, max 1024. Later Inspector changes survive a re-import.
   - The cost: about 1.2 MB per 512×768 image, twice. Fine for Luka; revisit before all eleven operators ship three images each (a shader-based flash would remove the need to read pixels).
@@ -68,6 +68,16 @@ Real operator art on the board, starting with Luka, without breaking what the pr
 - **Proportions measured:** 1.70 m tall, head 0.205 m (chin at 1.495) → **8.3 heads**. The script's defaults bring him to 1.64 m and about **6.1 heads**.
 - **Renders** in `art/renders/luka/`: standing, seated (hands together at the table), portrait. Faces lifted to the camera; the rest pose tips the head about 12° down.
 - Painted marks on the jacket (from the concept sheet's texture) show in every render. Clean them in the texture if they read as dirt at board zoom.
+
+### Seated size (2026-09-17, after the designer's first look)
+
+- The seated figure read too small at the table. The seated render is waist up with the arms forward, so fitted to the bust's height its head was about 30% smaller than the bust's. `OperatorPiece` now fits each pose with its own height scale: standing 1.0, seated **1.4**, growing upward from the table line. Tune `ArtSeatedHeightScale` if 1.4 overlaps the table or its neighbours.
+
+### Meshy reference sheet (2026-09-17, designer's pick)
+
+- `render_operator.py --reference` renders the corrected body (the same head, leg and arm scales) in an A-pose, texture only (no toon ramp, no outline), on the concept crops' grey, at eye level, 1024×1024, one scale for every view: `<out>/reference/<name>_ref_{front,side,back,threequarter}.png`.
+- Luka's sheet is in `art/renders/luka/reference/`. Upload it to Meshy (multi-view image to 3D) to regenerate him at 6 heads natively, then rig and export as before and re-render the sprites with `--head 1 --legs 1 --arms 1`.
+- The jacket marks are in these images too. Painting them out here, in 2D, before the upload is easier than cleaning the texture afterwards.
 
 ### Checks
 
@@ -92,11 +102,10 @@ Do these in order: Unity has to compile the importer **before** the PNGs arrive,
    - Hit him: a white flash. Knock him out: shatter, then he sits again in the yard.
    - Evasion (if a source is handy): the whole figure fades, disc included.
    - Other operators look exactly as before (their feet may now stay a touch steadier on landing).
-5. Tuning, if needed: `ArtHeightScale`, `ArtPinSize`, `SeatBaseWidth`/`Depth` in `OperatorPiece`; `--yaw`, `--pitch`, `--head`, `--legs` on the script.
+5. Tuning, if needed: `ArtStandingHeightScale`, `ArtSeatedHeightScale`, `ArtPinSize`, `SeatBaseWidth`/`Depth` in `OperatorPiece`; `--yaw`, `--pitch`, `--head`, `--legs` on the script.
 
 ### Open
 
-- The designer's Meshy plan, for the licence (ADR-0009, `PROVENANCE.md`).
 - Whether the pin on a painted chest reads well, or should move to the disc.
 - `art/source/…/Meshy_AI_Luka_4k_biped.zip` duplicates the GLBs and adds a third clip (Boom Dance); it is ignored by git.
 - `ART_PIPELINE.md` §2 raster editor is still undecided.
