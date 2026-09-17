@@ -97,14 +97,14 @@ Evasion resolves before Shield deliberately: evasion is a reflex and should not 
 
 - **Normal** is subject to every mitigation layer: Evasion, Shield, and anything added later.
 - **Tech** is Normal in every respect, plus one counter: a **tech ward** (§5.12) blocks it outright, before evasion or a shield is consulted. The designer's stated direction is that Tech "can be amplified by specific abilities" — **nothing amplifies it yet**; the first amplifier is an amendment here and a step in the pipeline, placed before 1b so a ward blocks the amplified hit. _(Added 2026-09-15 with Luka.)_
-  - **What deals Tech: damage from a guided or remote-operated device**, one that leaves the operator and does its work elsewhere — a field projected onto someone else, a homing charge, a drone. The operator's own blows, shots and self-centred emissions stay Normal, even when a device delivers them. _(Settled 2026-09-15.)_ The rule is what a jammer could plausibly stop, which is also what Hermes' Ring is (§5.12). **Borderline and left Normal:** Nuetu's Killzone, a deferred zone that reads as ordnance rather than a guided device. Mimi's Cryo Field is self-centred and is Normal under the rule — her own emission, not a device that leaves her.
+  - **What deals Tech: damage from a guided or remote-operated device**, one that leaves the operator and does its work elsewhere — a field projected onto someone else, a homing charge, a drone. The operator's own blows, shots and self-centred emissions stay Normal, even when a device delivers them. _(Settled 2026-09-15.)_ The rule is what a jammer could plausibly stop, which is also what Hermes' Ring is (§5.12). **Borderline and left Normal:** Nuetu's Killzone, a deferred zone that reads as ordnance rather than a guided device. Mimi's Cryo Field is self-centred and is Normal under the rule — her own emission, not a device that leaves her. **Designer exception (2026-09-17):** Kian's Inversion Matrix and Sonic Disrupter are Tech, so his whole kit is one type (§10.6).
 - **Atomic** ignores all of it.
 
 Atomic does **not** bypass _targeting_ protection. Safe cells, home columns, and Stealth are not defenses — they are reachability rules, and Atomic damage that cannot legally be aimed at an operator simply never enters the pipeline.
 
 > The one-sentence version, for the table: **Atomic can't be blocked, but it can't reach what it can't touch.**
 
-**Sources of Atomic:** Velvet Rope, bleed ticks, Ace Shards' bleed, mark ticks, all of Miracle Pull, Vendetta. **Sources of Tech:** Cryo-Pulse, Zero-Day, Drone Strike — one ability each from Mimi, Sanity and Kian. Everything else — including collision — is Normal.
+**Sources of Atomic:** Velvet Rope, bleed ticks, Ace Shards' bleed, mark ticks, all of Miracle Pull, Vendetta. **Sources of Tech:** Cryo-Pulse, Zero-Day, Drone Strike, Inversion Matrix, Sonic Disrupter — one ability each from Mimi and Sanity, and all three of Kian's (the two emitters by designer call, 2026-09-17, §10.6). Everything else — including collision — is Normal.
 
 **Atomic is the roster's answer to Evasion, and it is deliberately concentrated.** Three operators carry unblockable single-target damage: Bouncer with Velvet Rope at 6 energy, Kurbyn with Miracle Pull at 9, and Luka with Vendetta at 6 (added 2026-09-15 — the concentration is looser than it was, which is worth knowing before the next Atomic source is written). Syla's route through Evasive Protocol is indirect — Ace Shards applies bleed, bleed ticks Atomic, and From the Hip pays a bonus against a bleeding target — which makes her anti-evasion play a two-ability sequence rather than a single cast. Mimi and Javi carry none at all.
 
@@ -790,9 +790,22 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 | #   | Ability           | Type   | Cost | CD  | Range                                          | Effect                                                                                                         |
 | --- | ----------------- | ------ | ---- | --- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| 1   | **Cryo-Pulse**    | Active | 6    | 3   | 3 (AOE radius 2, target-origin, **inclusive**) | **2 Tech** to every enemy in the window, the target included; applies **1 Bleed** and **Slow 1 turn** to each. |
-| 2   | **Cryo Field**    | Active | 6    | 3   | self (AOE radius 2, self-origin, **2 ticks**)  | **1 Normal** to every enemy within 2 of her **current** cell, at each of her next **two upkeeps** (§5.14, §6.6). Ends early if cleansed or if she is neutralized. |
+| 1   | **Cryo-Pulse**    | Active | 4    | 3   | 3 (AOE radius 2, target-origin, **inclusive**) | **2 Tech** to every enemy in the window, the target included; applies **1 Bleed** and **Slow 1 turn** to each. |
+| 2   | **Cryo Field**    | Active | 4    | 3   | self (AOE radius 2, self-origin, **2 ticks**)  | **1 Normal** to every enemy within 2 of her **current** cell, at each of her next **two upkeeps** (§5.14, §6.6). Ends early if cleansed or if she is neutralized. |
 | 3   | **Translocation** | Active | 3    | 4   | 6                                              | **Swap** cells with the target, ally or enemy. Placement — collides with nothing, triggers nothing (§7.4).     |
+
+**Both 6-cost casts cut to 4 (designer, 2026-09-17).** She was last in the bots sweep at 16%. The price came down; the payloads did not change. Cryo Field's range 0 means it is centred on herself: it bills every enemy within 2 of her, five cells. The same pass taught the bots to cast Cryo Field. The planner had no scoring for a self-centred field, so it had been cast 0.00 times a match.
+
+| Bots against bots, 800 matches | Before | Bots cast Cryo Field | + both at cost 4 |
+| ------------------------------ | ------ | -------------------- | ---------------- |
+| Mimi win share                 | 16%    | 17%                  | **20%**          |
+| Cryo-Pulse casts per match     | —      | 2.06                 | 2.53             |
+| Cryo Field casts per match     | 0.00   | 0.76                 | 1.38             |
+| Turns per seat                 | 24.8   | 24.9                 | 25.1             |
+
+- **The price is what moved her**, not the bot fix: +3 points from the cut, +1 from the bots learning the field.
+- **Adopted row, everyone:** Kurbyn 32%, Javi 32%, Syla 31%, Sanity 26%, Nuetu 25%, Luka 24%, Revú 24%, Bouncer 22%, Lethe 20%, Mimi 20%, Kian 19%.
+- **Lethe fell from 25% to 20%**, about three standard errors, more than noise usually explains. A cheaper Cryo Field punishes exactly the tight squad Catalyst asks for. Watch it before touching either.
 
 **Five health is what prices her kit.** She is the only operator below 6, and she moves at the tank's speed, so she cannot run from anything. Ace Shards into a bleeding-bonus From the Hip kills her; so does Dargin Pulse into a collision — two-ability sequences every other operator survives.
 
@@ -838,13 +851,13 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 | #   | Ability              | Type   | Cost | CD  | Range                     | Effect                                                                                                                                                |
 | --- | -------------------- | ------ | ---- | --- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Inversion Matrix** | Active | 4    | 3   | 4 (line ahead, no target) | **1 Normal** and **Stun 1 turn** to every enemy on the next 4 cells **ahead of him** along his own direction of travel.                               |
-| 2   | **Sonic Disrupter**  | Active | 4    | 3   | 2 (AOE, self-origin)      | **2 Normal**, **Slow 1 turn**, then **push 2 cells** away from him (§7.4), to every enemy within 2. The push never carries anyone into a home column. |
-| 3   | **Drone Strike**     | Active | 6    | 2   | unlimited (cell)          | Paint any outer-track cell (ADR-0006). At Kian's next upkeep a beam deals **4 Tech in total**, **divided** among the enemies within 1 of the cell.    |
+| 1   | **Inversion Matrix** | Active | 3    | 3   | 4 (line ahead, no target) | **2 Tech** and **Stun 1 turn** to every enemy on the next 4 cells **ahead of him** along his own direction of travel.                                 |
+| 2   | **Sonic Disrupter**  | Active | 3    | 3   | 3 (AOE, self-origin)      | **2 Tech**, **Slow 1 turn**, then **push 2 cells** away from him (§7.4), to every enemy within 3. The push never carries anyone into a home column.   |
+| 3   | **Drone Strike**     | Active | 4    | 2   | unlimited (cell)          | Paint any outer-track cell (ADR-0006). At Kian's next upkeep a beam deals **4 Tech in total**, **divided** among the enemies within 1 of the cell.    |
 
-**A sixth archetype, priced on being reached, not on reach.** At 6 health and 1.0 speed with no escape tool, anyone who closes on him has him. That is the entire cost of a kit that otherwise never needs to be near anything. He is the only operator with no single-target ability: he cannot pick one enemy and hit it.
+**A sixth archetype, priced on being reached, not on reach.** At 7 health and 1.0 speed with no escape tool, anyone who closes on him has him. That is the entire cost of a kit that otherwise never needs to be near anything. He is the only operator with no single-target ability: he cannot pick one enemy and hit it.
 
-**Inversion Matrix is the roster's first directional effect.** Every other area is symmetric, which makes a self-centred blast something you position for; a line points somewhere, and choosing where is a decision no other ability asks for. Damage 1 because the stun is what is being bought. Cost walked 3 → 4: at 3 it matched Nanite Infusion's price for something that can lock down two or three operators at once. It is one of the three abilities that ended the cost tier (§3.2).
+**Inversion Matrix is the roster's first directional effect.** Every other area is symmetric, which makes a self-centred blast something you position for; a line points somewhere, and choosing where is a decision no other ability asks for. Damage 1 because the stun was what was being bought — until 2026-09-17 (below). Cost walked 3 → 4: at 3 it matched Nanite Infusion's price for something that can lock down two or three operators at once. It is one of the three abilities that ended the cost tier (§3.2).
 
 **Sonic Disrupter's effect order is a rule:** damage, then slow, then push. Recipients are recomputed per effect, so pushing first would carry enemies out of the radius before the slow found them. **The push is away from him along the loop**, so an enemy ahead of him is thrown toward its own home — the first ability in the game that can help the player it is aimed at. Accepted: he is meant to be punishing and swingy, and which side of him to stand on is a real thing to get right. The forward clamp (§7.4) is not a balance dial; without it the ability finishes an opponent's lap. An enemy sharing his cell — reachable only on a safe cell — is thrown backwards, which breaks up exactly the free parking §4.4 worries about.
 
@@ -852,7 +865,26 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 **The 2026-09-15 balance pass (`245a60b`) shortened both of his long abilities:** Inversion Matrix's line 6 → 4, and Drone Strike's beam 6 → 4. At 6 a correct guess killed four of the roster's operators from full; at 4 it kills nobody from full — a 6-health operator is left at 2, inside collision range — and the beam sets the kill up instead of taking it.
 
-**Every number is reasoned and none is measured.**
+**The 2026-09-17 buff (designer).** Kian was last in the bots sweep. Every ability got cheaper and both emitters hit harder:
+
+- **Inversion Matrix** 4 → 3 energy, 1 Normal → **2 Tech**. The stun is still the point, but at 1 damage the line did nothing a stun alone didn't.
+- **Sonic Disrupter** 4 → 3 energy, 2 Normal → **2 Tech**, radius 2 → **3** for all three effects (damage, slow, push — `Kian.SonicDisrupterRadius`). The order rule above still holds: pushed from inside 3, an enemy can land as far as 5 away, so the slow must come first.
+- **Drone Strike** 6 → 4 energy. Cooldown unchanged at 2, so the limiter is still the cooldown, and now more often than energy.
+
+**Both emitters are Tech by designer call, not by the §2.2 rule.** Under the rule a self-centred emission stays Normal (Mimi's Cryo Field does). Kian's are recorded as the exception: the Inversion Matrix is a set of deployed emitters and the Disrupter a device he carries, and the designer wants his whole kit on one type. Consequence: **a warded Luka takes nothing from Kian at all** — the only operator a single Hermes' Ring shuts out completely besides Mimi's Cryo-Pulse (§5.12). Riders still land on a warded target: the stun, the slow and the push.
+
+Bots sweep, 800 matches, before → after (noise about ±1.5 points):
+
+| Operator | Before | After |
+| -------- | ------ | ----- |
+| Kian     | 19%    | 23%   |
+| Mimi     | 20%    | 18%   |
+| Lethe    | 20%    | 23%   |
+| Syla     | 31%    | 32%   |
+| Kurbyn   | 32%    | 31%   |
+| Javi     | 32%    | 30%   |
+
+Casts per match: Drone Strike 4.58 → 5.87, Sonic Disrupter 2.72 → 3.70, Inversion Matrix 1.82 → 3.05. Mimi's drop is just outside noise: at 6 health she is the operator a wider 2-damage wave hurts most. Watch it.
 
 ### 10.7 Nuetu — Bruiser
 
@@ -1495,7 +1527,7 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - `FollowUp_AndZeroDay_OnOneTarget_BothResolve`
 - `HermesRing_BlocksTech_ButNotNormalOrAtomic`
 - `CryoPulse_IsTech_AndAWardedLukaTakesNoneOfIt`
-- `TechSources_AreCryoPulseZeroDayAndDroneStrike`
+- `TechSources_AreTheListTheDesignerChose` (renamed 2026-09-17; five abilities)
 - `ZeroDay_IsTech_AndAWardedLukaTakesNoneOfTheBlast`
 - `DroneStrike_IsTech_AndAWardedLukaStillCountsTowardTheSplit`
 - `Vendetta_ACritTriples_AgainstAHeavyTarget`
@@ -1530,6 +1562,12 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - `KurbynNeutralized_TheReadStillTrips_AndCreditsHim`
 - `ReSettingAWatch_ReplacesRatherThanStacks`
 - `Engine_ADiceMoveByTheMarkedTarget_TripsTheWatch`
+
+**Kian's 2026-09-17 buff — `AbilityResolverTests`** (§10.6)
+
+- `InversionMatrix_HitsEnemiesAheadAndNotBehind` (now expects 2 per enemy)
+- `SonicDisrupter_ReachesThreeCells_AndNoFurther`
+- `Kian_Numbers_AreTheDesignersOf20260917`
 
 **Neutralize and win — `WinConditions`**
 
@@ -1579,3 +1617,5 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - 2026-09-17 — **Sanity burdened** (designer). New status Burdened (§5.16): −1 cell on a roll of 6 or less, −2 above, once per roll, never below 1 cell, cancelling against haste. Sanity moves to speed 1.0 with Burdened as his passive, so the §6.3 band has no exceptions and he is no longer immune to slows. `CombatConfig` gains `BurdenCellsAtOrBelowThreshold`, `BurdenCellsAboveThreshold` and `BurdenCellsFor`. The bots draft haste and burden passives at their average worth. A +1 damage package was measured and not adopted. Bots sweep: Sanity 21% → 27%, turns per seat 26.5 → 25.1. §5, §6.3, §10.8 amended.
 - 2026-09-17 — **Revú added as §10.11**, complete, from `OPERATOR_DRAFTS.md` §3, with the designer's rulings. **§3.3:** energy drain (destroyed) and pool-scaled damage (the target's seat, splash half); `EffectKind` gains `DrainEnergy` and `MissingEnergyDamage`, 17 in all, and `AbilityResolver` takes the players. **§5.17 Equilibrium:** a cast's instant damage is ×2 at cost ≤ 3 and ½ (at least 1) at cost ≥ 6, for every type, as pipeline step 0 (§2.1). `DamageInstance` carries `CastCost`, and `IDamageMitigation` gains `ScalesCastDamage`. The `EnergyDrained` event is new. Bots read Equilibrium and score drains and Sadist. The draft card shows a named passive in the free slot. Bots sweep: Revú 21%, turns per seat 25.1 → 24.7. §2.1, §3, §5, §9.1, §10 amended.
 - 2026-09-17 — **Revú tuned** (designer): health 7 → 8, Leech Round 1 → 2 damage and cooldown 2 → 1, Sadist cooldown 5 → 4. Bots sweep: Revú 21% → 24%, Leech Round 1.53 → 2.87 casts per match. §10.11 amended.
+- 2026-09-17 — **Mimi repriced** (designer): Cryo-Pulse and Cryo Field 6 → 4. The bots learned to cast Cryo Field (a `ProjectField` scoring branch; it had been cast 0.00 times). Bots sweep: Mimi 16% → 20%, Lethe 25% → 20% (watch). §10.4 amended.
+- 2026-09-17 — **Kian buffed** (designer): Inversion Matrix 4 → 3 energy and 1 Normal → 2 Tech; Sonic Disrupter 4 → 3 energy, 2 Normal → 2 Tech, radius 2 → 3; Drone Strike 6 → 4 energy. The two emitters are Tech by designer exception to §2.2, so a warded Luka blocks all of Kian's damage. Bots sweep: Kian 19% → 23%, Mimi 20% → 18% (watch). §2.2, §10.6 and §13 amended.

@@ -276,6 +276,9 @@ namespace NonaRoyale.Core.Bots
                     case EffectKind.AttachCharge:
                         total += effect.Amount + effect.Stacks;
                         break;
+                    case EffectKind.ProjectField:
+                        total += effect.Amount * Math.Max(0, effect.Duration - 1);
+                        break;
                     case EffectKind.MissingEnergyDamage:
                         // Its most, against an empty pool.
                         total += EnergyConfig.Default.EnergyCap / effect.Amount;

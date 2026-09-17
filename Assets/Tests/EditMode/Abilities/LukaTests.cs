@@ -397,17 +397,19 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
-        public void TechSources_AreCryoPulseZeroDayAndDroneStrike()
+        public void TechSources_AreTheListTheDesignerChose()
         {
             // The ring is worth exactly this list (§2.2). A change to it is a
-            // design decision, so it has to show up as a failing test.
+            // design decision, so it has to show up as a failing test. Kian's
+            // Inversion Matrix and Sonic Disrupter joined on 2026-09-17.
             var tech = Roster.AllAbilities
                 .Where(a => a.Effects.Any(e => e.DamageType == DamageType.Tech))
                 .Select(a => a.Name)
                 .OrderBy(n => n)
                 .ToList();
 
-            Assert.That(tech, Is.EqualTo(new[] { "Cryo-Pulse", "Drone Strike", "Zero-Day" }));
+            Assert.That(tech, Is.EqualTo(new[]
+                { "Cryo-Pulse", "Drone Strike", "Inversion Matrix", "Sonic Disrupter", "Zero-Day" }));
         }
 
         [Test]

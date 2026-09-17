@@ -647,8 +647,9 @@ namespace NonaRoyale.Core.Tests.Abilities
             var result = Use(kian, Kian.InversionMatrix);
 
             Assert.That(result.Approved, Is.True);
-            Assert.That(_enemy.Health, Is.EqualTo(5), "two cells ahead");
-            Assert.That(_enemyTwo.Health, Is.EqualTo(5), "three cells ahead");
+            // 2 Tech per enemy since 2026-09-17.
+            Assert.That(_enemy.Health, Is.EqualTo(4), "two cells ahead");
+            Assert.That(_enemyTwo.Health, Is.EqualTo(4), "three cells ahead");
             Assert.That(behind.Health, Is.EqualTo(6), "two cells behind — the line does not reach backwards");
 
             _clock.BeginTurnFor(PlayerColor.Blue);
@@ -691,7 +692,7 @@ namespace NonaRoyale.Core.Tests.Abilities
         public void SonicDisrupter_SlowsEveryoneItPushes()
         {
             // The effect order is the rule: damage, slow, then push. Pushing
-            // first would carry them from inside radius 2 to as far as 4, and
+            // first would carry them from inside radius 3 to as far as 5, and
             // the slow would then find nobody.
             var kian = KianAt(19);
             var victim = AtTrack(12, "Victim", PlayerColor.Blue, 6, 20);
@@ -701,6 +702,53 @@ namespace NonaRoyale.Core.Tests.Abilities
 
             _clock.BeginTurnFor(PlayerColor.Blue);
             Assert.That(_statuses.SpeedModifier(victim), Is.EqualTo(-0.5));
+        }
+
+        [Test]
+        public void SonicDisrupter_ReachesThreeCells_AndNoFurther()
+        {
+            // Radius 3 since 2026-09-17 (was 2). Three cells ahead takes the
+            // full wave: 2 Tech, the slow and the shove. Four cells is clear.
+            var kian = KianAt(19);
+            var edge = AtTrack(31, "Edge", PlayerColor.Blue, 6, 22);
+            var beyond = AtTrack(32, "Beyond", PlayerColor.Blue, 6, 23);
+            _board.Add(edge);
+            _board.Add(beyond);
+
+            int edgeBefore = edge.Progress;
+            int beyondBefore = beyond.Progress;
+
+            var result = Use(kian, Kian.SonicDisrupter);
+
+            Assert.That(result.Approved, Is.True);
+            Assert.That(edge.Health, Is.EqualTo(4), "2 Tech at the edge of the wave");
+            Assert.That(edge.Progress, Is.EqualTo(edgeBefore + 2), "shoved two cells on");
+            Assert.That(beyond.Health, Is.EqualTo(6));
+            Assert.That(beyond.Progress, Is.EqualTo(beyondBefore));
+
+            _clock.BeginTurnFor(PlayerColor.Blue);
+            Assert.That(_statuses.SpeedModifier(edge), Is.EqualTo(-0.5));
+            Assert.That(_statuses.SpeedModifier(beyond), Is.EqualTo(0.0));
+        }
+
+        [Test]
+        public void Kian_Numbers_AreTheDesignersOf20260917()
+        {
+            Assert.That(Kian.InversionMatrix.EnergyCost, Is.EqualTo(3));
+            Assert.That(Kian.SonicDisrupter.EnergyCost, Is.EqualTo(3));
+            Assert.That(Kian.DroneStrike.EnergyCost, Is.EqualTo(4));
+            Assert.That(Kian.SonicDisrupter.Range, Is.EqualTo(3));
+
+            foreach (var ability in new[] { Kian.InversionMatrix, Kian.SonicDisrupter })
+                foreach (var effect in ability.Effects)
+                    if (effect.Kind == EffectKind.Damage)
+                    {
+                        Assert.That(effect.Amount, Is.EqualTo(2), ability.Name);
+                        Assert.That(effect.DamageType, Is.EqualTo(DamageType.Tech), ability.Name);
+                    }
+
+            foreach (var effect in Kian.SonicDisrupter.Effects)
+                Assert.That(effect.Radius, Is.EqualTo(3), effect.Kind.ToString());
         }
 
         [Test]

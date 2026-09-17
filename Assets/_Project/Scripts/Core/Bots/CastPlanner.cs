@@ -296,6 +296,21 @@ namespace NonaRoyale.Core.Bots
                     offence += Hit(board, w, target, board.ExpectedHit(target, follow, effect.DamageType)) * w.DelayedDiscount;
                     break;
 
+                case EffectKind.ProjectField:
+                {
+                    // Cryo Field: every enemy near the caster now, billed at
+                    // each of the field's upkeep ticks, discounted because they
+                    // can walk out first. Nothing to add while one is up.
+                    if (board.Has(caster, StatusKind.CryoField) || !board.OnLoop(caster)) break;
+                    int ticks = Math.Max(0, effect.Duration - 1);
+                    if (ticks == 0 || effect.Amount <= 0) break;
+
+                    foreach (var r in board.EnemiesNear(own, board.CellOf(caster), effect.Radius))
+                        offence += Hit(board, w, r, board.ExpectedHit(r, effect.Amount * ticks, effect.DamageType))
+                                   * w.DelayedDiscount;
+                    break;
+                }
+
                 case EffectKind.DrainEnergy:
                 {
                     if (target == null || target.Owner == own) break;

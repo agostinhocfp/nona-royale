@@ -86,20 +86,30 @@ namespace NonaRoyale.Core.Abilities
         /// cheap for what it does, and it is one of the three abilities that
         /// ended the 3/6/9 cost tier (abolished 2026-09-13, <c>Roster</c>).
         /// Costs are now argued against peers rather than rounded to a rung.
+        ///
+        /// <b>Designer buff, 2026-09-17: cost 3, 2 Tech.</b> Kian was last in
+        /// the bots sweep (19%). Back to the cheapest rung, with twice the
+        /// damage, and Tech. That is a designer call against §2.2's rule of
+        /// thumb (Tech is a guided or remote device); the emitters are read as
+        /// a device he fires. A warded Luka now takes none of it, and a Revú
+        /// takes it doubled (§5.17, cost 3).
         /// </remarks>
         public static AbilityDefinition InversionMatrix { get; } = new AbilityDefinition(
             id: 601, name: "Inversion Matrix",
             description:
                 "Fires a line of graviton emitters down the track ahead of you, lifting every enemy in their path off the ground.",
-            energyCost: 4, cooldownTurns: 3, range: 4,
+            energyCost: 3, cooldownTurns: 3, range: 4,
             targeting: AbilityTargeting.None,
             effects: new[]
             {
-                AbilityEffect.Damage(EffectScope.EnemiesInLineFromCaster, 1, DamageType.Normal,
+                AbilityEffect.Damage(EffectScope.EnemiesInLineFromCaster, 2, DamageType.Tech,
                     EffectAudience.EnemyOnly, radius: 4),
                 AbilityEffect.Status_(EffectScope.EnemiesInLineFromCaster, StatusKind.Stun,
                     duration: 1, radius: 4)
             });
+
+        /// <summary>Sonic Disrupter's reach each way, for damage, slow and push. 2 until 2026-09-17.</summary>
+        public const int SonicDisrupterRadius = 3;
 
         /// <summary>
         /// A hyper-compressed charge vents all at once, and everything standing
@@ -136,21 +146,29 @@ namespace NonaRoyale.Core.Abilities
         /// because a slow is the weakest of the three statuses and the shove
         /// cuts both ways. Under the abolished 3/6/9 tier it would have had to
         /// be 3 or 6, and neither was the right number.
+        ///
+        /// <b>Designer buff, 2026-09-17: cost 3, radius 3, Tech.</b> Kian was
+        /// last in the bots sweep. The vent now reaches three cells each way
+        /// (seven in all) for damage, slow and push alike, and its 2 damage is
+        /// Tech — a designer call against §2.2's self-centred-is-Normal rule
+        /// of thumb. A warded Luka shrugs off the damage but is still slowed
+        /// and shoved; a Revú takes the 2 doubled (§5.17, cost 3). The push
+        /// distance stays 2, so an enemy at the edge ends up five away.
         /// </remarks>
         public static AbilityDefinition SonicDisrupter { get; } = new AbilityDefinition(
             id: 602, name: "Sonic Disrupter",
             description:
                 "Vents a compressed charge in every direction, hurling nearby enemies clear of you and leaving them struggling to recover.",
-            energyCost: 4, cooldownTurns: 3, range: 2,
+            energyCost: 3, cooldownTurns: 3, range: SonicDisrupterRadius,
             targeting: AbilityTargeting.None,
             effects: new[]
             {
-                AbilityEffect.Damage(EffectScope.EnemiesAroundCaster, 2, DamageType.Normal,
-                    EffectAudience.EnemyOnly, radius: 2),
+                AbilityEffect.Damage(EffectScope.EnemiesAroundCaster, 2, DamageType.Tech,
+                    EffectAudience.EnemyOnly, radius: SonicDisrupterRadius),
                 AbilityEffect.Status_(EffectScope.EnemiesAroundCaster, StatusKind.Slow,
-                    duration: 1, radius: 2),
+                    duration: 1, radius: SonicDisrupterRadius),
                 AbilityEffect.Push(EffectScope.EnemiesAroundCaster, distance: 2,
-                    EffectAudience.EnemyOnly, radius: 2)
+                    EffectAudience.EnemyOnly, radius: SonicDisrupterRadius)
             });
 
         /// <summary>
@@ -207,12 +225,17 @@ namespace NonaRoyale.Core.Abilities
         /// <b>It survives his death and still credits him</b> (ADR-0006). A
         /// deployed device is not its operator, and letting a kill refund six
         /// spent energy would make the ability worse than it reads.
+        ///
+        /// <b>Cost 4 since 2026-09-17 (designer; was 6).</b> Part of the Kian
+        /// buff. The cooldown of 2 still does the limiting, and at 4 a paint
+        /// every other turn fits the drip without banking. It was already his
+        /// most-cast ability and the most-cast in the game.
         /// </remarks>
         public static AbilityDefinition DroneStrike { get; } = new AbilityDefinition(
             id: 603, name: "Drone Strike",
             description:
                 "Paints a square anywhere on the board. A beam comes down on it next round, splitting its force between everyone caught underneath.",
-            energyCost: 6, cooldownTurns: 2,
+            energyCost: 4, cooldownTurns: 2,
             range: AbilityDefinition.UnlimitedRange,
             targeting: AbilityTargeting.Cell,
             effects: new[]

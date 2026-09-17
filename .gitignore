@@ -119,3 +119,7 @@ InitTestScene*.unity*
 /Claude outputs/kenney_casino-audio/
 /Claude outputs/*.wav
 /Claude outputs/*.mid
+/Claude outputs/*.zip
+
+# Local build helper for the cloud test runner
+/tools/tests-verify/csc.core.rsp

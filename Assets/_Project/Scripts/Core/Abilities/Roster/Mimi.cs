@@ -72,12 +72,17 @@ namespace NonaRoyale.Core.Abilities
         /// cells away rather than on the caster, and applies two statuses rather
         /// than one. For a 1.0-speed operator, remote origin is most of the
         /// game. Kept as written pending a sweep.
+        ///
+        /// <b>Cost 4 since 2026-09-17 (designer; was 6).</b> The bots sweep had
+        /// Mimi last at 16%, so the price came down rather than the payload
+        /// going up. At 4 it sits with Sonic Disrupter and Inversion Matrix,
+        /// Kian's area casts.
         /// </remarks>
         public static AbilityDefinition CryoPulse { get; } = new AbilityDefinition(
             id: 401, name: "Cryo-Pulse",
             description:
                 "Freezes the ground around an enemy. Everything caught in it is wounded, slowed, and cracks open as it thaws.",
-            energyCost: 6, cooldownTurns: 3, range: 3,
+            energyCost: 4, cooldownTurns: 3, range: 3,
             effects: new[]
             {
                 AbilityEffect.Damage(EffectScope.EnemiesAroundPrimaryTargetInclusive, 2,
@@ -151,12 +156,21 @@ namespace NonaRoyale.Core.Abilities
         /// applied status (§1.2), and a field centred on an operator in her
         /// yard is centred nowhere. The follow-up precedent, not the beacon one
         /// (§6.5 vs ADR-0006).
+        ///
+        /// <b>Range 0 means "on herself", not "reaches nothing".</b> The field
+        /// is centred on Mimi and bills every enemy within
+        /// <see cref="CryoFieldRadius"/> (2) of her, five cells in all. The
+        /// draft card shows the range as "self".
+        ///
+        /// <b>Cost 4 since 2026-09-17 (designer; was 6).</b> Mimi was last in
+        /// the bots sweep, and neither of her 6-cost casts was earning its
+        /// price.
         /// </remarks>
         public static AbilityDefinition CryoField { get; } = new AbilityDefinition(
             id: 403, name: "Cryo Field",
             description:
                 "Mimi surrounds herself with a deepening cold. For a while, enemies near her are bitten by frost each time her turn begins.",
-            energyCost: 6, cooldownTurns: 3, range: 0,
+            energyCost: 4, cooldownTurns: 3, range: 0,
             targeting: AbilityTargeting.None,
             effects: new[]
             {
