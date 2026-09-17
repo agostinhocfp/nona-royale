@@ -33,7 +33,7 @@ namespace NonaRoyale.Unity.View
     /// </remarks>
     public sealed class TitleScreen : ModalCard
     {
-        private enum Page { Main, Settings, Sound }
+        private enum Page { Main, Settings, Sound, Display }
 
         private ITitleHost _host;
         private Page _page;
@@ -69,12 +69,12 @@ namespace NonaRoyale.Unity.View
             if (IsOpen && _page == Page.Main) Play();
         }
 
-        /// <summary>Esc: settings go back; the main page disarms QUIT.</summary>
+        /// <summary>Esc: a sub-page goes back a page; the main page disarms QUIT.</summary>
         public void Back()
         {
             if (!IsOpen) return;
 
-            if (_page == Page.Sound) _page = Page.Settings;
+            if (_page == Page.Sound || _page == Page.Display) _page = Page.Settings;
             else if (_page == Page.Settings) _page = Page.Main;
             _quitArmed = false;
             Rebuild();
@@ -105,6 +105,7 @@ namespace NonaRoyale.Unity.View
 
             if (_page == Page.Main) MainPage();
             else if (_page == Page.Sound) SoundPage();
+            else if (_page == Page.Display) DisplayPage();
             else SettingsPage();
         }
 
@@ -178,7 +179,9 @@ namespace NonaRoyale.Unity.View
         private void SettingsPage()
         {
             Heading("Settings");
-            SettingsRows.Build(ColumnSlot, _host, Rebuild, () => { _page = Page.Sound; Rebuild(); });
+            SettingsRows.Build(ColumnSlot, _host, Rebuild,
+                () => { _page = Page.Sound; Rebuild(); },
+                () => { _page = Page.Display; Rebuild(); });
             Note("Remembered between sessions.", UiTheme.TextNote);
             Gap(6f);
             Choice("BACK", "Esc", Back);
@@ -188,6 +191,15 @@ namespace NonaRoyale.Unity.View
         {
             Heading("Sound");
             SettingsRows.BuildSound(ColumnSlot, _host, Rebuild);
+            Gap(6f);
+            Choice("BACK", "Esc", Back);
+        }
+
+        private void DisplayPage()
+        {
+            Heading("Display");
+            SettingsRows.BuildDisplay(ColumnSlot, _host, Rebuild);
+            Note("Remembered between sessions.", UiTheme.TextNote);
             Gap(6f);
             Choice("BACK", "Esc", Back);
         }

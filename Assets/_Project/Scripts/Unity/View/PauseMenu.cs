@@ -36,7 +36,7 @@ namespace NonaRoyale.Unity.View
         private const float CardWidth = 440f;
         private const float ButtonHeight = 54f;
 
-        private enum Page { Main, Settings, Sound }
+        private enum Page { Main, Settings, Sound, Display }
 
         private IPauseHost _host;
         private RectTransform _root;
@@ -78,14 +78,14 @@ namespace NonaRoyale.Unity.View
             Time.timeScale = _timeScale > 0f ? _timeScale : 1f;
         }
 
-        /// <summary>Esc while open: settings go back to the main page, the main page resumes.</summary>
+        /// <summary>Esc while open: a sub-page goes back a page, the main page resumes.</summary>
         public void Back()
         {
             if (!IsOpen) return;
 
             if (_page != Page.Main)
             {
-                _page = _page == Page.Sound ? Page.Settings : Page.Main;
+                _page = _page == Page.Settings ? Page.Main : Page.Settings;
                 _armed = null;
                 Rebuild();
                 return;
@@ -145,6 +145,7 @@ namespace NonaRoyale.Unity.View
 
             if (_page == Page.Main) MainPage();
             else if (_page == Page.Sound) SoundPage();
+            else if (_page == Page.Display) DisplayPage();
             else SettingsPage();
 
             LayoutRebuilder.ForceRebuildLayoutImmediate(_card);
@@ -170,7 +171,9 @@ namespace NonaRoyale.Unity.View
         {
             Title("Settings", "Changes apply at once.");
 
-            if (_host != null) SettingsRows.Build(Content, _host, Rebuild, () => { _page = Page.Sound; Rebuild(); });
+            if (_host != null) SettingsRows.Build(Content, _host, Rebuild,
+                () => { _page = Page.Sound; Rebuild(); },
+                () => { _page = Page.Display; Rebuild(); });
 
             Space(4f);
             Choice("BACK", "Esc", Back);
@@ -181,6 +184,16 @@ namespace NonaRoyale.Unity.View
             Title("Sound", "Changes apply at once.");
 
             if (_host != null) SettingsRows.BuildSound(Content, _host, Rebuild);
+
+            Space(4f);
+            Choice("BACK", "Esc", Back);
+        }
+
+        private void DisplayPage()
+        {
+            Title("Display", "Changes apply at once.");
+
+            if (_host != null) SettingsRows.BuildDisplay(Content, _host, Rebuild);
 
             Space(4f);
             Choice("BACK", "Esc", Back);

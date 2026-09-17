@@ -214,3 +214,13 @@ Each increment ends with a Play Mode check and a commit.
     - Alt-Tab away and back during an aim: the reticle is still there.
     - On a CPU turn the arrow shows, whatever was selected before.
     - Exiting Play Mode gives the editor its normal cursor back. No "Invalid texture used for cursor" warning in the console
+- 2026-09-17 — **Display settings page written** (the designer's pick from a quality-gap review; it was documented nowhere). The settings page gains a **Display** row beside Sound, opening a page with **Screen mode** (borderless Fullscreen / Windowed), **Resolution** (1280×720 to 3840×2160, the windowed size), **VSync**, **Frame cap** (30/60/120/144/uncapped, applies with VSync off) and **Restore defaults** — on both the pause menu and the title screen, like the sound page.
+  - **New `View/DisplaySettings.cs`** (plain C#, no Unity types, like `AudioLevels`): the values, the cycling, `Sanitize` for stray PlayerPrefs, and the row labels. Defaults: borderless fullscreen, 1920×1080, VSync on, cap 60.
+  - **`ISettingsHost.Display`** (like `Audio`); `SettingsRows.Build` takes an `openDisplay` action; `SettingsRows.BuildDisplay` builds the page; `SettingsStore` reads and writes `nr.display.mode/.width/.height/.vsync/.framecap`.
+  - **`MatchBootstrap`** holds `_display`/`_savedDisplay` beside the audio levels, applies on load and on every change (`Screen.SetResolution`, `QualitySettings.vSyncCount`, `Application.targetFrameRate`), and saves. Borderless fullscreen ignores the stored size (desktop resolution), so the resolution row's hint reads "windowed"; the cap row's hint reads "VSync off".
+  - **Tests:** `DisplaySettingsTests` (11) in `NonaRoyale.Unity.EditTests` — defaults, both cycles and their wraps, unknown-value recovery, sanitize, reset/copy, labels. The 61 plain-C# view/audio tests pass in the scratch harness (`Temp/audio-tests`, direct `csc`; `dotnet restore` is broken machine-wide under SDK 10).
+  - **Play Mode checklist:**
+    - Settings shows Sound and Display rows; Display opens the page on the pause menu and the title screen, and Esc steps back page by page.
+    - Windowed mode applies the chosen size at once; fullscreen ignores it (desktop size) without breaking the layout.
+    - VSync off + a 30 cap visibly halves motion smoothness; UNCAPPED lifts it.
+    - Everything survives a relaunch; Restore defaults returns to borderless 1920×1080, VSync on, cap 60, and the chip reads DEFAULT.

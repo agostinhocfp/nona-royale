@@ -259,6 +259,10 @@ namespace NonaRoyale.Unity.Composition
         private readonly AudioLevels _levels = new AudioLevels();
         private readonly AudioLevels _savedLevels = new AudioLevels();
 
+        /// <summary>The display settings, shared with the display page (2026-09-17).</summary>
+        private readonly DisplaySettings _display = new DisplaySettings();
+        private readonly DisplaySettings _savedDisplay = new DisplaySettings();
+
         /// <summary>Reduced motion, animation speed and hurry, shared with every animated view (MO2).</summary>
         private readonly MotionSettings _motion = new MotionSettings();
 
@@ -363,6 +367,21 @@ namespace NonaRoyale.Unity.Composition
 
             SettingsStore.LoadAudio(_levels);
             _savedLevels.CopyFrom(_levels);
+
+            SettingsStore.LoadDisplay(_display);
+            ApplyDisplay(_display);
+            _savedDisplay.CopyFrom(_display);
+        }
+
+        /// <summary>Pushes the display settings into the engine: mode and size, VSync, and the cap with VSync off.</summary>
+        private static void ApplyDisplay(DisplaySettings display)
+        {
+            var mode = display.Mode == ScreenMode.Fullscreen
+                ? FullScreenMode.FullScreenWindow
+                : FullScreenMode.Windowed;
+            Screen.SetResolution(display.Width, display.Height, mode);
+            QualitySettings.vSyncCount = display.VSync ? 1 : 0;
+            Application.targetFrameRate = display.VSync || display.FrameCap <= 0 ? -1 : display.FrameCap;
         }
 
         /// <summary>Saves when a flag changed, however it changed: a key, a menu toggle, the inspector.</summary>
@@ -392,6 +411,13 @@ namespace NonaRoyale.Unity.Composition
             {
                 _savedLevels.CopyFrom(_levels);
                 SettingsStore.SaveAudio(_levels);
+            }
+
+            if (!_display.SameAs(_savedDisplay))
+            {
+                _savedDisplay.CopyFrom(_display);
+                ApplyDisplay(_display);
+                SettingsStore.SaveDisplay(_display);
             }
 
             if (showPieceHealth == _savedHealth && showFullLog == _savedLog && showDevPanel == _savedDev) return;
@@ -1867,6 +1893,7 @@ namespace NonaRoyale.Unity.Composition
         bool ISettingsHost.LightingEffects { get => lightingEffects; set => lightingEffects = value; }
         AnimationSpeed ISettingsHost.AnimationSpeed { get => animationSpeed; set => animationSpeed = value; }
         AudioLevels ISettingsHost.Audio => _levels;
+        DisplaySettings ISettingsHost.Display => _display;
 
         void IPauseHost.MainMenu()
         {

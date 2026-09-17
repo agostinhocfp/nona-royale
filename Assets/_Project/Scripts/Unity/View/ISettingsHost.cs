@@ -36,6 +36,9 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>The volume settings (AU1). The sound page writes to this object directly.</summary>
         AudioLevels Audio { get; }
+
+        /// <summary>The display settings (2026-09-17). The display page writes to this object directly.</summary>
+        DisplaySettings Display { get; }
     }
 
     /// <summary>The settings pages' rows, shared by the pause menu and the title screen.</summary>
@@ -49,12 +52,17 @@ namespace NonaRoyale.Unity.View
         /// <param name="slot">Makes a laid-out slot on the caller's card.</param>
         /// <param name="rebuild">Called after a toggle, so the page redraws.</param>
         /// <param name="openSound">Opens the sound page (AU1).</param>
+        /// <param name="openDisplay">Opens the display page (2026-09-17).</param>
         public static void Build(System.Func<string, RectTransform> slot, ISettingsHost host, System.Action rebuild,
-            System.Action openSound)
+            System.Action openSound, System.Action openDisplay)
         {
             var sound = UiKit.ChoiceRow(slot("cycle"), "Sound", "", SoundSummary(host.Audio), !host.Audio.Muted,
                 openSound);
             UiKit.Size(sound, height: RowHeight);
+
+            var display = UiKit.ChoiceRow(slot("cycle"), "Display", "", host.Display.Summary(),
+                host.Display.Mode == ScreenMode.Windowed, openDisplay);
+            UiKit.Size(display, height: RowHeight);
 
             Row(slot, "Health above pieces", "H", host.ShowPieceHealth, v => host.ShowPieceHealth = v, rebuild);
             Row(slot, "Event log", "L", host.ShowFullLog, v => host.ShowFullLog = v, rebuild);
@@ -110,6 +118,36 @@ namespace NonaRoyale.Unity.View
         public static string SoundSummary(AudioLevels levels) =>
             levels.Muted ? "MUTED" : $"{AudioLevels.Percent(levels.Master)}%";
 
+        /// <summary>
+        /// The display page (2026-09-17): screen mode, resolution, VSync and
+        /// a frame cap, then Restore defaults. Every row cycles into the
+        /// settings and rebuilds; the composition root applies and saves the
+        /// change. The resolution is the windowed size, and the cap needs
+        /// VSync off — the hints say so.
+        /// </summary>
+        public static void BuildDisplay(System.Func<string, RectTransform> slot, ISettingsHost host, System.Action rebuild)
+        {
+            var display = host.Display;
+
+            var mode = UiKit.ChoiceRow(slot("cycle"), "Screen mode", "", display.Summary(),
+                display.Mode == ScreenMode.Fullscreen, () => { display.CycleMode(); rebuild(); });
+            UiKit.Size(mode, height: RowHeight);
+
+            var resolution = UiKit.ChoiceRow(slot("cycle"), "Resolution", "windowed", display.ResolutionLabel(),
+                display.Mode == ScreenMode.Windowed, () => { display.CycleResolution(); rebuild(); });
+            UiKit.Size(resolution, height: RowHeight);
+
+            Row(slot, "VSync", "", display.VSync, v => display.VSync = v, rebuild);
+
+            var cap = UiKit.ChoiceRow(slot("cycle"), "Frame cap", "VSync off", display.FrameCapLabel(),
+                !display.VSync, () => { display.CycleFrameCap(); rebuild(); });
+            UiKit.Size(cap, height: RowHeight);
+
+            var reset = UiKit.ChoiceRow(slot("cycle"), "Restore defaults", "", display.IsDefault ? "DEFAULT" : "RESET",
+                false, () => { display.Reset(); rebuild(); });
+            UiKit.Size(reset, height: RowHeight);
+        }
+
         private static void Volume(System.Func<string, RectTransform> slot, string label, float value,
             System.Action<float> set, bool dimmed)
         {
@@ -156,6 +194,12 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>The volume settings' version (<see cref="AudioLevels.Version"/>). Missing means 1.</summary>
         public const string AudioVersion = "nr.audio.version";
+
+        public const string DisplayMode = "nr.display.mode";
+        public const string DisplayWidth = "nr.display.width";
+        public const string DisplayHeight = "nr.display.height";
+        public const string DisplayVSync = "nr.display.vsync";
+        public const string DisplayFrameCap = "nr.display.framecap";
 
         public static BotSpeed LoadSpeed(BotSpeed fallback)
         {
@@ -219,6 +263,32 @@ namespace NonaRoyale.Unity.View
             PlayerPrefs.SetFloat(VolumeVoice, levels.Voice);
             PlayerPrefs.SetInt(Mute, levels.Muted ? 1 : 0);
             PlayerPrefs.SetInt(AudioVersion, AudioLevels.Version);
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>
+        /// Reads the display settings into <paramref name="into"/>, keeping
+        /// its values where nothing was saved. Anything Unity could not
+        /// apply is repaired (<see cref="DisplaySettings.Sanitize"/>).
+        /// </summary>
+        public static void LoadDisplay(DisplaySettings into)
+        {
+            if (PlayerPrefs.HasKey(DisplayMode)) into.Mode = (ScreenMode)PlayerPrefs.GetInt(DisplayMode);
+            if (PlayerPrefs.HasKey(DisplayWidth)) into.Width = PlayerPrefs.GetInt(DisplayWidth);
+            if (PlayerPrefs.HasKey(DisplayHeight)) into.Height = PlayerPrefs.GetInt(DisplayHeight);
+            if (PlayerPrefs.HasKey(DisplayVSync)) into.VSync = PlayerPrefs.GetInt(DisplayVSync) != 0;
+            if (PlayerPrefs.HasKey(DisplayFrameCap)) into.FrameCap = PlayerPrefs.GetInt(DisplayFrameCap);
+            into.Sanitize();
+        }
+
+        /// <summary>Writes the display settings and flushes them to disk.</summary>
+        public static void SaveDisplay(DisplaySettings display)
+        {
+            PlayerPrefs.SetInt(DisplayMode, (int)display.Mode);
+            PlayerPrefs.SetInt(DisplayWidth, display.Width);
+            PlayerPrefs.SetInt(DisplayHeight, display.Height);
+            PlayerPrefs.SetInt(DisplayVSync, display.VSync ? 1 : 0);
+            PlayerPrefs.SetInt(DisplayFrameCap, display.FrameCap);
             PlayerPrefs.Save();
         }
 
