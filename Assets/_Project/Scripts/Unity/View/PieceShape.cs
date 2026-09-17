@@ -85,6 +85,13 @@ namespace NonaRoyale.Unity.View
                 // art pass, like every shape here.
                 case "Lethe": return Primitives.Star(6, 90f);
 
+                // Revú, Loan Shark: a three-pointed star — a hook with three
+                // barbs. Concave, so it cannot be read as Syla's triangle, and
+                // three points against Luka's four, Kian's five and Lethe's
+                // six. Not the ring: the board already uses rings for
+                // targets, beacons and highlights. Placeholder until the art pass.
+                case "Revú": return Primitives.Star(3, 90f);
+
                 // Nuetu, Bruiser: the disc — the only round piece, read as a
                 // plate or a swarm. It was the fallback he drew with by
                 // accident; adopted on purpose 2026-09-15, so the fallback

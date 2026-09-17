@@ -60,6 +60,9 @@ namespace NonaRoyale.Core.Bots
         /// <summary>Multiplier on the worth of the harmful statuses a cleanse strips.</summary>
         public double Cleanse { get; set; } = 1.2;
 
+        /// <summary>Per point of energy an ability destroys in an enemy pool (§3.3).</summary>
+        public double EnergyDenial { get; set; } = 0.5;
+
         /// <summary>Per point of damage an operator deals to itself.</summary>
         public double SelfHarm { get; set; } = 1.5;
 

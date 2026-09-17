@@ -79,6 +79,7 @@ A neutralized operator re-enters exactly as it originally deployed (ADR-0003):
 
 All damage — from abilities, collisions, bleed and marks alike — passes through one choke point in the core. Order is fixed:
 
+0. **Equilibrium** (§5.17, 2026-09-17). If the instance carries a cast cost and the target holds Equilibrium, its amount is rescaled first, for every damage type.
 1. **Legality.** Targeting was already validated (§4). Damage against an illegal target never reaches the pipeline.
    - **1b. Tech ward.** If the instance is **Tech** and the target holds a tech ward (§5.12), the whole instance is blocked: emit `DamageAbsorbed`, **stop**. Nothing is consumed — not the evasion charge, not any shield pool.
 2. **Evasion.** If the instance is **Normal or Tech** and the target has an unspent evasion charge this round, roll the seeded RNG at `EvasionChance`. On success: emit `DamageEvaded`, consume the charge, **stop**.
@@ -166,6 +167,15 @@ A `cooldownTurns: 0` on a 6-cost ability buys little against the drip alone, but
 - There is **no cap on abilities per turn.** Cooldowns and the 12-energy ceiling are the regulators. Banking to 12 and firing Velvet Rope into All-In Mauling in a single turn is a combo worth having.
 - A stunned operator cannot spend (§5.1). An operator in a home column cannot spend (§4.3).
 - Costs are free integers; passives are free. Per-ability costs in §10. **The 3 / 6 / 9 tier was abolished 2026-09-13** — three abilities had been priced off it on their own merits, and a rule overridden every time it binds makes its exceptions look like oversights. A cost is now argued against its peers in the operator file. The only remaining constraint is that a cost above the energy cap is unspendable and therefore invalid.
+
+### 3.3 Draining and pool-scaled damage
+
+_(Added 2026-09-17 with Revú.)_
+
+- **A drain takes energy from the target's seat, and it is destroyed, not transferred** (designer). It takes what the pool holds, down to zero, and reports what it took, even 0. Leech Round drains 2 (§10.11). Transfers are left to Ghost's Siphon, if he is built.
+- **Pool-scaled damage reads the target's seat at cast time.** Sadist deals `floor((cap − pool) ÷ 3)` to the target, "one damage for every 3 energy missing", and half of that, rounded down, to enemies within 2 of the target. The splash uses the target's figure, whatever the splash victims' own pools hold (designer). A share of 0 is not dealt at all.
+- **Both need the seats.** `AbilityResolver` takes the match's players at composition. A resolver built without them refuses to run either effect instead of guessing.
+- **`EnergyDrained` is its own event**, so the view can show which seat paid and what it has left.
 
 ---
 
@@ -413,6 +423,21 @@ _(Added 2026-09-17, designer: Sanity's crawl, moved out of his speed.)_
 - **A passive**, so cleanses and neutralize leave it alone (§1.2). The view tags it `BURDEN`, not "heavy", because "heavy" already means Luka's maximum-health line (§2.4).
 - **Source:** Sanity's passive (§10.8), and only that.
 
+### 5.17 Equilibrium
+
+_(Added 2026-09-17: Revú's passive.)_
+
+- **Effect:** damage an ability deals the holder at the moment it is used is rescaled by that ability's cost:
+  - cost 3 or less (`EquilibriumCheapCostMax`): **double**;
+  - cost 4–5: unchanged;
+  - cost 6 or more (`EquilibriumDearCostMin`): **half, rounded down, but at least 1** (designer). A hit of 0 stays 0.
+- **Instant hits only** (designer). Direct damage, execute fallbacks, Collision's path damage and Sadist all carry the cast's cost. Collisions, bleed and marks carry none, and neither does anything that lands later: beacons, zones, charges, follow-ups, fields and watches.
+- **Every damage type, Atomic included, before every mitigation layer** (§2.1, step 0). It is a price on the caster's choice, not armour, so "Atomic ignores mitigation" does not reach it. A shield then meets the rescaled hit.
+- **A critical doubles first, then Equilibrium rescales.** A Vendetta crit of 2 lands as 1. Lifesteal reads the rescaled hit.
+- **An execute still kills.** It is not an amount.
+- **The web it builds:** cheap casts are the best way to kill him, but casting empties the pool Sadist reads. The honest answer is collisions: dice combat costs no energy and bypasses Equilibrium.
+- **A passive**, so it survives cleanses and neutralize (§1.2). The view tags it `BALANCE`.
+
 ---
 
 ## 6. Turn structure and resolution order
@@ -654,7 +679,7 @@ Noun-based, per `CONVENTIONS.md`. Each owns one rule family and nothing else.
 
 **`StatusRegistry` reports damage, it never applies it.** The pipeline consults the registry for evasion and shields, so a registry that called the pipeline would close a dependency cycle. Bleed and mark ticks are therefore _queried_ — the registry says what the tick owes and the caller pushes it through the pipeline as Atomic. The registry decides what damage is owed, the pipeline decides how damage lands, and neither knows the other exists.
 
-**An ability is a list of effects, and there are fifteen kinds:** Damage, Heal, ApplyStatus, PullToCaster, Execute, SwapWithCaster, RemoveStatuses, PushFromCaster, PaintCell, DeployZone, AttachCharge, DashToTarget, FollowUp, ProjectField, Watch. The resolver never branches on which ability is being cast. A new operator that cannot be expressed in those fifteen gets an amendment to this document and a new kind — never an `if`. Ten have been added in earnest: the swap for Mimi, the cleanse for Javi, the push and the two cell-anchored deferred kinds for Kian and Nuetu, the operator-anchored charge and the dash for Sanity (§10.8), the follow-up for Luka (§10.9), the self-anchored field for Mimi's Cryo Field (§10.4, §6.6), and the watch for Kurbyn's Predator's Read (§10.3, §6.7). Luka's critical hits are a field on the Damage kind (§2.4), not a kind of their own. Lethe added none (§10.10): Eris' Exploit is a `DeployZone` with a crowd setting (ADR-0007 Amendment 1).
+**An ability is a list of effects, and there are seventeen kinds:** Damage, Heal, ApplyStatus, PullToCaster, Execute, SwapWithCaster, RemoveStatuses, PushFromCaster, PaintCell, DeployZone, AttachCharge, DashToTarget, FollowUp, ProjectField, Watch, DrainEnergy, MissingEnergyDamage. The resolver never branches on which ability is being cast. A new operator that cannot be expressed in those fifteen gets an amendment to this document and a new kind — never an `if`. Ten have been added in earnest: the swap for Mimi, the cleanse for Javi, the push and the two cell-anchored deferred kinds for Kian and Nuetu, the operator-anchored charge and the dash for Sanity (§10.8), the follow-up for Luka (§10.9), the self-anchored field for Mimi's Cryo Field (§10.4, §6.6), and the watch for Kurbyn's Predator's Read (§10.3, §6.7). Luka's critical hits are a field on the Damage kind (§2.4), not a kind of their own. Lethe added none (§10.10): Eris' Exploit is a `DeployZone` with a crowd setting (ADR-0007 Amendment 1). Revú added two, the drain and the pool-scaled hit (§3.3, §10.11), the first effects that reach past an operator into a player.
 
 **The engine reports every move a roll could make, not just one.** `PreviewLandings` returns, per operator, the pooled landing and one per distinct unspent face. A preview that showed only the pooled option would hide exactly the choice §6.3 prices, and the view must not compute any of it itself (`PRESENTATION.md` §1).
 
@@ -678,7 +703,7 @@ Randomness reaches exactly three places: `MovementResolver` (dice), `DamagePipel
 
 ## 10. The roster, re-expressed
 
-Ten operators are in the draft pool, and **all ten are complete** — Mimi's Cryo Field and Kurbyn's Predator's Read, the last two unbuilt abilities, landed 2026-09-16 (§10.4, §10.3), and Lethe arrived whole on 2026-09-17 (§10.10). Bouncer and Lethe field two abilities and an aura; everyone else fields three abilities. An operator the game can deal but this document does not describe is worse than an entry marked incomplete; the pool no longer has one.
+Eleven operators are in the draft pool, and **all eleven are complete**. Mimi's Cryo Field and Kurbyn's Predator's Read, the last two unbuilt abilities, landed 2026-09-16 (§10.4, §10.3). Lethe and Revú arrived whole on 2026-09-17 (§10.10, §10.11). Bouncer and Lethe field two abilities and an aura, Revú fields two abilities and a named passive, and everyone else fields three abilities. An operator the game can deal but this document does not describe is worse than an entry marked incomplete; the pool no longer has one.
 
 **The tables are copied from the roster files and the code wins any disagreement.** Numbers change there first (`Assets/_Project/Scripts/Core/Abilities/Roster/`), and a table that drifts is a second copy of a value that is now wrong. Last synced 2026-09-16.
 
@@ -1007,6 +1032,59 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 - The "with" run was built just before the device-key fix above, which only matters when a Lethe and a Nuetu share a seat and a cell.
 
 **All numbers are the designer's (2026-09-17)** and reasoned against peers. Only the sweep above has measured them.
+
+### 10.11 Revú — Loan Shark
+
+**HP 8 · Speed 1.0× · Complete — both abilities and the passive implemented** _(added 2026-09-17, from `OPERATOR_DRAFTS.md` §3; tuned the same day, below)_
+
+> **The punishment web.** His ultimate scales with what the enemy has spent. His passive turns the cheap answers to him into fuel for that ultimate, and his basic ability drains the pool further. **Bouncer's shape:** two actives with a named passive in the middle slot, ids 1101 and 1102. The draft planned 1101–1103 under the operator-number scheme; Fuse and Ghost's planned ids are now Luka's and Lethe's.
+
+| #   | Ability         | Type         | Cost | CD  | Range | Effect                                                                                                                                           |
+| --- | --------------- | ------------ | ---- | --- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | **Leech Round** | Active       | 3    | 1   | 3     | **2 Normal**; **drain 2 energy** from the target's seat (§3.3), destroyed.                                                                        |
+| 2   | **Equilibrium** | Passive      | —    | —   | self  | A cast's instant damage to him is **×2** at cost ≤ 3, **½ (at least 1)** at cost ≥ 6, unchanged at 4–5 (§5.17).                                   |
+| 3   | **Sadist**      | Active (Ult) | 9    | 4   | 3     | **1 Normal per 3 energy** the target's seat is missing (0 → 4, 6 → 2, 12 → 0); **half that** to enemies within 2 of the target (§3.3).            |
+
+**Health 8, not the draft's 4.** The draft's open question reasoned at 4, before the roster-wide +1 and the draft-health pass (`c0db409`) that set him to 7. The designer's tuning then took him to 8. At 8, a doubled From the Hip (2) or Short Circuit (2) still needs friends, and a doubled Bio-Link Rage (6) leaves him at 2. That is the web working: the cheapest abilities are the ones he fears most.
+
+**Designer's rulings (2026-09-17):**
+- Equilibrium reads **instant hits only**.
+- Its halves are **at least 1**. Floored halves would have left Vendetta doing nothing to him.
+- Sadist's figure comes **from the target's seat**, and the splash is half of it.
+- Leech Round's energy is **destroyed**, not transferred.
+- On top of those: Equilibrium applies to Atomic, and an execute still kills. Neither was asked; both are stated here so they are decisions rather than accidents.
+
+**Readability, as the draft demanded:** "one damage for every 3 energy missing from their pool" is a figure the target's owner can compute before deciding to spend.
+
+**Mirror match:** Sadist is a 9-cost cast, so Equilibrium halves it against another Revú, to 2 at most. Leech Round is cheap, so its 2 lands as 4.
+
+**Measured, bots sweep, 800 matches, 4 seats (2026-09-17).** He is the eleventh operator, so every seed's draft moved again.
+
+| Bots against bots          | Before Revú | With Revú |
+| -------------------------- | ----------- | --------- |
+| Turns per seat             | 25.1        | 24.7      |
+| Knockouts per match        | 11.5        | 11.1      |
+| Revú win share             | —           | 21%       |
+| Leech Round casts per match | —          | 1.53      |
+| Sadist casts per match     | —           | 0.88      |
+
+- **Revú lands at 21%, below average**, level with Bouncer and above Kian (20%) and Mimi (17%).
+- **Everyone else, with Revú in the pool:** Kurbyn 33%, Javi 31%, Syla 30%, Luka 27%, Nuetu 26%, Sanity 25%, Lethe 24%.
+- **The bots only half play the web.** They do score a cheap cast on him higher, but nothing in the planner holds energy back to blunt Sadist, and nothing chases collisions against him. Human play may rate him higher or lower.
+- **Dials, if he stays low:** health 7 → 8, Leech Round's drain 2 → 3, or Sadist's cost 9 → 8. Each is a one-line change in `Revu.cs`.
+
+**Tuned by the designer the same day (2026-09-17):** health 7 → 8; Leech Round damage 1 → 2 and cooldown 2 → 1, so it can be cast every turn; Sadist cooldown 5 → 4. Bots sweep, 800 matches:
+
+| Bots against bots          | As built | Tuned |
+| -------------------------- | -------- | ----- |
+| Revú win share             | 21%      | 24%   |
+| Leech Round casts per match | 1.53    | 2.87  |
+| Sadist casts per match     | 0.88     | 0.88  |
+| Turns per seat             | 24.7     | 24.8  |
+
+- **Revú is now at 24%, inside noise of average.** Leech Round is cast almost twice as often. Sadist is unchanged, because energy limits it, not the cooldown.
+- **Everyone else, tuned:** Kurbyn 33%, Syla 33%, Javi 29%, Luka 25%, Lethe 25%, Sanity 24%, Nuetu 23%, Bouncer 23%, Kian 19%, Mimi 16%.
+- **The bottom is now Kian and Mimi alone**, both further down than before. Their buffs are the open item.
 
 ---
 
@@ -1499,3 +1577,5 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - 2026-09-17 — **Lethe added as §10.10**, complete (designer's numbers after a review of the handoff). HP 7, speed 1.0 with a permanent Hastened passive (flat cells, not the handoff's +0.5 speed, which the 2026-09-16 haste nerf retired). **Nano Cell** (1001; 4 / 4 / 4) combines a 99-point shield and a stun, each for 2 turns. **Catalyst** is an ally-only aura that grants haste within 2, not speed, so the missing ceiling is never tested. **Eris' Exploit** (1002; 6 / 4 / 3) is a radius-2 zone that bills each enemy N−1 per tick for two ticks. `AuraDefinition` gains a side and a haste flag; `AuraRules` resolves speed auras as strongest bonus plus strongest penalty, and answers `GrantsHaste`; `GameEngine` reads aura haste where a move starts and lists it in `ActiveStatusesOn`. ADR-0007 Amendment 1: crowd zones and zones without a status. Cell effects are keyed on source as well as cell and seat, and Bio-Link Rage's rider reads only Nuetu's own zones. Bots learned real shield pools, ally stuns and crowd zones. Bots sweep: Lethe 24%, turns per seat 28.2 → 26.9. §5.6, §5.9, §6.3, §9.1, §10, §12 amended.
 - 2026-09-17 — **Lifesteal added (§2.5); Vendetta drains** (designer). A damage effect can heal its caster for the health the hit actually removed, per hit, capped at the caster's maximum. Luka heals up to 3.3 expected per Vendetta. The bots value the drain by what Luka is missing. §10.9's heavy line corrected to "above 7".
 - 2026-09-17 — **Sanity burdened** (designer). New status Burdened (§5.16): −1 cell on a roll of 6 or less, −2 above, once per roll, never below 1 cell, cancelling against haste. Sanity moves to speed 1.0 with Burdened as his passive, so the §6.3 band has no exceptions and he is no longer immune to slows. `CombatConfig` gains `BurdenCellsAtOrBelowThreshold`, `BurdenCellsAboveThreshold` and `BurdenCellsFor`. The bots draft haste and burden passives at their average worth. A +1 damage package was measured and not adopted. Bots sweep: Sanity 21% → 27%, turns per seat 26.5 → 25.1. §5, §6.3, §10.8 amended.
+- 2026-09-17 — **Revú added as §10.11**, complete, from `OPERATOR_DRAFTS.md` §3, with the designer's rulings. **§3.3:** energy drain (destroyed) and pool-scaled damage (the target's seat, splash half); `EffectKind` gains `DrainEnergy` and `MissingEnergyDamage`, 17 in all, and `AbilityResolver` takes the players. **§5.17 Equilibrium:** a cast's instant damage is ×2 at cost ≤ 3 and ½ (at least 1) at cost ≥ 6, for every type, as pipeline step 0 (§2.1). `DamageInstance` carries `CastCost`, and `IDamageMitigation` gains `ScalesCastDamage`. The `EnergyDrained` event is new. Bots read Equilibrium and score drains and Sadist. The draft card shows a named passive in the free slot. Bots sweep: Revú 21%, turns per seat 25.1 → 24.7. §2.1, §3, §5, §9.1, §10 amended.
+- 2026-09-17 — **Revú tuned** (designer): health 7 → 8, Leech Round 1 → 2 damage and cooldown 2 → 1, Sadist cooldown 5 → 4. Bots sweep: Revú 21% → 24%, Leech Round 1.53 → 2.87 casts per match. §10.11 amended.

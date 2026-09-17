@@ -231,6 +231,32 @@ namespace NonaRoyale.Core.Abilities
         /// <c>Amount</c> carries the damage; <c>DamageType</c> the type. No
         /// radius, no status rider, no heavy rule — the payload is one number.
         /// </remarks>
-        Watch = 14
+        Watch = 14,
+
+        /// <summary>
+        /// Removes <c>Amount</c> energy from the primary target's seat pool,
+        /// down to zero. The energy is destroyed, not transferred (§3.3).
+        /// Revú's Leech Round.
+        /// </summary>
+        /// <remarks>
+        /// The first effect that reaches past an operator into a player. It
+        /// needs the seats, which the resolver takes at composition; a
+        /// resolver built without them refuses to run this kind.
+        /// </remarks>
+        DrainEnergy = 15,
+
+        /// <summary>
+        /// Damage that grows with how empty the primary target's seat pool is:
+        /// <c>floor((cap − pool) ÷ Amount)</c> to the target, and half of that
+        /// (rounded down) to enemies within <c>Radius</c> of it (§3.3). Revú's
+        /// Sadist.
+        /// </summary>
+        /// <remarks>
+        /// <b>One number, read at cast time from the target's seat</b>
+        /// (designer, 2026-09-17), so a player computes it as "one damage for
+        /// every 3 energy missing". A share of 0 is not dealt at all.
+        /// <c>Stacks</c> carries the splash divisor.
+        /// </remarks>
+        MissingEnergyDamage = 16
     }
 }

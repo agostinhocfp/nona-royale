@@ -1,5 +1,6 @@
 // Assets/_Project/Scripts/Core/Services/DamagePipeline.cs
 using System;
+using NonaRoyale.Core.Config;
 using NonaRoyale.Core.Model;
 using NonaRoyale.Core.Rng;
 
@@ -46,11 +47,13 @@ namespace NonaRoyale.Core.Services
 
         private readonly IDamageMitigation _mitigation;
         private readonly IRandom _random;
+        private readonly CombatConfig _config;
 
-        public DamagePipeline(IDamageMitigation mitigation, IRandom random)
+        public DamagePipeline(IDamageMitigation mitigation, IRandom random, CombatConfig config = null)
         {
             _mitigation = mitigation ?? throw new ArgumentNullException(nameof(mitigation));
             _random = random ?? throw new ArgumentNullException(nameof(random));
+            _config = config ?? CombatConfig.Default;
         }
 
         /// <summary>
@@ -60,6 +63,18 @@ namespace NonaRoyale.Core.Services
         public DamageResult Apply(OperatorState target, DamageInstance damage)
         {
             if (target == null) throw new ArgumentNullException(nameof(target));
+
+            // 0. Equilibrium (§5.17, 2026-09-17). Rescales a cast's hit by the
+            // ability's cost before anything else looks at it, every damage
+            // type included: it is a price on the caster's choice, not armour,
+            // so Atomic's "ignores mitigation" does not reach it. Only hits that
+            // carry a cast cost are touched.
+            if (damage.CastCost.HasValue && _mitigation.ScalesCastDamage(target))
+            {
+                damage = new DamageInstance(
+                    _config.EquilibriumScale(damage.CastCost.Value, damage.Amount),
+                    damage.Type, damage.SourceOperatorId, damage.SourceName, damage.CastCost);
+            }
 
             // Atomic ignores every mitigation layer (§2.2). Stated once, as an
             // explicit gate rather than as something each layer remembers to

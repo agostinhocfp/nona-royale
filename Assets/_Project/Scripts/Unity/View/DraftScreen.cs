@@ -795,6 +795,15 @@ namespace NonaRoyale.Unity.View
                         continue;
                     }
 
+                    // A named passive fills the slot the same way (Revú's Equilibrium).
+                    if (i == op.Abilities.Count && op.PassiveName != null)
+                    {
+                        var passiveName = UiKit.Label(line, op.PassiveName, 14f, UiTheme.Text);
+                        UiKit.Size(passiveName, flexibleWidth: 1f);
+                        UiKit.Label(line, "passive", 13f, UiTheme.TextDim, TextAlignmentOptions.MidlineRight);
+                        continue;
+                    }
+
                     UiKit.Label(line, "— not yet written —", 14f, UiTheme.TextOff);
                     continue;
                 }
@@ -975,7 +984,8 @@ namespace NonaRoyale.Unity.View
             {
                 // A passive's magnitude is a speed bonus (Kurbyn); Lethe's haste carries none.
                 string magnitude = op.PassiveMagnitude != 0.0 ? $" ({op.PassiveMagnitude:+0.0;-0.0} speed)" : "";
-                traits.Add($"passive {StatusPalette.Label(op.Passive.Value)}{magnitude}");
+                string passiveLabel = op.PassiveName ?? StatusPalette.Label(op.Passive.Value);
+                traits.Add($"passive {passiveLabel}{magnitude}");
             }
             if (op.Aura != null) traits.Add($"aura {op.Aura.Name}, radius {op.Aura.Radius}, {AuraReach(op.Aura)}");
 
@@ -996,7 +1006,7 @@ namespace NonaRoyale.Unity.View
                 Paragraph("description", ability.Description, UiTheme.TextDim, 14f);
             }
 
-            if (op.Abilities.Count + (op.Aura != null ? 1 : 0) < Roster.SquadSize)
+            if (op.Abilities.Count + (op.Aura != null || op.PassiveName != null ? 1 : 0) < Roster.SquadSize)
                 Paragraph("missing",
                     $"{op.Name} has {op.Abilities.Count} of {Roster.SquadSize} abilities; the rest are not written yet.",
                     UiTheme.Threat, 14f);

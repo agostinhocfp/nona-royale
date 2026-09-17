@@ -42,6 +42,10 @@ namespace NonaRoyale.Core.Tests.Damage
         }
 
         public bool BlocksTech(OperatorState target) => WardsTech;
+
+        public bool Balances;
+
+        public bool ScalesCastDamage(OperatorState target) => Balances;
     }
 
     [TestFixture]
@@ -68,6 +72,107 @@ namespace NonaRoyale.Core.Tests.Damage
 
         private static DamageInstance Tech(int amount) =>
             new DamageInstance(amount, DamageType.Tech, 99, "test");
+
+        // ── Equilibrium (§5.17, 2026-09-17) ──────────────────────────────
+
+        private static DamageInstance Cast(int amount, int cost, DamageType type = DamageType.Normal) =>
+            new DamageInstance(amount, type, 99, "test", castCost: cost);
+
+        [Test]
+        public void Equilibrium_DoublesACheapCast()
+        {
+            _mitigation.Balances = true;
+            var target = Assassin();
+
+            _pipeline.Apply(target, Cast(1, cost: 3));
+
+            Assert.That(target.Health, Is.EqualTo(4));
+        }
+
+        [Test]
+        public void Equilibrium_LeavesAMidCostCastAlone()
+        {
+            _mitigation.Balances = true;
+            var target = Assassin();
+
+            _pipeline.Apply(target, Cast(2, cost: 5));
+
+            Assert.That(target.Health, Is.EqualTo(4));
+        }
+
+        [Test]
+        public void Equilibrium_HalvesADearCast_RoundingDown_ButNeverToZero()
+        {
+            _mitigation.Balances = true;
+            var a = Assassin();
+            var b = Assassin();
+
+            _pipeline.Apply(a, Cast(3, cost: 6));
+            _pipeline.Apply(b, Cast(1, cost: 9));
+
+            Assert.That(a.Health, Is.EqualTo(5), "3 halves to 1");
+            Assert.That(b.Health, Is.EqualTo(5), "1 would halve to 0; half means at least 1");
+        }
+
+        [Test]
+        public void Equilibrium_ScalesAtomicToo()
+        {
+            // A price on the caster's choice, not armour.
+            _mitigation.Balances = true;
+            var target = Assassin();
+
+            _pipeline.Apply(target, Cast(4, cost: 6, DamageType.Atomic));
+
+            Assert.That(target.Health, Is.EqualTo(4));
+        }
+
+        [Test]
+        public void Equilibrium_RunsBeforeTheShield()
+        {
+            // A cheap 1 becomes 2, and the 1-point plate takes 1 of the 2.
+            _mitigation.Balances = true;
+            _mitigation.ShieldPool = 1;
+            var target = Assassin();
+
+            var result = _pipeline.Apply(target, Cast(1, cost: 3));
+
+            Assert.That(result.AmountMitigated, Is.EqualTo(1));
+            Assert.That(target.Health, Is.EqualTo(5));
+        }
+
+        [Test]
+        public void Equilibrium_IgnoresHitsWithNoCastCost()
+        {
+            // Collisions, ticks and devices resolving later carry no cost.
+            _mitigation.Balances = true;
+            var target = Assassin();
+
+            _pipeline.Apply(target, Normal(3));
+
+            Assert.That(target.Health, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void ACastCost_ChangesNothing_WithoutEquilibrium()
+        {
+            var target = Assassin();
+
+            _pipeline.Apply(target, Cast(1, cost: 3));
+
+            Assert.That(target.Health, Is.EqualTo(5));
+        }
+
+        [Test]
+        public void Equilibrium_TheDesignersBands()
+        {
+            var c = NonaRoyale.Core.Config.CombatConfig.Default;
+
+            Assert.That(c.EquilibriumCheapCostMax, Is.EqualTo(3));
+            Assert.That(c.EquilibriumDearCostMin, Is.EqualTo(6));
+            Assert.That(c.EquilibriumScale(4, 3), Is.EqualTo(3));
+            Assert.That(c.EquilibriumScale(9, 5), Is.EqualTo(2));
+            Assert.That(c.EquilibriumScale(9, 0), Is.EqualTo(0), "a hit of nothing stays nothing");
+        }
 
         // ── Tech (§2.2, §5.12) ───────────────────────────────────────────
 

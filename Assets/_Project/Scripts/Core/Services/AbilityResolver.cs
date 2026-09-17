@@ -46,6 +46,10 @@ namespace NonaRoyale.Core.Services
         private readonly DeferredCellEffects _cellEffects;
         private readonly DeferredOperatorEffects _operatorEffects;
         private readonly IRandom _random;
+        private readonly IReadOnlyList<PlayerState> _players;
+
+        /// <summary>The cost of the ability now resolving; null outside <see cref="Use"/>.</summary>
+        private int? _castCost;
 
         /// <summary>operator id → ability id → the owner-turn on which it becomes usable again.</summary>
         private readonly Dictionary<int, Dictionary<int, int>> _readyOn =
@@ -60,7 +64,8 @@ namespace NonaRoyale.Core.Services
             DamagePipeline damage,
             DeferredCellEffects cellEffects,
             DeferredOperatorEffects operatorEffects = null,
-            IRandom random = null)
+            IRandom random = null,
+            IReadOnlyList<PlayerState> players = null)
         {
             _map = map ?? throw new ArgumentNullException(nameof(map));
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
@@ -81,6 +86,10 @@ namespace NonaRoyale.Core.Services
             // effect with a crit chance ever reads it, so every fixture built
             // before Vendetta keeps its exact behaviour — and its dice stream.
             _random = random;
+
+            // Optional again: only the energy effects (§3.3) reach a seat, and
+            // they refuse to run without one rather than guessing.
+            _players = players;
         }
 
         /// <summary>Whether an ability is off cooldown for this operator.</summary>
@@ -310,28 +319,39 @@ namespace NonaRoyale.Core.Services
             PutOnCooldown(caster, ability);
 
             var outcomes = new List<EffectOutcome>();
-            foreach (var effect in ability.Effects)
+
+            // Hits dealt now carry the ability's cost, for Equilibrium (§5.17).
+            // Anything this cast leaves behind to resolve later never reads it.
+            _castCost = ability.EnergyCost;
+            try
             {
-                if (!AudienceAllows(effect.Audience, castMode)) continue;
-
-                // PaintCell is the one kind with no recipients at cast time, so
-                // it cannot go through RunEffect — every scope resolves to a list
-                // of operators, and this effect names a place instead. Routed
-                // here rather than given a fake scope, which would have made it
-                // silently do nothing.
-                if (effect.Kind == EffectKind.PaintCell)
+                foreach (var effect in ability.Effects)
                 {
-                    RunPaintCell(effect, caster, targetCell, outcomes);
-                    continue;
-                }
+                    if (!AudienceAllows(effect.Audience, castMode)) continue;
 
-                if (effect.Kind == EffectKind.DeployZone)
-                {
-                    RunDeployZone(effect, caster, targetCell, outcomes);
-                    continue;
-                }
+                    // PaintCell is the one kind with no recipients at cast time, so
+                    // it cannot go through RunEffect — every scope resolves to a list
+                    // of operators, and this effect names a place instead. Routed
+                    // here rather than given a fake scope, which would have made it
+                    // silently do nothing.
+                    if (effect.Kind == EffectKind.PaintCell)
+                    {
+                        RunPaintCell(effect, caster, targetCell, outcomes);
+                        continue;
+                    }
 
-                RunEffect(effect, caster, primaryTarget, allOperators, outcomes);
+                    if (effect.Kind == EffectKind.DeployZone)
+                    {
+                        RunDeployZone(effect, caster, targetCell, outcomes);
+                        continue;
+                    }
+
+                    RunEffect(effect, caster, primaryTarget, allOperators, outcomes);
+                }
+            }
+            finally
+            {
+                _castCost = null;
             }
 
             return AbilityResolution.Resolved(outcomes);
@@ -441,6 +461,14 @@ namespace NonaRoyale.Core.Services
 
                     case EffectKind.ProjectField:
                         RunProjectField(effect, caster, outcomes);
+                        break;
+
+                    case EffectKind.DrainEnergy:
+                        RunDrainEnergy(effect, recipient, outcomes);
+                        break;
+
+                    case EffectKind.MissingEnergyDamage:
+                        RunMissingEnergyDamage(effect, caster, recipient, allOperators, outcomes);
                         break;
                 }
             }
@@ -781,9 +809,76 @@ namespace NonaRoyale.Core.Services
             // health, around every mitigation layer (§2.3).
             DamageResult result = selfInflicted
                 ? _damage.ApplyToSelf(caster, amount)
-                : _damage.Apply(recipient, new DamageInstance(amount, effect.DamageType, caster.Id, cause));
+                : _damage.Apply(recipient, new DamageInstance(amount, effect.DamageType, caster.Id, cause, _castCost));
 
             return EffectOutcome.Damaged(recipient, result);
+        }
+
+        /// <summary>
+        /// Takes energy from the target's seat (§3.3). Destroyed, not
+        /// transferred.
+        /// </summary>
+        private void RunDrainEnergy(AbilityEffect effect, OperatorState recipient, List<EffectOutcome> outcomes)
+        {
+            var seat = SeatOf(recipient);
+            int taken = _energy.Drain(seat, effect.Amount);
+            outcomes.Add(EffectOutcome.EnergyDrained(recipient, taken));
+        }
+
+        /// <summary>
+        /// Sadist (§3.3): one damage for every <c>Amount</c> energy the
+        /// target's seat is missing from the cap, and half that to enemies
+        /// within <c>Radius</c> of it.
+        /// </summary>
+        /// <remarks>
+        /// <b>One figure, from the target's seat, read before any hit lands</b>
+        /// (designer, 2026-09-17). Splash victims take the same half whatever
+        /// their own pools hold. A share of 0 is not dealt: a zero instance
+        /// would still spend an evasion charge (§5.5).
+        ///
+        /// Both hits are cast hits, so Equilibrium reads the ability's cost on
+        /// each of them.
+        /// </remarks>
+        private void RunMissingEnergyDamage(
+            AbilityEffect effect, OperatorState caster, OperatorState target,
+            IReadOnlyList<OperatorState> allOperators, List<EffectOutcome> outcomes)
+        {
+            var seat = SeatOf(target);
+            int missing = Math.Max(0, _energy.Cap - seat.Energy);
+            int primary = missing / effect.Amount;
+            int splash = primary / Math.Max(1, effect.Stacks);
+
+            var splashed = effect.Radius > 0 && splash > 0
+                ? _targeting.EnemiesInArea(_targeting.CellOf(target), effect.Radius, caster.Owner, allOperators)
+                : null;
+
+            if (primary > 0)
+                outcomes.Add(Strike(effect, caster, target, primary));
+
+            if (splashed == null) return;
+
+            foreach (var victim in splashed)
+            {
+                if (ReferenceEquals(victim, target) || IsAlreadyDown(victim)) continue;
+                outcomes.Add(Strike(effect, caster, victim, splash));
+            }
+        }
+
+        /// <summary>A plain cast hit of a computed size. No crit, no bonus.</summary>
+        private EffectOutcome Strike(AbilityEffect effect, OperatorState caster, OperatorState recipient, int amount) =>
+            EffectOutcome.Damaged(recipient, _damage.Apply(recipient,
+                new DamageInstance(amount, effect.DamageType, caster.Id, AbilityCause, _castCost)));
+
+        private PlayerState SeatOf(OperatorState op)
+        {
+            if (_players == null)
+                throw new InvalidOperationException(
+                    "An energy effect needs the seats; build the resolver with the match's players.");
+
+            foreach (var player in _players)
+                if (player.Color == op.Owner) return player;
+
+            throw new InvalidOperationException($"No seat for {op.Owner}.");
         }
 
         /// <summary>
@@ -843,7 +938,7 @@ namespace NonaRoyale.Core.Services
             if (!belowThreshold)
             {
                 var dealt = _damage.Apply(recipient,
-                    new DamageInstance(effect.Amount, effect.DamageType, caster.Id, AbilityCause));
+                    new DamageInstance(effect.Amount, effect.DamageType, caster.Id, AbilityCause, _castCost));
                 return EffectOutcome.Damaged(recipient, dealt);
             }
 

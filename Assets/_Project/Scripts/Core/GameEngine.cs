@@ -874,6 +874,11 @@ namespace NonaRoyale.Core
                     events.Add(new FieldProjected(outcome.Recipient));
                     break;
 
+                case EffectOutcomeKind.EnergyDrained:
+                    events.Add(new EnergyDrained(outcome.Recipient.Owner, outcome.Amount,
+                        PlayerOf(outcome.Recipient.Owner)?.Energy ?? 0, caster));
+                    break;
+
                 // Placement again, with the caster as the subject: reported as
                 // a move from a progress to itself, exactly as a swap is,
                 // because the piece has already been placed and placement is
@@ -1347,6 +1352,13 @@ namespace NonaRoyale.Core
         /// </remarks>
         private bool IsHastenedNow(OperatorState op) =>
             _statuses.IsHastened(op) || _auras.GrantsHaste(op, _operators);
+
+        private PlayerState PlayerOf(PlayerColor color)
+        {
+            foreach (var player in _turns.Players)
+                if (player.Color == color) return player;
+            return null;
+        }
 
         private int HasteCellsUsed(OperatorState op) =>
             _hasteCellsUsed.TryGetValue(op.Id, out int used) ? used : 0;

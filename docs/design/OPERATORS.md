@@ -18,7 +18,7 @@ That divergence is the same failure that caused the project restart, one layer u
 
 ## Roster scope
 
-The pool is **ten operators**; each player fields **three per match**, distinct within a squad (`GDD.md` §2.2). **All ten are complete.** Mimi's Cryo Field, the last missing ability, landed 2026-09-16 (`COMBAT_SYSTEMS.md` §10.4), and Lethe joined complete on 2026-09-17 (§10.10). The tenth operator puts the pool past nine, which reopens the "Nona" question under Open items. **Kian and Nuetu have no entry in this file yet**; their kits are in §10.6 and §10.7, and their identities are unwritten.
+The pool is **eleven operators**; each player fields **three per match**, distinct within a squad (`GDD.md` §2.2). **All eleven are complete.** Mimi's Cryo Field, the last missing ability, landed 2026-09-16 (`COMBAT_SYSTEMS.md` §10.4), and Lethe and Revú joined complete on 2026-09-17 (§10.10, §10.11). The pool is now past nine, which reopens the "Nona" question under Open items. **Kian and Nuetu have no entry in this file yet**; their kits are in §10.6 and §10.7, and their identities are unwritten.
 
 A new operator must be expressible in the existing combat rules. One that needs a genuinely new _mechanic_ gets an amendment to `COMBAT_SYSTEMS.md` — never a special case inside its own stat block. That rule is what stops the roster from becoming nine sets of bespoke exceptions, and it has now fired twice in earnest: Mimi's coordinate swap forced a sixth effect kind and a rewrite of §7.4, and Javi's cleanse forced a seventh — the first that removes from the status registry rather than adding to it.
 
@@ -184,6 +184,20 @@ Read at the table: _the one who decides where everyone stands._
 
 **Complete and in the pool.** Her live kit is in `COMBAT_SYSTEMS.md` §10.10. **Catalyst** is also the provisional archetype tag, which makes an eighth label beside Brawler, Engineer and Duelist.
 
+### Revú — Loan Shark _(archetype label provisional)_
+
+Added 2026-09-17 from `OPERATOR_DRAFTS.md` §3, mechanics first. **Look, fiction and camp are unwritten.** A loan shark could plausibly work for the house or against it; that is a decision to take, not a default.
+
+The punishment web. Everything about him has a price tag. His passive makes cheap answers hit him twice as hard and expensive ones half as hard. His basic ability wounds a target and drains its side's energy. His ultimate hits harder the emptier the enemy's energy pool is. Every way to deal with him costs something, and the one free answer is to land on him with the dice.
+
+Read at the table: _the one who makes you pay to touch him._
+
+**Silhouette:** a three-pointed star, like a barbed hook. It is placeholder art: concave so it is never read as Syla's triangle, and three points against Luka's four, Kian's five and Lethe's six. He is not drawn as a ring, because the board already uses rings for targets, beacons and highlights.
+
+**Device, still to design.** The names point at a ledger or a hook: a round that "leeches", a collector's instrument for Sadist, and something that makes Equilibrium visible.
+
+**Complete and in the pool.** His live kit is in `COMBAT_SYSTEMS.md` §10.11. **Loan Shark** is the provisional role tag, a ninth label.
+
 ---
 
 ## Design constraints on future operators
@@ -215,4 +229,5 @@ Read at the table: _the one who decides where everyone stands._
 - [ ] Backstory and world placement — how the five connect to the casino, to each other, and to whoever runs the house.
 - [ ] Strengths, weaknesses, synergies, counters, playstyle notes per operator. Deferred to the balance pass; they are currently implied by the kits rather than stated.
 - [ ] Voice and naming conventions for the roster — "Nona" is nine, and the pool was nine until Lethe made it ten (2026-09-17). Whether the number is canon is undecided; if it is, the pool needs a rule (nine in the draft at a time, or a rename), not a quiet tenth.
+- [ ] **Write Revú**: look, fiction, device and camp.
 - [ ] **Write Lethe**: look, fiction, device and camp (house, contractor or neither). Pronoun is "she", per the designer's note on Catalyst (2026-09-17).

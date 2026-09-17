@@ -52,6 +52,8 @@ namespace NonaRoyale.Core.Tests.Collision
 
             /// <summary>Collision damage is Normal, so a tech ward never matters here.</summary>
             public bool BlocksTech(OperatorState target) => false;
+
+            public bool ScalesCastDamage(OperatorState target) => false;
         }
 
         [SetUp]

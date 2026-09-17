@@ -11,7 +11,8 @@ namespace NonaRoyale.Core.Model
     /// </summary>
     public readonly struct DamageInstance
     {
-        public DamageInstance(int amount, DamageType type, int sourceOperatorId, string sourceName)
+        public DamageInstance(int amount, DamageType type, int sourceOperatorId, string sourceName,
+            int? castCost = null)
         {
             if (amount < 0)
                 throw new ArgumentOutOfRangeException(nameof(amount), "Damage is never negative; healing is its own effect.");
@@ -20,6 +21,7 @@ namespace NonaRoyale.Core.Model
             Type = type;
             SourceOperatorId = sourceOperatorId;
             SourceName = sourceName ?? "unknown";
+            CastCost = castCost;
         }
 
         public int Amount { get; }
@@ -30,6 +32,14 @@ namespace NonaRoyale.Core.Model
 
         /// <summary>Human-readable source ("collision", "Ace Shards"). For events and logs, never for rules.</summary>
         public string SourceName { get; }
+
+        /// <summary>
+        /// The energy cost of the ability dealing this hit, when the hit lands
+        /// the moment that ability is used; null for everything else —
+        /// collisions, ticks, and devices resolving later. Read by Equilibrium
+        /// (§5.17).
+        /// </summary>
+        public int? CastCost { get; }
 
         public override string ToString() => $"{Amount} {Type} from {SourceName}";
     }

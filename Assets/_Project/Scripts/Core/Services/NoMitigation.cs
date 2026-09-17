@@ -28,5 +28,7 @@ namespace NonaRoyale.Core.Services
         public int AbsorbFrom(OperatorState target, int amount) => 0;
 
         public bool BlocksTech(OperatorState target) => false;
+
+        public bool ScalesCastDamage(OperatorState target) => false;
     }
 }

@@ -63,6 +63,23 @@ namespace NonaRoyale.Core.Events
         public override string ToString() => $"{Player} spends {Amount}";
     }
 
+    /// <summary>
+    /// A seat lost energy to an enemy ability (§3.3). Revú's Leech Round.
+    /// </summary>
+    public sealed class EnergyDrained : IGameEvent
+    {
+        public EnergyDrained(PlayerColor player, int amount, int remaining, OperatorState source)
+        {
+            Player = player; Amount = amount; Remaining = remaining; Source = source;
+        }
+        public PlayerColor Player { get; }
+        public int Amount { get; }
+        public int Remaining { get; }
+        public OperatorState Source { get; }
+        public override string ToString() =>
+            $"{Source?.Name} drains {Amount} energy from {Player} ({Remaining} left)";
+    }
+
     public sealed class OperatorDeployed : IGameEvent
     {
         public OperatorDeployed(OperatorState op, CellRef cell) { Operator = op; Cell = cell; }

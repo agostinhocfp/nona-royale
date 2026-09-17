@@ -152,7 +152,7 @@ namespace NonaRoyale.Core
             var clock = new MatchClock(players);
             var statuses = new StatusRegistry(clock, combatConfig);
             var energy = new EnergyLedger(energyConfig);
-            var damage = new DamagePipeline(statuses, random);
+            var damage = new DamagePipeline(statuses, random, combatConfig);
             var targeting = new TargetingRules(map, statuses);
             var movement = new MovementResolver(map, gameConfig);
             var collisions = new CollisionResolver(map, combatConfig, damage, movement);
@@ -169,7 +169,7 @@ namespace NonaRoyale.Core
             // with a crit chance draws from it, so a match without Luka rolls
             // exactly the dice it rolled before he existed.
             var abilities = new AbilityResolver(
-                map, clock, energy, statuses, targeting, damage, cellEffects, operatorEffects, random);
+                map, clock, energy, statuses, targeting, damage, cellEffects, operatorEffects, random, players);
             var auraRules = new AuraRules(targeting, auras);
 
 

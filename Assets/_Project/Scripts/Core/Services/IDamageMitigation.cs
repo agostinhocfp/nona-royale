@@ -64,5 +64,8 @@ namespace NonaRoyale.Core.Services
         /// evasion charge or any of a pool it paid for separately.
         /// </remarks>
         bool BlocksTech(OperatorState target);
+
+        /// <summary>Whether the target carries Equilibrium (§5.17).</summary>
+        bool ScalesCastDamage(OperatorState target);
     }
 }

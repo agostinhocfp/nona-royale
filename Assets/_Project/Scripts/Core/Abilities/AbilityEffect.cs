@@ -415,6 +415,40 @@ namespace NonaRoyale.Core.Abilities
         }
 
         /// <summary>
+        /// Removes energy from the primary target's seat (§3.3). Destroyed,
+        /// not transferred. Revú's Leech Round.
+        /// </summary>
+        public static AbilityEffect DrainEnergy(int amount, EffectAudience audience = EffectAudience.EnemyOnly)
+        {
+            if (amount < 1) throw new ArgumentOutOfRangeException(nameof(amount));
+
+            return new AbilityEffect(EffectKind.DrainEnergy, EffectScope.PrimaryTarget, audience,
+                amount, default, 0, default, 0, 0, 0, 0, 0, 0);
+        }
+
+        /// <summary>
+        /// One damage to the primary target for every <paramref name="energyPerDamage"/>
+        /// its seat is missing from the cap, and that figure divided by
+        /// <paramref name="splashDivisor"/> to enemies within
+        /// <paramref name="splashRadius"/> of it (§3.3). Revú's Sadist.
+        /// </summary>
+        /// <remarks>
+        /// Packed into the shared fields: Amount is the energy per damage
+        /// point, Radius the splash radius, Stacks the splash divisor.
+        /// </remarks>
+        public static AbilityEffect MissingEnergyDamage(
+            int energyPerDamage, int splashRadius, int splashDivisor, DamageType damageType,
+            EffectAudience audience = EffectAudience.EnemyOnly)
+        {
+            if (energyPerDamage < 1) throw new ArgumentOutOfRangeException(nameof(energyPerDamage));
+            if (splashRadius < 0) throw new ArgumentOutOfRangeException(nameof(splashRadius));
+            if (splashDivisor < 1) throw new ArgumentOutOfRangeException(nameof(splashDivisor));
+
+            return new AbilityEffect(EffectKind.MissingEnergyDamage, EffectScope.PrimaryTarget, audience,
+                energyPerDamage, damageType, splashRadius, default, 0, splashDivisor, 0, 0, 0, 0);
+        }
+
+        /// <summary>
         /// Caster and target exchange board cells. Placement, not movement — it
         /// collides with nothing and triggers nothing (§7.4).
         /// </summary>

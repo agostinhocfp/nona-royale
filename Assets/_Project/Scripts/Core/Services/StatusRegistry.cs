@@ -254,6 +254,9 @@ namespace NonaRoyale.Core.Services
         /// </summary>
         public bool IsBurdened(OperatorState op) => Has(op, StatusKind.Burdened);
 
+        /// <summary>Whether this operator carries Equilibrium — Revú's passive (§5.17).</summary>
+        public bool ScalesCastDamage(OperatorState target) => Has(target, StatusKind.Equilibrium);
+
         private static bool IsNotSpeed(StatusKind kind) =>
             kind == StatusKind.Shield || kind == StatusKind.Hastened || kind == StatusKind.Burdened;
 

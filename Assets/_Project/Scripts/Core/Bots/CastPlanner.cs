@@ -176,7 +176,7 @@ namespace NonaRoyale.Core.Bots
                         int amount = effect.Amount;
                         if (effect.BonusIfBleeding > 0 && board.Has(r, StatusKind.Bleed)) amount += effect.BonusIfBleeding;
 
-                        double hit = board.ExpectedHit(r, amount, effect.DamageType);
+                        double hit = board.ExpectedHit(r, amount, effect.DamageType, ability.EnergyCost);
                         if (r.Owner == own) defence -= SelfHarm(w, r, hit);
                         else
                         {
@@ -221,7 +221,7 @@ namespace NonaRoyale.Core.Bots
                     bool below = target.Health * effect.ExecuteDenominator < target.MaxHealth * effect.ExecuteNumerator;
                     offence += below
                         ? Kill(board, w, target)
-                        : Hit(board, w, target, board.ExpectedHit(target, effect.Amount, effect.DamageType));
+                        : Hit(board, w, target, board.ExpectedHit(target, effect.Amount, effect.DamageType, ability.EnergyCost));
                     break;
 
                 case EffectKind.PullToCaster:
@@ -296,6 +296,35 @@ namespace NonaRoyale.Core.Bots
                     offence += Hit(board, w, target, board.ExpectedHit(target, follow, effect.DamageType)) * w.DelayedDiscount;
                     break;
 
+                case EffectKind.DrainEnergy:
+                {
+                    if (target == null || target.Owner == own) break;
+                    int pool = board.SeatOf(target.Owner)?.Energy ?? 0;
+                    offence += Math.Min(effect.Amount, pool) * w.EnergyDenial;
+                    break;
+                }
+
+                case EffectKind.MissingEnergyDamage:
+                {
+                    // Sadist: one figure from the target's seat, half to the
+                    // enemies around it (§3.3).
+                    if (target == null || target.Owner == own || !board.OnLoop(target)) break;
+                    int pool = board.SeatOf(target.Owner)?.Energy ?? 0;
+                    int primary = Math.Max(0, board.Engine.EnergyCap - pool) / effect.Amount;
+                    int splash = primary / Math.Max(1, effect.Stacks);
+
+                    offence += Hit(board, w, target,
+                        board.ExpectedHit(target, primary, effect.DamageType, ability.EnergyCost));
+
+                    if (splash <= 0) break;
+                    foreach (var r in board.EnemiesNear(own, board.CellOf(target), effect.Radius))
+                    {
+                        if (r.Id == target.Id) continue;
+                        offence += Hit(board, w, r, board.ExpectedHit(r, splash, effect.DamageType, ability.EnergyCost));
+                    }
+                    break;
+                }
+
                 case EffectKind.DashToTarget:
                     // The dash itself is positional; its path damage is small and its
                     // real payload is the effects that follow it in the list.
@@ -349,7 +378,7 @@ namespace NonaRoyale.Core.Bots
             {
                 if (effect.Kind != EffectKind.Damage || effect.Scope == EffectScope.Caster) continue;
                 foreach (var r in Recipients(board, caster, target, effect))
-                    if (r.Id == recipient.Id) total += board.ExpectedHit(r, effect.Amount, effect.DamageType);
+                    if (r.Id == recipient.Id) total += board.ExpectedHit(r, effect.Amount, effect.DamageType, ability.EnergyCost);
             }
             return total;
         }

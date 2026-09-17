@@ -195,3 +195,10 @@ In setup, any seat can be HUMAN or CPU. CPU seats draft and play on their own, a
 - 2026-09-17 — **Sanity burdened** (`COMBAT_SYSTEMS.md` §5.16, §10.8). `DraftPicker.EffectiveSpeed` folds a haste or burden passive into speed at its average worth (±0.23), so a burdened Sanity no longer drafts as a plain 1.0 operator and a hastened Lethe no longer drafts as a plain one. Move scoring needed nothing: it reads the engine's previews, which already carry the burden.
   - **Bots sweep, 800 matches, adopted row:** Syla 32%, Kurbyn 30%, Sanity 27% (was 21%), Javi 26%, Luka 25%, Nuetu 25%, Bouncer 25%, Lethe 22%, Mimi 19%, Kian 19%. Turns per seat 26.5 → 25.1. Personalities: Runner 27%, Brawler 26%, Banker 22%.
   - **Measured and not adopted:** +1 damage alone (Sanity 24%), burden plus damage (31%), 0.75 speed plus damage (35%).
+- 2026-09-17 — **Revú taught to the bots** (`COMBAT_SYSTEMS.md` §10.11). Each change is pinned by `RevuBotTests` and mutation-checked:
+  - **`ExpectedHit` takes the cast's cost** and applies Equilibrium, so a cheap cast on a Revú scores double and a dear one half.
+  - **A drain is worth the energy it can actually take**, at the new `EnergyDenial` weight (0.5 per point).
+  - **Sadist is scored from the target's pool**, with the splash counted, and is worth nothing against a full pool.
+  - **Bots sweep, 800 matches:** Kurbyn 33%, Javi 31%, Syla 30%, Luka 27%, Nuetu 26%, Sanity 25%, Lethe 24%, Bouncer 21%, Revú 21%, Kian 20%, Mimi 17%. Turns per seat 25.1 → 24.7. Leech Round 1.53 casts per match, Sadist 0.88.
+  - **Not taught:** holding energy back to blunt Sadist, and going for collisions against him. Both are real counterplay, and the planner has no notion of either.
+- 2026-09-17 — **Revú tuned** (designer): health 8, Leech Round 2 damage with cooldown 1, Sadist cooldown 4. Bots sweep, 800 matches: Kurbyn 33%, Syla 33%, Javi 29%, Luka 25%, Lethe 25%, Revú 24% (was 21%), Sanity 24%, Nuetu 23%, Bouncer 23%, Kian 19%, Mimi 16%. Leech Round 2.87 casts per match (was 1.53). No bot change was needed.

@@ -105,6 +105,21 @@ namespace NonaRoyale.Core.Services
                 total: player.Energy);
         }
 
+        /// <summary>
+        /// Takes up to <paramref name="amount"/> from a pool and reports what
+        /// was actually taken (§3.3). Destroyed, not transferred, and never
+        /// below zero.
+        /// </summary>
+        public int Drain(PlayerState player, int amount)
+        {
+            if (player == null) throw new ArgumentNullException(nameof(player));
+            if (amount < 0) throw new ArgumentOutOfRangeException(nameof(amount));
+
+            int taken = Math.Min(amount, player.Energy);
+            player.SetEnergy(player.Energy - taken);
+            return taken;
+        }
+
         /// <summary>Whether the pool can cover a cost. Passives are free and never ask.</summary>
         public bool CanAfford(PlayerState player, int cost)
         {

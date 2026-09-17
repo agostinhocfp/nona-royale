@@ -30,7 +30,9 @@ namespace NonaRoyale.Core.Config
             int regenEveryTurns = 3,
             int regenAmount = 1,
             int burdenCellsAtOrBelowThreshold = 1,
-            int burdenCellsAboveThreshold = 2)
+            int burdenCellsAboveThreshold = 2,
+            int equilibriumCheapCostMax = 3,
+            int equilibriumDearCostMin = 6)
         {
             if (slowSpeedPenalty < 0) throw new ArgumentOutOfRangeException(nameof(slowSpeedPenalty));
             if (collisionDamage < 0) throw new ArgumentOutOfRangeException(nameof(collisionDamage));
@@ -61,6 +63,9 @@ namespace NonaRoyale.Core.Config
                 throw new ArgumentOutOfRangeException(nameof(burdenCellsAtOrBelowThreshold));
             if (burdenCellsAboveThreshold < 0)
                 throw new ArgumentOutOfRangeException(nameof(burdenCellsAboveThreshold));
+            if (equilibriumDearCostMin <= equilibriumCheapCostMax)
+                throw new ArgumentOutOfRangeException(nameof(equilibriumDearCostMin),
+                    "The dear band must start above the cheap one, or a cost would be both.");
 
             CollisionDamage = collisionDamage;
             EvasionChance = evasionChance;
@@ -78,6 +83,8 @@ namespace NonaRoyale.Core.Config
             RegenAmount = regenAmount;
             BurdenCellsAtOrBelowThreshold = burdenCellsAtOrBelowThreshold;
             BurdenCellsAboveThreshold = burdenCellsAboveThreshold;
+            EquilibriumCheapCostMax = equilibriumCheapCostMax;
+            EquilibriumDearCostMin = equilibriumDearCostMin;
         }
 
         /// <summary>
@@ -211,6 +218,30 @@ namespace NonaRoyale.Core.Config
         /// </summary>
         public int BurdenCellsFor(int rollTotal) =>
             rollTotal <= HasteRollThreshold ? BurdenCellsAtOrBelowThreshold : BurdenCellsAboveThreshold;
+
+        /// <summary>An ability costing this or less deals double to an Equilibrium holder (§5.17).</summary>
+        public int EquilibriumCheapCostMax { get; }
+
+        /// <summary>An ability costing this or more deals half, at least 1, to an Equilibrium holder.</summary>
+        public int EquilibriumDearCostMin { get; }
+
+        /// <summary>
+        /// What a cast hit of <paramref name="amount"/> from an ability costing
+        /// <paramref name="castCost"/> deals an Equilibrium holder (§5.17).
+        /// </summary>
+        /// <remarks>
+        /// <b>Half means at least 1 (designer, 2026-09-17).</b> Floored halves
+        /// turned every 1-damage blow from a dear ability — all of Vendetta,
+        /// Collision's rake — into nothing, which made Revú immune to whole
+        /// kits rather than priced against them. A hit of 0 stays 0.
+        /// </remarks>
+        public int EquilibriumScale(int castCost, int amount)
+        {
+            if (amount <= 0) return amount;
+            if (castCost <= EquilibriumCheapCostMax) return amount * 2;
+            if (castCost >= EquilibriumDearCostMin) return Math.Max(1, amount / 2);
+            return amount;
+        }
 
         /// <summary>
         /// How many of the squad's own turns the payout's haste lasts.

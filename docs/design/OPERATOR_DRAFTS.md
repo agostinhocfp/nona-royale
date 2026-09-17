@@ -1,7 +1,7 @@
 # Operator Drafts — Handoff Notes
 
 > Location in repo: `docs/design/OPERATOR_DRAFTS.md`
-> Status: **Draft — none of this is implemented.** Numbers are reasoned against
+> Status: **Draft.** Fuse and Ghost are not implemented. **Revú was built on 2026-09-17** (`COMBAT_SYSTEMS.md` §10.11), with the designer's rulings; his section below is kept as the design record, and the code wins any disagreement. Numbers are reasoned against
 > peers, not simulated. Each operator below shifts the draft RNG when added, so
 > no figure measured before them survives contact.
 > Conventions: costs in energy (cap 12, ~3.5/turn drip), ranges in track steps,
@@ -65,6 +65,8 @@ legal and funny, or refused?
 
 ## 3. Revú
 
+> **Implemented 2026-09-17** as `Revu.cs`, ids 1101–1102, then tuned the same day: health 8, Leech Round 2 damage with cooldown 1, Sadist cooldown 4. Rulings: Equilibrium reads instant hits only, its halves are at least 1, and it applies to Atomic; Sadist reads the target's seat and splashes half; Leech Round's energy is destroyed. The "4 HP" reasoning below predates the draft-health pass.
+
 **7 HP · speed 1.0 · the loan shark**
 
 The punishment web. His ultimate scales with what the enemy has _spent_, his
@@ -97,7 +99,7 @@ max roll one-shots another Revú (4 vs 4). Poetic or unacceptable?
 
 ## Implementation notes (all three)
 
-- **Ability ids:** Fuse #9 (901–903), Ghost #10 (1001–1003), Revú #11
+- **Ability ids (stale):** Luka took 901–903 and Lethe took 1001–1002, so Fuse and Ghost need new numbers when they are built. The plan was Fuse #9 (901–903), Ghost #10 (1001–1003), Revú #11
   (1101–1103), per the operatorNumber × 100 + slot scheme.
 - **New machinery total:** on-death trigger; self-neutralize; energy
   drain/transfer; cost-modifier status; pool swap; pool-scaled damage;

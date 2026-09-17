@@ -35,7 +35,8 @@ namespace NonaRoyale.Core.Abilities
             IReadOnlyList<AbilityDefinition> abilities,
             AuraDefinition aura = null,
             StatusKind? passive = null,
-            double passiveMagnitude = 0.0)
+            double passiveMagnitude = 0.0,
+            string passiveName = null)
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("An operator needs a name.", nameof(name));
@@ -53,6 +54,7 @@ namespace NonaRoyale.Core.Abilities
             Aura = aura;
             Passive = passive;
             PassiveMagnitude = passiveMagnitude;
+            PassiveName = passiveName;
         }
 
         public string Name { get; }
@@ -71,6 +73,14 @@ namespace NonaRoyale.Core.Abilities
 
         /// <summary>The passive's magnitude — a speed bonus for Evasive Protocol.</summary>
         public double PassiveMagnitude { get; }
+
+        /// <summary>
+        /// The passive's name when it fills a kit slot (Revú's Equilibrium), or
+        /// null when it is an attribute rather than a named ability (Kurbyn's
+        /// evasion, Lethe's haste, Sanity's burden). The draft card shows a
+        /// named passive in the line after the abilities.
+        /// </summary>
+        public string PassiveName { get; }
 
         public override string ToString() =>
             $"{Name} (hp {MaxHealth}, speed {BaseSpeed:0.0}, {Abilities.Count} abilities)";

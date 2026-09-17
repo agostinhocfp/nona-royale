@@ -226,8 +226,15 @@ namespace NonaRoyale.Core.Bots
         /// (COMBAT_SYSTEMS §2): Atomic ignores everything, a tech ward stops
         /// Tech, a shield subtracts, evasion may negate Normal.
         /// </summary>
-        public double ExpectedHit(OperatorState target, int amount, DamageType type)
+        /// <param name="castCost">
+        /// The ability's cost for a hit that lands as it is cast, so
+        /// Equilibrium can rescale it (§5.17); null for anything else.
+        /// </param>
+        public double ExpectedHit(OperatorState target, int amount, DamageType type, int? castCost = null)
         {
+            if (castCost.HasValue && Has(target, StatusKind.Equilibrium))
+                amount = Combat.EquilibriumScale(castCost.Value, amount);
+
             if (amount <= 0) return 0.0;
             if (type == DamageType.Atomic) return amount;
             if (type == DamageType.Tech && Has(target, StatusKind.TechWard)) return 0.0;
@@ -268,6 +275,10 @@ namespace NonaRoyale.Core.Bots
                         break;
                     case EffectKind.AttachCharge:
                         total += effect.Amount + effect.Stacks;
+                        break;
+                    case EffectKind.MissingEnergyDamage:
+                        // Its most, against an empty pool.
+                        total += EnergyConfig.Default.EnergyCap / effect.Amount;
                         break;
                     case EffectKind.DashToTarget:
                         total += effect.Amount;

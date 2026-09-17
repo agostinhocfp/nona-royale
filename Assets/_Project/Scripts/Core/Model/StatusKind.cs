@@ -137,6 +137,20 @@ namespace NonaRoyale.Core.Model
         /// speed formula, so it stays countable and skips the speed channel.
         /// A holder that is also hastened collects both, and they cancel.
         /// </remarks>
-        Burdened = 13
+        Burdened = 13,
+
+        /// <summary>
+        /// Damage an ability deals the holder at the moment it is used is
+        /// scaled by that ability's cost: 3 or less doubles it, 6 or more
+        /// halves it (at least 1), 4–5 leaves it alone (§5.17). Revú's
+        /// passive.
+        /// </summary>
+        /// <remarks>
+        /// <b>A price rule, not armour.</b> It applies to every damage type,
+        /// Atomic included, and before every mitigation layer. Anything that
+        /// lands later — zones, beacons, charges, follow-ups, fields, watches —
+        /// and collisions, bleed and marks are not casts and pass untouched.
+        /// </remarks>
+        Equilibrium = 14
     }
 }

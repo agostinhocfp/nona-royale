@@ -56,7 +56,8 @@ namespace NonaRoyale.Core.Abilities
             Nuetu.Definition,
             Sanity.Definition,
             Luka.Definition,
-            Lethe.Definition
+            Lethe.Definition,
+            Revu.Definition
         };
 
         /// <summary>The alpha three, in order. What every sweep and test measured.</summary>
@@ -87,7 +88,7 @@ namespace NonaRoyale.Core.Abilities
         /// <b>Distinct within a seat, duplicated freely across seats.</b> Three
         /// Bouncers on one side is a legitimate configuration to measure but a
         /// poor one to play against while the roster is this small, and with
-        /// ten operators and four seats no rule could give every seat a unique
+        /// eleven operators and four seats no rule could give every seat a unique
         /// squad anyway. The GDD's draft rules are open (§2.2); this is the
         /// simplest thing that produces varied matches.
         ///
@@ -107,7 +108,8 @@ namespace NonaRoyale.Core.Abilities
         /// <b>The pool is complete.</b> Mimi's Cryo Field and Kurbyn's
         /// Predator's Read both landed on 2026-09-16, and Lethe (2026-09-17)
         /// arrived whole, so every operator draws with its full kit — three
-        /// abilities, or two and an aura for Bouncer and Lethe. A sweep run
+        /// abilities, or two and an aura for Bouncer and Lethe, or two and a named
+        /// passive for Revú (2026-09-17). A sweep run
         /// now measures the roster as designed, and adding Lethe moved every
         /// seed's draft, so no sweep before her compares with one after.
         /// </remarks>

@@ -135,7 +135,15 @@ namespace NonaRoyale.Core.Services
         /// stand still — and the view has to say which.
         /// <see cref="EffectOutcome.Recipient"/> is the watched operator.
         /// </remarks>
-        WatchMarked = 14
+        WatchMarked = 14,
+
+        /// <summary>
+        /// Energy taken from a seat (§3.3). <see cref="EffectOutcome.Recipient"/>
+        /// is the operator targeted, whose seat paid; <see cref="EffectOutcome.Amount"/>
+        /// is what was actually taken. Emitted even when that is 0, so the view
+        /// can say the pool was already dry.
+        /// </summary>
+        EnergyDrained = 15
     }
 
     /// <summary>
@@ -235,6 +243,9 @@ namespace NonaRoyale.Core.Services
         /// <summary>A watch set on <paramref name="target"/>, which is now watched (§6.7).</summary>
         public static EffectOutcome WatchMarked(OperatorState target) =>
             new EffectOutcome(EffectOutcomeKind.WatchMarked, target, default, 0, default, 0, 0);
+
+        public static EffectOutcome EnergyDrained(OperatorState recipient, int amount) =>
+            new EffectOutcome(EffectOutcomeKind.EnergyDrained, recipient, default, amount, default, 0, 0);
 
         public static EffectOutcome Executed(OperatorState recipient) =>
             new EffectOutcome(EffectOutcomeKind.Executed, recipient, default, 0, default, 0, 0);

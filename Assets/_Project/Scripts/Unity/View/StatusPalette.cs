@@ -38,6 +38,7 @@ namespace NonaRoyale.Unity.View
                 case StatusKind.CryoField: return new Color(0.60f, 0.90f, 0.95f);     // pale ice, a carried chill
                 case StatusKind.Watched: return new Color(0.75f, 0.55f, 0.95f);       // pale violet, a read pending
                 case StatusKind.Burdened: return new Color(0.62f, 0.52f, 0.40f);      // dull bronze, weighed down
+                case StatusKind.Equilibrium: return new Color(0.85f, 0.72f, 0.35f);   // coin gold, a price on everything
                 default: return new Color(0.65f, 0.65f, 0.68f);
             }
         }
@@ -71,6 +72,7 @@ namespace NonaRoyale.Unity.View
                 case StatusKind.CryoField: return "CRYO";
                 case StatusKind.Watched: return "WATCHED";
                 case StatusKind.Burdened: return "BURDEN";
+                case StatusKind.Equilibrium: return "BALANCE";
                 default: return kind.ToString().ToUpperInvariant();
             }
         }
