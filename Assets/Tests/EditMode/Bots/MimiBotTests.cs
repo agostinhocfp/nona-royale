@@ -58,13 +58,16 @@ namespace NonaRoyale.Core.Tests.Bots
         [Test]
         public void TheDesignersNumbers()
         {
-            // 2026-09-17: both of her 6-cost casts down to 4.
+            // 2026-09-17, pass one: both of her 6-cost casts down to 4.
+            // Pass two: +1 health, Cryo Field tick 1 → 2, radius 2 → 3.
+            Assert.That(Mimi.MaxHealth, Is.EqualTo(7));
             Assert.That(Mimi.CryoPulse.EnergyCost, Is.EqualTo(4));
             Assert.That(Mimi.CryoField.EnergyCost, Is.EqualTo(4));
             Assert.That(Mimi.Translocation.EnergyCost, Is.EqualTo(3));
             Assert.That(Mimi.CryoField.Range, Is.EqualTo(0), "centred on herself");
             Assert.That(Mimi.CryoField.Effects[0].Radius, Is.EqualTo(Mimi.CryoFieldRadius));
-            Assert.That(Mimi.CryoFieldRadius, Is.EqualTo(2));
+            Assert.That(Mimi.CryoFieldRadius, Is.EqualTo(3));
+            Assert.That(Mimi.CryoFieldTickDamage, Is.EqualTo(2));
         }
 
         [Test]
@@ -82,7 +85,7 @@ namespace NonaRoyale.Core.Tests.Bots
             Place(_foes[1], 12);
             double two = CryoFieldOffence();
 
-            Place(_foes[2], 13);   // three away: outside the field
+            Place(_foes[2], 14);   // four away: outside the field
             double stillTwo = CryoFieldOffence();
 
             Assert.That(one, Is.GreaterThan(0.0));

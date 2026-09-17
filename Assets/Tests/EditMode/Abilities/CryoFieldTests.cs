@@ -53,12 +53,12 @@ namespace NonaRoyale.Core.Tests.Abilities
                 _map, _clock, _energy, _statuses, _targeting, _damage, _cellEffects, _operatorEffects);
 
             // Positions are stated as TRACK cells, never progress. Mimi at 10,
-            // her ally at 11 (inside the field, friendly), an enemy at 12 (at
-            // the field's edge, radius 2) and one at 13 (one step past it).
+            // her ally at 11 (inside the field, friendly), an enemy at 13 (at
+            // the field's edge, radius 3) and one at 14 (one step past it).
             _mimi = AtTrack(1, "Mimi", PlayerColor.Red, Mimi.MaxHealth, 10);
             _ally = AtTrack(2, "Ally", PlayerColor.Red, 6, 11);
-            _near = AtTrack(3, "Near", PlayerColor.Blue, 6, 12);
-            _far = AtTrack(4, "Far", PlayerColor.Blue, 6, 13);
+            _near = AtTrack(3, "Near", PlayerColor.Blue, 6, 13);
+            _far = AtTrack(4, "Far", PlayerColor.Blue, 6, 14);
 
             _red = new PlayerState(PlayerColor.Red, new[] { _mimi, _ally });
             _blue = new PlayerState(PlayerColor.Blue, new[] { _near, _far });
@@ -156,7 +156,7 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(fired.Count, Is.EqualTo(1));
             Assert.That(fired[0].Cause, Is.EqualTo(DeferredOperatorEffects.FieldCause));
             Assert.That(fired[0].Cell, Is.EqualTo(CellRef.Track(10)), "centred on where she stands");
-            Assert.That(_near.Health, Is.EqualTo(5), "1 Normal at the field's edge");
+            Assert.That(_near.Health, Is.EqualTo(4), "2 Normal at the field's edge");
             Assert.That(_far.Health, Is.EqualTo(6), "one step past the radius");
         }
 
@@ -170,14 +170,14 @@ namespace NonaRoyale.Core.Tests.Abilities
 
             AdvanceToHerNextUpkeep();
             Fire();
-            Assert.That(_near.Health, Is.EqualTo(5), "first tick");
+            Assert.That(_near.Health, Is.EqualTo(4), "first tick");
             EndHerTurn();
             Assert.That(_statuses.Has(_mimi, StatusKind.CryoField), Is.True,
                 "still standing after her first ticked turn");
 
             AdvanceToHerNextUpkeep();
             Fire();
-            Assert.That(_near.Health, Is.EqualTo(4), "second tick");
+            Assert.That(_near.Health, Is.EqualTo(2), "second tick");
             EndHerTurn();
             Assert.That(_statuses.Has(_mimi, StatusKind.CryoField), Is.False,
                 "the marker expires at the end of the second ticked turn");
@@ -187,7 +187,7 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(fired, Is.Empty, "a third upkeep finds no field");
             Assert.That(_operatorEffects.HasFieldOn(_mimi, PlayerColor.Red), Is.False,
                 "and the pending entry is retired with it");
-            Assert.That(_near.Health, Is.EqualTo(4), "no third tick");
+            Assert.That(_near.Health, Is.EqualTo(2), "no third tick");
         }
 
         [Test]
@@ -204,7 +204,7 @@ namespace NonaRoyale.Core.Tests.Abilities
             var fired = Fire();
 
             Assert.That(fired[0].Cell, Is.EqualTo(CellRef.Track(20)), "the field moved with her");
-            Assert.That(_far.Health, Is.EqualTo(5), "near her new cell");
+            Assert.That(_far.Health, Is.EqualTo(4), "near her new cell");
             Assert.That(_near.Health, Is.EqualTo(6), "left behind, out of the cold");
         }
 
@@ -216,7 +216,7 @@ namespace NonaRoyale.Core.Tests.Abilities
             AdvanceToHerNextUpkeep();
             Fire();
 
-            Assert.That(_near.Health, Is.EqualTo(5), "an enemy at the radius edge is caught");
+            Assert.That(_near.Health, Is.EqualTo(4), "an enemy at the radius edge is caught");
             Assert.That(_far.Health, Is.EqualTo(6), "an enemy past it is not");
             Assert.That(_ally.Health, Is.EqualTo(6), "the field is an enemy weapon");
             Assert.That(_mimi.Health, Is.EqualTo(Mimi.MaxHealth), "and never bites its carrier");
@@ -238,7 +238,7 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(fired[0].Damage.Count, Is.EqualTo(1));
             Assert.That(fired[0].Damage[0].Outcome, Is.EqualTo(DamageOutcome.Absorbed));
             Assert.That(_near.Health, Is.EqualTo(6), "the pool ate the whole tick");
-            Assert.That(_statuses.ShieldPool(_near), Is.EqualTo(1), "and paid a point for it");
+            Assert.That(_statuses.ShieldPool(_near), Is.EqualTo(0), "and paid both points for it");
         }
 
         [Test]

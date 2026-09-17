@@ -32,7 +32,7 @@ Healing exists in two places and they are deliberately different. Bouncer's All-
 
 The old `[Range(3, 9)]` cap on `Operator.maxHealth` is **dead**. The stat is unbounded in the core; presentation-layer sliders, if any, use 3–15. Since the +1 below, Bouncer and Sanity at 10 sit just above that old cap, which is also no rule.
 
-**Roster-wide +1 health (2026-09-16, designer).** Every operator gained one: the common figure is 7, Mimi is 6, Bouncer and Sanity are 10. The reason is match length. Knockouts drive it (§12), and more health means fewer knockouts. Shipped together with the regen amendment (§5.11).
+**Roster-wide +1 health (2026-09-16, designer).** Every operator gained one: the common figure is 7 (Mimi as well, since the 2026-09-17 buff in §10.4), Bouncer and Sanity are 10. The reason is match length. Knockouts drive it (§12), and more health means fewer knockouts. Shipped together with the regen amendment (§5.11).
 
 - **What moved with it:** Luka's heavy line went 6 → 7 (§2.4), so "heavy" still means the two tanks and not most of the roster.
 - **What did not:** damage, collision damage (3), the mark (2 a turn) and the execute threshold (a ratio, so it scales on its own). A 7-health operator now survives two collisions, and a full mark leaves it at 3 rather than 2.
@@ -786,14 +786,14 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 ### 10.4 Mimi — Controller
 
-**HP 6 · Speed 1.0× · Complete — all three abilities implemented since 2026-09-16**
+**HP 7 · Speed 1.0× · Complete — all three abilities implemented since 2026-09-16**
 
 > Her direct damage is **Tech** (2026-09-15, §2.2); Cryo Field is a self-centred emission and stays **Normal** under the same rule, so a warded Luka no longer shuts her out (§5.12). Her old identity as the anti-shield operator is still unexpressed — nothing amplifies Tech yet.
 
 | #   | Ability           | Type   | Cost | CD  | Range                                          | Effect                                                                                                         |
 | --- | ----------------- | ------ | ---- | --- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | 1   | **Cryo-Pulse**    | Active | 4    | 3   | 3 (AOE radius 2, target-origin, **inclusive**) | **2 Tech** to every enemy in the window, the target included; applies **1 Bleed** and **Slow 1 turn** to each. |
-| 2   | **Cryo Field**    | Active | 4    | 3   | self (AOE radius 2, self-origin, **2 ticks**)  | **1 Normal** to every enemy within 2 of her **current** cell, at each of her next **two upkeeps** (§5.14, §6.6). Ends early if cleansed or if she is neutralized. |
+| 2   | **Cryo Field**    | Active | 4    | 3   | self (AOE radius 3, self-origin, **2 ticks**)  | **2 Normal** to every enemy within 3 of her **current** cell, at each of her next **two upkeeps** (§5.14, §6.6). Ends early if cleansed or if she is neutralized. |
 | 3   | **Translocation** | Active | 3    | 4   | 6                                              | **Swap** cells with the target, ally or enemy. Placement — collides with nothing, triggers nothing (§7.4).     |
 
 **Both 6-cost casts cut to 4 (designer, 2026-09-17).** She was last in the bots sweep at 16%. The price came down; the payloads did not change. Cryo Field's range 0 means it is centred on herself: it bills every enemy within 2 of her, five cells. The same pass taught the bots to cast Cryo Field. The planner had no scoring for a self-centred field, so it had been cast 0.00 times a match.
@@ -809,9 +809,22 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 - **Adopted row, everyone:** Kurbyn 32%, Javi 32%, Syla 31%, Sanity 26%, Nuetu 25%, Luka 24%, Revú 24%, Bouncer 22%, Lethe 20%, Mimi 20%, Kian 19%.
 - **Lethe fell from 25% to 20%**, about three standard errors, more than noise usually explains. A cheaper Cryo Field punishes exactly the tight squad Catalyst asks for. Watch it before touching either.
 
-**Five health is what prices her kit.** She is the only operator below 6, and she moves at the tank's speed, so she cannot run from anything. Ace Shards into a bleeding-bonus From the Hip kills her; so does Dargin Pulse into a collision — two-ability sequences every other operator survives.
+**Buffed again the same day (designer, 2026-09-17, second pass).** Health 6 → 7 — the last operator below the roster's common figure — and Cryo Field's payload up: tick 1 → 2, radius 2 → 3 (five cells to seven). She had sunk back to 17% in the same-day sweep, after the Kian buff and the bots learning Predator's Read. The "before" below is that sweep, with the Miracle Pull cooldown nerf already in the tree, so the delta is this pass alone.
 
-**Cryo Field's tick is 1 Normal, and the amount is a placeholder** — the design table left it blank and 1 is the smallest instrument in the game, which fits a zoning tool rather than a nuke. It is a named constant (`Mimi.CryoFieldTickDamage`) so tuning is a one-line edit. The timing likewise: a self-applied status counts the cast turn as its first (§5), so the marker's registry duration is 3 to yield the designed two ticks — cast during her action phase, it bills at her next two upkeeps and expires at the end of the second. **It follows her**: each tick is measured from where she stands then, which is the zoning the ability is for. It has never been simulated.
+| Bots against bots, 800 matches | Before | After   |
+| ------------------------------ | ------ | ------- |
+| Mimi win share                 | 17%    | **21%** |
+| Cryo Field casts per match     | 1.35   | 2.69    |
+| Cryo-Pulse casts per match     | 2.44   | 2.50    |
+| Turns per seat                 | 26.4   | 26.6    |
+
+- **+4 points, about 2.7 standard errors** — her first move clearly out of the noise. She leaves last place; the bottom is now Mimi, Bouncer and Lethe clustered at 21%.
+- **Everyone else, before → after:** Kurbyn 32% → 32%, Syla 30% → 31%, Javi 29% → 28%, Luka 26% → 25%, Sanity 25% → 25%, Nuetu 24% → 23%, Kian 24% → 23%, Revú 23% → 23%, Bouncer 23% → 21%, Lethe 22% → 21%. All within noise.
+- EditMode expectations pinned to the old numbers moved with it (radius-edge fixtures and tick arithmetic in `CryoFieldTests`, the designer's-numbers assertions in `MimiBotTests`); 679 passing.
+
+**Five health is what priced her kit until 2026-09-17.** She was the only operator below 6, and she moves at the tank's speed, so she cannot run from anything. Ace Shards into a bleeding-bonus From the Hip kills her; so does Dargin Pulse into a collision — two-ability sequences every other operator survives. _(Superseded 2026-09-17: she is 7 health now, the roster's common figure. Kept for the reasoning that priced the kit.)_
+
+**Cryo Field's tick is 1 Normal, and the amount is a placeholder** — the design table left it blank and 1 is the smallest instrument in the game, which fits a zoning tool rather than a nuke. It is a named constant (`Mimi.CryoFieldTickDamage`) so tuning is a one-line edit. The timing likewise: a self-applied status counts the cast turn as its first (§5), so the marker's registry duration is 3 to yield the designed two ticks — cast during her action phase, it bills at her next two upkeeps and expires at the end of the second. **It follows her**: each tick is measured from where she stands then, which is the zoning the ability is for. It has never been simulated. _(Dated: the tick is 2 Normal since 2026-09-17 — the placeholder is retired — and the radius is now 3. The field has been simulated since the bots' `ProjectField` branch, this same day's sweeps included.)_
 
 **Cryo-Pulse is unmeasured and possibly stronger than its peer.** Against Dargin Pulse it is the same cost, radius and damage, but it originates on a target three cells away rather than on the caster, and applies two statuses rather than one. For a 1.0-speed operator, remote origin is most of the game. It was 4 energy in the first draft and did more than either 6-cost area ability for two-thirds the price. The tier was a second objection at the time and is now abolished; the peer comparison was always the real one, so the price stands.
 
@@ -1640,3 +1653,4 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - 2026-09-17 — **Mimi repriced** (designer): Cryo-Pulse and Cryo Field 6 → 4. The bots learned to cast Cryo Field (a `ProjectField` scoring branch; it had been cast 0.00 times). Bots sweep: Mimi 16% → 20%, Lethe 25% → 20% (watch). §10.4 amended.
 - 2026-09-17 — **Kian buffed** (designer): Inversion Matrix 4 → 3 energy and 1 Normal → 2 Tech; Sonic Disrupter 4 → 3 energy, 2 Normal → 2 Tech, radius 2 → 3; Drone Strike 6 → 4 energy. The two emitters are Tech by designer exception to §2.2, so a warded Luka blocks all of Kian's damage. Bots sweep: Kian 19% → 23%, Mimi 20% → 18% (watch). §2.2, §10.6 and §13 amended.
 - 2026-09-17 — **Self-targeting settled: per-ability opt-in** (designer). §10's cast-mode rule made every friendly mode reachable by its own caster, and blanket self-cast was rejected on that ground — All-In Mauling's friendly mode is a heal, and Bouncer self-sustaining was never intended. `AbilityDefinition` gains `allowsSelfTarget`; the resolver excludes the caster from `LegalTargets` unless it is set and refuses a self-aimed cast without it (`TargetingVerdict.CannotTargetSelf`, costing nothing); the UI filter that had been settling the question by omission is removed, so the board offers the caster's own piece exactly when the ability declares it. Four defensive abilities opt in: Javi's Nanite Infusion, Trauma Plate and Neural Purge, and Lethe's Nano Cell, whose self-bubble pays the stun as its price. Bots keep their no-self-cast policy. §10, §10.5, §10.10 amended. Tests +13 (`SelfTargetTests`).
+- 2026-09-17 — **Mimi buffed** (designer): health 6 → 7 (the roster's common figure at last), Cryo Field tick 1 → 2 and radius 2 → 3. Bots sweep, before/after on the same tree: Mimi 17% → 21% (+4, about 2.7 standard errors — out of the noise); Cryo Field 1.35 → 2.69 casts per match; no other operator moved more than 2 points. §1.1 and §10.4 amended; the EditMode expectations pinned to the old numbers (radius-edge fixtures and tick arithmetic in `CryoFieldTests`, the designer's-numbers assertions in `MimiBotTests`) moved with it, 679 passing.

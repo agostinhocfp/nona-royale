@@ -30,16 +30,18 @@ namespace NonaRoyale.Core.Abilities
     public static class Mimi
     {
         /// <summary>
-        /// Six, still the lowest on the roster: 5 plus the roster-wide +1 of 2026-09-16 (COMBAT_SYSTEMS
-        /// §1.1), which cut knockouts, and so match length, in the bots sweep.
+        /// Seven, the roster's common figure since 2026-09-17 (designer): 5 base, the roster-wide
+        /// +1 of 2026-09-16 (COMBAT_SYSTEMS §1.1), and +1 more in the pass that also raised Cryo
+        /// Field's tick and radius (§10.4). She was the sweep's last place at 6.
         /// </summary>
-        public const int MaxHealth = 6;
+        public const int MaxHealth = 7;
 
         /// <summary>
-        /// The only operator below 6 health, which is what prices her kit.
-        /// Concretely: Ace Shards into From the Hip kills her, and so does
-        /// Dargin Pulse into a collision — two-ability sequences every other
-        /// operator survives.
+        /// The tank's speed, so she cannot run from anything. Until 2026-09-17
+        /// she was also the only operator below 7 health, which is what priced
+        /// her kit: Ace Shards into From the Hip killed her, and so did Dargin
+        /// Pulse into a collision — two-ability sequences every other operator
+        /// survives.
         /// </summary>
         public const double Speed = 1.0;
 
@@ -180,10 +182,10 @@ namespace NonaRoyale.Core.Abilities
             });
 
         /// <summary>Per-tick field damage. Designer tuning flag — the design table left it blank.</summary>
-        public const int CryoFieldTickDamage = 1;
+        public const int CryoFieldTickDamage = 2;
 
         /// <summary>The field's reach in track steps, each way. The design row's radius.</summary>
-        public const int CryoFieldRadius = 2;
+        public const int CryoFieldRadius = 3;
 
         /// <summary>
         /// The marker's span in her own turns. 3, not the design row's 2: a
