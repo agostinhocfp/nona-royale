@@ -18,6 +18,11 @@ namespace NonaRoyale.Unity.View
     ///
     /// A subclass fills the card in <see cref="Compose"/> using the helpers
     /// below, and calls <see cref="Rebuild"/> whenever what it shows changes.
+    ///
+    /// <b>Transitions</b> (UI_MOTION.md increment U1): the scrim fades in,
+    /// the card rises a little, and its rows cascade; closing fades out.
+    /// A page swap inside the card gets a quick fade and settle from
+    /// <see cref="PlayPageTransition"/>.
     /// </remarks>
     public abstract class ModalCard : MonoBehaviour
     {
@@ -25,6 +30,9 @@ namespace NonaRoyale.Unity.View
 
         private RectTransform _root;
         private RectTransform _card;
+        private CanvasGroup _fader;
+        private CanvasGroup _cardFader;
+        private bool _closing;
 
         public bool IsOpen => _root != null && _root.gameObject.activeSelf;
 
@@ -63,6 +71,9 @@ namespace NonaRoyale.Unity.View
             column.padding.bottom = 30;
             _card.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
+            _fader = _root.gameObject.AddComponent<CanvasGroup>();
+            _cardFader = _card.gameObject.AddComponent<CanvasGroup>();
+
             _root.gameObject.SetActive(false);
         }
 
@@ -70,14 +81,34 @@ namespace NonaRoyale.Unity.View
         {
             if (_root == null) return;
 
+            _closing = false;
+            _fader.blocksRaycasts = true;
             _root.gameObject.SetActive(true);
             _root.SetAsLastSibling();
             Rebuild();
+
+            UiTween.FadeIn(_fader, 0.18f);
+            UiTween.SlideIn(_card, new Vector2(0f, -18f), 0.22f);
+            UiTween.StaggerIn(_card);
         }
 
         public virtual void Close()
         {
-            if (_root != null) _root.gameObject.SetActive(false);
+            if (_root == null || !IsOpen || _closing) return;
+
+            _closing = true;
+            _fader.blocksRaycasts = false;
+            UiTween.Fade(_fader, 0f, 0.12f,
+                done: () => { if (_root != null) _root.gameObject.SetActive(false); });
+        }
+
+        /// <summary>A quick fade and settle for a page swap inside the card (U1).</summary>
+        protected void PlayPageTransition()
+        {
+            if (_cardFader == null) return;
+
+            UiTween.FadeIn(_cardFader, 0.12f);
+            UiTween.ScaleIn(_card, 0.99f, 0.12f);
         }
 
         protected virtual void LateUpdate()
@@ -128,6 +159,7 @@ namespace NonaRoyale.Unity.View
         {
             var heading = UiKit.Caption(Slot("title", 46f), title, 34f, colour ?? UiTheme.GoldBright,
                 TextAlignmentOptions.Center);
+            UiFonts.ApplyDisplay(heading);
             heading.fontStyle = FontStyles.Bold;
             heading.characterSpacing = UiTheme.HeadingSpacing * 1.5f;
 

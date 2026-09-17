@@ -50,6 +50,9 @@ namespace NonaRoyale.Unity.View
         private string _shown;
         private System.Action _menuRequested;
 
+        /// <summary>The pool last shown, so newly lit pips can cascade (U2). -1 snaps without animating.</summary>
+        private int _pipBaseline = -1;
+
         private const int MaxPips = 20;
 
         /// <summary>
@@ -64,6 +67,7 @@ namespace NonaRoyale.Unity.View
             if (_rect != null)
             {
                 _shown = null;
+                _pipBaseline = -1;
                 return;
             }
 
@@ -184,10 +188,12 @@ namespace NonaRoyale.Unity.View
             SetPips(seat.Energy, engine.EnergyCap);
         }
 
-        /// <summary>One pip per point of the cap, lit up to the pool.</summary>
+        /// <summary>One pip per point of the cap, lit up to the pool. Gains cascade in (U2); losses snap.</summary>
         private void SetPips(int energy, int cap)
         {
             int shown = Mathf.Min(cap, MaxPips);
+            int before = _pipBaseline;
+            _pipBaseline = energy;
 
             for (int i = 0; i < MaxPips; i++)
             {
@@ -198,6 +204,11 @@ namespace NonaRoyale.Unity.View
                 pip.sprite = lit ? DecoSprites.Diamond : DecoSprites.DiamondOutline;
                 pip.color = lit ? UiTheme.Cyan : UiTheme.Line;
             }
+
+            if (before < 0 || energy <= before) return;
+
+            for (int i = before; i < energy && i < shown; i++)
+                UiPopIn.On(_pipImages[i].transform, 0.05f * (i - before));
         }
 
         /// <summary>The key legend, keys in gold.</summary>

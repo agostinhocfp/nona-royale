@@ -104,6 +104,14 @@ namespace NonaRoyale.Unity.View
         /// <summary>The same diamond as an outline, for an empty pip.</summary>
         public static Sprite DiamondOutline => _diamondOutline ?? (_diamondOutline = BuildDiamond(16, 24, 1.6f));
 
+        private static Sprite _panelSheen;
+
+        /// <summary>
+        /// A vertical falloff, strongest at the top: a panel's sheen
+        /// (UI_MOTION.md increment U4). Stretched simple, never sliced.
+        /// </summary>
+        public static Sprite PanelSheen => _panelSheen ?? (_panelSheen = BuildSheen(64));
+
         // ── Board (world space) ─────────────────────────────────────────
 
         private static Sprite _tileInlay, _ringThin, _glow;
@@ -274,6 +282,16 @@ namespace NonaRoyale.Unity.View
                 float t = Mathf.Clamp01(1f - r);
                 return t * t;
             }, size, Vector4.zero);
+        }
+
+        /// <summary>Top-lit vertical falloff: full at the top texel, gone by two thirds down.</summary>
+        private static Sprite BuildSheen(int size)
+        {
+            return Rasterize(2, size, (px, py) =>
+            {
+                float t = Mathf.Clamp01(py / size / 0.66f);
+                return (1f - t) * (1f - t);
+            }, HudPixelsPerUnit, Vector4.zero);
         }
 
         // ── Coverage ────────────────────────────────────────────────────

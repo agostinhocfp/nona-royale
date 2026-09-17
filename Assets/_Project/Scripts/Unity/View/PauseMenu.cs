@@ -41,9 +41,12 @@ namespace NonaRoyale.Unity.View
         private IPauseHost _host;
         private RectTransform _root;
         private RectTransform _card;
+        private CanvasGroup _fader;
+        private CanvasGroup _cardFader;
         private Page _page;
         private string _armed;
         private float _timeScale = 1f;
+        private bool _closing;
 
         public bool IsOpen => _root != null && _root.gameObject.activeSelf;
 
@@ -60,22 +63,31 @@ namespace NonaRoyale.Unity.View
 
             _page = Page.Main;
             _armed = null;
+            _closing = false;
 
             // A hit-stop (MO2) may have slowed the clock; resuming must never keep that.
             _timeScale = Time.timeScale >= 1f ? Time.timeScale : 1f;
             Time.timeScale = 0f;
 
+            _fader.blocksRaycasts = true;
             _root.gameObject.SetActive(true);
             _root.SetAsLastSibling();
             Rebuild();
+
+            UiTween.FadeIn(_fader, 0.18f);
+            UiTween.SlideIn(_card, new Vector2(0f, -18f), 0.22f);
+            UiTween.StaggerIn(_card);
         }
 
         public void Close()
         {
-            if (_root == null || !IsOpen) return;
+            if (_root == null || !IsOpen || _closing) return;
 
-            _root.gameObject.SetActive(false);
+            _closing = true;
+            _fader.blocksRaycasts = false;
             Time.timeScale = _timeScale > 0f ? _timeScale : 1f;
+            UiTween.Fade(_fader, 0f, 0.12f,
+                done: () => { if (_root != null) _root.gameObject.SetActive(false); });
         }
 
         /// <summary>Esc while open: a sub-page goes back a page, the main page resumes.</summary>
@@ -88,6 +100,7 @@ namespace NonaRoyale.Unity.View
                 _page = _page == Page.Settings ? Page.Main : Page.Settings;
                 _armed = null;
                 Rebuild();
+                PageTransition();
                 return;
             }
 
@@ -128,7 +141,17 @@ namespace NonaRoyale.Unity.View
             column.padding.bottom = 28;
             _card.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
+            _fader = _root.gameObject.AddComponent<CanvasGroup>();
+            _cardFader = _card.gameObject.AddComponent<CanvasGroup>();
+
             _root.gameObject.SetActive(false);
+        }
+
+        /// <summary>A quick fade and settle for a page swap inside the card (U1).</summary>
+        private void PageTransition()
+        {
+            UiTween.FadeIn(_cardFader, 0.12f);
+            UiTween.ScaleIn(_card, 0.99f, 0.12f);
         }
 
         private void Rebuild()
@@ -161,7 +184,7 @@ namespace NonaRoyale.Unity.View
             Space(4f);
 
             Choice("NEW MATCH", "", () => { Close(); _host?.OpenSetup(); });
-            Choice("SETTINGS", "", () => { _page = Page.Settings; _armed = null; Rebuild(); });
+            Choice("SETTINGS", "", () => { _page = Page.Settings; _armed = null; Rebuild(); PageTransition(); });
             Destructive("menu", "MAIN MENU", "Back to the title. This match is lost.", () => { Close(); _host?.MainMenu(); });
 
             Footer("Esc resumes");
@@ -172,8 +195,8 @@ namespace NonaRoyale.Unity.View
             Title("Settings", "Changes apply at once.");
 
             if (_host != null) SettingsRows.Build(Content, _host, Rebuild,
-                () => { _page = Page.Sound; Rebuild(); },
-                () => { _page = Page.Display; Rebuild(); });
+                () => { _page = Page.Sound; Rebuild(); PageTransition(); },
+                () => { _page = Page.Display; Rebuild(); PageTransition(); });
 
             Space(4f);
             Choice("BACK", "Esc", Back);
@@ -205,6 +228,7 @@ namespace NonaRoyale.Unity.View
         {
             var heading = UiKit.Label(Content("title"), title.ToUpperInvariant(), 34f, UiTheme.GoldBright,
                 TextAlignmentOptions.Center, bold: true);
+            UiFonts.ApplyDisplay(heading);
             heading.characterSpacing = UiTheme.HeadingSpacing * 1.5f;
             UiKit.Size(heading, height: 44f);
 

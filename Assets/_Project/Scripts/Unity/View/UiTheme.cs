@@ -81,6 +81,19 @@ namespace NonaRoyale.Unity.View
         /// <summary>Corner fans on floating cards: present, never loud (G3).</summary>
         public const float FanAlpha = 0.4f;
 
+        /// <summary>
+        /// A floating panel's elevation (UI_MOTION.md increment U4): two hard
+        /// offset shades under it, the far one larger and fainter, which reads
+        /// as one soft shadow. Elevation lives here, not in per-widget alphas.
+        /// </summary>
+        public static readonly Color PanelShadowNear = WithAlpha(Color.black, 0.30f);
+        public static readonly Color PanelShadowFar = WithAlpha(Color.black, 0.16f);
+        public static readonly Vector2 PanelShadowNearOffset = new Vector2(0f, -6f);
+        public static readonly Vector2 PanelShadowFarOffset = new Vector2(0f, -16f);
+
+        /// <summary>A whisper of light at a panel's top edge, so the fill is not dead flat (U4).</summary>
+        public static readonly Color PanelSheen = WithAlpha(Color.white, 0.045f);
+
         public static readonly Color ButtonFill = Hex("231B20");
         public static readonly Color ButtonOff = Hex("120E11");
 

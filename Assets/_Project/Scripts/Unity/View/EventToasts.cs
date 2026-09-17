@@ -114,6 +114,8 @@ namespace NonaRoyale.Unity.View
             group.blocksRaycasts = false;
             group.interactable = false;
 
+            UiPopIn.On(row);
+
             _toasts.Add(new Toast { Root = row.gameObject, Group = group });
 
             while (_toasts.Count > MaxToasts)

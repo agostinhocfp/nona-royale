@@ -95,6 +95,7 @@ namespace NonaRoyale.Unity.View
 
         private RectTransform _root;
         private RectTransform _frame;
+        private CanvasGroup _fader;
         private RectTransform _header;
         private RectTransform _grid;
         private GridLayoutGroup _gridLayout;
@@ -150,6 +151,9 @@ namespace NonaRoyale.Unity.View
             _root.gameObject.SetActive(true);
             _root.SetAsLastSibling();
             Rebuild();
+
+            UiTween.FadeIn(_fader, 0.2f);
+            UiTween.SlideIn(_frame, new Vector2(0f, -14f), 0.22f);
         }
 
         public void Close()
@@ -502,6 +506,7 @@ namespace NonaRoyale.Unity.View
             _root = UiKit.Rect("draft_screen", canvasRect);
             UiKit.Stretch(_root);
             UiKit.Fill(_root, UiTheme.WithAlpha(UiTheme.Obsidian, 0.94f), blocksPointer: true);
+            _fader = _root.gameObject.AddComponent<CanvasGroup>();
 
             _frame = UiKit.Rect("frame", _root);
             _frame.anchorMin = _frame.anchorMax = new Vector2(0.5f, 0.5f);
@@ -528,6 +533,7 @@ namespace NonaRoyale.Unity.View
 
             _clock = UiKit.Label(clockBox, "", 64f, UiTheme.GoldBright, TextAlignmentOptions.Center, bold: true);
             _clock.overflowMode = TextOverflowModes.Overflow;
+            UiFonts.ApplyDisplay(_clock);
             UiKit.Size(_clock, height: 76f);
             _clockCaption = UiKit.Label(clockBox, "", 12f, UiTheme.Heading, TextAlignmentOptions.Center, bold: true);
             _clockCaption.characterSpacing = UiTheme.HeadingSpacing;
@@ -621,6 +627,7 @@ namespace NonaRoyale.Unity.View
                 allPick ? "ALL PICK" : "SNAKE DRAFT", 36f, UiTheme.GoldBright, TextAlignmentOptions.MidlineLeft);
             title.fontStyle = FontStyles.Bold;
             title.characterSpacing = UiTheme.HeadingSpacing * 1.5f;
+            UiFonts.ApplyDisplay(title);
 
             UiKit.Caption(Content(_header, "subtitle", 24f), Subtitle(), UiTheme.FontBody, UiTheme.TextDim,
                 TextAlignmentOptions.MidlineLeft);

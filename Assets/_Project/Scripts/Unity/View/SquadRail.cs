@@ -57,6 +57,11 @@ namespace NonaRoyale.Unity.View
         private OperatorState _hovered;
         private readonly List<RowGlow> _rowGlows = new List<RowGlow>();
 
+        // The fraction each row's health bar last showed, so a hit or a heal
+        // glides from the old value instead of snapping (UI_MOTION.md U2).
+        // Keyed by the state object: rows are rebuilt, the operators are not.
+        private readonly Dictionary<OperatorState, float> _lastFractions = new Dictionary<OperatorState, float>();
+
         /// <summary>One operator row's hover wash, and whether selection already owns the row.</summary>
         private sealed class RowGlow
         {
@@ -68,6 +73,7 @@ namespace NonaRoyale.Unity.View
         public void Bind(RectTransform canvasRect, IControlPanelHost host)
         {
             _host = host;
+            _lastFractions.Clear();
             if (_rail == null) Build(canvasRect);
             _dirty = true;
         }
@@ -297,7 +303,15 @@ namespace NonaRoyale.Unity.View
 
             float fraction = (float)op.Health / Mathf.Max(1, op.MaxHealth);
             UiKit.Label(right, $"{op.Health}/{op.MaxHealth}", UiTheme.FontSmall, align: TextAlignmentOptions.MidlineRight, bold: true);
-            UiKit.Bar(right, fraction, Color.Lerp(UiTheme.Danger, seatColour, fraction), 64f, 5f);
+
+            // Build the bar at the last shown fraction and glide to the new
+            // one; a first sight starts at the truth (UI_MOTION.md U2).
+            bool seen = _lastFractions.TryGetValue(op, out float previous);
+            var fill = UiKit.Bar(right, seen ? previous : fraction,
+                Color.Lerp(UiTheme.Danger, seatColour, fraction), 64f, 5f);
+            if (seen && !Mathf.Approximately(previous, fraction))
+                UiKit.TweenBar(fill, previous, fraction, 0.35f, seatColour);
+            _lastFractions[op] = fraction;
         }
     }
 }

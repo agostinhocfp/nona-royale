@@ -705,6 +705,9 @@ namespace NonaRoyale.Unity.Composition
             _motion.ReducedMotion = reducedMotion;
             _motion.Speed = animationSpeed;
 
+            // The HUD's tweens read the same flag (UI_MOTION.md U1).
+            View.UiTween.ReducedMotion = reducedMotion;
+
             // Space hurries a CPU turn's animation as well as its thinking.
             _motion.Hurry = _match != null && CpuTurn && Input.GetKey(KeyCode.Space) ? HurrySpeed : 1f;
 

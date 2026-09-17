@@ -114,14 +114,44 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>
         /// A floating chamfered panel: raised fill, a gilt hairline frame,
-        /// and a small, dim fan in each corner.
+        /// and a small, dim fan in each corner. Elevated (U4): two offset
+        /// shades under it and a whisper of sheen across the top.
         /// </summary>
         public static Image Panel(RectTransform rect, bool blocksPointer, bool fans = true, Color? fill = null)
         {
             var body = Sliced(rect, DecoSprites.PanelFill, fill ?? UiTheme.PanelRaised, blocksPointer);
+            Elevate(body);
+            Sheen(rect);
             Overlay(rect, DecoSprites.PanelEdge, UiTheme.Line);
             if (fans) CornerFans(rect, UiTheme.WithAlpha(UiTheme.Gold, UiTheme.FanAlpha));
             return body;
+        }
+
+        /// <summary>
+        /// A panel's elevation (UI_MOTION.md increment U4): two hard offset
+        /// shades from the graphic's own silhouette, the far one larger and
+        /// fainter, which together read as one soft shadow.
+        /// </summary>
+        public static void Elevate(Graphic graphic)
+        {
+            var near = graphic.gameObject.AddComponent<Shadow>();
+            near.effectColor = UiTheme.PanelShadowNear;
+            near.effectDistance = UiTheme.PanelShadowNearOffset;
+
+            var far = graphic.gameObject.AddComponent<Shadow>();
+            far.effectColor = UiTheme.PanelShadowFar;
+            far.effectDistance = UiTheme.PanelShadowFarOffset;
+        }
+
+        /// <summary>A whisper of light across a panel's top, inset so the edge hairline stays crisp (U4).</summary>
+        private static void Sheen(RectTransform rect)
+        {
+            var child = Rect("sheen", rect);
+            Stretch(child, 3f);
+            Decoration(child);
+
+            var image = Fill(child, UiTheme.PanelSheen);
+            image.sprite = DecoSprites.PanelSheen;
         }
 
         /// <summary>A quarter sunburst in each of the rect's corners, opening inward.</summary>
@@ -325,8 +355,8 @@ namespace NonaRoyale.Unity.View
             return image;
         }
 
-        /// <summary>A horizontal bar filled to <paramref name="fraction"/>.</summary>
-        public static void Bar(Transform parent, float fraction, Color fill, float width, float height)
+        /// <summary>A horizontal bar filled to <paramref name="fraction"/>. Returns the fill, for <see cref="TweenBar"/>.</summary>
+        public static RectTransform Bar(Transform parent, float fraction, Color fill, float width, float height)
         {
             var back = Rect("bar", parent);
             Fill(back, UiTheme.Track);
@@ -338,6 +368,26 @@ namespace NonaRoyale.Unity.View
             front.anchorMax = new Vector2(Mathf.Clamp01(fraction), 1f);
             front.offsetMin = Vector2.zero;
             front.offsetMax = Vector2.zero;
+            return front;
+        }
+
+        /// <summary>
+        /// Glides a bar's fill from <paramref name="from"/> to
+        /// <paramref name="to"/> (UI_MOTION.md increment U2), its colour
+        /// following the fraction toward <paramref name="full"/>, the colour
+        /// the caller wants at full health.
+        /// </summary>
+        public static void TweenBar(RectTransform fill, float from, float to, float seconds, Color full)
+        {
+            if (fill == null) return;
+
+            var image = fill.GetComponent<Image>();
+            UiTween.Value(fill, from, to, seconds, v =>
+            {
+                float fraction = Mathf.Clamp01(v);
+                fill.anchorMax = new Vector2(fraction, 1f);
+                if (image != null) image.color = Color.Lerp(UiTheme.Danger, full, fraction);
+            });
         }
 
         /// <summary>
@@ -532,6 +582,8 @@ namespace NonaRoyale.Unity.View
                 changed?.Invoke(v);
             });
 
+            UiSliderFeel.Attach(track.gameObject, handle);
+
             return slider;
         }
 
@@ -621,6 +673,8 @@ namespace NonaRoyale.Unity.View
                 onClick?.Invoke();
                 afterClick?.Invoke();
             });
+
+            UiButtonFeel.Attach(button);
 
             // The caption ignores layout, so a button can also hold laid-out
             // content of its own (the squad rail's rows do).

@@ -61,9 +61,17 @@ namespace NonaRoyale.Unity.View
         /// <summary>The faces last shown, so a new roll pops in once rather than on every rebuild.</summary>
         private string _shownDice = "";
 
+        // The operator card's last bar fill, so a hit or a heal glides from
+        // the old value instead of snapping (UI_MOTION.md U2). One card shows
+        // one operator at a time, so a single remembered fraction is enough.
+        private OperatorState _barOperator;
+        private float _barFraction = -1f;
+
         public void Bind(RectTransform canvasRect, IControlPanelHost host)
         {
             _host = host;
+            _barOperator = null;
+            _barFraction = -1f;
             if (_tray == null) Build(canvasRect);
             _dirty = true;
         }
@@ -260,7 +268,17 @@ namespace NonaRoyale.Unity.View
             UiKit.Row(health, 8f);
             UiKit.Size(health, height: 20f);
             float fraction = (float)op.Health / Mathf.Max(1, op.MaxHealth);
-            UiKit.Bar(health, fraction, Color.Lerp(UiTheme.Danger, seatColour, fraction), 200f, 10f);
+
+            // Build the bar at the last shown fraction and glide to the new
+            // one; a first sight starts at the truth (UI_MOTION.md U2).
+            bool seen = ReferenceEquals(_barOperator, op) && _barFraction >= 0f;
+            var fill = UiKit.Bar(health, seen ? _barFraction : fraction,
+                Color.Lerp(UiTheme.Danger, seatColour, fraction), 200f, 10f);
+            if (seen && !Mathf.Approximately(_barFraction, fraction))
+                UiKit.TweenBar(fill, _barFraction, fraction, 0.35f, seatColour);
+            _barOperator = op;
+            _barFraction = fraction;
+
             UiKit.Label(health, $"<b>{op.Health}</b>/{op.MaxHealth}", UiTheme.FontBody);
 
             var tags = UiKit.Rect("statuses", card);

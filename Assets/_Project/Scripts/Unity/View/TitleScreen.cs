@@ -78,6 +78,7 @@ namespace NonaRoyale.Unity.View
             else if (_page == Page.Settings) _page = Page.Main;
             _quitArmed = false;
             Rebuild();
+            PlayPageTransition();
         }
 
         private void Play()
@@ -113,6 +114,7 @@ namespace NonaRoyale.Unity.View
         {
             var nona = UiKit.Caption(Slot("wordmark", 112f), "NONA", 108f, UiTheme.GoldBright,
                 TextAlignmentOptions.Center);
+            UiFonts.ApplyDisplay(nona);
             nona.fontStyle = FontStyles.Bold;
             nona.characterSpacing = 28f;
             nona.overflowMode = TextOverflowModes.Overflow;
@@ -125,6 +127,7 @@ namespace NonaRoyale.Unity.View
 
             Rule(line);
             var royale = UiKit.Label(line, "ROYALE", 30f, UiTheme.Gold, TextAlignmentOptions.Center, bold: true);
+            UiFonts.ApplyDisplay(royale);
             royale.characterSpacing = 42f;
             royale.overflowMode = TextOverflowModes.Overflow;
             UiKit.Fixed(royale, 250f, 40f);
@@ -160,7 +163,7 @@ namespace NonaRoyale.Unity.View
         private void MainPage()
         {
             Choice("PLAY", "Enter", Play, UiTheme.CyanDeep, UiTheme.Cyan);
-            Choice("SETTINGS", "", () => { _page = Page.Settings; _quitArmed = false; });
+            Choice("SETTINGS", "", () => { _page = Page.Settings; _quitArmed = false; PlayPageTransition(); });
 
             if (_quitArmed)
             {
@@ -180,8 +183,8 @@ namespace NonaRoyale.Unity.View
         {
             Heading("Settings");
             SettingsRows.Build(ColumnSlot, _host, Rebuild,
-                () => { _page = Page.Sound; Rebuild(); },
-                () => { _page = Page.Display; Rebuild(); });
+                () => { _page = Page.Sound; Rebuild(); PlayPageTransition(); },
+                () => { _page = Page.Display; Rebuild(); PlayPageTransition(); });
             Note("Remembered between sessions.", UiTheme.TextNote);
             Gap(6f);
             Choice("BACK", "Esc", Back);

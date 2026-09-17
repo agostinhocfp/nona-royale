@@ -89,8 +89,9 @@ namespace NonaRoyale.Unity.View
             }
 
             // ── The tally ──
-            TableRow("header", null, null, "SEAT", "HOME", "KNOCKOUTS", "LOST", header: true);
+            TableRow("header", null, null, "SEAT", 0, 0, 0, 0, 0, header: true);
 
+            int rowIndex = 0;
             foreach (var player in match.Players)
             {
                 int home = 0;
@@ -102,10 +103,12 @@ namespace NonaRoyale.Unity.View
 
                 TableRow($"seat_{player.Color}", player.Color, player.Operators,
                     player.Color.ToString().ToUpperInvariant() + cpu,
-                    $"{home}/{player.Operators.Count}",
-                    engine.KnockoutsScoredBy(player.Color).ToString(),
-                    engine.OperatorsLostBy(player.Color).ToString(),
+                    home, player.Operators.Count,
+                    engine.KnockoutsScoredBy(player.Color),
+                    engine.OperatorsLostBy(player.Color),
+                    rowIndex,
                     winner: winner == player.Color);
+                rowIndex++;
             }
 
             Note("Knockouts count for the seat whose operator caused them.", UiTheme.TextNote);
@@ -128,7 +131,7 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>One row of the tally: a seat diamond, its name, its squad's shapes and three numbers.</summary>
         private void TableRow(string name, PlayerColor? seat, IReadOnlyList<OperatorState> squad,
-            string label, string home, string kos, string lost,
+            string label, int home, int homeOf, int kos, int lost, int rowIndex,
             bool header = false, bool winner = false)
         {
             var row = Slot(name, header ? 26f : 40f);
@@ -160,9 +163,27 @@ namespace NonaRoyale.Unity.View
 
             Cell(row, label, size, nameColour, TextAlignmentOptions.MidlineLeft, 0f, 1f, header || winner);
             Squad(row, seat, squad, header);
-            Cell(row, home, size, dim, TextAlignmentOptions.Center, 110f, 0f, header);
-            Cell(row, kos, size, header ? dim : UiTheme.Threat, TextAlignmentOptions.Center, 130f, 0f, true);
-            Cell(row, lost, size, header ? dim : UiTheme.TextDim, TextAlignmentOptions.Center, 90f, 0f, header);
+            var homeCell = Cell(row, header ? "HOME" : $"{home}/{homeOf}", size, dim,
+                TextAlignmentOptions.Center, 110f, 0f, header);
+            var kosCell = Cell(row, header ? "KNOCKOUTS" : kos.ToString(), size, header ? dim : UiTheme.Threat,
+                TextAlignmentOptions.Center, 130f, 0f, true);
+            var lostCell = Cell(row, header ? "LOST" : lost.ToString(), size, header ? dim : UiTheme.TextDim,
+                TextAlignmentOptions.Center, 90f, 0f, header);
+
+            // The tally counts up, row after row (UI_MOTION.md increment U2).
+            if (!header)
+            {
+                float delay = 0.3f + rowIndex * 0.08f;
+                CountUp(homeCell, home, delay, v => $"{Mathf.RoundToInt(v)}/{homeOf}");
+                CountUp(kosCell, kos, delay, v => Mathf.RoundToInt(v).ToString());
+                CountUp(lostCell, lost, delay, v => Mathf.RoundToInt(v).ToString());
+            }
+        }
+
+        private static void CountUp(TMP_Text label, int target, float delay, System.Func<float, string> format)
+        {
+            if (label == null || target <= 0) return;
+            UiTween.Value(label, 0f, target, 0.45f, v => label.text = format(v), delay);
         }
 
         /// <summary>The seat's operators as small shapes in its colour, their names beside them.</summary>
@@ -196,7 +217,7 @@ namespace NonaRoyale.Unity.View
 
         private const float SquadWidth = 250f;
 
-        private static void Cell(Transform row, string text, float size, Color colour,
+        private static TMP_Text Cell(Transform row, string text, float size, Color colour,
             TextAlignmentOptions align, float width, float flexible, bool bold)
         {
             var label = UiKit.Label(row, text, size, colour, align, bold: bold);
@@ -204,6 +225,7 @@ namespace NonaRoyale.Unity.View
             else UiKit.Fixed(label, width);
 
             if (size < 14f) label.characterSpacing = UiTheme.HeadingSpacing * 0.5f;
+            return label;
         }
     }
 }

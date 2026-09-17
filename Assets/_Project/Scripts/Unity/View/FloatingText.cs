@@ -1,4 +1,5 @@
 // Assets/_Project/Scripts/Unity/View/FloatingText.cs
+using TMPro;
 using UnityEngine;
 
 namespace NonaRoyale.Unity.View
@@ -7,74 +8,49 @@ namespace NonaRoyale.Unity.View
     /// A short-lived label that rises and fades — damage, healing, a miss.
     /// </summary>
     /// <remarks>
-    /// Uses the legacy <see cref="TextMesh"/> and a built-in font rather than
-    /// TextMeshPro, for the same reason everything else here is procedural: no
-    /// asset to import, nothing to wire. It is ugly and it is temporary.
-    ///
-    /// The font lookup is defensive because Unity renamed the built-in face —
-    /// <c>Arial.ttf</c> before 2022.2, <c>LegacyRuntime.ttf</c> after. If neither
-    /// resolves, the label is skipped rather than throwing: losing a damage
-    /// number is a nuisance, losing the frame is not.
+    /// A world-space <see cref="TextMeshPro"/> on the TMP default face, so a
+    /// damage number reads like the HUD it belongs to (UI_MOTION.md increment
+    /// U3); the legacy <c>TextMesh</c> it replaces never did. The pop at
+    /// birth — a quick settle from 1.35× — is what separates "a number
+    /// appeared" from "a hit landed".
     /// </remarks>
     public sealed class FloatingText : MonoBehaviour
     {
         private const float Lifetime = 0.9f;
         private const float RiseSpeed = 1.6f;
+        private const float PopFrom = 1.35f;
+        private const float PopSeconds = 0.2f;
 
-        private TextMesh _text;
+        // Matched to the old TextMesh (fontSize 64 × characterSize 0.06 ≈ 0.4
+        // world units before the caller's scale); tune in Play Mode.
+        private const float FontSize = 3.8f;
+
+        private TextMeshPro _text;
+        private float _scale;
         private float _age;
-
-        private static Font _font;
-        private static bool _fontResolved;
 
         public static FloatingText Spawn(Transform parent, Vector3 position, string message, Color colour, float scale)
         {
-            var font = ResolveFont();
-            if (font == null) return null;
-
             var go = new GameObject($"float_{message}");
             go.transform.SetParent(parent, false);
             go.transform.position = position;
-            go.transform.localScale = Vector3.one * scale;
 
             var floating = go.AddComponent<FloatingText>();
+            floating._scale = scale;
+            go.transform.localScale = Vector3.one * scale * PopFrom;
 
-            floating._text = go.AddComponent<TextMesh>();
-            floating._text.text = message;
-            floating._text.font = font;
-            floating._text.color = colour;
-            floating._text.fontSize = 64;
-            floating._text.characterSize = 0.06f;
-            floating._text.anchor = TextAnchor.LowerCenter;
-            floating._text.alignment = TextAlignment.Center;
-
-            var renderer = go.GetComponent<MeshRenderer>();
-            renderer.sharedMaterial = font.material;
-            renderer.sortingOrder = 20;
+            var text = go.AddComponent<TextMeshPro>();
+            text.text = message;
+            text.color = colour;
+            text.fontSize = FontSize;
+            text.fontStyle = FontStyles.Bold;
+            text.alignment = TextAlignmentOptions.Center;
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+            text.overflowMode = TextOverflowModes.Overflow;
+            text.sortingOrder = 20;
+            floating._text = text;
 
             return floating;
-        }
-
-        private static Font ResolveFont()
-        {
-            if (_fontResolved) return _font;
-
-            _fontResolved = true;
-
-            foreach (var name in new[] { "LegacyRuntime.ttf", "Arial.ttf" })
-            {
-                try
-                {
-                    _font = Resources.GetBuiltinResource<Font>(name);
-                    if (_font != null) return _font;
-                }
-                catch
-                {
-                    // Unity logs its own error for a missing builtin; try the next.
-                }
-            }
-
-            return _font;
         }
 
         private void Update()
@@ -82,6 +58,10 @@ namespace NonaRoyale.Unity.View
             _age += Time.deltaTime;
 
             transform.position += Vector3.up * RiseSpeed * Time.deltaTime;
+
+            // The birth pop: overshoot, then settle (UI_MOTION.md U3).
+            float pop = UiEasing.Evaluate(UiEase.OutCubic, Mathf.Clamp01(_age / PopSeconds));
+            transform.localScale = Vector3.one * _scale * Mathf.LerpUnclamped(PopFrom, 1f, pop);
 
             if (_text != null)
             {

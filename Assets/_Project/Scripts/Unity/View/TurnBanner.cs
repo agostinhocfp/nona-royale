@@ -60,8 +60,13 @@ namespace NonaRoyale.Unity.View
                 $"   <color=#{UiTheme.Hex(UiTheme.TextDim)}>round {round}  ·  <b>Space</b> to roll</color>";
 
             _fading = false;
-            _group.alpha = 1f;
             _root.gameObject.SetActive(true);
+
+            // The hand-over cue drops in from under the top bar (U2); the
+            // fade-out below stays as it was.
+            _group.alpha = 0f;
+            UiTween.Fade(_group, 1f, 0.2f);
+            UiTween.SlideIn(_root, new Vector2(0f, 14f), 0.2f);
         }
 
         /// <summary>Fades the pill out.</summary>
