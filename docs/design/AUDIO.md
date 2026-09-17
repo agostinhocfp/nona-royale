@@ -54,6 +54,7 @@ Stage 4 (art hookup) was skipped for now: no finished Meshy renders are in hand.
    - **Pause:** music keeps playing at 35%, effects pause, interface clicks still sound.
    - **Settings:** sliders for Master, Music, Effects and Voice, plus Mute, on a new SOUND page reached from the settings page. All remembered.
      - **AU1f:** the Music default drops 30%, from 60% to 42%, because the score sat on top of the effects. A Restore defaults row closes the page.
+      - **Amended 2026-09-17: the Music default is now 36%.** Untouched saves move to it from either earlier default.
 
 ## Increments
 
@@ -275,3 +276,11 @@ Stage 4 (art hookup) was skipped for now: no finished Meshy renders are in hand.
   - **If Unity rejects the mixer file:** delete it, create one with Assets › Create › Audio Mixer at the same path, named `Mixer`. Add `Music`, `Effects` and `Voice` under `Master`, then `Interface` under `Effects`. For Master, Music, Effects and Voice, right-click Volume in the Inspector, choose Expose, and rename the exposed parameters to the four names above.
 - 2026-09-16 — **AU1f passed Play Mode** ("all sounds great"): the mixer imported, and the sliders, Mute, the music default and Restore defaults behave. Committed as `feat(audio): audio mixer with exposed bus faders and a quieter music default`.
 - 2026-09-16 — **Stage 5 closed.** Carried forward: Luka's recordings from `docs/audio/VOICE_LINES.md`, then the other operators' lines from its template; optional mixer effects (a low-pass on music in pause, a light room reverb); the Kenney card slide as the turn cue or a draft card flip (needs a `PROVENANCE.md` row); a main-thread synthesis fallback if a WebGL build is ever wanted.
+- 2026-09-17 — **Softer music transitions; music default 36%.** The designer found the music "just starts" and asked for fades to smooth the experience, with the music level starting at 36.
+  - **`AudioDirector`:**
+    - A track starting from silence now fades in over 2.5 s (`OpeningFadeSeconds`); a track change still crossfades in 1.2 s.
+    - Every music fade is smoothstep-eased (`Fade`) instead of linear, so it neither starts nor stops abruptly.
+    - The pause dip glides over 0.4 s (`_pauseDip`) instead of stepping between full and 35%.
+  - **`AudioLevels`:** `DefaultMusic` 0.36 (was 0.42, now `FormerDefaultMusic`; AU1's 0.6 kept as `OriginalDefaultMusic`). `Version` 3; `MigrateMusic` moves an untouched save from either earlier default to 36%.
+  - **Tests:** `AudioLevelsTests` updated (36% default; migration from both earlier defaults). The 50 plain-C# audio tests pass in a scratch harness (`Temp/audio-tests`, compiled with `csc` directly — `dotnet restore` fails under SDK 10, which also breaks the older `tools/tests-verify` project; not caused by this change).
+  - **Play Mode watch-list:** the title music fades in on launch; title ↔ match ↔ showdown changes crossfade smoothly; the pause dip glides down and back; music starts at 36%, including on a machine whose saved Music was still 42% or 60%.

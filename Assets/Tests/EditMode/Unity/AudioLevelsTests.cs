@@ -8,11 +8,11 @@ namespace NonaRoyale.Unity.Tests.Audio
     public class AudioLevelsTests
     {
         [Test]
-        public void MusicDefault_IsThirtyPercentUnderTheFormerDefault()
+        public void MusicDefault_IsTheLevelTheDesignerAskedFor()
         {
-            Assert.AreEqual(AudioLevels.FormerDefaultMusic * 0.7f, AudioLevels.DefaultMusic, 1e-4f);
+            Assert.AreEqual(0.36f, AudioLevels.DefaultMusic, 1e-4f);
             Assert.AreEqual(AudioLevels.DefaultMusic, new AudioLevels().Music);
-            Assert.AreEqual(42, AudioLevels.Percent(new AudioLevels().Music));
+            Assert.AreEqual(36, AudioLevels.Percent(new AudioLevels().Music));
         }
 
         [Test]
@@ -86,7 +86,9 @@ namespace NonaRoyale.Unity.Tests.Audio
         [Test]
         public void MigrateMusic_MovesAnUntouchedOldDefault()
         {
-            Assert.AreEqual(AudioLevels.DefaultMusic, AudioLevels.MigrateMusic(1, 0.6f));
+            Assert.AreEqual(AudioLevels.DefaultMusic, AudioLevels.MigrateMusic(2, 0.42f));
+            Assert.AreEqual(AudioLevels.DefaultMusic, AudioLevels.MigrateMusic(1, 0.6f),
+                "a save that skipped AU1f can still hold the first default");
             Assert.AreEqual(AudioLevels.DefaultMusic, AudioLevels.MigrateMusic(0, 0.6001f));
         }
 
@@ -94,9 +96,9 @@ namespace NonaRoyale.Unity.Tests.Audio
         public void MigrateMusic_KeepsWhatThePlayerChose()
         {
             Assert.AreEqual(0.75f, AudioLevels.MigrateMusic(1, 0.75f));
-            Assert.AreEqual(0.3f, AudioLevels.MigrateMusic(1, 0.3f));
-            Assert.AreEqual(0.6f, AudioLevels.MigrateMusic(AudioLevels.Version, 0.6f),
-                "60% saved under the current version was picked on purpose");
+            Assert.AreEqual(0.3f, AudioLevels.MigrateMusic(2, 0.3f));
+            Assert.AreEqual(0.42f, AudioLevels.MigrateMusic(AudioLevels.Version, 0.42f),
+                "42% saved under the current version was picked on purpose");
         }
     }
 }

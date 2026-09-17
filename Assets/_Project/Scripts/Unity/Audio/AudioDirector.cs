@@ -41,10 +41,16 @@ namespace NonaRoyale.Unity.Audio
         private const int SfxVoices = 12;
         private const int UiVoices = 2;
         private const float CrossfadeSeconds = 1.2f;
+
+        /// <summary>Fade-in when a track starts from silence; slower than a crossfade so the music never just starts.</summary>
+        private const float OpeningFadeSeconds = 2.5f;
         private const float StingFadeSeconds = 0.25f;
         private const float StingReturnSeconds = 1.5f;
         private const float DuckSeconds = 0.12f;
         private const float UnduckSeconds = 0.5f;
+
+        /// <summary>How fast the music glides to its pause level and back.</summary>
+        private const float PauseDipSeconds = 0.4f;
 
         /// <summary>Gain of a voice line on top of the Voice bus.</summary>
         private const float VoiceGain = 1f;
@@ -76,7 +82,9 @@ namespace NonaRoyale.Unity.Audio
         private Vector3? _heldAt;
         private MusicCue? _playing;
         private float _fadeIn = 1f;
+        private float _fadeInSeconds = OpeningFadeSeconds;
         private float _fadeOut;
+        private float _pauseDip = 1f;
         private float _stingEnds = -1f;
         private float _stingLevel = 1f;
         private bool _built;
@@ -253,6 +261,9 @@ namespace NonaRoyale.Unity.Audio
                 var clip = _bank.Music(Music);
                 if (clip != null)
                 {
+                    // From silence the track opens slowly; under a playing
+                    // track it crossfades.
+                    _fadeInSeconds = _musicA.isPlaying ? CrossfadeSeconds : OpeningFadeSeconds;
                     if (_musicA.isPlaying)
                     {
                         (_musicA, _musicB) = (_musicB, _musicA);
@@ -267,9 +278,12 @@ namespace NonaRoyale.Unity.Audio
                 }
             }
 
-            _fadeIn = Mathf.MoveTowards(_fadeIn, 1f, dt / CrossfadeSeconds);
+            _fadeIn = Mathf.MoveTowards(_fadeIn, 1f, dt / _fadeInSeconds);
             _fadeOut = Mathf.MoveTowards(_fadeOut, 0f, dt / CrossfadeSeconds);
             if (_fadeOut <= 0f && _musicB.isPlaying) _musicB.Stop();
+
+            // The pause dip glides rather than steps.
+            _pauseDip = Mathf.MoveTowards(_pauseDip, Paused ? AudioLevels.PausedMusic : 1f, dt / PauseDipSeconds);
 
             // The sting takes the floor, then hands it back slowly.
             bool stinging = _stingEnds > 0f && Time.unscaledTime < _stingEnds;
@@ -283,10 +297,9 @@ namespace NonaRoyale.Unity.Audio
         {
             _mixer.Apply(_levels);
 
-            float music = Level(AudioBus.Music) * _stingLevel * _duck *
-                          (Paused ? AudioLevels.PausedMusic : 1f);
-            _musicA.volume = music * _fadeIn;
-            _musicB.volume = music * _fadeOut;
+            float music = Level(AudioBus.Music) * _stingLevel * _duck * _pauseDip;
+            _musicA.volume = music * Fade(_fadeIn);
+            _musicB.volume = music * Fade(_fadeOut);
             _sting.volume = Level(AudioBus.Music);
 
             // Without the mixer, a slider moved while effects ring: follow it.
@@ -309,6 +322,12 @@ namespace NonaRoyale.Unity.Audio
         /// whole of it without.
         /// </summary>
         private float Level(AudioBus bus) => _mixer.Ready ? 1f : _levels.Gain(bus);
+
+        /// <summary>
+        /// Smoothstep: a fade that eases off at both ends, so it never
+        /// starts or stops as abruptly as a linear ramp sounds.
+        /// </summary>
+        private static float Fade(float t) => t * t * (3f - 2f * t);
 
         private void OnDisable()
         {

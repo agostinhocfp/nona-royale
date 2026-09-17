@@ -30,23 +30,25 @@ namespace NonaRoyale.Unity.Audio
         public const float DefaultMaster = 0.8f;
 
         /// <summary>
-        /// 30% under the first default (<see cref="FormerDefaultMusic"/>),
-        /// decided 2026-09-16 (AU1f): the Lyria score sat on top of the
-        /// effects.
+        /// 36%, asked for by the designer 2026-09-17: the score still sat on
+        /// top of the effects at the AU1f default.
         /// </summary>
-        public const float DefaultMusic = 0.42f;
+        public const float DefaultMusic = 0.36f;
 
         public const float DefaultSfx = 0.8f;
         public const float DefaultVoice = 0.8f;
 
-        /// <summary>The Music default before AU1f. A saved value equal to it was never chosen.</summary>
-        public const float FormerDefaultMusic = 0.6f;
+        /// <summary>The Music default before 2026-09-17 (AU1f's). A saved value equal to it was never chosen.</summary>
+        public const float FormerDefaultMusic = 0.42f;
+
+        /// <summary>The first Music default (AU1). Saves that skipped AU1f can still hold it.</summary>
+        public const float OriginalDefaultMusic = 0.6f;
 
         /// <summary>
         /// The version of the saved settings. 1 was AU1 (unversioned);
-        /// 2 is AU1f, the lower music default.
+        /// 2 was AU1f (42%); 3 is the 36% music default.
         /// </summary>
-        public const int Version = 2;
+        public const int Version = 3;
 
         /// <summary>A fader's floor, and what Mute sets Master to. Unity's mixer bottoms out here.</summary>
         public const float SilentDecibels = -80f;
@@ -134,14 +136,18 @@ namespace NonaRoyale.Unity.Audio
 
         /// <summary>
         /// The Music value to use for one saved under settings version
-        /// <paramref name="savedVersion"/>. A value saved before AU1f that
-        /// still equals the old default was never picked by the player, so it
-        /// moves to the new default; anything the player set stays.
+        /// <paramref name="savedVersion"/>. A value saved under an older
+        /// version that still equals either earlier default was never picked
+        /// by the player, so it moves to the new default; anything the
+        /// player set stays.
         /// </summary>
         public static float MigrateMusic(int savedVersion, float savedMusic)
         {
             if (savedVersion >= Version) return savedMusic;
-            return Math.Abs(savedMusic - FormerDefaultMusic) < 0.005f ? DefaultMusic : savedMusic;
+            return Math.Abs(savedMusic - FormerDefaultMusic) < 0.005f ||
+                   Math.Abs(savedMusic - OriginalDefaultMusic) < 0.005f
+                ? DefaultMusic
+                : savedMusic;
         }
 
         /// <summary>A slider value as the percentage the settings row shows.</summary>
