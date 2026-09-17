@@ -38,6 +38,13 @@ namespace NonaRoyale.Unity.Composition
     /// Esc steps back. Every mark and every clickable thing comes from an
     /// engine query; the click only picks between the engine's answers.
     ///
+    /// <b>The pointer says what a click would do while aiming</b> (GUI
+    /// increment G5). The <see cref="CursorSkin"/> shows the gold arrow
+    /// everywhere, an amber reticle when an ability waits for a target and
+    /// the pointer is over one it would take, and a grey reticle over
+    /// anything else on the board. It asks the same questions the click does
+    /// (<see cref="PointerCursor"/>), so the two cannot disagree.
+    ///
     /// <b>Esc with nothing selected pauses</b> (GUI increment H). While the
     /// pause menu is open, the board and the game keys are ignored.
     ///
@@ -200,6 +207,9 @@ namespace NonaRoyale.Unity.Composition
         /// <summary>Plays the CPU seats of the match on the table (BOT2). Null without a match.</summary>
         private BotDriver _bots;
 
+        /// <summary>The game's pointer (G5). Built once, at Start; released on destroy.</summary>
+        private CursorSkin _cursor;
+
         // ── Presentation (MO1) ───────────────────────────────────────────
 
         /// <summary>How long a hit's numbers own the board before the next step, in scaled seconds.</summary>
@@ -296,6 +306,10 @@ namespace NonaRoyale.Unity.Composition
 
             LoadSettings();
             SyncMotion();
+
+            // The pointer is the first thing the player sees move, so it is ours from the first frame (G5).
+            _cursor = new CursorSkin();
+            _cursor.Show(CursorLook.Arrow);
 
             // URP's 2D Renderer lights every sprite, so the room's lights come before any board (ADR-0010, LT1).
             _lighting = Ensure<SceneLighting>();
@@ -728,7 +742,26 @@ namespace NonaRoyale.Unity.Composition
             Speak(VoiceSlot.Quit, squad[Random.Range(0, squad.Count)]);
         }
 
-        private void OnDestroy() => UiKit.ButtonPressed -= OnUiButton;
+        private void OnDestroy()
+        {
+            UiKit.ButtonPressed -= OnUiButton;
+
+            // The system cursor comes back when the root goes (G5).
+            if (_cursor != null)
+            {
+                _cursor.Release();
+                _cursor = null;
+            }
+        }
+
+        /// <summary>
+        /// Re-applies the cursor when the window comes back, since some
+        /// platforms reset it while the game is in the background (G5).
+        /// </summary>
+        private void OnApplicationFocus(bool focused)
+        {
+            if (focused && _cursor != null) _cursor.Invalidate();
+        }
 
         /// <summary>
         /// Which music fits the screen (AU1): the match loop while a live
@@ -926,13 +959,19 @@ namespace NonaRoyale.Unity.Composition
 
             if (paused)
             {
+                // Every full-screen card gets the plain arrow (G5).
+                ShowCursor(CursorLook.Arrow);
                 HandleModalKeys();
                 return;
             }
 
             SyncMotion();
 
-            if (_match == null) return;
+            if (_match == null)
+            {
+                ShowCursor(CursorLook.Arrow);
+                return;
+            }
 
             DriveBots();
 
@@ -945,6 +984,10 @@ namespace NonaRoyale.Unity.Composition
             if (Input.GetMouseButtonDown(1)) StepBack();
 
             ReleaseBufferedIntent();
+
+            // Last, so it reflects this frame's clicks and keys rather than the last frame's.
+            // Esc may have opened the pause menu above; ModalOpen is read again for that.
+            ShowCursor(ModalOpen ? CursorLook.Arrow : PointerCursor());
         }
 
         /// <summary>Keeps a Roll or End turn pressed while the board was busy, for a moment.</summary>
@@ -1193,6 +1236,53 @@ namespace NonaRoyale.Unity.Composition
             var op = piece != null ? piece.Operator : null;
             if (_rail != null) _rail.SetHovered(op);
             if (_controls != null) _controls.SetHovered(op);
+        }
+
+        /// <summary>Hands a look to the cursor skin, if it exists.</summary>
+        private void ShowCursor(CursorLook look)
+        {
+            if (_cursor != null) _cursor.Show(look);
+        }
+
+        /// <summary>
+        /// What the pointer should look like over the match (G5): the arrow,
+        /// unless an ability waits for a target.
+        /// </summary>
+        /// <remarks>
+        /// <b>It asks what <see cref="AimAt"/> would do with a click here,</b>
+        /// with the same radii and the same engine answers
+        /// (<see cref="_legalCells"/>, <see cref="_castTargets"/>), so the
+        /// reticle never promises a click the board then ignores.
+        ///
+        /// <b>The reticle is for aiming only.</b> An ability that fires from
+        /// the caster has nothing to aim, so it keeps the arrow. Over one of
+        /// the seat's own pieces that isn't a target, a click switches the
+        /// selection, which is not an aim either, so that is the arrow too.
+        ///
+        /// <b>Blocked while the board is busy</b>, because the click is
+        /// dropped then (<see cref="Update"/>).
+        /// </remarks>
+        private CursorLook PointerCursor()
+        {
+            if (_match.Engine.MatchOver || CpuTurn) return CursorLook.Arrow;
+            if (_selectedOperator == null || _selectedAbility == null) return CursorLook.Arrow;
+            if (!_selectedAbility.RequiresCell && !_selectedAbility.RequiresTarget) return CursorLook.Arrow;
+            if (PointerOverPanel() || !BoardPointer.TryWorldPoint(out var world)) return CursorLook.Arrow;
+
+            if (_selectedAbility.RequiresCell)
+            {
+                var cell = BoardPointer.CellAt(world, _legalCells, _layout, CellSnapRadius * cellSpacing);
+                return cell != null && !Busy ? CursorLook.Aim : CursorLook.AimBlocked;
+            }
+
+            var piece = BoardPointer.PieceAt(world, _pieces, PieceClickRadius * cellSpacing);
+
+            if (piece != null && _castTargets.Contains(piece.Operator))
+                return Busy ? CursorLook.AimBlocked : CursorLook.Aim;
+
+            if (piece != null && IsCommandable(piece.Operator)) return CursorLook.Arrow;
+
+            return CursorLook.AimBlocked;
         }
 
         /// <summary>
