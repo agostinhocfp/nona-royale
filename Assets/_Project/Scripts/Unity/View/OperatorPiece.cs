@@ -105,8 +105,18 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         private const float ArtPinSize = 0.12f;
 
-        /// <summary>A rendered figure's height against the procedural one's. Tune in Play Mode.</summary>
-        private const float ArtHeightScale = 1f;
+        /// <summary>A rendered standing figure's height against the pawn's. Tune in Play Mode.</summary>
+        private const float ArtStandingHeightScale = 1f;
+
+        /// <summary>
+        /// A rendered seated figure's height against the bust's. The seated
+        /// render is waist up with the arms forward, so at the bust's height
+        /// its head came out about 30% smaller than the bust's head, and the
+        /// figure read too small at the table (designer, 2026-09-17). 1.4
+        /// matches the head sizes; the figure grows upward from the table
+        /// line. Tune in Play Mode.
+        /// </summary>
+        private const float ArtSeatedHeightScale = 1.6f;
 
         /// <summary>Peak opacity of the white silhouette on a rendered figure's hit flash.</summary>
         private const float ArtFlashStrength = 0.75f;
@@ -268,7 +278,8 @@ namespace NonaRoyale.Unity.View
 
             if (_rendered)
             {
-                _layout = FigureLayout.Fit(art.OpaqueBottom, art.OpaqueTop, frame, ArtHeightScale,
+                _layout = FigureLayout.Fit(art.OpaqueBottom, art.OpaqueTop, frame,
+                    seated ? ArtSeatedHeightScale : ArtStandingHeightScale,
                     seated ? FigureLayout.SeatedChest : FigureLayout.StandingChest);
 
                 _body.sprite = art.Sprite;
