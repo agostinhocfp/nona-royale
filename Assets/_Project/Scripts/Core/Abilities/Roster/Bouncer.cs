@@ -103,32 +103,57 @@ namespace NonaRoyale.Core.Abilities
         /// evaded or shielded and it can neutralize him.
         /// </summary>
         /// <remarks>
-        /// <b>The one-turn kill is gone, deliberately.</b> Rope into Mauling was
-        /// 3 Atomic plus 3, and six damage killed either 6-health operator from
-        /// full for the price of a banked pool. It is now 3 plus 2, which leaves
-        /// them at 1 — a setup rather than an execution, and something the
-        /// victim's owner gets a turn to answer.
+        /// <b>Repriced 2026-09-18 (designer): 4 energy, cooldown 1, 3 out, 2
+        /// back, ally heal 2.</b> It was 6 energy, no cooldown, 2 out, 2 back,
+        /// ally heal 3, and at that price nothing about it made sense:
         ///
-        /// <b>The self-damage finally costs something.</b> At 1 against 12
-        /// health it took twelve casts to matter, which made it flavour text. At
-        /// 2 against 9 it is four, and a Bouncer already wounded has to decide
-        /// whether he can afford the exchange.
+        /// <list type="bullet">
+        /// <item><b>Velvet Rope beat it outright.</b> Same 6 energy, 3 Atomic
+        /// against 2 Normal, range 3 against 2, a pull instead of self-damage.
+        /// There was no board on which this was the better way to hurt
+        /// somebody.</item>
+        /// <item><b>Three energy a point was the worst rate in the game</b>,
+        /// blood on top. Nuetu's Bio-Link Rage is 3 energy for 3 at the same
+        /// range and heals him.</item>
+        /// <item><b>The ally heal was the biggest in the game</b> — above
+        /// Javi's 2, whose whole role it is (§1.1 says the tank's healing is
+        /// incidental, which the numbers denied).</item>
+        /// </list>
         ///
-        /// The zero cooldown is what is left of the combo. Against the energy
-        /// drip alone it is close to inert (§3.1); at the cap it still buys
-        /// back-to-back turns, and it is still what allows this to fire twice in
-        /// one — for 4 self-damage, which is now most of what he can pay.
+        /// <b>Now it is the cheap brawl.</b> Cheaper and shorter than the rope,
+        /// Normal rather than Atomic, so a plate or an evasion charge answers
+        /// it, and it costs blood. The rope is the reach and the execute tool;
+        /// this is what he does standing next to somebody.
+        ///
+        /// <b>The one-turn kill stays gone, deliberately.</b> Rope into Mauling
+        /// was 3 Atomic plus 3, and six damage killed either 6-health operator
+        /// from full for the price of a banked pool. At 3 plus 3 against 7
+        /// health it leaves 1 — a setup rather than an execution, and something
+        /// the victim's owner gets a turn to answer. The roster-wide +1 health
+        /// (2026-09-16) is what pays for the extra point here.
+        ///
+        /// <b>The self-damage costs something.</b> At 1 against 12 health it
+        /// took twelve casts to matter, which made it flavour text. At 2
+        /// against 10 it is five, and a wounded Bouncer has to decide whether
+        /// he can afford the exchange.
+        ///
+        /// <b>Cooldown 1, not 0.</b> The zero cooldown was the last of the
+        /// combo and bought almost nothing: at 6 energy the cap allowed two
+        /// casts for 4 damage and 4 self-damage. At 4 energy it would allow
+        /// three, which is the shape §3.1 keeps cooldowns for. One turn between
+        /// casts keeps the rope-into-maul combo (different abilities, no shared
+        /// cooldown) and drops the double maul.
         /// </remarks>
         public static AbilityDefinition AllInMauling { get; } = new AbilityDefinition(
             id: 102, name: "All-In Mauling",
             description:
                 "A brutal exchange at close quarters that costs you blood as well. On an ally, a rough grapple that patches them up instead.",
-            energyCost: 6, cooldownTurns: 0, range: 2,
+            energyCost: 4, cooldownTurns: 1, range: 2,
             effects: new[]
             {
-                AbilityEffect.Damage(EffectScope.PrimaryTarget, 2, DamageType.Normal, EffectAudience.EnemyOnly),
+                AbilityEffect.Damage(EffectScope.PrimaryTarget, 3, DamageType.Normal, EffectAudience.EnemyOnly),
                 AbilityEffect.Damage(EffectScope.Caster, 2, DamageType.Normal, EffectAudience.EnemyOnly),
-                AbilityEffect.Heal(EffectScope.PrimaryTarget, 3, EffectAudience.AllyOnly)
+                AbilityEffect.Heal(EffectScope.PrimaryTarget, 2, EffectAudience.AllyOnly)
             });
 
         public static IReadOnlyList<AbilityDefinition> All { get; } =

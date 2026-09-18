@@ -28,7 +28,7 @@ This is the decision the rest of the document falls out of. It is also where the
 - Damage **persists across turns**. The one exception is slow regeneration (§5.11): +1 every third turn for any wounded operator standing in the open.
 - HP is restored to full **only** on neutralize (§1.2). A wounded operator two cells from HOME is intended tension, not a problem to be smoothed.
 
-Healing exists in two places and they are deliberately different. Bouncer's All-In Mauling heals an ally as the friendly half of a hostile ability; Javi's Nanite Infusion heals as its whole purpose. The tank's is incidental, the support's is a role.
+Healing exists in two places and they are deliberately different. Bouncer's All-In Mauling heals an ally as the friendly half of a hostile ability; Javi's Nanite Infusion heals as its whole purpose. The tank's is incidental, the support's is a role. Both heal 2 since 2026-09-18 — the tank's was 3, above the support's, which said the opposite of that sentence. Javi's is still the role: longer reach, a cheaper cast, and it splashes.
 
 The old `[Range(3, 9)]` cap on `Operator.maxHealth` is **dead**. The stat is unbounded in the core; presentation-layer sliders, if any, use 3–15. Since the +1 below, Bouncer and Sanity at 10 sit just above that old cap, which is also no rule.
 
@@ -727,7 +727,7 @@ Eleven operators are in the draft pool, and **all eleven are complete**. Mimi's 
 | --- | ------------------------- | ------- | ---- | --- | ----- | ---------------------------------------------------------------------------------------------------- |
 | 1   | **Velvet Rope**           | Active  | 6    | 2   | 3     | Pull target to the cell adjacent to Bouncer (§7.4). Enemy: **3 Atomic**. Ally: pull only, no damage. |
 | 2   | **Intimidating Presence** | Passive | —    | —   | 3     | Enemies within range: speed multiplier **−0.5** (floor 0.5, §5.2).                                   |
-| 3   | **All-In Mauling**        | Active  | 6    | —   | 2     | Enemy: **2 Normal** to target **and 2 direct to Bouncer** (§2.3). Ally: **heal 3**.                  |
+| 3   | **All-In Mauling**        | Active  | 4    | 1   | 2     | Enemy: **3 Normal** to target **and 2 direct to Bouncer** (§2.3). Ally: **heal 2**.                  |
 
 Intimidating Presence is an aura, not a status: it is evaluated when an affected operator's movement is calculated, so there is no duration to track and no application event.
 
@@ -739,7 +739,17 @@ Bouncer's kit is priced on **positioning, not energy** — the roster's slowest 
 
 **Velvet Rope is Atomic, which makes Bouncer the roster's direct counter to Evasion** (§2.2). This was a targeted answer to Kurbyn dominating early play, chosen over weakening Evasion itself: a counter preserves the rock-paper-scissors, a nerf flattens it. It is also the **only single-cast route through Evasive Protocol** — Syla's is a two-ability sequence — which is why shortening it is a larger change than the number suggests.
 
-**The rope-into-Mauling one-turn kill is gone by design.** It was 3 Atomic plus 3, and six damage killed either 6-health operator from full for the price of a banked pool. At 3 plus 2 it leaves them at 1: a setup rather than an execution, and something the victim's owner gets a turn to answer. The zero cooldown still buys back-to-back casts at the cap, now for 4 self-damage against 9 health, which is most of what he can pay.
+**All-In Mauling repriced 2026-09-18 (designer): 4 energy, cooldown 1, 3 out, 2 back, ally heal 2.** At 6 energy for 2 Normal it made no sense on three counts, all of them measurable against the rest of the sheet:
+
+- **Velvet Rope beat it outright** at the same cost: 3 Atomic against 2 Normal, range 3 against 2, a pull instead of 2 self-damage. There was no board on which it was the better way to hurt somebody.
+- **Three energy a point was the worst rate on the roster**, with blood on top. Nuetu's Bio-Link Rage is 3 energy for 3 at the same range and heals him 1.
+- **Its ally heal was the largest in the game**, above the dedicated healer's (§1.1).
+
+It is now the cheap brawl: shorter than the rope, Normal rather than Atomic so a plate or an evasion charge answers it, and it costs blood. **Cooldown 1 rather than 0** — at 4 energy the cap would otherwise buy three casts in a banked turn. Rope into maul still works; they share no cooldown.
+
+**Measured, 800 matches per row.** Bots cast it 1.40 → 2.33 times a match, so the reprice did what it was meant to. It also made the game bloodier — standard sweep neutralizes 3.4 → 4.8 and turns 21.2 → 22.1; four-bot knockouts 13.9 → 14.9 — and **Bouncer's own win share fell 28% → 24%**, because a bot that casts it twice as often pays twice the blood. Watch whether that holds in human hands before touching the self-damage.
+
+**The rope-into-Mauling one-turn kill stays gone by design.** It was 3 Atomic plus 3, and six damage killed either 6-health operator from full for the price of a banked pool. At 3 plus 3 against 7 health it leaves them at 1: a setup rather than an execution, and something the victim's owner gets a turn to answer. The zero cooldown still buys back-to-back casts at the cap, now for 4 self-damage against 9 health, which is most of what he can pay.
 
 ### 10.2 Syla, The Blood Hound — Assassin
 
@@ -1177,7 +1187,7 @@ Casts per match: Drone Strike 4.58 → 5.87, Sonic Disrupter 2.72 → 3.70, Inve
 | Standard board 48/6                                          | **Replaced** by 52/6 (ADR-0002 Amendment 5). 48 cannot be drawn as a continuous Ludo cross; journey 54 → 58.                                                                                         |
 | Bouncer at 12 health                                         | **Lowered** to 9 (§10.1). He absorbed four collisions and shrugged off the sequence that kills everyone else.                                                                                        |
 | Velvet Rope as 3 Normal at range 3                           | **Retuned** to 3 **Atomic** at range 4, then **back to range 3** (§10.1). Atomic stayed; the reach did not.                                                                                          |
-| All-In Mauling at range 1 with 3 damage and 3 self           | **Retuned** to range 2, 2 damage, 2 self (§10.1).                                                                                                                                                    |
+| All-In Mauling at range 1 with 3 damage and 3 self           | **Retuned** to range 2, 2 damage, 2 self, then repriced 2026-09-18 to 4 energy, cooldown 1, 3 damage, 2 self, heal 2 (§10.1).                                                                                                                                                    |
 | Miracle Pull at range 1                                      | **Widened** to 2 (§10.3). At 1 the ult was often unspendable when it was worth spending.                                                                                                             |
 | Miracle Pull at cooldown 2                                 | **Raised** to 3 (§10.3), with the rebuild below.                                                                                                                                                    |
 | Predator's Read (Kurbyn's third active, id 303)            | **Removed** 2026-09-17 (§10.3): the kit read as three actives plus a passive's worth of defence, and the evasion was meant to be a single ability. The watch machinery (§5.15, §6.7, `EffectKind.Watch`) stays in the core, dormant. |
@@ -1520,6 +1530,7 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - `VelvetRope_IsAtomic_AndIgnoresEvasion`
 - `APullThatWouldGoBehindTheTargetsStartCell_ClampsThere`
 - `AllInMaulingOnAlly_HealsAndCostsTheCasterNothing`
+- `AllInMauling_SitsOutOneTurn`
 - `MiraclePull_ExecutesTargetBelowHalfHealthAtCastTime`
 - `MiraclePull_DoesNotExecuteTargetAtExactlyHalfHealth`
 - `FromTheHip_DealsBonusDamageToBleedingTarget`
@@ -1667,3 +1678,4 @@ The watch machinery (§6.7) is dormant: `PredatorsReadTests` and `WatchBotTests`
 - 2026-09-17 — **Speed bonus capped per turn** (designer): at most `CombatConfig.SpeedBonusCellCap` (2) extra cells from a speed above 1.0× per operator per turn, charged on every move that collects it — the ceiling the speed channel never had (§6.3, §12). `GameEngine` keeps a second per-turn budget beside haste's; `CellsFor` gained a speed-bonus out parameter so `Move` charges it and `PreviewLandings` and `HasLegalMove` agree. Bots sweep: the bottom compressed (Mimi 21% → 23%, Bouncer 21% → 24%) but the 1.5× tier stayed on top (Kurbyn 33%, Syla 30%, Javi 27%); a cap of 1 was measured and not adopted (§12). §6.3, §12 amended. Tests +10 (`SpeedCapTests`); `HasteCapTests`' speedster expectations and the tallied-match seed moved to the new rule. 679 → 689 passing.
 - 2026-09-17 — **Syla's Ace Shards patched down** (designer): damage 3 → 2, range 3 → 2, the bleed rider untouched (§10.2). She was second in the speed-cap sweep at 30%. Measured together with the Kurbyn rebuild below: Syla 30% → 24%, confounded by design. The `AbilityResolverTests` expectations moved with it.
 - 2026-09-17 — **Kurbyn rebuilt** (designer): Predator's Read removed (id 303; the watch machinery — §5.15, §6.7, `EffectKind.Watch` — stays in the core, dormant), evasion 30% → 12% (`EvasionChance`; he is the only holder, so the global dial is his number), base speed a plain 1.0, and the +0.5 passive speed replaced by permanent flat haste (+1 on a roll of 6 or less, +2 above) capped at **2** cells a turn — the first per-operator haste cap, read as `OperatorState.HasteCellCap` with `HasteBonusCellCap` (3) the fallback. `OperatorDefinition` gains a second passive slot, `MatchFactory` applies both, and the draft card and `DraftPicker.EffectiveSpeed` read both. Miracle Pull's cooldown went 2 → 3 in the same pass. Bots sweep, 800 matches against the speed-cap baseline: Kurbyn 33% → 28%, Bouncer 24% → 28%, Javi 27% → 31% (the new outlier — watch), Syla 30% → 24% (her patch is in the same tree), Revú 20% → 23%, the rest within a point; turns per seat 27.8 → 27.5; personalities back to 25/25/25. §5.5, §5.9, §9.1, §10.2, §10.3, §11, §12, §13 amended. Tests: `PredatorsReadTests` (16) and `WatchBotTests` (9) retired with the ability; +3 (`KurbynTests`), +1 (`HasteCapTests`' cap-2 case); stale expectations moved in `GameEngineTests`, `BurdenTests`, `HasteCapTests`, `SpeedCapTests` and — for Syla's patch — `AbilityResolverTests`. 689 → 668 passing.
+- 2026-09-18 — **All-In Mauling repriced** (designer): 6 energy, cooldown 0, 2 damage, ally heal 3 → **4 energy, cooldown 1, 3 damage, ally heal 2**; self-damage stays 2 (§10.1, §1.1, §11). At the old price Velvet Rope dominated it at equal cost, it was the worst damage-per-energy on the roster, and its ally heal was larger than the dedicated healer's. ADR-0002's open item on its cost is closed with the cheaper cost and a real cooldown. Bots cast it 1.40 → 2.33 a match; standard-sweep neutralizes 3.4 → 4.8, and Bouncer's own bot win share fell 28% → 24% — watch it. Tests 668 → 669.

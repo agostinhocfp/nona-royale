@@ -693,7 +693,7 @@ namespace NonaRoyale.Core.Tests.Engine
 
             Assert.That(healed, Is.Not.Null);
             Assert.That(healed.Target, Is.SameAs(syla));
-            Assert.That(healed.Amount, Is.EqualTo(3));
+            Assert.That(healed.Amount, Is.EqualTo(2));
         }
 
         [Test]

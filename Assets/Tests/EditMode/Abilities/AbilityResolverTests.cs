@@ -160,10 +160,38 @@ namespace NonaRoyale.Core.Tests.Abilities
         [Test]
         public void AnAbilityWithNoCooldown_IsImmediatelyReusable()
         {
+            // No roster ability declares cooldown 0 since All-In Mauling was
+            // repriced (2026-09-18), so the path is pinned with a test double
+            // rather than deleted.
+            var free = new AbilityDefinition(
+                id: 99902, name: "Test Jab", description: "Test double.",
+                energyCost: 0, cooldownTurns: 0, range: 3,
+                effects: new[]
+                {
+                    AbilityEffect.Damage(EffectScope.PrimaryTarget, 1, DamageType.Normal)
+                });
+
+            _abilities.Use(_bouncer, free, _enemy, _red, _board);
+
+            Assert.That(_abilities.IsReady(_bouncer, free), Is.True);
+        }
+
+        [Test]
+        public void AllInMauling_SitsOutOneTurn()
+        {
+            // Cooldown 1 since 2026-09-18: the double maul in a banked turn is
+            // gone, the rope-into-maul combo is not (different abilities).
             _bouncer.MoveTo(ProgressAtTrack(PlayerColor.Red, 11));   // inside range 2
 
             Use(_bouncer, Bouncer.AllInMauling, _enemy);
 
+            Assert.That(_abilities.IsReady(_bouncer, Bouncer.AllInMauling), Is.False, "the cast turn");
+            Assert.That(_abilities.IsReady(_bouncer, Bouncer.VelvetRope), Is.True, "no shared cooldown");
+
+            _clock.BeginTurnFor(PlayerColor.Red);
+            Assert.That(_abilities.IsReady(_bouncer, Bouncer.AllInMauling), Is.False, "the turn it sits out");
+
+            _clock.BeginTurnFor(PlayerColor.Red);
             Assert.That(_abilities.IsReady(_bouncer, Bouncer.AllInMauling), Is.True);
         }
 
@@ -257,7 +285,7 @@ namespace NonaRoyale.Core.Tests.Abilities
             var allowed = Use(_bouncer, Bouncer.AllInMauling, _syla);
 
             Assert.That(allowed.Approved, Is.True);
-            Assert.That(_syla.Health, Is.EqualTo(5), "healed on a safe cell");
+            Assert.That(_syla.Health, Is.EqualTo(4), "healed on a safe cell");
         }
 
         [Test]
@@ -373,17 +401,17 @@ namespace NonaRoyale.Core.Tests.Abilities
         [Test]
         public void AllInMauling_WoundsTheTargetAndTheBouncer()
         {
-            // 2 out and 2 back, per the 2026-09-12 retune. Rope into Mauling was
-            // 3 Atomic plus 3, which killed either 6-health operator from full;
-            // it is now a setup rather than an execution. The self-damage rose
-            // from 1 as health fell from 12, so it costs four casts rather than
-            // twelve.
+            // 3 out and 2 back since the 2026-09-18 reprice (4 energy,
+            // cooldown 1). Rope into Mauling was 3 Atomic plus 3 and killed
+            // either 6-health operator from full; at 3 plus 3 against 7 health
+            // it leaves 1, so it is still a setup rather than an execution.
+            // Five casts of self-damage neutralize a full-health Bouncer.
             _bouncer.MoveTo(ProgressAtTrack(PlayerColor.Red, 11));   // range 2 to track 12
 
             var result = Use(_bouncer, Bouncer.AllInMauling, _enemy);
 
             Assert.That(result.Approved, Is.True);
-            Assert.That(_enemy.Health, Is.EqualTo(4));
+            Assert.That(_enemy.Health, Is.EqualTo(3));
             Assert.That(_bouncer.Health, Is.EqualTo(Bouncer.MaxHealth - 2));
         }
 
@@ -395,7 +423,7 @@ namespace NonaRoyale.Core.Tests.Abilities
 
             Use(_bouncer, Bouncer.AllInMauling, _syla);
 
-            Assert.That(_syla.Health, Is.EqualTo(5));
+            Assert.That(_syla.Health, Is.EqualTo(4));
             Assert.That(_bouncer.Health, Is.EqualTo(Bouncer.MaxHealth),
                 "cast mode is chosen once from the target (§10)");
         }
