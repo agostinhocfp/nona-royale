@@ -172,7 +172,7 @@ namespace NonaRoyale.Core.Abilities
             id: 903, name: "Vendetta",
             description:
                 "Luka becomes enraged with unrelenting focus, assaulting the target with a flurry of atomic blows. Any blow can land a critical hit, and heavy targets suffer worse.",
-            energyCost: 6, cooldownTurns: 3, range: 3,
+            energyCost: 5, cooldownTurns: 3, range: 3,
             effects: new[] { VendettaBlow(), VendettaBlow(), VendettaBlow() });
 
         public static IReadOnlyList<AbilityDefinition> All { get; } =
