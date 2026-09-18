@@ -401,18 +401,19 @@ namespace NonaRoyale.Core.Tests.Abilities
         [Test]
         public void AllInMauling_WoundsTheTargetAndTheBouncer()
         {
-            // 3 out and 2 back since the 2026-09-18 reprice (4 energy,
-            // cooldown 1). Rope into Mauling was 3 Atomic plus 3 and killed
+            // 3 out and 1 back since the 2026-09-18 pass (4 energy, cooldown 1,
+            // self-damage cut 2 → 1 after the bots gave away Bouncer's match
+            // paying it). Rope into Mauling was 3 Atomic plus 3 and killed
             // either 6-health operator from full; at 3 plus 3 against 7 health
             // it leaves 1, so it is still a setup rather than an execution.
-            // Five casts of self-damage neutralize a full-health Bouncer.
+            // Ten casts of self-damage neutralize a full-health Bouncer.
             _bouncer.MoveTo(ProgressAtTrack(PlayerColor.Red, 11));   // range 2 to track 12
 
             var result = Use(_bouncer, Bouncer.AllInMauling, _enemy);
 
             Assert.That(result.Approved, Is.True);
             Assert.That(_enemy.Health, Is.EqualTo(3));
-            Assert.That(_bouncer.Health, Is.EqualTo(Bouncer.MaxHealth - 2));
+            Assert.That(_bouncer.Health, Is.EqualTo(Bouncer.MaxHealth - 1));
         }
 
         [Test]

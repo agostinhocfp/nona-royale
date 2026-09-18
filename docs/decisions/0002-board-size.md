@@ -320,7 +320,7 @@ So every band label in Amendments 2, 3 and 4 overstates Kurbyn by 0.5, and every
 | All-In Mauling range       | 1 → 2 | A range-1 ability on the roster's slowest operator was unusable by construction.                                                                                                                                                                                    |
 | All-In Mauling self-damage | 3 → 1 | Arguably overshoots: at 12 HP it now takes eleven casts to self-neutralize, so the cost is close to flavour. 2 was the recommendation.                                                                                                                              |
 
-**Closed 2026-09-18** (designer): the cost dropped to 4 and the zero cooldown became 1, with damage 2 → 3 and the ally heal 3 → 2 (COMBAT_SYSTEMS §10.1). The original note follows.
+**Closed 2026-09-18** (designer): the cost dropped to 4 and the zero cooldown became 1, with damage 2 → 3, the ally heal 3 → 2 and, later that day, the self-damage 2 → 1 (COMBAT_SYSTEMS §10.1). The original note follows.
 
 **Was open:** All-In Mauling's energy cost. At 6 against a mean drip of 3.5 per turn the economy already gates it to roughly every second turn, so its `cooldownTurns: 0` — the only thing distinguishing it from Velvet Rope, which is the same cost and damage at longer range with a pull — buys nothing. Either the cost drops to 3 or the zero cooldown should be dropped as fiction.
 

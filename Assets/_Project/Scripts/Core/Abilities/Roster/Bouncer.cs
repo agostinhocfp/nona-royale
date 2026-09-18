@@ -132,10 +132,14 @@ namespace NonaRoyale.Core.Abilities
         /// the victim's owner gets a turn to answer. The roster-wide +1 health
         /// (2026-09-16) is what pays for the extra point here.
         ///
-        /// <b>The self-damage costs something.</b> At 1 against 12 health it
-        /// took twelve casts to matter, which made it flavour text. At 2
-        /// against 10 it is five, and a wounded Bouncer has to decide whether
-        /// he can afford the exchange.
+        /// <b>Self-damage back to 1 (2026-09-18, designer).</b> It was 1
+        /// against 12 health — twelve casts, which was flavour text — then 2
+        /// as health fell to 9. The reprice below made the ability worth
+        /// casting twice as often, and at 2 a piece the bots paid for it with
+        /// his match: his bot win share fell 28% → 24% in the sweep that
+        /// measured the reprice. At 1 against 10 health it is ten casts, and it
+        /// still bites the wounded Bouncer who was going to cast it anyway,
+        /// which is the decision it exists for.
         ///
         /// <b>Cooldown 1, not 0.</b> The zero cooldown was the last of the
         /// combo and bought almost nothing: at 6 energy the cap allowed two
@@ -152,7 +156,7 @@ namespace NonaRoyale.Core.Abilities
             effects: new[]
             {
                 AbilityEffect.Damage(EffectScope.PrimaryTarget, 3, DamageType.Normal, EffectAudience.EnemyOnly),
-                AbilityEffect.Damage(EffectScope.Caster, 2, DamageType.Normal, EffectAudience.EnemyOnly),
+                AbilityEffect.Damage(EffectScope.Caster, 1, DamageType.Normal, EffectAudience.EnemyOnly),
                 AbilityEffect.Heal(EffectScope.PrimaryTarget, 2, EffectAudience.AllyOnly)
             });
 

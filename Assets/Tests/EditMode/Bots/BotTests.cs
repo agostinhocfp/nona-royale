@@ -303,12 +303,13 @@ namespace NonaRoyale.Core.Tests.Bots
 
             bouncer.MoveTo(ProgressAt(match, PlayerColor.Red, 10));
             target.MoveTo(ProgressAt(match, PlayerColor.Blue, 11));
-            bouncer.SetHealth(2);
+            bouncer.SetHealth(1);
 
             var weights = BotWeights.For(BotPersonality.Brawler);
             var mauling = CastPlanner.Score(new BotBoard(match), weights, seat, bouncer, Bouncer.AllInMauling, target, null, null);
 
-            // Two points of self-damage would neutralize a Bouncer on 2 health.
+            // One point of self-damage would neutralize a Bouncer on 1 health
+            // (self-damage 2 → 1 on 2026-09-18).
             Assert.That(mauling.Score, Is.LessThan(0.0));
         }
 
