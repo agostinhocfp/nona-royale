@@ -112,7 +112,10 @@ namespace NonaRoyale.Unity.View
             // A world diamond: the square polygon stood on its point, drawn a little tall.
             var diamond = Primitives.Polygon(4, 0f);
             var size = new Vector3(0.32f, 0.44f, 1f) * _cell;
-            var above = at + Vector3.up * (1.4f * _cell);
+            // It has to fall from above the cell on screen. World up is that
+            // only under the flat camera (V1c); BoardTilt is the identity there,
+            // so this is unchanged for top-down.
+            var above = at + BoardTilt.ScreenUp * (1.4f * _cell);
 
             Fx(diamond, colour,
                 new FxPose(above, size, 0f, 0.3f),

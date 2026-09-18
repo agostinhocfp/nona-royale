@@ -60,7 +60,9 @@ namespace NonaRoyale.Unity.View
         {
             _age += Time.deltaTime;
 
-            transform.position += Vector3.up * RiseSpeed * Time.deltaTime;
+            // Off the table toward the viewer, not along world up, which under
+            // the tilt slides the number up the board instead (V1c).
+            transform.position += BoardTilt.ScreenUp * (RiseSpeed * Time.deltaTime);
 
             // The birth pop: overshoot, then settle (UI_MOTION.md U3).
             float pop = UiEasing.Evaluate(UiEase.OutCubic, Mathf.Clamp01(_age / PopSeconds));

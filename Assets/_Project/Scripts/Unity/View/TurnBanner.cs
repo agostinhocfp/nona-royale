@@ -24,6 +24,14 @@ namespace NonaRoyale.Unity.View
     {
         private const float FadeSeconds = 0.5f;
 
+        /// <summary>
+        /// Canvas units the pill occupies under the top bar, for anything that
+        /// has to stay clear of it (V1c). The pill is content-sized, so this is
+        /// its parts rather than a measurement: 8 for the gap this area leaves,
+        /// an 18 pt line, 6 of padding above and below, and a little air.
+        /// </summary>
+        public const float ReservedHeight = 44f;
+
         public bool IsShown => _root != null && _root.gameObject.activeSelf && !_fading;
 
         private RectTransform _area;

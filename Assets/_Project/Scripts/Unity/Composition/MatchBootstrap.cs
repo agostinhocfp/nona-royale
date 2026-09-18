@@ -906,6 +906,7 @@ namespace NonaRoyale.Unity.Composition
             if (_toasts != null) _toasts.SetArea(leftUnits, rightUnits, TurnStrip.ReservedHeight);
             if (_banner != null) _banner.SetArea(leftUnits, rightUnits, TurnStrip.ReservedHeight);
             if (_turnButton != null) _turnButton.SetArea(leftUnits, rightUnits, TurnStrip.ReservedHeight, ActionTray.ReservedHeight);
+            if (_pieceHud != null) _pieceHud.SetCeiling(hud ? TurnStrip.ReservedHeight + TurnBanner.ReservedHeight : 0f);
 
             _framedWidth = Screen.width;
             _framedHeight = Screen.height;

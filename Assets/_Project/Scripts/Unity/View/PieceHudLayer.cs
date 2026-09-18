@@ -91,6 +91,14 @@ namespace NonaRoyale.Unity.View
         private float _worldOffset;
 
         /// <summary>
+        /// Canvas units at the top of the screen that readouts may not enter
+        /// (V1c). The top bar and the turn banner live there, and a stack at
+        /// the head of the north arm spreads its labels straight into the
+        /// banner's pill: the bug reads "RED10/10urn 7/7d 1". Zero disables it.
+        /// </summary>
+        private float _ceiling;
+
+        /// <summary>
         /// Builds one label and one status row per piece under the HUD canvas.
         /// Called from NewMatch, so it clears whatever the previous match left
         /// behind.
@@ -111,6 +119,13 @@ namespace NonaRoyale.Unity.View
             foreach (var piece in pieces)
                 _entries.Add(Build(piece));
         }
+
+        /// <summary>
+        /// How much of the screen's top edge is spoken for, in canvas units
+        /// (V1c). The composition root sets it whenever it frames the camera,
+        /// the same way it sets the toasts', banner's and turn button's areas.
+        /// </summary>
+        public void SetCeiling(float canvasUnits) => _ceiling = Mathf.Max(0f, canvasUnits);
 
         public void Clear()
         {
@@ -369,14 +384,34 @@ namespace NonaRoyale.Unity.View
                         entry.Text.text = $"{shown}/{op.MaxHealth}";
                     }
 
-                    entry.Rect.anchoredPosition = ToCanvas(camera, centre + Vector3.up * _worldOffset)
-                                                  + new Vector2(entry.StackShift, 0f);
+                    // Along whatever reads as up on screen, not world up: under
+                    // the tilt those are different, and a readout offset along
+                    // world up slides up the table instead of off it (V1c).
+                    entry.Rect.anchoredPosition = UnderCeiling(
+                        ToCanvas(camera, centre + BoardTilt.ScreenUp * _worldOffset)
+                            + new Vector2(entry.StackShift, 0f),
+                        entry.Rect);
                 }
 
                 if (showStatuses)
-                    entry.StatusRect.anchoredPosition = ToCanvas(camera, centre + Vector3.down * _worldOffset)
+                    entry.StatusRect.anchoredPosition = ToCanvas(camera, centre - BoardTilt.ScreenUp * _worldOffset)
                                                         + new Vector2(entry.StackShift, 0f);
             }
+        }
+
+        /// <summary>
+        /// Holds a readout below the reserved top edge (V1c). Clamped, not
+        /// flipped: a piece in the north arm's top row only needs to come down
+        /// by about its own height, so it stays plainly attached to its piece,
+        /// and clamping cannot push it onto the status tags the way a flip can.
+        /// </summary>
+        private Vector2 UnderCeiling(Vector2 at, RectTransform rect)
+        {
+            if (_ceiling <= 0f || _canvasRect == null) return at;
+
+            float top = _canvasRect.rect.height * 0.5f - _ceiling - rect.sizeDelta.y * 0.5f;
+            if (at.y > top) at.y = top;
+            return at;
         }
 
         private Vector2 ToCanvas(Camera camera, Vector3 world)

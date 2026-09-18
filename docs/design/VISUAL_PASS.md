@@ -1,7 +1,7 @@
 # Nona Royale — Visual Pass
 
 > Location in repo: `docs/design/VISUAL_PASS.md` · Project copy: `claude/VISUAL_PASS.md`
-> Status: **Open, 2026-09-18.** V0 passed and is retired. V4 (the colour grade), V1a (the tilted camera) and V1b (standing figures) are in; V1c is next. V3's room and title layout are chosen from mockups and not yet built.
+> Status: **Open, 2026-09-18.** V0 passed and is retired. V4 (the colour grade), V1a (the tilted camera), V1b (standing figures) and V1c (the overlays) are in; V2 and V3 remain. V3's room and title layout are chosen from mockups and not yet built.
 > Related: `ART_DIRECTION.md` §3, §6, §6.1, ADR-0009 (figures rendered looking down about 25°), ADR-0010 (URP 2D Renderer), `LIGHTING.md`, `GUI_PHASE.md` (G2–G4)
 
 ## Goal
@@ -104,7 +104,7 @@ Two things the spike showed that were not being asked about:
 | V0 | **Lighting spike** | `View/PerspectiveSpike` (editor and development builds only): F9 tilts the main camera into perspective over the current board, F10 cycles 30°/40°/48°, F9 restores it. Answers one question: do the 2D lights still work? |
 | V1a | **Tilted camera** ✅ | `View/TiltFraming` and the Board camera setting (Top-down or Tilted, top-down the default). The perspective branch in `FrameCamera`; board clicks by ray against the board plane; the camera nudge shoved along screen axes; stereo panning measured on screen. Pieces still lie flat. |
 | V1b | **Figures stand up** ✅ | `View/FigureTilt` and `View/BoardTilt`. A `SortingGroup` per piece with its order taken from world y; the figure leaning up out of the table about its feet; the hop rising on screen; the seat disc drawn as a true circle for the camera to foreshorten; and piece hit testing in screen space, without which a click on a standing figure selects the cell behind it. |
-| V1c | **Overlays** | The things that anchor to a world position and assume "up" is up on screen: `PieceHudLayer`'s health and tags (a fixed world-up offset), `CellLabelLayer`'s landing pips, `FloatingText`'s damage numbers and `FeedbackLayer`'s rings (world-space, so they lie flat on the table and rise up it), and `DiceRoller`'s landing spot. Plus `CastTell`'s deliberately tall diamond, which fakes a perspective that now exists. `BoardTilt` is the seam they all read. |
+| V1c | **Overlays** ✅ | Everything that offsets from a world position along "up": `PieceHudLayer`'s health and tags, `FloatingText`'s damage numbers and `CastTell`'s falling diamond now read `BoardTilt.ScreenUp`. `CellLabelLayer`, `DiceRoller` and `FeedbackLayer` turned out to need nothing — see the log. Plus a ceiling on the piece readouts, which were colliding with the turn banner under the flat camera too. |
 | V2 | **Table body** | The table's thickness and its gilt band, seen along the near edge; contact shadows under figures. |
 | V3 | **Room for the menu screens** | The chosen salon (velvet wall, a pair of chandeliers, a sconce ring on side columns) behind the title, setup, draft and end screens; the title's lockup moved to the top with the buttons in a bottom row and the scrim at 0.20; a posed table instead of an empty one; and a camera move from the room shot into the match framing. Mockups reviewed and chosen 2026-09-18. |
 | V4 | **Colour grade** ✅ | URP Volume overrides beside the existing bloom: tonemapping, split toning, edge falloff (vignette), light grain. Off with Lighting effects. |
@@ -262,3 +262,22 @@ V0 passed, so neither fallback was needed: "top-down, deeper" and moving the boa
     6. Switch to TOP-DOWN: everything should look exactly as it did yesterday.
     7. Still expected, and V1c: health readouts, damage numbers and the feedback rings
        are placed as if "up" were up on screen, so they will sit oddly.
+- 2026-09-18 — **V1c in: the overlays, and a collision that predates the tilt.**
+  - **The planned scope was wider than the defect.** Six things were listed; three needed changing. Read rather than assumed:
+    - **`PieceHudLayer`** offset its health `Vector3.up * worldOffset` and its status row `Vector3.down`. Under the tilt that slides the readouts *up the table* instead of *off* it. Now `BoardTilt.ScreenUp`.
+    - **`FloatingText`** rose along world up, same fault: a damage number drifted across the board rather than toward the viewer.
+    - **`CastTell.Drop`** started its diamond at `at + Vector3.up * 1.4 cells` and dropped it onto the cell. Under the tilt it fell along the table.
+    - **`CellLabelLayer` needed nothing.** Its `Place` projects the cell's own world position through `WorldToScreenPoint` with no offset at all, and that is correct for any projection. The plan listed it on the assumption it carried an offset; it does not.
+    - **`DiceRoller` needed nothing.** `CanvasPoint` is `RectTransformUtility.WorldToScreenPoint` on the vault's position — again projection-agnostic, the same reason V1a found the world-anchored HUD was already correct.
+    - **`FeedbackLayer`'s rings needed nothing,** and changing them would have been a bug. They are true circles in the board plane that expand in place. The flat camera renders a circle; the tilted camera foreshortens it into the table by itself. That *is* the wanted behaviour — it is the seat disc's lesson from V1b in reverse, where the hand-faked 0.9 × 0.36 ellipse had to *become* a true circle.
+  - **`BoardTilt` is the identity when flat,** so all three changes are no-ops for top-down. That was the point of putting the seam in during V1b.
+  - **A collision found in a screenshot, not in the code.** Two pieces stacked at the head of the north arm spread their readouts sideways (`SetStack`, by a label's width) straight into the turn banner's pill, which prints as `RED10/10urn 7/7d 1 · Space to roll`. It needs a stack to show, which is why it survived every earlier Play Mode pass, and it has nothing to do with the tilt — the flat camera does it too.
+    - `PieceHudLayer.SetCeiling` takes the canvas units spoken for at the top of the screen, and `MatchBootstrap` feeds it `TurnStrip.ReservedHeight + TurnBanner.ReservedHeight` from `FrameCamera`, beside the toasts', banner's and turn button's areas. New `TurnBanner.ReservedHeight` (44), stated as its parts rather than measured, because the pill is content-sized.
+    - **Clamped, not flipped.** A top-row piece only needs to come down about its own height, so the label stays plainly attached; a flip would drop it onto its own status tags.
+  - **Checked:** the view and core compile clean against the 6000.6 DLLs (178 files, 0 warnings, 0 errors), and no `Vector3.up` or `Vector3.down` survives in any of the five overlay files. No core changes, so the tests are unchanged.
+  - **Play Mode checklist:**
+    - **Tilted.** Health readouts and status tags sit above and below their pieces *on screen*, not shifted up the table. Damage numbers rise toward the viewer. A beacon or zone cast drops its diamond onto the cell from above on screen.
+    - **Tilted.** Feedback rings still lie flat on the table and foreshorten with it — they should look like rings on a floor, not standing hoops.
+    - **Both cameras.** Deal a match where two pieces start stacked at the head of the north arm (RED's own arm). The turn banner reads cleanly; the two readouts sit just under it rather than through it.
+    - **Top-down.** Everything else is exactly as it was — the three changed offsets are identities at pitch 0.
+    - Landing pips and the dice were not touched; if either looks wrong under the tilt it is a new finding, not a regression.
