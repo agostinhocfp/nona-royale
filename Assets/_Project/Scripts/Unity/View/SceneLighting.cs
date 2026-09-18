@@ -44,15 +44,19 @@ namespace NonaRoyale.Unity.View
     /// gone with Lighting effects off, and it holds still under Reduced
     /// motion.
     ///
-    /// <b>Bloom</b> is a global Volume built in code, with its threshold at
-    /// 1: only what a light pushes past white glows, never the flat HUD
-    /// (a Screen Space Overlay canvas is drawn after post-processing).
+    /// <b>Bloom and the colour grade</b> share one global Volume built in
+    /// code. Bloom's threshold is 1, so only what a light pushes past white
+    /// glows. The grade (VISUAL_PASS.md, V4) is neutral tonemapping, a little
+    /// exposure and contrast, a warm filter, a split tone (aubergine shadows,
+    /// lamplight highlights), a soft edge falloff and a whisper of grain —
+    /// the look the mockups were graded with. Neither touches the HUD: a
+    /// Screen Space Overlay canvas is drawn after post-processing.
     ///
     /// <b>The Lighting effects setting</b> (<see cref="Effects"/>) turns
-    /// all of it off: ambient back to 1, the pools and bloom disabled. That
+    /// all of it off: ambient back to 1, the pools, bloom and grade disabled. That
     /// is the look the game had on Built-in, and the cheap path for weak
     /// devices. <b>Reduced motion</b> (<see cref="Reduced"/>) stills the
-    /// swells and the haze.
+    /// swells and the haze, and drops the grain, which cannot hold still.
     ///
     /// <b>Tuning.</b> The fields below are read every frame, so they can be
     /// dragged in the inspector during Play Mode. Those edits are lost when
@@ -113,6 +117,26 @@ namespace NonaRoyale.Unity.View
         [Tooltip("How far the haze wanders, as a fraction of its size.")]
         [Range(0f, 0.2f)] public float hazeDrift = 0.05f;
 
+        [Header("Colour grade (V4)")]
+        [Tooltip("Exposure added after tonemapping, in stops.")]
+        [Range(-2f, 2f)] public float gradeExposure = 0.25f;
+        [Range(-100f, 100f)] public float gradeContrast = 8f;
+        [Range(-100f, 100f)] public float gradeSaturation = -4f;
+        [Tooltip("A warm filter over the whole frame.")]
+        public Color gradeFilter = new Color(1f, 0.98f, 0.94f);
+        [Tooltip("Shadows are tinted toward this: the room's aubergine dark.")]
+        public Color gradeShadows = new Color(0.17f, 0.07f, 0.13f);
+        [Tooltip("Highlights are tinted toward this: warm lamplight.")]
+        public Color gradeHighlights = new Color(1f, 0.95f, 0.86f);
+        [Tooltip("Which way the split leans. Negative gives the shadows more of the frame.")]
+        [Range(-100f, 100f)] public float gradeBalance = -15f;
+        [Tooltip("How far the corners fall off.")]
+        [Range(0f, 1f)] public float vignetteIntensity = 0.32f;
+        [Range(0.01f, 1f)] public float vignetteSmoothness = 0.45f;
+        [Tooltip("Grain keeps the near-black surfaces from banding. 0 is off.")]
+        [Range(0f, 1f)] public float grainIntensity = 0.12f;
+        [Range(0f, 1f)] public float grainResponse = 0.8f;
+
         [Header("Bloom")]
         [Tooltip("Brightness where glow starts. 1 means only what a light pushes past white.")]
         [Range(0f, 3f)] public float bloomThreshold = 1f;
@@ -151,6 +175,11 @@ namespace NonaRoyale.Unity.View
         private Volume _volume;
         private VolumeProfile _profile;
         private Bloom _bloom;
+        private Tonemapping _tonemapping;
+        private ColorAdjustments _colour;
+        private SplitToning _split;
+        private Vignette _vignette;
+        private FilmGrain _grain;
         private Camera _camera;
         private bool? _postProcessing;
 
@@ -258,6 +287,23 @@ namespace NonaRoyale.Unity.View
                 _bloom.threshold.Override(bloomThreshold);
                 _bloom.intensity.Override(bloomIntensity);
                 _bloom.scatter.Override(bloomScatter);
+
+                _colour.postExposure.Override(gradeExposure);
+                _colour.contrast.Override(gradeContrast);
+                _colour.saturation.Override(gradeSaturation);
+                _colour.colorFilter.Override(gradeFilter);
+
+                _split.shadows.Override(gradeShadows);
+                _split.highlights.Override(gradeHighlights);
+                _split.balance.Override(gradeBalance);
+
+                _vignette.intensity.Override(vignetteIntensity);
+                _vignette.smoothness.Override(vignetteSmoothness);
+
+                // URP's grain scrolls every frame and there is no still setting,
+                // so Reduced motion turns it off rather than slowing it.
+                _grain.intensity.Override(Reduced ? 0f : grainIntensity);
+                _grain.response.Override(grainResponse);
             }
 
             SetPostProcessing(on);
@@ -384,9 +430,21 @@ namespace NonaRoyale.Unity.View
             go.transform.SetParent(transform, false);
 
             _profile = ScriptableObject.CreateInstance<VolumeProfile>();
-            _profile.name = "RoomBloom";
+            _profile.name = "RoomGrade";
             _bloom = _profile.Add<Bloom>(true);
             _bloom.highQualityFiltering.Override(false);
+
+            // The grade (V4). Neutral tonemapping, not ACES: ACES crushes the
+            // near-black surfaces this board is mostly made of, and pulls the
+            // gold toward orange.
+            _tonemapping = _profile.Add<Tonemapping>(true);
+            _tonemapping.mode.Override(TonemappingMode.Neutral);
+
+            _colour = _profile.Add<ColorAdjustments>(true);
+            _split = _profile.Add<SplitToning>(true);
+            _vignette = _profile.Add<Vignette>(true);
+            _grain = _profile.Add<FilmGrain>(true);
+            _grain.type.Override(FilmGrainLookup.Thin1);
 
             _volume = go.AddComponent<Volume>();
             _volume.isGlobal = true;
