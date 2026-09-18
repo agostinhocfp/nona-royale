@@ -356,24 +356,30 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
-        public void Equilibrium_ALaterDeviceIsNotACast()
+        public void Equilibrium_HalvesTheZonesInstantHit_ButNotItsLaterTick()
         {
-            // Eris' Exploit costs 6, but its ticks resolve at a later upkeep:
-            // with two caught, each takes a clean 1.
+            // Eris' Exploit costs 6 and strikes on the cast since 2026-09-18
+            // (ADR-0007 Amendment 2), so its first hit is a cast hit and Equilibrium halves it.
+            // Its later tick resolves at an upkeep and carries no cost at all.
+            // Three caught: 2 each, so Revú takes 1 now and 2 at the tick.
             BringEnemyRevuTo(12);
             Place(_target, 13);
-            Place(_near, 30);
+            Place(_near, 11);
             Place(_green, 31);
             var lethe = AtTrack(20, "Lethe", PlayerColor.Red, Lethe.MaxHealth, 10);
             _board.Add(lethe);
 
             _abilities.Use(lethe, Lethe.ErisExploit, null, _red, _board,
                 _map.CellAt(PlayerColor.Red, (12 - _map.StartTrackIndex(PlayerColor.Red) + 52) % 52));
+
+            Assert.That(_enemyRevu.Health, Is.EqualTo(Revu.MaxHealth - 1), "the instant hit, halved");
+            Assert.That(_target.Health, Is.EqualTo(5), "everyone else takes the full 2");
+
             _clock.BeginTurnFor(PlayerColor.Blue);
             _clock.BeginTurnFor(PlayerColor.Red);
             _cellEffects.Fire(PlayerColor.Red, _board);
 
-            Assert.That(_enemyRevu.Health, Is.EqualTo(Revu.MaxHealth - 1));
+            Assert.That(_enemyRevu.Health, Is.EqualTo(Revu.MaxHealth - 3), "the tick is not a cast: a clean 2");
         }
 
         [Test]

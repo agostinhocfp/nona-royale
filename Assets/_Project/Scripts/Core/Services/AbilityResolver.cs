@@ -356,7 +356,7 @@ namespace NonaRoyale.Core.Services
 
                     if (effect.Kind == EffectKind.DeployZone)
                     {
-                        RunDeployZone(effect, caster, targetCell, outcomes);
+                        RunDeployZone(effect, caster, targetCell, allOperators, outcomes);
                         continue;
                     }
 
@@ -523,22 +523,83 @@ namespace NonaRoyale.Core.Services
         /// <see cref="RunPaintCell"/> carries, for the same reason.
         /// </remarks>
         private void RunDeployZone(
-            AbilityEffect effect, OperatorState caster, CellRef? cell, List<EffectOutcome> outcomes)
+            AbilityEffect effect, OperatorState caster, CellRef? cell,
+            IReadOnlyList<OperatorState> allOperators, List<EffectOutcome> outcomes)
         {
             if (cell == null) return;
 
-            _cellEffects.Deploy(
-                cell.Value, caster.Owner, caster.Id,
-                detonationDamage: effect.Amount,
-                lingerDamage: (int)effect.Magnitude,
-                lingerTicks: effect.Stacks,
-                radius: effect.Radius,
-                damageType: effect.DamageType,
-                detonationStatus: effect.CarriesStatus ? effect.Status : (StatusKind?)null,
-                statusDuration: effect.Duration,
-                scalesWithCrowd: effect.ScalesWithCrowd);
+            // A zone that strikes on cast (ADR-0007 Amendment 2) lands its first hit here and
+            // leaves the rest of its ticks on the owner's clock. Everything
+            // else about it is unchanged, which is why this is one branch
+            // rather than a second effect kind.
+            int futureTicks = effect.Stacks;
 
-            outcomes.Add(EffectOutcome.ZoneDeployed(caster, cell.Value, effect.Amount));
+            if (effect.StrikesOnCast)
+            {
+                StrikeZoneNow(effect, caster, cell.Value, allOperators, outcomes);
+            }
+            else
+            {
+                futureTicks = effect.Stacks + 1;
+            }
+
+            if (futureTicks > 0)
+            {
+                _cellEffects.Deploy(
+                    cell.Value, caster.Owner, caster.Id,
+                    detonationDamage: effect.Amount,
+                    lingerDamage: (int)effect.Magnitude,
+                    lingerTicks: futureTicks - 1,
+                    radius: effect.Radius,
+                    damageType: effect.DamageType,
+                    detonationStatus: effect.StrikesOnCast
+                        ? (StatusKind?)null                       // spent by the instant hit
+                        : effect.CarriesStatus ? effect.Status : (StatusKind?)null,
+                    statusDuration: effect.Duration,
+                    scalesWithCrowd: effect.ScalesWithCrowd);
+
+                outcomes.Add(EffectOutcome.ZoneDeployed(caster, cell.Value, effect.Amount));
+            }
+        }
+
+        /// <summary>
+        /// The instant half of a strike-on-cast zone (ADR-0007 Amendment 2): the same crowd
+        /// arithmetic <c>DeferredCellEffects</c> runs at a tick, applied now.
+        /// </summary>
+        /// <remarks>
+        /// <b>It is a cast hit, so it carries the ability's cost</b> and meets
+        /// Revú's Equilibrium (§5.17), which the deferred ticks never do.
+        ///
+        /// <b>A crowd of one is not struck at all</b>, exactly as at a tick: a
+        /// zero-damage instance would still spend an evasion charge (§5.5).
+        /// </remarks>
+        private void StrikeZoneNow(
+            AbilityEffect effect, OperatorState caster, CellRef cell,
+            IReadOnlyList<OperatorState> allOperators, List<EffectOutcome> outcomes)
+        {
+            var caught = _targeting.EnemiesInArea(cell, effect.Radius, caster.Owner, allOperators);
+            if (caught.Count == 0) return;
+
+            int each = effect.ScalesWithCrowd
+                ? effect.Amount * (caught.Count - 1)
+                : effect.Amount;
+
+            if (each <= 0) return;
+
+            var hit = AbilityEffect.Damage(EffectScope.PrimaryTarget, each, effect.DamageType);
+
+            foreach (var victim in caught)
+            {
+                if (IsAlreadyDown(victim)) continue;
+
+                if (effect.CarriesStatus)
+                {
+                    _statuses.Apply(victim, effect.Status, effect.Duration, sourceOperatorId: caster.Id);
+                    outcomes.Add(EffectOutcome.StatusApplied(victim, effect.Status, effect.Duration));
+                }
+
+                outcomes.Add(ApplyDamage(hit, caster, victim));
+            }
         }
 
         /// <summary>
@@ -656,7 +717,7 @@ namespace NonaRoyale.Core.Services
         /// <summary>
         /// Projects a field onto the caster. Nothing ticks now — the field
         /// first bills at the caster's next upkeep, and keeps billing while
-        /// its marker stands (§6.6).
+        /// its marker stands (ADR-0007 Amendment 2).
         /// </summary>
         /// <remarks>
         /// <see cref="RunAttachCharge"/> turned inward: the

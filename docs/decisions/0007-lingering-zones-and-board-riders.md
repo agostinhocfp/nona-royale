@@ -1,7 +1,7 @@
 # ADR-0007: Lingering Zones and Board-Reading Riders
 
 > Location in repo: `docs/decisions/0007-lingering-zones-and-board-riders.md`
-> Status: **Accepted**, with one open design choice (see the end) · **Amendment 1, 2026-09-17** (crowd zones)
+> Status: **Accepted**, with one open design choice (see the end) · **Amendment 1, 2026-09-17** (crowd zones) · **Amendment 2, 2026-09-18** (zones that strike on the cast)
 > Date: 2026-09-14 (decision, landed with Nuetu) · recorded 2026-09-15
 > Related: ADR-0006 (cell-targeted casting), `docs/design/COMBAT_SYSTEMS.md` §5.1, §9.1
 
@@ -48,6 +48,23 @@ Lethe's **Eris' Exploit** is a zone whose damage depends on how many enemies it 
 3. **Entries are keyed on cell, seat and source operator.** Under the old key (cell and seat), a squadmate casting on a cell replaced the device already there. With Lethe and Nuetu on one seat, that meant a Killzone could be overwritten by an Eris' Exploit. A Kian beacon could be overwritten the same way, before Lethe existed. The same operator re-casting on its own cell still replaces, which is decision 1's "sources do not stack" for a single source. `HasBeaconOn` still asks about the seat as a whole.
 
 **The rider reads only the caster's own zones.** `HasActiveZoneFor(owner, sourceOperatorId)` takes the caster, because Bio-Link Rage's rider is "while one of *his* Killzones is live", and a squadmate's crowd zone is not his. This narrows decision 6. It does not settle the open choice below, which is about *where* Nuetu stands, not *whose* zone it is.
+
+## Amendment 2 (2026-09-18): a zone may strike on the cast
+
+**Decision (designer).** A zone effect may land its first hit at cast time and leave the rest of its ticks on the owner's clock. `AbilityEffect.StrikesOnCast` carries it; `AbilityResolver.StrikeZoneNow` runs the same crowd arithmetic the deferred tick runs. **Eris' Exploit is the first and only user**: one hit now, one at Lethe's next upkeep, instead of two later ticks.
+
+**Why.** The original timing priced the ability on a bet: the enemy saw the zone for a round and could scatter, and a 6-energy cast then bought nothing. In play that failure fired often enough that the ability was barely worth casting.
+
+**What it changes.**
+
+- The total against a crowd that stays put is unchanged. What the enemy can dodge is halved.
+- The instant hit is a **cast hit**: it carries the ability's energy cost, so Revú's Equilibrium (COMBAT_SYSTEMS §5.17) scales it. Deferred ticks still carry no cost.
+- A detonation status, if a future zone declares one, lands with the instant hit and not again at the tick.
+- A crowd of one is still not struck at all, at the cast as at a tick: a zero-damage instance would spend an evasion charge.
+
+**What it does not change.** The deferred half is an ordinary zone: same radius, same crowd recount, same source keying, same credit.
+
+**Unmeasurable in the harness.** The bots never move out of a zone, so they always ate both ticks; the sweep shows 22.9% → 22.7% for Lethe, which is noise. This change is worth exactly what a human opponent's scatter was worth.
 
 ## Open design choice
 

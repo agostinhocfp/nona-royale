@@ -305,16 +305,18 @@ namespace NonaRoyale.Core.Tests.Abilities
         // ── Eris' Exploit ────────────────────────────────────────────────
 
         [Test]
-        public void ErisExploit_StrikesNothingOnTheCastTurn()
+        public void ErisExploit_StrikesOnTheCast_AndLeavesTheZoneStanding()
         {
+            // Designer, 2026-09-18 (ADR-0007 Amendment 2): the first hit lands at once, the
+            // second waits for her next upkeep.
             Crowd(3);
 
             var result = Seed(ZoneTrack);
 
             Assert.That(result.Approved, Is.True, result.ToString());
-            Assert.That(_cellEffects.ActiveZones(), Has.Member(Track(ZoneTrack)), "telegraphed as a zone");
-            Assert.That(FireRed(), Is.Empty, "it waits for her next upkeep");
-            Assert.That(_foes.Take(3).All(f => f.Health == 7), Is.True);
+            Assert.That(_foes.Take(3).All(f => f.Health == 7 - 2), Is.True, "2 each, now");
+            Assert.That(_cellEffects.ActiveZones(), Has.Member(Track(ZoneTrack)), "still telegraphed");
+            Assert.That(FireRed(), Is.Empty, "the second hit waits for her next upkeep");
         }
 
         [Test] public void ErisExploit_OneCaught_TakesNothing() => EachTakesOnePerOther(1, 0);
@@ -324,8 +326,14 @@ namespace NonaRoyale.Core.Tests.Abilities
 
         private void EachTakesOnePerOther(int caught, int each)
         {
+            // The instant hit and the tick are the same arithmetic, so each
+            // victim takes `each` twice if it stays put.
             Crowd(caught);
             Seed(ZoneTrack);
+
+            for (int i = 0; i < caught; i++)
+                Assert.That(_foes[i].Health, Is.EqualTo(7 - each), _foes[i].Name + ", on the cast");
+
             AdvanceToRedsNextTurn();
 
             var fired = FireRed().Single();
@@ -333,16 +341,22 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(fired.Caught.Count, Is.EqualTo(caught));
             Assert.That(fired.DamagePerTarget, Is.EqualTo(each));
             for (int i = 0; i < caught; i++)
-                Assert.That(_foes[i].Health, Is.EqualTo(7 - each), _foes[i].Name);
+                Assert.That(_foes[i].Health, Is.EqualTo(7 - 2 * each), _foes[i].Name);
         }
 
         [Test]
         public void ErisExploit_ALoneVictim_IsNotEvenTouched()
         {
             // Not a zero-damage hit: a zero instance would still spend an
-            // evasion charge (§5.5).
+            // evasion charge (§5.5). True of the instant hit as well (ADR-0007 Amendment 2).
             Crowd(1);
-            Seed(ZoneTrack);
+
+            var cast = Seed(ZoneTrack);
+
+            Assert.That(cast.Outcomes.Any(o => o.Kind == EffectOutcomeKind.Damaged), Is.False,
+                "nothing is struck on the cast either");
+            Assert.That(_foes[0].Health, Is.EqualTo(7));
+
             AdvanceToRedsNextTurn();
 
             var fired = FireRed().Single();
@@ -383,38 +397,40 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
-        public void ErisExploit_TicksTwice_ThenIsGone()
+        public void ErisExploit_HitsOnCastAndOnce_ThenIsGone()
         {
             Crowd(3);
             Seed(ZoneTrack);
+            Assert.That(_foes.Take(3).All(f => f.Health == 7 - 2), Is.True, "the instant hit");
 
             AdvanceToRedsNextTurn();
-            Assert.That(FireRed().Single().IsDetonation, Is.True);
-
-            AdvanceToRedsNextTurn();
-            Assert.That(FireRed().Single().IsDetonation, Is.False);
+            Assert.That(FireRed().Single().Caught.Count, Is.EqualTo(3));
 
             AdvanceToRedsNextTurn();
             Assert.That(FireRed(), Is.Empty);
             Assert.That(_cellEffects.ActiveZones(), Is.Empty);
 
-            Assert.That(_foes.Take(3).All(f => f.Health == 7 - 2 * 2), Is.True, "two ticks of 2");
+            Assert.That(_foes.Take(3).All(f => f.Health == 7 - 2 * 2), Is.True, "two hits of 2 in all");
         }
 
         [Test]
-        public void ErisExploit_CountsTheCrowdAtEachTick_NotAtTheCast()
+        public void ErisExploit_CountsTheCrowdAgainAtTheTick()
         {
+            // The cast catches four (3 each); two scatter, so the tick catches
+            // two (1 each). Scattering still pays, it just no longer escapes
+            // the ability entirely.
             Crowd(4);
             Seed(ZoneTrack);
 
-            // Two of them scatter before the zone goes off.
+            Assert.That(_foes.Take(4).All(f => f.Health == 4), Is.True, "3 each on the cast");
+
             Place(_foes[2], FarTrack);
             Place(_foes[3], FarTrack + 1);
             AdvanceToRedsNextTurn();
 
             Assert.That(FireRed().Single().DamagePerTarget, Is.EqualTo(1));
-            Assert.That(_foes[0].Health, Is.EqualTo(6));
-            Assert.That(_foes[3].Health, Is.EqualTo(7));
+            Assert.That(_foes[0].Health, Is.EqualTo(3));
+            Assert.That(_foes[3].Health, Is.EqualTo(4), "gone before the tick");
         }
 
         [Test]
@@ -435,12 +451,11 @@ namespace NonaRoyale.Core.Tests.Abilities
         {
             // Four caught: 3 each. A 2-point plate takes 2 of the one hit and
             // 1 gets through — not three 1-point hits of which it eats two.
+            // The instant hit is the one the plate meets (ADR-0007 Amendment 2).
             Crowd(4);
             _statuses.Apply(_foes[0], StatusKind.Shield, duration: 3, magnitude: 2);
+            AdvanceToRedsNextTurn();          // the plate takes hold on Blue's turn
             Seed(ZoneTrack);
-            AdvanceToRedsNextTurn();
-
-            FireRed();
 
             Assert.That(_foes[0].Health, Is.EqualTo(6));
             Assert.That(_statuses.ShieldPool(_foes[0]), Is.EqualTo(0));

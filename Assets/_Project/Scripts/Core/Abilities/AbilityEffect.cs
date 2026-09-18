@@ -26,7 +26,8 @@ namespace NonaRoyale.Core.Abilities
             double critChance = 0.0, int critMultiplier = 1, int heavyCritMultiplier = 1,
             int heavyAboveMaxHealth = 0, int heavyBonus = 0,
             bool scalesWithCrowd = false,
-            bool lifesteal = false)
+            bool lifesteal = false,
+            bool strikesOnCast = false)
         {
             Kind = kind;
             Scope = scope;
@@ -49,6 +50,7 @@ namespace NonaRoyale.Core.Abilities
             HeavyBonus = heavyBonus;
             ScalesWithCrowd = scalesWithCrowd;
             Lifesteal = lifesteal;
+            StrikesOnCast = strikesOnCast;
         }
 
         public EffectKind Kind { get; }
@@ -154,6 +156,18 @@ namespace NonaRoyale.Core.Abilities
         /// </summary>
         public bool Lifesteal { get; }
 
+        /// <summary>
+        /// A zone that lands its first hit at cast time instead of waiting for
+        /// its owner's next upkeep (COMBAT_SYSTEMS ADR-0007 Amendment 2, designer 2026-09-18).
+        /// The remaining ticks still resolve on the owner's clock.
+        /// </summary>
+        /// <remarks>
+        /// Only the instant hit carries the cast's cost, so only it meets
+        /// Revú's Equilibrium (§5.17) — a deferred tick never has a cost to
+        /// read.
+        /// </remarks>
+        public bool StrikesOnCast { get; }
+
         /// <summary>Whether an operator with this maximum health counts as heavy for this effect.</summary>
         public bool CountsAsHeavy(int maxHealth) =>
             HeavyAboveMaxHealth > 0 && maxHealth > HeavyAboveMaxHealth;
@@ -164,7 +178,7 @@ namespace NonaRoyale.Core.Abilities
                 Status, Duration, Stacks, Magnitude, BonusIfBleeding,
                 ExecuteNumerator, ExecuteDenominator, BonusInOwnZone,
                 CritChance, CritMultiplier, HeavyCritMultiplier, HeavyAboveMaxHealth, HeavyBonus,
-                ScalesWithCrowd, Lifesteal);
+                ScalesWithCrowd, Lifesteal, StrikesOnCast);
 
         /// <summary>
         /// A copy of a damage effect that can land as a critical hit: on a roll
@@ -198,7 +212,7 @@ namespace NonaRoyale.Core.Abilities
                 Status, Duration, Stacks, Magnitude, BonusIfBleeding,
                 ExecuteNumerator, ExecuteDenominator, BonusInOwnZone,
                 chance, multiplier, heavyMultiplier, heavyAboveMaxHealth, HeavyBonus,
-                ScalesWithCrowd, Lifesteal);
+                ScalesWithCrowd, Lifesteal, StrikesOnCast);
         }
 
         /// <summary>
@@ -402,7 +416,8 @@ namespace NonaRoyale.Core.Abilities
         /// </remarks>
         public static AbilityEffect CrowdZone(
             int perOtherVictim, int lingerTicks, int radius, DamageType damageType,
-            EffectAudience audience = EffectAudience.Any)
+            EffectAudience audience = EffectAudience.Any,
+            bool strikesOnCast = false)
         {
             if (perOtherVictim < 1) throw new ArgumentOutOfRangeException(nameof(perOtherVictim));
             if (lingerTicks < 0) throw new ArgumentOutOfRangeException(nameof(lingerTicks));
@@ -411,7 +426,7 @@ namespace NonaRoyale.Core.Abilities
             return new AbilityEffect(EffectKind.DeployZone, EffectScope.PrimaryTarget, audience,
                 perOtherVictim, damageType, radius, default, 0,
                 lingerTicks, perOtherVictim, 0, 0, 0,
-                scalesWithCrowd: true);
+                scalesWithCrowd: true, strikesOnCast: strikesOnCast);
         }
 
         /// <summary>
@@ -538,7 +553,7 @@ namespace NonaRoyale.Core.Abilities
         /// Projects a self-anchored field onto the caster: at each of her
         /// owner-upkeeps for <paramref name="durationTurns"/> of her turns,
         /// every enemy within <paramref name="radius"/> of her current cell
-        /// takes <paramref name="tickDamage"/> (§6.6). Mimi's Cryo Field.
+        /// takes <paramref name="tickDamage"/> (ADR-0007 Amendment 2). Mimi's Cryo Field.
         /// </summary>
         /// <remarks>
         /// <b>Scoped to the caster, and the recipient is real.</b> Unlike

@@ -163,7 +163,10 @@ namespace NonaRoyale.Core.Abilities
         /// </remarks>
         public const int ErisExploitRadius = 2;
 
-        /// <summary>Ticks after the first. One: two ticks in all.</summary>
+        /// <summary>
+        /// Ticks after the instant one. One: two hits in all, the first at cast
+        /// (ADR-0007 Amendment 2) and the second at her next upkeep.
+        /// </summary>
         public const int ErisExploitLingerTicks = 1;
 
         /// <summary>
@@ -186,10 +189,15 @@ namespace NonaRoyale.Core.Abilities
         /// condition, stated here so nobody discovers it at the table: aimed at
         /// a lone operator it is 6 energy for nothing.
         ///
-        /// <b>A zone, so ADR-0007's timing.</b> It strikes at Lethe's next
-        /// upkeep and once more at the one after. The enemy sees it for a
-        /// round and can scatter first — which is the point. A crowd that
-        /// breaks up has been controlled even if nobody is hurt.
+        /// <b>It strikes on the cast, then once more at Lethe's next upkeep</b>
+        /// (designer, 2026-09-18; ADR-0007 Amendment 2). It was a plain ADR-0007 zone —
+        /// nothing at cast, a tick at her next upkeep and one after that — and
+        /// the enemy could simply scatter, which made a 6-energy cast worth
+        /// nothing often enough that the bots cast it about once a match and
+        /// she sat at the bottom of the sweep. The first hit is now
+        /// undodgeable; the second still is, so a crowd that breaks up has
+        /// still been controlled. Total damage against a crowd that stays put
+        /// is unchanged.
         ///
         /// <b>One hit of N−1 per victim</b>, Normal, credited to Lethe: an
         /// evasion charge or a plate meets it once, and a kill pays her side
@@ -206,7 +214,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition ErisExploit { get; } = new AbilityDefinition(
             id: 1002, name: "Eris' Exploit",
             description:
-                "Seeds a patch of track with discord. Next round, every enemy inside turns on every other enemy inside, and the crowd bleeds itself.",
+                "Sows discord in a patch of track: every enemy inside turns on every other one at once, and again next round on whoever stayed.",
             energyCost: 6, cooldownTurns: 4, range: 3,
             targeting: AbilityTargeting.Cell,
             effects: new[]
@@ -215,7 +223,8 @@ namespace NonaRoyale.Core.Abilities
                     perOtherVictim: ErisExploitPerOtherVictim,
                     lingerTicks: ErisExploitLingerTicks,
                     radius: ErisExploitRadius,
-                    damageType: DamageType.Normal)
+                    damageType: DamageType.Normal,
+                    strikesOnCast: true)
             });
 
         /// <remarks>Cast order, and id order — 1001, 1002. Catalyst sits between them in the design table and is not an ability.</remarks>
