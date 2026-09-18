@@ -215,7 +215,7 @@ namespace NonaRoyale.Core.Abilities
             id: 1002, name: "Eris' Exploit",
             description:
                 "Sows discord in a patch of track: every enemy inside turns on every other one at once, and again next round on whoever stayed.",
-            energyCost: 6, cooldownTurns: 4, range: 3,
+            energyCost: 4, cooldownTurns: 3, range: 3,
             targeting: AbilityTargeting.Cell,
             effects: new[]
             {
