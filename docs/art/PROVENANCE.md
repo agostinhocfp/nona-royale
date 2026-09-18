@@ -14,7 +14,8 @@
 
 | Asset | Made with | Source | Date | Terms | Notes |
 | ----- | --------- | ------ | ---- | ----- | ----- |
-| `Assets/_Project/Art/Resources/Art/Fonts/Cinzel.ttf` | Natanael Gama / NDISCOVER (Google Fonts) | `google/fonts` repo, `ofl/cinzel/Cinzel[wght].ttf` (upstream `NDISCOVER/Cinzel` @ `8271e16`) | 2026-09-17 | SIL Open Font License 1.1 | Variable weight 400–900; Unity uses the default instance. The display face for titles, the wordmark and the draft clock (UI_MOTION.md U3) |
+| `Assets/_Project/Art/Resources/Art/Fonts/Cinzel.ttf` | Natanael Gama / NDISCOVER (Google Fonts) | `google/fonts` repo, `ofl/cinzel/Cinzel[wght].ttf` (upstream `NDISCOVER/Cinzel` @ `8271e16`) | 2026-09-17 | SIL Open Font License 1.1 | Variable weight 400–900; Unity uses the default instance. The display face for titles, the wordmark and the draft clock (UI_MOTION.md U3). **Its figures are not tabular** — `1` is 344/1000 against `0` at 552 — so the clock sets its own mono-spacing (GUI_PHASE.md G5) |
+| `Assets/_Project/Art/Resources/Art/Fonts/Archivo.ttf`, `Archivo-SemiBold.ttf` | Omnibus-Type (Google Fonts), instanced and feature-frozen | `google/fonts` repo, `ofl/archivo/Archivo[wdth,wght].ttf` | 2026-09-18 | SIL Open Font License 1.1 | The data face (GUI_PHASE.md G5). Static instances of the variable source at wght 400 and 600, wdth 100 (fontTools `instantiateVariableFont`), then `tnum` and `lnum` applied to the outlines with `opentype-feature-freezer` so every digit is one advance — 568/1000 Regular, 579 SemiBold — because TMP in ugui 2.6 has no `tnum` to switch on. Name tables rewritten to `Archivo` / `Regular` and `Archivo` / `SemiBold`; the OFL permits both the instancing and the rename |
 
 ## To record
 

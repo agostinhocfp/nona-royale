@@ -74,6 +74,17 @@ namespace NonaRoyale.Unity.View
         private const float TimeUpHold = 1.2f;
 
         private const float ClockDigitSize = 64f;
+
+        /// <summary>
+        /// Mono-spacing for the clock's digits (G5). Cinzel's figures are not
+        /// tabular - its 1 is 344/1000 against a 0 at 552 - so at 64 pt the
+        /// countdown jumps sideways by about 13 px whenever a 1 comes or goes.
+        /// Its widest figure is 0.596 em; this leaves a hair of air. A literal
+        /// string, not a formatted float, because a comma-decimal culture would
+        /// write "0,62em" and TMP would drop the tag. Only the digits carry it:
+        /// TIME and READY are words.
+        /// </summary>
+        private const string ClockMono = "<mspace=0.62em>";
         private const float ClockWordSize = 40f;
 
         /// <summary>ALL PICK: seconds between CPU picks, across all CPU seats.</summary>
@@ -506,7 +517,7 @@ namespace NonaRoyale.Unity.View
 
             float left = (float)_draft.SecondsLeft;
             _clock.fontSize = ClockDigitSize;
-            _clock.text = Mathf.CeilToInt(left).ToString();
+            _clock.text = ClockMono + Mathf.CeilToInt(left);
             _clock.color = _leaveArmed ? UiTheme.TextOff
                 : left <= ClockWarning ? UiTheme.Threat
                 : UiTheme.GoldBright;

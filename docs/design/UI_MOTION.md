@@ -16,7 +16,7 @@ Each increment ends with a Play Mode check and a commit.
 | -- | ------------------------------------- | ---------------- |
 | U1 | **Motion foundation and transitions** | `UiTween`: one component per tween, unscaled time, Reduced-motion aware; the easing math in plain C# (`UiEasing`) so the harness pins the curves. Modal cards, the pause menu and the draft screen fade and rise in; page swaps cross-fade. |
 | U2 | **Micro-interactions**                | Buttons dip on press; slider knobs grow on hover and drag; menu rows cascade in; toasts pop; the turn banner drops in; the end-screen tally counts up row by row; newly lit energy pips cascade; health bars glide. |
-| U3 | **Typography**                        | Cinzel (OFL) as the display face on titles, the wordmark and the draft clock (`UiFonts`, loaded from Resources, degrades to the default face with one warning). `FloatingText` moves from the legacy `TextMesh` to TMP, with a birth pop. |
+| U3 | **Typography**                        | Cinzel (OFL) as the display face on titles, the wordmark and the draft clock (`UiFonts`, loaded from Resources, degrades to the default face with one warning). `FloatingText` moves from the legacy `TextMesh` to TMP, with a birth pop. **The other half — a data face for everything numeric — landed as GUI increment G5 (`GUI_PHASE.md`), which also fixed the clock: Cinzel's figures are not tabular.** |
 | U4 | **Elevation**                         | Floating panels cast a two-part shadow and take a whisper of sheen across the top (`UiTheme` tokens, `DecoSprites.PanelSheen`, `UiKit.Elevate`). |
 | U5 | **Deeper juice**                      | Parked until after the stranger test; scoped from what testers react to. |
 

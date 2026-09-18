@@ -112,6 +112,37 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         public static Sprite PanelSheen => _panelSheen ?? (_panelSheen = BuildSheen(64));
 
+        private static readonly Sprite[] _glass = new Sprite[4];
+
+        /// <summary>
+        /// How much of a docked panel's fill survives at its board-facing edge
+        /// (G5). Low enough that the room reads through it, high enough that
+        /// nothing behind it competes with a number drawn on top.
+        /// </summary>
+        public const float GlassNear = 0.86f;
+
+        /// <summary>
+        /// A docked panel's body: smoked glass. An alpha ramp from full at the
+        /// screen edge to <see cref="GlassNear"/> at <paramref name="rule"/>,
+        /// the edge that faces the board.
+        /// </summary>
+        /// <remarks>
+        /// Four sprites rather than one rotated: a dock is stretched to the
+        /// width or height of the screen, and a child rotated a quarter turn
+        /// inside it would not cover it. They are 64 texels each.
+        ///
+        /// <b>No grain.</b> A dock's fill is stretched across up to 1920 pixels,
+        /// so noise baked in at this size bands into stripes rather than reading
+        /// as a surface. Glass reads here from the falloff, the sheen and the
+        /// edge hairline - not from texture. Grain belongs in a painted sprite
+        /// at its own scale, the way the board's felt gets it.
+        /// </remarks>
+        public static Sprite Glass(RectTransform.Edge rule)
+        {
+            int index = (int)rule;
+            return _glass[index] ?? (_glass[index] = BuildGlass(rule, 64));
+        }
+
         // ── Board (world space) ─────────────────────────────────────────
 
         private static Sprite _tileInlay, _ringThin, _glow;
@@ -282,6 +313,24 @@ namespace NonaRoyale.Unity.View
                 float t = Mathf.Clamp01(1f - r);
                 return t * t;
             }, size, Vector4.zero);
+        }
+
+        /// <summary>
+        /// The glass ramp: thinnest at <paramref name="rule"/>, full at the
+        /// opposite edge, squared so the thinning gathers near the rule instead
+        /// of sloping across the whole panel.
+        /// </summary>
+        private static Sprite BuildGlass(RectTransform.Edge rule, int size)
+        {
+            bool horizontal = rule == RectTransform.Edge.Left || rule == RectTransform.Edge.Right;
+            bool towardZero = rule == RectTransform.Edge.Left || rule == RectTransform.Edge.Bottom;
+
+            return Rasterize(horizontal ? size : 2, horizontal ? 2 : size, (px, py) =>
+            {
+                float t = (horizontal ? px : py) / size;
+                if (towardZero) t = 1f - t;
+                return Mathf.Lerp(GlassNear, 1f, t * t);
+            }, HudPixelsPerUnit, Vector4.zero);
         }
 
         /// <summary>Top-lit vertical falloff: full at the top texel, gone by two thirds down.</summary>

@@ -103,6 +103,7 @@ namespace NonaRoyale.Unity.View
             label.fontStyle = strong ? FontStyles.Bold : FontStyles.Normal;
             label.color = strong ? StrongText : FaintText;
             label.textWrappingMode = TextWrappingModes.NoWrap;
+            UiFonts.ApplyData(label);
             label.text = text;
 
             var entry = new Label { Root = go, Rect = rect, World = world };

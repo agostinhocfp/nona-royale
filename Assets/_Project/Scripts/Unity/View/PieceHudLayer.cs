@@ -239,6 +239,7 @@ namespace NonaRoyale.Unity.View
             text.alignment = TextAlignmentOptions.Center;
             text.fontSize = 16f;
             text.fontStyle = FontStyles.Bold;
+            UiFonts.ApplyData(text);
 
             // Seat colour, so the label answers "whose" as well as "how much"
             // — but nudged toward white, because the raw seat blue is nearly
@@ -308,6 +309,7 @@ namespace NonaRoyale.Unity.View
                 text.alignment = TextAlignmentOptions.Center;
                 text.fontSize = TagFontSize;
                 text.fontStyle = FontStyles.Bold;
+                UiFonts.ApplyData(text);
                 text.textWrappingMode = TextWrappingModes.NoWrap;
 
                 tag.SetActive(false);

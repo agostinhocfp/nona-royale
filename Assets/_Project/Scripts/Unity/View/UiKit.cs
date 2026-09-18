@@ -102,13 +102,20 @@ namespace NonaRoyale.Unity.View
         // ── Panels ───────────────────────────────────────────────────────
 
         /// <summary>
-        /// A panel docked to a screen edge: a dark field with one gilt
+        /// A panel docked to a screen edge: smoked glass with one gilt
         /// hairline along <paramref name="rule"/> (G3; it was a double rule
-        /// with a diamond at its middle).
+        /// with a diamond at its middle. G5 made the field glass).
         /// </summary>
+        /// <remarks>
+        /// The fill thins toward <paramref name="rule"/> - the edge that faces
+        /// the board - so the room shows faintly through the near side and the
+        /// dock reads as a pane over the table rather than a card laid on it.
+        /// The far side stays opaque, which is where the text sits.
+        /// </remarks>
         public static void Dock(RectTransform rect, bool blocksPointer, RectTransform.Edge rule)
         {
-            Fill(rect, UiTheme.Panel, blocksPointer);
+            var body = Fill(rect, UiTheme.Panel, blocksPointer);
+            body.sprite = DecoSprites.Glass(rule);
             EdgeRule(rect, rule, UiTheme.Line);
         }
 
@@ -310,6 +317,10 @@ namespace NonaRoyale.Unity.View
             label.textWrappingMode = wrap ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
             label.overflowMode = wrap ? TextOverflowModes.Overflow : TextOverflowModes.Ellipsis;
             label.text = text;
+
+            // The data face carries every label; Heading overrides it with the
+            // display face afterwards (G5).
+            UiFonts.ApplyData(label);
             return label;
         }
 

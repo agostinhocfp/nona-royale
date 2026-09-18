@@ -8,9 +8,10 @@ namespace NonaRoyale.Unity.View
     /// A short-lived label that rises and fades — damage, healing, a miss.
     /// </summary>
     /// <remarks>
-    /// A world-space <see cref="TextMeshPro"/> on the TMP default face, so a
-    /// damage number reads like the HUD it belongs to (UI_MOTION.md increment
-    /// U3); the legacy <c>TextMesh</c> it replaces never did. The pop at
+    /// A world-space <see cref="TextMeshPro"/> on the HUD's data face, so a
+    /// damage number reads like the tray it belongs to (UI_MOTION.md increment
+    /// U3, moved off the TMP default in G5); the legacy <c>TextMesh</c> it
+    /// replaces never did. The pop at
     /// birth — a quick settle from 1.35× — is what separates "a number
     /// appeared" from "a hit landed".
     /// </remarks>
@@ -49,6 +50,7 @@ namespace NonaRoyale.Unity.View
             text.overflowMode = TextOverflowModes.Overflow;
             // Over everything the board draws (V1b, FigureTilt).
             text.sortingOrder = FigureTilt.FloatingTextOrder;
+            UiFonts.ApplyData(text);
             floating._text = text;
 
             return floating;

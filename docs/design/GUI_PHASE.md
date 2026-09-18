@@ -1,7 +1,7 @@
 # Nona Royale — GUI Phase
 
 > Location in repo: `docs/design/GUI_PHASE.md`
-> Status: **Closed at J, 2026-09-16; reopened 2026-09-17 for G3 (polish pass), which passed Play Mode and was committed as `46c1ce1`; reopened again for G4 (the board texture hookup; its corner lamps were tried and removed), which was committed with LT2 as `9514e90`; closed again.** E through J are committed. K (stranger test, then the OnGUI cut) is parked until testers are available. What comes next is `NEXT_PHASES.md`.
+> Status: **Closed at J, 2026-09-16; reopened 2026-09-17 for G3 (polish pass), which passed Play Mode and was committed as `46c1ce1`; reopened again for G4 (the board texture hookup; its corner lamps were tried and removed), which was committed with LT2 as `9514e90`; closed again; reopened 2026-09-18 for G5 (the data face and smoked glass).** E through J are committed. K (stranger test, then the OnGUI cut) is parked until testers are available. What comes next is `NEXT_PHASES.md`.
 > Related: ADR-0008 (uGUI; its removal order stays binding), `PRESENTATION.md` (what the view may do and must show), `ART_DIRECTION.md` §3 and §8 (palette, UI registers), `STRANGER_TEST.md` (the gate before `OnGUI` is deleted)
 
 ## Goal
@@ -224,3 +224,24 @@ Each increment ends with a Play Mode check and a commit.
     - Windowed mode applies the chosen size at once; fullscreen ignores it (desktop size) without breaking the layout.
     - VSync off + a 30 cap visibly halves motion smoothness; UNCAPPED lifts it.
     - Everything survives a relaunch; Restore defaults returns to borderless 1920×1080, VSync on, cap 60, and the chip reads DEFAULT.
+- 2026-09-18 — **Increment G5 written: the data face and smoked glass.** Designer: the GUI "doesn't feel like world-class 2026 yet". The phase reopens for one increment, deliberately central — `UiFonts`, `UiKit`, `DecoSprites` and the four text sites outside the kit. No layout moved.
+  - **The diagnosis, after measuring rather than asserting.** The board has had three increments of craft (G2, G3, G4) and the HUD one, and that one was about restraint, not richness. Two claims were checked and one of them was wrong:
+    - **Liberation Sans is already tabular.** Every digit is 1139/2048 — it is Arial's metric clone. The body numbers never wobbled, and the argument for replacing it is identity, not metrics: it is the house face of every unskinned Unity build.
+    - **Cinzel is not tabular,** and that is a real defect. Nine different digit advances, a `1` at 344/1000 against a `0` at 552. The one place it draws digits is the draft clock at 64 pt, where the countdown jumped sideways by about 13 px whenever a `1` came or went.
+  - **Type: one face per register** (ART_DIRECTION §2.1 and §8). Cinzel keeps the warm Deco register — wordmark, titles, `UiKit.Heading`, the clock. Archivo takes the cool one: every label, and so every number.
+    - **Archivo is a near drop-in.** H/O/n relative widths 0.736/0.788/0.563 against Liberation's 0.722/0.778/0.556 — within 2%, so nothing in the HUD reflows. That mattered because uGUI cannot be previewed outside Play Mode.
+    - **Tabular figures are frozen into the outlines,** not switched on at runtime. TMP in ugui 2.6 exposes only `kern`, `liga`, `mark` and `mkmk` through `fontFeatures`; there is no `tnum`. The shipped TTFs are static instances (wght 400 and 600, wdth 100) with `tnum` and `lnum` applied by `opentype-feature-freezer`, so every digit is one advance — 568/1000 Regular, 579 SemiBold — with no tag and no cost.
+    - **Bold is a real face.** `Archivo-SemiBold` is wired into index 7 of the data face's `fontWeightTable`, so `FontStyles.Bold` swaps the typeface instead of faux-bolding. Without it every bold number in the tray and rail is smeared.
+    - `UiKit.Label` applies the data face, which covers almost all HUD text; `Heading` overrides it afterwards, so the order holds. The four sites outside the kit — `PieceHudLayer` (health, status tags), `CellLabelLayer` (landing pips) and `FloatingText` (damage numbers) — call `UiFonts.ApplyData` directly.
+    - **The clock keeps Cinzel** and sets `<mspace=0.62em>` on its digits alone; TIME and READY are words and do not carry it. The tag is a literal string, not a formatted float, because a comma-decimal culture would write `0,62em` and TMP would drop it.
+  - **Material: the docks are smoked glass.** `DecoSprites.Glass(edge)` is an alpha ramp from full at the screen edge to `GlassNear` (0.86) at the rule — the edge facing the board — squared so the thinning gathers near the rule rather than sloping across the panel. `UiKit.Dock` puts it on the fill it was already making. Four cached 64-texel sprites, one per edge, because a dock is stretched the width of the screen and a child rotated a quarter turn inside it would not cover it.
+    - **No grain, on purpose.** A dock's fill stretches across up to 1920 px, so noise baked in at 64 texels bands into stripes instead of reading as a surface. Glass reads here from the falloff, U4's sheen and the edge hairline. Grain belongs in a painted sprite at its own scale, the way the felt gets it.
+  - **Not done, and why.** A specular sweep across the gold was planned and dropped: it contradicts G3's whole thesis, which was to stop the gold performing. If it comes back it should be one pass over the title wordmark on arrival — a moment, not a loop. Desaturating the board behind a modal through V4's existing Volume is still worth doing and is the only part that would touch `SceneLighting`; it was left out of a deliberately central increment.
+  - **Checked:** the view and core compile clean against the 6000.6 DLLs (178 files, 0 warnings, 0 errors), and the build was verified live by breaking it on purpose. No core changes, so the tests are unchanged. uGUI cannot be previewed here (ADR-0008); Play Mode is the check.
+  - **Play Mode checklist:**
+    - Every number on screen — health over pieces, energy pips, ability costs, cooldowns, the end-screen tally, damage pops — is Archivo, not the old face. Bold numbers look like a heavier cut, not a smeared one.
+    - The draft clock's digits no longer shift sideways as it counts down; TIME and READY still sit normally.
+    - No text is clipped or wrapped where it was not before: the faces are within 2% but the rail's names and the ability cards are the tightest boxes.
+    - The docks (top bar, rail, tray, history strip) thin slightly toward the board and stay opaque at the screen edge; text on them is unaffected.
+    - With the tilted camera on, the glass still reads — the board behind the near edge is brighter there than it was.
+    - One `UiFonts` warning in the console means a TTF did not import; the screen should still be readable on the default face.
