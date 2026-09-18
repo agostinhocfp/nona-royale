@@ -119,11 +119,11 @@ namespace NonaRoyale.Unity.View
             levels.Muted ? "MUTED" : $"{AudioLevels.Percent(levels.Master)}%";
 
         /// <summary>
-        /// The display page (2026-09-17): screen mode, resolution, VSync and
-        /// a frame cap, then Restore defaults. Every row cycles into the
-        /// settings and rebuilds; the composition root applies and saves the
-        /// change. The resolution is the windowed size, and the cap needs
-        /// VSync off — the hints say so.
+        /// The display page (2026-09-17): screen mode, resolution, VSync, a
+        /// frame cap and the board camera (2026-09-18), then Restore defaults.
+        /// Every row cycles into the settings and rebuilds; the composition
+        /// root applies and saves the change. The resolution is the windowed
+        /// size, and the cap needs VSync off — the hints say so.
         /// </summary>
         public static void BuildDisplay(System.Func<string, RectTransform> slot, ISettingsHost host, System.Action rebuild)
         {
@@ -142,6 +142,11 @@ namespace NonaRoyale.Unity.View
             var cap = UiKit.ChoiceRow(slot("cycle"), "Frame cap", "VSync off", display.FrameCapLabel(),
                 !display.VSync, () => { display.CycleFrameCap(); rebuild(); });
             UiKit.Size(cap, height: RowHeight);
+
+            var camera = UiKit.ChoiceRow(slot("cycle"), "Board camera", "more board, tilted",
+                display.CameraLabel(), display.Camera == BoardCamera.Tilted,
+                () => { display.CycleCamera(); rebuild(); });
+            UiKit.Size(camera, height: RowHeight);
 
             var reset = UiKit.ChoiceRow(slot("cycle"), "Restore defaults", "", display.IsDefault ? "DEFAULT" : "RESET",
                 false, () => { display.Reset(); rebuild(); });
@@ -200,6 +205,7 @@ namespace NonaRoyale.Unity.View
         public const string DisplayHeight = "nr.display.height";
         public const string DisplayVSync = "nr.display.vsync";
         public const string DisplayFrameCap = "nr.display.framecap";
+        public const string DisplayCamera = "nr.display.camera";
 
         public static BotSpeed LoadSpeed(BotSpeed fallback)
         {
@@ -278,6 +284,7 @@ namespace NonaRoyale.Unity.View
             if (PlayerPrefs.HasKey(DisplayHeight)) into.Height = PlayerPrefs.GetInt(DisplayHeight);
             if (PlayerPrefs.HasKey(DisplayVSync)) into.VSync = PlayerPrefs.GetInt(DisplayVSync) != 0;
             if (PlayerPrefs.HasKey(DisplayFrameCap)) into.FrameCap = PlayerPrefs.GetInt(DisplayFrameCap);
+            if (PlayerPrefs.HasKey(DisplayCamera)) into.Camera = (BoardCamera)PlayerPrefs.GetInt(DisplayCamera);
             into.Sanitize();
         }
 
@@ -289,6 +296,7 @@ namespace NonaRoyale.Unity.View
             PlayerPrefs.SetInt(DisplayHeight, display.Height);
             PlayerPrefs.SetInt(DisplayVSync, display.VSync ? 1 : 0);
             PlayerPrefs.SetInt(DisplayFrameCap, display.FrameCap);
+            PlayerPrefs.SetInt(DisplayCamera, (int)display.Camera);
             PlayerPrefs.Save();
         }
 

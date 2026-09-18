@@ -823,6 +823,7 @@ namespace NonaRoyale.Unity.Composition
         private bool _framedLegacy;
         private float _framedScale;
         private bool _framedWithHud;
+        private BoardCamera _framedCamera;
 
         /// <summary>
         /// Sizes the camera and centres the board in the part of the screen the
@@ -844,13 +845,20 @@ namespace NonaRoyale.Unity.Composition
         /// narrows. HUD sizes are canvas units and are converted with the
         /// canvas scale factor (ADR-0008 consequence 5). The OnGUI panel's
         /// width is in pixels.
+        ///
+        /// <b>Two cameras since V1</b> (VISUAL_PASS.md). The flat camera is
+        /// below, unchanged. The tilted one solves for a pose with
+        /// <see cref="TiltFraming"/> instead of a size and a shift, because a
+        /// perspective camera's mapping from viewport fraction to world offset
+        /// depends on depth, so the shift trick that works above does not carry
+        /// over. Everything after the two branches — the nudge's resting place
+        /// and the HUD insets — is shared, and a tilt that cannot be solved
+        /// falls back to the flat camera rather than showing nothing.
         /// </remarks>
         private void FrameCamera()
         {
             var camera = Camera.main;
             if (camera == null) return;
-
-            camera.orthographic = true;
 
             // Solid colour, not the skybox. A 2D board rendered against a sky
             // gradient washes out the cells, and clearFlags defaults to Skybox
@@ -881,22 +889,10 @@ namespace NonaRoyale.Unity.Composition
             float usableWidth = Mathf.Max(0.25f, 1f - left - right);
             float usableHeight = Mathf.Max(0.25f, 1f - top - bottom);
 
-            camera.orthographicSize = Mathf.Max(
-                extent * FrameMargin / usableHeight,
-                extent * FrameMargin / (aspect * usableWidth));
+            bool tilted = _display.Camera == BoardCamera.Tilted &&
+                          FrameTilted(camera, extent, aspect, left, 1f - right, bottom, 1f - top, hud);
 
-            float halfWidth = camera.orthographicSize * aspect;
-            float halfHeight = camera.orthographicSize;
-
-            // Centre of the free rectangle, as an offset from the screen centre
-            // in viewport units (bottom-left origin).
-            float centreX = left + usableWidth * 0.5f - 0.5f;
-            float centreY = bottom + usableHeight * 0.5f - 0.5f;
-
-            camera.transform.position = new Vector3(
-                -centreX * 2f * halfWidth,
-                -centreY * 2f * halfHeight,
-                -10f);
+            if (!tilted) FrameFlat(camera, extent, aspect, left, right, top, bottom, usableWidth, usableHeight);
 
             // A nudge in progress continues around the new resting place.
             if (_nudge != null) _nudge.SetBase(camera.transform.position);
@@ -912,6 +908,75 @@ namespace NonaRoyale.Unity.Composition
             _framedLegacy = useLegacyPanel;
             _framedScale = scale;
             _framedWithHud = hud;
+            _framedCamera = tilted ? BoardCamera.Tilted : BoardCamera.TopDown;
+        }
+
+        /// <summary>The flat camera: an orthographic size, and a shift away from the panels.</summary>
+        /// <remarks>
+        /// The clip planes are set here as well as in the tilted branch. The
+        /// long lens stands tens of units back and pushes the near plane out to
+        /// match; leaving that behind on the way back to the flat camera, which
+        /// sits ten units from the board, clips the board away entirely.
+        /// </remarks>
+        private static void FrameFlat(Camera camera, float extent, float aspect,
+            float left, float right, float top, float bottom, float usableWidth, float usableHeight)
+        {
+            camera.orthographic = true;
+            camera.nearClipPlane = 0.3f;
+            camera.farClipPlane = 1000f;
+
+            camera.orthographicSize = Mathf.Max(
+                extent * FrameMargin / usableHeight,
+                extent * FrameMargin / (aspect * usableWidth));
+
+            float halfWidth = camera.orthographicSize * aspect;
+            float halfHeight = camera.orthographicSize;
+
+            // Centre of the free rectangle, as an offset from the screen centre
+            // in viewport units (bottom-left origin).
+            float centreX = left + usableWidth * 0.5f - 0.5f;
+            float centreY = bottom + usableHeight * 0.5f - 0.5f;
+
+            camera.transform.SetPositionAndRotation(
+                new Vector3(-centreX * 2f * halfWidth, -centreY * 2f * halfHeight, -10f),
+                Quaternion.identity);
+        }
+
+        /// <summary>
+        /// The tilted camera (VISUAL_PASS.md, V1). False when no pose fits, so
+        /// the caller can fall back to the flat one.
+        /// </summary>
+        /// <remarks>
+        /// The pitch is steeper on the menu screens than in a match, because
+        /// there is no HUD taking the edges and a steeper look shows more of
+        /// the room behind the table.
+        /// </remarks>
+        private bool FrameTilted(Camera camera, float extent, float aspect,
+            float x0, float x1, float y0, float y1, bool hud)
+        {
+            float pitch = hud ? TiltFraming.MatchPitch : TiltFraming.MenuPitch;
+            float fov = TiltFraming.DefaultFieldOfView;
+
+            // The same 12% of air the flat camera leaves around the board.
+            var frame = TiltFraming.Solve(pitch, fov, aspect, extent * FrameMargin, x0, x1, y0, y1);
+            if (!frame.Fitted) return false;
+
+            TiltFraming.CameraPose(pitch, frame.Distance, frame.AimX, frame.AimY,
+                out float px, out float py, out float pz);
+
+            camera.orthographic = false;
+            camera.fieldOfView = fov;
+
+            // The board lies in the z = 0 plane and the flat camera looks down
+            // +z at it, so the tilt is a rotation about x alone.
+            camera.transform.SetPositionAndRotation(
+                new Vector3(px, py, pz), Quaternion.Euler(-pitch, 0f, 0f));
+
+            // A long lens sits far back, and the board has depth now, so the
+            // clip planes have to reach it.
+            camera.nearClipPlane = Mathf.Max(0.05f, frame.Distance - extent * 4f);
+            camera.farClipPlane = frame.Distance + extent * 8f;
+            return true;
         }
 
         /// <summary>
@@ -979,6 +1044,7 @@ namespace NonaRoyale.Unity.Composition
                 showDevPanel != _framedWithPanel ||
                 useLegacyPanel != _framedLegacy ||
                 (_match != null) != _framedWithHud ||
+                _display.Camera != _framedCamera ||
                 (_hudRoot != null && !Mathf.Approximately(_hudRoot.ScaleFactor, _framedScale)))
             {
                 FrameCamera();

@@ -185,5 +185,69 @@ namespace NonaRoyale.Unity.Tests.View
             Assert.AreEqual("WINDOWED", display.Summary());
             Assert.AreEqual("UNCAPPED", display.FrameCapLabel());
         }
-    }
+    
+        // ── Board camera (V1) ───────────────────────────────────────────
+
+        [Test]
+        public void Camera_DefaultsToTopDown_SoTheTiltIsOptedInto()
+        {
+            Assert.AreEqual(BoardCamera.TopDown, new DisplaySettings().Camera);
+        }
+
+        [Test]
+        public void CycleCamera_TogglesTheTwoViews()
+        {
+            var display = new DisplaySettings();
+
+            display.CycleCamera();
+            Assert.AreEqual(BoardCamera.Tilted, display.Camera);
+
+            display.CycleCamera();
+            Assert.AreEqual(BoardCamera.TopDown, display.Camera);
+        }
+
+        [Test]
+        public void CameraLabel_NamesTheView()
+        {
+            var display = new DisplaySettings();
+
+            Assert.AreEqual("TOP-DOWN", display.CameraLabel());
+
+            display.Camera = BoardCamera.Tilted;
+            Assert.AreEqual("TILTED", display.CameraLabel());
+        }
+
+        [Test]
+        public void Camera_CountsAsAChange_SoItIsAppliedAndSaved()
+        {
+            var a = new DisplaySettings();
+            var b = new DisplaySettings { Camera = BoardCamera.Tilted };
+
+            Assert.IsFalse(a.SameAs(b), "a changed camera has to reach the composition root");
+            Assert.IsFalse(b.IsDefault, "Restore defaults has something to do");
+        }
+
+        [Test]
+        public void CopyFrom_And_Reset_CarryTheCamera()
+        {
+            var source = new DisplaySettings { Camera = BoardCamera.Tilted };
+            var target = new DisplaySettings();
+
+            target.CopyFrom(source);
+            Assert.AreEqual(BoardCamera.Tilted, target.Camera);
+
+            target.Reset();
+            Assert.AreEqual(DisplaySettings.DefaultCamera, target.Camera);
+        }
+
+        [Test]
+        public void Sanitize_RepairsACameraNoBuildWrote()
+        {
+            var display = new DisplaySettings { Camera = (BoardCamera)99 };
+
+            display.Sanitize();
+
+            Assert.AreEqual(DisplaySettings.DefaultCamera, display.Camera);
+        }
+}
 }

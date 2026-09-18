@@ -28,6 +28,16 @@ namespace NonaRoyale.Unity.View
             EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
 
         /// <summary>The world point under the mouse, on the board plane.</summary>
+        /// <remarks>
+        /// <b>A ray against the board plane, not a screen-point unproject</b>
+        /// (VISUAL_PASS.md, V1). Under the flat camera, unprojecting the mouse
+        /// and dropping z landed on the board because the view direction is the
+        /// z axis. Under the tilted camera it does not: the mouse unprojects to
+        /// a point just in front of the lens, and flattening it to z = 0 drops
+        /// it straight down instead of following the line of sight, so every
+        /// hit test missed. Casting the ray and meeting the plane is right for
+        /// both cameras, so there is no mode to branch on here.
+        /// </remarks>
         public static bool TryWorldPoint(out Vector3 world)
         {
             world = default;
@@ -35,7 +45,13 @@ namespace NonaRoyale.Unity.View
             var camera = Camera.main;
             if (camera == null) return false;
 
-            world = camera.ScreenToWorldPoint(Input.mousePosition);
+            var ray = camera.ScreenPointToRay(Input.mousePosition);
+
+            // Looking along or away from the board plane there is no crossing.
+            // The flat camera's direction is exactly +z, so this is 1 there.
+            if (ray.direction.z <= 0.0001f) return false;
+
+            world = ray.origin + ray.direction * (-ray.origin.z / ray.direction.z);
             world.z = 0f;
             return true;
         }

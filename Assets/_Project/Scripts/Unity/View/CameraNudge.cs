@@ -65,12 +65,22 @@ namespace NonaRoyale.Unity.View
             Apply(t >= 1f ? Vector2.zero : _direction * (_strength * wave));
         }
 
+        /// <remarks>
+        /// <b>The shove is along the screen, not along the world</b>
+        /// (VISUAL_PASS.md, V1). A nudge is a camera shake: "down and left"
+        /// means down and left of the picture. Under the flat camera the screen
+        /// axes are the world's x and y, so adding the offset straight to the
+        /// position was the same thing; under the tilted camera it is not, and
+        /// a downward shake would have pushed the camera into the table. The
+        /// camera's own right and up are the screen axes in both modes.
+        /// </remarks>
         private void Apply(Vector2 offset)
         {
             var camera = Camera.main;
             if (camera == null || !_hasBase) return;
 
-            camera.transform.position = _base + (Vector3)offset;
+            var transform = camera.transform;
+            camera.transform.position = _base + transform.right * offset.x + transform.up * offset.y;
         }
     }
 }

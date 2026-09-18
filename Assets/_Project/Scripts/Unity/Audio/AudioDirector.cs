@@ -375,13 +375,30 @@ namespace NonaRoyale.Unity.Audio
             return steal;
         }
 
+        /// <summary>
+        /// How far left or right of the middle of the screen a world point
+        /// sounds.
+        /// </summary>
+        /// <remarks>
+        /// <b>Measured on screen, not in the world</b> (VISUAL_PASS.md, V1).
+        /// This used to divide the world offset by the orthographic half-width
+        /// and gave up on any other camera, so under the tilted view every
+        /// sound played dead centre. The viewport is the same measure for both
+        /// cameras — for an orthographic one it works out to exactly the old
+        /// arithmetic — and it is what the player sees, which is what panning
+        /// is meant to follow.
+        /// </remarks>
         private static float PanOf(Vector3 at)
         {
             var camera = Camera.main;
-            if (camera == null || !camera.orthographic) return 0f;
+            if (camera == null) return 0f;
 
-            float half = Mathf.Max(0.01f, camera.orthographicSize * camera.aspect);
-            return Mathf.Clamp((at.x - camera.transform.position.x) / half, -1f, 1f) * PanWidth;
+            var view = camera.WorldToViewportPoint(at);
+
+            // Behind the lens there is no left or right to speak of.
+            if (view.z <= 0f) return 0f;
+
+            return Mathf.Clamp((view.x - 0.5f) * 2f, -1f, 1f) * PanWidth;
         }
 
         /// <summary>One listener in the scene, or nothing is heard. The template camera usually has it.</summary>

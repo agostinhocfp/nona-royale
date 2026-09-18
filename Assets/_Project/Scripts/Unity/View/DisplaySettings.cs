@@ -11,8 +11,25 @@ namespace NonaRoyale.Unity.View
     }
 
     /// <summary>
-    /// The player's display settings: screen mode, resolution, VSync and a
-    /// frame cap (2026-09-17). Remembered between sessions.
+    /// How the board is looked at (VISUAL_PASS.md, V1): straight down, or from
+    /// a tilted perspective camera.
+    /// </summary>
+    /// <remarks>
+    /// <b>Top-down stays</b>, by the designer's decision, and it is still the
+    /// default: the tilt is the newer path, and a player whose machine or taste
+    /// disagrees with it has somewhere to go. The tilt fits about half again as
+    /// much board into the same screen (<see cref="TiltFraming"/>).
+    /// </remarks>
+    public enum BoardCamera
+    {
+        TopDown = 0,
+        Tilted = 1
+    }
+
+    /// <summary>
+    /// The player's display settings: screen mode, resolution, VSync, a
+    /// frame cap (2026-09-17) and the board camera (2026-09-18). Remembered
+    /// between sessions.
     /// </summary>
     /// <remarks>
     /// <b>Plain C#.</b> Nothing here touches Unity; the composition root
@@ -33,6 +50,7 @@ namespace NonaRoyale.Unity.View
         public const int DefaultWidth = 1920;
         public const int DefaultHeight = 1080;
         public const bool DefaultVSync = true;
+        public const BoardCamera DefaultCamera = BoardCamera.TopDown;
 
         /// <summary>The cap with VSync off. 0 means uncapped.</summary>
         public const int DefaultFrameCap = 60;
@@ -50,10 +68,13 @@ namespace NonaRoyale.Unity.View
         public bool VSync { get; set; } = DefaultVSync;
         public int FrameCap { get; set; } = DefaultFrameCap;
 
+        /// <summary>Straight down, or the tilted view (VISUAL_PASS.md, V1).</summary>
+        public BoardCamera Camera { get; set; } = DefaultCamera;
+
         /// <summary>True when every value is the default, so Restore defaults has nothing to do.</summary>
         public bool IsDefault =>
             Mode == DefaultMode && Width == DefaultWidth && Height == DefaultHeight &&
-            VSync == DefaultVSync && FrameCap == DefaultFrameCap;
+            VSync == DefaultVSync && FrameCap == DefaultFrameCap && Camera == DefaultCamera;
 
         /// <summary>Back to the defaults.</summary>
         public void Reset()
@@ -63,6 +84,7 @@ namespace NonaRoyale.Unity.View
             Height = DefaultHeight;
             VSync = DefaultVSync;
             FrameCap = DefaultFrameCap;
+            Camera = DefaultCamera;
         }
 
         /// <summary>Copies every value from <paramref name="other"/>.</summary>
@@ -73,11 +95,12 @@ namespace NonaRoyale.Unity.View
             Height = other.Height;
             VSync = other.VSync;
             FrameCap = other.FrameCap;
+            Camera = other.Camera;
         }
 
         public bool SameAs(DisplaySettings other) =>
             Mode == other.Mode && Width == other.Width && Height == other.Height &&
-            VSync == other.VSync && FrameCap == other.FrameCap;
+            VSync == other.VSync && FrameCap == other.FrameCap && Camera == other.Camera;
 
         /// <summary>Cycles Windowed and Fullscreen.</summary>
         public void CycleMode() =>
@@ -106,6 +129,10 @@ namespace NonaRoyale.Unity.View
             FrameCap = index < 0 ? DefaultFrameCap : FrameCaps[(index + 1) % FrameCaps.Length];
         }
 
+        /// <summary>Cycles the two board cameras.</summary>
+        public void CycleCamera() =>
+            Camera = Camera == BoardCamera.Tilted ? BoardCamera.TopDown : BoardCamera.Tilted;
+
         /// <summary>Repairs values Unity could not apply (a stray PlayerPrefs edit).</summary>
         public void Sanitize()
         {
@@ -117,6 +144,7 @@ namespace NonaRoyale.Unity.View
             }
 
             if (Array.IndexOf(FrameCaps, FrameCap) < 0) FrameCap = DefaultFrameCap;
+            if (Camera != BoardCamera.TopDown && Camera != BoardCamera.Tilted) Camera = DefaultCamera;
         }
 
         /// <summary>"FULLSCREEN" or "WINDOWED", the settings row's summary.</summary>
@@ -127,6 +155,9 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>"60", or "UNCAPPED" for 0.</summary>
         public string FrameCapLabel() => FrameCap <= 0 ? "UNCAPPED" : FrameCap.ToString();
+
+        /// <summary>"TILTED" or "TOP-DOWN", the board camera row's value.</summary>
+        public string CameraLabel() => Camera == BoardCamera.Tilted ? "TILTED" : "TOP-DOWN";
 
         private static int IndexOf(int width, int height)
         {

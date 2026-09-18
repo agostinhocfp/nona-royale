@@ -1,7 +1,7 @@
 # Nona Royale — Visual Pass
 
 > Location in repo: `docs/design/VISUAL_PASS.md` · Project copy: `claude/VISUAL_PASS.md`
-> Status: **Open, 2026-09-18.** V4 (the colour grade) is in. V3's room and title layout are chosen from mockups and not yet built. V0 (the lighting spike) is written and waits for the designer's check, which blocks V1.
+> Status: **Open, 2026-09-18.** V0 passed and is retired. V4 (the colour grade) and V1a (the tilted camera) are in; V1b and V1c are next. V3's room and title layout are chosen from mockups and not yet built.
 > Related: `ART_DIRECTION.md` §3, §6, §6.1, ADR-0009 (figures rendered looking down about 25°), ADR-0010 (URP 2D Renderer), `LIGHTING.md`, `GUI_PHASE.md` (G2–G4)
 
 ## Goal
@@ -86,22 +86,31 @@ the chat as `v3_rooms.png`, `v3_lockup.png` and `v3_salon.png`.
   and that is a good part of why they look alive. V3 should draw a posed table behind the
   menu screens.
 
-## Risk: 2D lights under a perspective camera
+## Risk: 2D lights under a perspective camera — **closed, 2026-09-18**
 
-Forum reports (Unity 2021.1 onward) say URP 2D point and spot lights have no effect with a perspective camera; only the global light remains. If that holds on Unity 6.6 / URP 17.6, the tilted view would lose LT1's pools and cyan cells and all of LT2. It has to be checked in the editor before V1 is built.
+Forum reports (Unity 2021.1 onward) say URP 2D point and spot lights have no effect with a perspective camera; only the global light remains. If that held on Unity 6.6 / URP 17.6, the tilted view would have lost LT1's pools and cyan cells and all of LT2.
+
+**It does not hold.** The designer ran V0 in Play Mode: the safe cells still glow cyan and still bloom, and LT2's event lights still show. That is the harder case of the two — the powered-cell lights are the only ones in the scene restricted with `targetSortingLayers`, and they are additive — so the warm pools, which are plain point lights on multiply targeting every layer, are covered by the same result. The vault's pool is visible in the screenshots. The tilt is viable, and V0 was deleted once V1a replaced it.
+
+Two things the spike showed that were not being asked about:
+
+- **The world-anchored HUD already projects correctly.** Health readouts and status tags landed on the right pieces while tilted, because they go through `WorldToScreenPoint`, which does not care which projection the camera uses. That was on V1's list and turned out to be free.
+- **`AudioDirector.PanOf` gave up on a non-orthographic camera** and returned dead centre for everything, so the spike was silently mono. Fixed in V1a.
 
 ## Increments
 
 | #  | Increment | What it delivers |
 | -- | --------- | ---------------- |
 | V0 | **Lighting spike** | `View/PerspectiveSpike` (editor and development builds only): F9 tilts the main camera into perspective over the current board, F10 cycles 30°/40°/48°, F9 restores it. Answers one question: do the 2D lights still work? |
-| V1 | **Tilted view mode** (if V0 passes) | A view-mode setting (Top-down or Tilted, top-down kept). A camera rig with the pitch and the fitted framing; board clicks by ray against the board plane; HUD overlays placed through the tilted camera; figures standing and facing the camera, sorted by depth. |
+| V1a | **Tilted camera** ✅ | `View/TiltFraming` and the Board camera setting (Top-down or Tilted, top-down the default). The perspective branch in `FrameCamera`; board clicks by ray against the board plane; the camera nudge shoved along screen axes; stereo panning measured on screen. Pieces still lie flat. |
+| V1b | **Figures stand up** | Billboarding, and real depth sorting between pieces. Nothing in the view sorts by position today — every `sortingOrder` is a compile-time constant and all pieces share 0–6 on one layer — so a far piece can occlude a near one. Needs a project-wide decision: a per-piece `SortingGroup` with a y-derived order, or the 2D renderer's custom-axis transparency sort. |
+| V1c | **Overlays** | The four things that anchor to a world position and assume "up" is up on screen: `PieceHudLayer`'s health and tags (a fixed world-up offset), `CellLabelLayer`'s landing pips, `FloatingText`'s damage numbers and `FeedbackLayer`'s rings (world-space, so they lie flat on the table), and `DiceRoller`'s landing spot. Plus the fake-plane constants that should follow the pitch: `OperatorPiece`'s 0.9 × 0.36 seat disc, and `CastTell`'s tall diamond. |
 | V2 | **Table body** | The table's thickness and its gilt band, seen along the near edge; contact shadows under figures. |
 | V3 | **Room for the menu screens** | The chosen salon (velvet wall, a pair of chandeliers, a sconce ring on side columns) behind the title, setup, draft and end screens; the title's lockup moved to the top with the buttons in a bottom row and the scrim at 0.20; a posed table instead of an empty one; and a camera move from the room shot into the match framing. Mockups reviewed and chosen 2026-09-18. |
 | V4 | **Colour grade** ✅ | URP Volume overrides beside the existing bloom: tonemapping, split toning, edge falloff (vignette), light grain. Off with Lighting effects. |
 | V5 | **Surface sheen** | Normal maps for the board's procedural sprites, generated from the same shapes, so 2D lights pick out marble, gilt and felt. |
 
-If V0 fails: decide between "top-down, deeper" and moving the board to URP's 3D renderer, which would need a new ADR against ADR-0010.
+V0 passed, so neither fallback was needed: "top-down, deeper" and moving the board to URP's 3D renderer (which would have needed a new ADR against ADR-0010) are both off the table.
 
 ## Log
 
@@ -137,3 +146,67 @@ If V0 fails: decide between "top-down, deeper" and moving the board to URP's 3D 
   with `LAYOUT=center|left|top` and `LOCKUP=0` for a room-only frame) and
   `tools/mockup/sheet.py` (contact sheets). `scene.py` gains `ROOM`, `CARPET`,
   `FIT=title_top`, and spots in place of the area key and rim. Not yet built in Unity.
+- 2026-09-18 — **V0 passed; V1a in: the tilted camera.** The pitch and the lens were
+  re-measured before anything was built, and the measurement overturned the mockups'
+  choice.
+  - **The tilt's gain was overstated.** The mockup review claimed the tilted board is
+    about twice the flat one on screen. That compared a *bounding box* against a square
+    and used the spike's framing rather than a fitted one. Measured properly, as the
+    board's own trapezoid with the same 12% of air the flat camera leaves: flat is
+    828 × 828 px at 1080p with the HUD up, and the tilt at 40°/FOV 30 is 846,000 px²
+    against 686,000 — **+23%, not +100%**, and the far edge comes out 1.40× narrower
+    than the near one, so far cells are about 30% smaller.
+  - **Below about 30° of pitch the tilt costs area** rather than gaining it: the board
+    foreshortens and its near edge is not yet wide enough to pay for it.
+  - **A long lens at a steep pitch beats a wide lens at a shallow one on both counts.**
+    A wide lens balloons the near edge and the fit then shrinks the whole board to keep
+    that edge clear of the tray; a long one keeps the trapezoid closer to a rectangle,
+    so the same rectangle holds more board. Measured, at 1080p with the HUD up:
+
+    | pitch | FOV | board area vs flat | near/far |
+    | ----- | --- | ------------------ | -------- |
+    | 52° | 12 | **1.45×** | **1.22** |
+    | 48° | 20 | 1.36× | 1.34 |
+    | 45° | 30 | 1.35× | 1.50 |
+    | 40° | 30 | 1.23× | 1.40 |
+    | 25° | 30 | 0.98× | 1.20 |
+
+  - **Chosen (designer): 52° and a 12° field of view**, superseding the mockups' 40°/30°.
+    Half again as much board as the flat view, with the mildest foreshortening of the
+    options — which matters in a game where the player counts cells to plan a move. The
+    cost is the least cinematic of the four. The menu pitch stays 58°.
+    **Open:** the approved salon mockup was rendered at FOV 30, so the title room reads
+    flatter at 12° and that one frame wants re-rendering before V3 is built.
+  - **`View/TiltFraming`** (new, plain C#) solves the pose. With the rotation about x
+    alone and the aim on the board plane the projection collapses to three lines, so the
+    whole thing is arithmetic and testable outside the editor. The aim scans down the
+    board, the distance comes from a bisection (fitting is monotone in distance), and the
+    sideways aim is solved afterwards by a short fixed-point pass, because there is no
+    lens shift. A 4:3 window is the case that needs both safety nets — the aim-independent
+    width check and the re-verify back-off — and does not solve without them.
+  - **`FrameCamera` has two branches** now; the flat one is unchanged. It also resets the
+    clip planes, because the long lens pushes the near plane tens of units out and
+    leaving that behind clips the board away on the way back to top-down.
+  - **Board clicks are a ray against the board plane.** The old code unprojected the
+    mouse and dropped z, which works only because the flat camera looks along z; under
+    the tilt it returned a point in front of the lens. Right for both cameras now, so
+    there is no mode to branch on.
+  - **The camera nudge shoves along the camera's own right and up**, not world x and y,
+    so a shake still means a shake of the picture. Identical under the flat camera.
+  - **Board camera** is a `DisplaySettings` field on the Display page, remembered between
+    sessions, defaulting to **Top-down**: the tilt is opted into until it has been played.
+  - Checks: the view, tests and editor assemblies compile against the 6000.6 DLLs;
+    **793 tests green** (24 new `TiltFramingTests`, 6 new `DisplaySettingsTests`). Eleven
+    mutations of the framing maths were tried and all eleven fail a test.
+  - **Play Mode watch-list (designer):**
+    1. Settings → Display → **Board camera → TILTED**. The board should tilt at once,
+       without resizing the window.
+    2. Click a piece, then click a landing cell. Do clicks land where you point, at the
+       near edge *and* the far edge?
+    3. Switch back to TOP-DOWN. The board must come back exactly as it was — if the
+       screen goes black, the clip planes are wrong.
+    4. Knock something out: the screen shake should shake the picture, not dive into
+       the table.
+    5. Wear headphones and let a CPU turn play: sounds on the left should be on the left.
+    6. Known and expected: the pieces still lie flat on the table, and far pieces may
+       draw in front of near ones. That is V1b.
