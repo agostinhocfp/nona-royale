@@ -6,6 +6,7 @@ using NonaRoyale.Core;
 using NonaRoyale.Core.Abilities;
 using NonaRoyale.Core.Board;
 using NonaRoyale.Core.Commands;
+using NonaRoyale.Core.Config;
 using NonaRoyale.Core.Events;
 using NonaRoyale.Core.Model;
 using NonaRoyale.Core.Services;
@@ -992,14 +993,15 @@ namespace NonaRoyale.Core.Tests.Engine
         // ── Passives, end to end ─────────────────────────────────────────
 
         [Test]
-        public void KurbynMovesAtHisPassiveSpeed_NotHisBaseSpeed()
+        public void KurbynMovesAtHisBaseSpeed_PlusHaste()
         {
-            // Drives the whole chain: MatchFactory grants the passive with its
-            // magnitude, StatusRegistry reports it, MovementResolver applies it.
+            // Drives the whole chain: MatchFactory grants the haste passive,
+            // StatusRegistry reports it, the move pays it, and his
+            // per-operator cap of 2 binds (the global cap is 3).
             //
-            // The test this replaces added two constants together and asserted
-            // they summed to 1.5. It stayed green while the engine moved Kurbyn
-            // at 1.0, because it never touched the engine.
+            // Until 2026-09-17 this test pinned a +0.5 speed passive. The
+            // rebuild put his edge on the haste channel instead: base 1.0,
+            // +1 cell on a roll of 6 or less, +2 above it, capped at 2.
             var solo = MatchFactory.CreateAlphaMatch(
                 new[] { PlayerColor.Red }, seed: 11, openingDeployments: 3);
 
@@ -1010,9 +1012,16 @@ namespace NonaRoyale.Core.Tests.Engine
 
             var moved = First<OperatorMoved>(solo.Engine.Execute(new MoveCommand(kurbyn.Id)));
 
+            var cfg = CombatConfig.Default;
+            int haste = Math.Min(
+                total <= cfg.HasteRollThreshold
+                    ? cfg.HasteCellsAtOrBelowThreshold
+                    : cfg.HasteCellsAboveThreshold,
+                2); // Kurbyn's per-operator cap — the global cap is 3.
+
             Assert.That(moved, Is.Not.Null);
             Assert.That(moved.To - moved.From,
-                Is.EqualTo((int)(total * (Kurbyn.BaseSpeed + Kurbyn.PassiveSpeedBonus))));
+                Is.EqualTo((int)(total * Kurbyn.BaseSpeed) + haste));
         }
 
         [Test]

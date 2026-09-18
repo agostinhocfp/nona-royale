@@ -264,7 +264,7 @@ The band is 1.0–1.5 (§6), so −0.5 costs a 1.5 operator a third of its movem
 
 ### 5.5 Evasion
 
-- **Effect:** the **first** instance of Normal damage against the holder **each round** is negated on a `EvasionChance = 0.3` seeded roll. Every subsequent instance that round lands automatically.
+- **Effect:** the **first** instance of Normal damage against the holder **each round** is negated on a `EvasionChance = 0.12` seeded roll. Every subsequent instance that round lands automatically. The rate was 0.5, then 0.3 (2026-09-15), then 0.12 (2026-09-17, §10.3) — every tuning pass that left it standing failed to move Kurbyn.
 - **A failed roll still spends the charge.** The charge is the _attempt_, not the success. If a miss left it intact, the holder would keep rolling against every hit until one landed, and the per-round cap — the thing that bounds the worst case — would stop binding at all.
 - The charge refreshes at the holder's upkeep. "Round" therefore means _since the holder's last turn began_, which is the window during which opponents actually attack it.
 - A cleanse does **not** re-arm it (§5.8).
@@ -315,7 +315,7 @@ Not a status — the absence of them. Javi's Neural Purge removes every **applie
 
 - **Effect:** **+1 extra cell if the roll totals 6 or less, +2 if it totals 7 or more** (`HasteRollThreshold`, `HasteCellsAtOrBelowThreshold`, `HasteCellsAboveThreshold`), for `HasteDurationTurns` (2) of the holder's own turns. Not a speed change: the cells are added after the move's own speed and rounding (§6.3).
 - **The whole roll decides**, not the dice a move spends. Each hastened operator collects the bonus **once per roll**, on its first move with that roll. A second move from the same roll gets nothing extra. The roll's total counts even if one die went on a deploy or to another operator.
-- **Capped at `HasteBonusCellCap` (3) extra cells per operator per turn.** It only binds on a doubles turn: a high double pays 2, and the re-roll can then add only 1.
+- **Capped at `HasteBonusCellCap` (3) extra cells per operator per turn.** It only binds on a doubles turn: a high double pays 2, and the re-roll can then add only 1. An operator can carry a lower cap of its own: Kurbyn's passive haste is capped at **2** (§10.3), read per operator with `HasteBonusCellCap` as the fallback (2026-09-17).
 - A move the dice alone would not make (0 cells) gets no bonus, so haste never turns a refused move into a legal one.
 - **Sources:** Tagged From Above's payout, to the marker's whole squad (§10.2); Lethe's passive, permanently (§10.10); and her Catalyst aura, to an ally within 2 of her when its move starts (§10.10). They do not stack: an operator is hastened or not, and collects one bonus per roll under one cap.
 
@@ -404,7 +404,7 @@ _(Added 2026-09-16, with Mimi's Cryo Field — the mechanic the §10.4 banner wa
 
 ### 5.15 Watched
 
-_(Added 2026-09-16, with Kurbyn's Predator's Read — §6.7, §10.3.)_
+_(Added 2026-09-16, with Kurbyn's Predator's Read — §6.7, §10.3. Dormant since 2026-09-17: the only ability that used it was removed (§11), and the machinery stays for the next operator who wants it.)_
 
 - **Effect:** none. A pure marker, exactly as §5.10 and §5.13 — the visible half of a pending watch (§6.7): if the carrier moves **by dice** before the watch's owner-upkeep, the watch trips and strikes it, once.
 - **A cleanse strips it, and the watch never trips.** Same mechanism and same silence as a cleansed charge or follow-up — Neural Purge answers Predator's Read for 6 against 3, the reverse of its trade against Zero-Day, and the rock-paper-scissors is the point either way.
@@ -705,7 +705,7 @@ Randomness reaches exactly three places: `MovementResolver` (dice), `DamagePipel
 
 ## 10. The roster, re-expressed
 
-Eleven operators are in the draft pool, and **all eleven are complete**. Mimi's Cryo Field and Kurbyn's Predator's Read, the last two unbuilt abilities, landed 2026-09-16 (§10.4, §10.3). Lethe and Revú arrived whole on 2026-09-17 (§10.10, §10.11). Bouncer and Lethe field two abilities and an aura, Revú fields two abilities and a named passive, and everyone else fields three abilities. An operator the game can deal but this document does not describe is worse than an entry marked incomplete; the pool no longer has one.
+Eleven operators are in the draft pool, and **all eleven are complete**. Mimi's Cryo Field and Kurbyn's Predator's Read, the last two unbuilt abilities, landed 2026-09-16 (§10.4, §10.3). Lethe and Revú arrived whole on 2026-09-17 (§10.10, §10.11). Bouncer and Lethe field two abilities and an aura, Revú fields two abilities and a named passive, Kurbyn fields two actives and a two-status passive since 2026-09-17 (§10.3), and everyone else fields three abilities. An operator the game can deal but this document does not describe is worse than an entry marked incomplete; the pool no longer has one.
 
 **The tables are copied from the roster files and the code wins any disagreement.** Numbers change there first (`Assets/_Project/Scripts/Core/Abilities/Roster/`), and a table that drifts is a second copy of a value that is now wrong. Last synced 2026-09-16.
 
@@ -748,10 +748,12 @@ Bouncer's kit is priced on **positioning, not energy** — the roster's slowest 
 | #   | Ability               | Type         | Cost | CD  | Range                | Effect                                                                                                                                                                                                                                                  |
 | --- | --------------------- | ------------ | ---- | --- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | **From the Hip**      | Active       | 3    | 1   | 3                    | **1 Normal**; **Slow 1 turn**; **+1 damage** if the target is bleeding (§5.3).                                                                                                                                                                          |
-| 2   | **Ace Shards**        | Active       | 6    | 3   | 3 (AOE, self-origin) | **3 Normal** to all enemies in the window; applies **1 Bleed** each.                                                                                                                                                                                    |
+| 2   | **Ace Shards**        | Active       | 6    | 3   | 2 (AOE, self-origin) | **2 Normal** to all enemies in the window; applies **1 Bleed** each.                                                                                                                                                                                    |
 | 3   | **Tagged From Above** | Active (Ult) | 9    | 4   | 3                    | **Mark** an enemy for **2 turns**: **2 Atomic** at its upkeep each turn (§5.7). If it is neutralized by Syla's side **while marked**, the whole squad gains **Hastened** (§5.9). Syla gains **Stealth** for the current turn + 1, regardless of payout. |
 
 **From the Hip is a control tool with a damage rider, not a damage ability.** At 1 base against 6 health it will not trade with anything on its own; the slow is the point, and the bleed bonus doubles it. That makes Syla's line explicitly sequential — Ace Shards first for the bleed, From the Hip after — rather than a cheap ability she can lead with. It was 2 base until the bleed profile proved strong enough that the base did not need to carry the ability.
+
+**Ace Shards 3 → 2 damage, range 3 → 2 (2026-09-17, designer).** She was second in the speed-cap sweep at 30%, on a kit whose area cast out-damaged everything else at its price. The bleed rider is untouched. Bots sweep: 30% → 24% — measured together with the Kurbyn rebuild below, so the figure is the package's, not the dial's alone.
 
 The mark's payout credits _any_ neutralize by Syla's side, including a collision and including the mark's own ticks. The stealth is unconditional and does not break on attacking (§5.4).
 
@@ -765,16 +767,19 @@ Two numbers here have been walked back under measurement. The squad buff was **+
 
 ### 10.3 Kurbyn, DarkGrave — Brawler
 
-**HP 7 · Speed 1.0× base (1.5× with passive) · Complete — all three abilities implemented since 2026-09-16**
+**HP 7 · Speed 1.0× with permanent haste (+1 on a roll of 6 or less, +2 above, capped at 2 cells a turn) · two actives and the passive since 2026-09-17**
 
 | #   | Ability              | Type         | Cost | CD  | Range                | Effect                                                                                                                                                                                              |
 | --- | -------------------- | ------------ | ---- | --- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Predator's Read**  | Active       | 3    | 2   | 3                    | **Watch** the target until Kurbyn's next upkeep (§6.7): if it moves by dice, it takes **2 Normal**, once. Placement never trips it (§7.4). Telegraphed, cleanseable (§5.15).                           |
-| 2   | **Dargin Pulse**     | Active       | 6    | 3   | 2 (AOE, self-origin) | **2 Normal** to all enemies in the window; **Stun 1 turn** (§5.1).                                                                                                                                  |
-| 3   | **Evasive Protocol** | Passive      | —    | —   | self                 | First Normal damage instance each round: negated on a **30%** roll (§5.5). Speed multiplier **+0.5**.                                                                                               |
-| 4   | **Miracle Pull**     | Active (Ult) | 9    | 2   | 2                    | **3 Atomic** to the target. **Execute:** if the target was below 50% HP **at cast time**, it is instead neutralized outright. **2 Atomic** to enemies within 3 of the target, excluding the target. |
+| 1   | **Dargin Pulse**     | Active       | 6    | 3   | 2 (AOE, self-origin) | **2 Normal** to all enemies in the window; **Stun 1 turn** (§5.1).                                                                                                                                  |
+| 2   | **Evasive Protocol** | Passive      | —    | —   | self                 | First Normal damage instance each round: negated on a **12%** roll (§5.5). Permanent **Hastened** — +1 cell on a roll of 6 or less, +2 above, capped at **2** cells a turn where the roster's cap is 3 (§5.9). |
+| 3   | **Miracle Pull**     | Active (Ult) | 9    | 3   | 2                    | **3 Atomic** to the target. **Execute:** if the target was below 50% HP **at cast time**, it is instead neutralized outright. **2 Atomic** to enemies within 3 of the target, excluding the target. |
+
+> **Predator's Read was removed 2026-09-17 (designer; §11).** The paragraph below is the reasoning that built it the day before, kept for the record. The watch machinery it introduced (§5.15, §6.7, `EffectKind.Watch`) stays in the core, dormant, for the next operator who wants it.
 
 **Predator's Read fills the three-energy rung (2026-09-16, designer).** His cheapest cast was 6, so on a lean turn Kurbyn watched the fight rather than shaping it. The ability needed the roster's fifteenth effect kind (§9.1): the follow-up's machinery with the trigger inverted — a follow-up resolves at the upkeep and punishes a target that stayed; the watch resolves on the move and punishes a target that left. The fiction is his established one (the neural-prediction rig reads the target; if it moves, the answer is already on its way), and the damage is deliberately not the point: a target that stands still to dodge the 2 has spent its move, which under compulsory movement (§6.1) is often the worse half of the choice. Priced with Short Circuit and From the Hip, the other cheap control tools, and Normal so his own evasion's answers — a charge, a plate, a cleanse — all work against it. Unmeasured; adding him a third ability shifts the draft's dice stream, so no figure taken before compares with one after.
+
+**Rebuilt 2026-09-17 (designer).** The paragraph after next describes the old passive and is superseded. Evasive Protocol is one fiction carried as two permanent statuses — Evasion at 12% and Hastened at the flat +1/+2 — and his base speed is a plain 1.0. The speed channel no longer carries him at all; a Kurbyn moving at his base plus haste cells is the rules, not a bug.
 
 The execute threshold is evaluated **before** the direct damage lands, on the target's HP at cast. Checking after would mean a full-health 6-HP target drops to 3 and survives at exactly 50%, which reads as a bug at the table. `current * 2 < max` — integer comparison, no fractional HP support required anywhere in the core.
 
@@ -783,6 +788,8 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 **Miracle Pull went from range 1 to 2** in the same pass that cut Bouncer. At range 1 the finisher needed him on the cell beside his target, which on a board where placement is mostly dice meant the ult was often unspendable at the moment it was worth spending. It also widens the splash's practical reach without touching its radius.
 
 **Evasion 50% → 30% (2026-09-15, designer).** Kurbyn is fast (1.5 with the passive) and evasive, and human games and the bots sweep (35% win share) agreed the pair was too much. The speed stays; the evasion roll came down.
+
+**Evasion 30% → 12%, Predator's Read removed, the speed passive traded for haste (2026-09-17, designer).** The per-turn speed cap (§6.3) compressed the bottom of the table and left him untouched at 33%; a cap of 1 left him at 32%. Reading the roster table, the kit had quietly become three actives plus a fourth ability's worth of defence — and the evasion was meant to be a single ability. The roll came down to 12% (about 0.26 instances prevented per round against a single attacker), and the +0.5 speed became permanent flat haste capped at 2 cells a turn, so his traversal edge survives at half strength and his defence finally has a price tag. Bots sweep, 800 matches against the speed-cap baseline: **Kurbyn 33% → 28%**, Bouncer 24% → 28%, Syla 30% → 24% (her Ace Shards patch landed in the same tree — confounded), Revú 20% → 23%, the rest within a point; **Javi 27% → 31% is the new outlier**, up four without being touched. Turns per seat 27.8 → 27.5.
 
 **Evasion made Kurbyn dominant in the first human sessions**, which is what prompted Velvet Rope becoming Atomic rather than any change here. Note that the tuning pass then shortened that counter and lengthened his ultimate — every change moved power the same way. Whether that is one correction or an overcorrection is a measurement, not an argument.
 
@@ -1172,6 +1179,9 @@ Casts per match: Drone Strike 4.58 → 5.87, Sonic Disrupter 2.72 → 3.70, Inve
 | Velvet Rope as 3 Normal at range 3                           | **Retuned** to 3 **Atomic** at range 4, then **back to range 3** (§10.1). Atomic stayed; the reach did not.                                                                                          |
 | All-In Mauling at range 1 with 3 damage and 3 self           | **Retuned** to range 2, 2 damage, 2 self (§10.1).                                                                                                                                                    |
 | Miracle Pull at range 1                                      | **Widened** to 2 (§10.3). At 1 the ult was often unspendable when it was worth spending.                                                                                                             |
+| Miracle Pull at cooldown 2                                 | **Raised** to 3 (§10.3), with the rebuild below.                                                                                                                                                    |
+| Predator's Read (Kurbyn's third active, id 303)            | **Removed** 2026-09-17 (§10.3): the kit read as three actives plus a passive's worth of defence, and the evasion was meant to be a single ability. The watch machinery (§5.15, §6.7, `EffectKind.Watch`) stays in the core, dormant. |
+| Evasive Protocol at 30% with a +0.5 speed rider            | **Rebuilt** 2026-09-17 (§10.3): the roll is 12%, and the speed rider became permanent flat haste capped at 2 cells a turn.                                                                            |
 | Intimidating Presence at radius 2                            | **Widened** to 3, matching Velvet Rope's reach (§10.1).                                                                                                                                              |
 | From the Hip at 2 base damage                                | **Lowered** to 1 (§10.2). The bleed profile carries the ability; the base does not.                                                                                                                  |
 | Cryo-Pulse at 4 energy                                       | **Repriced** to 6 (§10.4). It did more than either 6-cost area ability for two-thirds the price.                                                                                                     |
@@ -1302,6 +1312,7 @@ Carried from the pre-2026-09-14 version of this section, which the table above s
 - **`HasteDurationTurns = 2`; haste +1 on a roll of 6 or less, +2 above** (§5.9, 2026-09-16). Replaced `HasteSpeedBonus = 0.5`. Before/after at 800 matches (bots sweep): noise only. Syla 31% → 32%, Kurbyn 31% → 31%, turns per seat 28.2 → 28.2. The payout fires about once a match (Tagged From Above: 0.95 casts), so the sim cannot see it; only human games can.
 - **`HasteBonusCellCap = 3`** (§5.9) — the designer's number (2026-09-16), kept when haste became flat cells; it now only binds on doubles turns. When it first landed it limited the old +0.5 speed to 3 cells per operator per turn. Before/after at 800 matches it changed nothing beyond noise: the standard table's adopted row is identical (20.3 turns, 5.5 neutralizes, 40% 3-up), and Syla's bot-vs-bot win share went 31% → 30%. The payout fires about once a match (Tagged From Above: 1.15 casts), so the sim cannot show a cap on it. Only human games can.\r
 - **`SpeedBonusCellCap = 2`** (§6.3) — the designer's number (2026-09-17), adopted to even up the field. At 2 it binds on big moves only: a single 6 at 1.5×, or a pooled roll. Bots sweep, 800 matches before/after: Syla 31% → 30%, Javi 28% → 27%, Kurbyn 32% → 33% (noise), Bouncer 21% → 24%, Mimi 21% → 23%, Revú 23% → 20% (watch); turns per seat 26.6 → 27.8. A cap of 1 was measured and not adopted: Syla 27%, Javi 27%, and Kurbyn still 32% — the trim does not reach him at either setting, because his edge is the evasion.
+- **`EvasionChance = 0.12`** (§5.5) — the designer's number (2026-09-17), the third setting after 0.5 and 0.3. The sweep that measured it is confounded with the rest of the Kurbyn rebuild (§10.3): 33% → 28% for the package, not the dial alone. If he still reads as unkillable in human games, the deterministic-evasion proposal (§11) is the next pass, not a fourth rate.
 - **`RegenEveryTurns = 3`, `RegenAmount = 1`** (§5.11) — A/B 0 against 3 before trusting either. **Not live in code:** the `CombatConfig` constructor never assigns either field, so both read 0 and regeneration never fires. Found 2026-09-16; enabling it is a balance change and waits for a decision.
 - **Sanity's Collision at 6 / 3 / 6** (§10.8, 2026-09-16) — the bots sweep puts about 1.7 turns per seat and 2 knockouts per match on the four-seat game. Watch match length in human games before touching anything else.
 
@@ -1584,20 +1595,16 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - `CryoField_RefusedOnCooldown_AndReadyAgainAfterThreeOwnerTurns`
 - `CryoField_RefusedWithoutEnergy_AndCostsNothing`
 
-**Kurbyn's Predator's Read — `PredatorsReadTests`** (§6.7)
+**Kurbyn's 2026-09-17 rebuild — `KurbynTests`** (§10.3)
 
-- `Cast_MarksTheTarget_AndTelegraphsIt_ButStrikesNothingYet`
-- `DiceMovement_TripsTheWatch_ForTwoNormal_ExactlyOnce`
-- `TheStrike_IsNormal_AndAShieldAbsorbsIt`
-- `StandingStill_TheReadLapsesAtKurbynsNextUpkeep_AndNothingHappens`
-- `Placement_ASwap_DoesNotTripTheWatch`
-- `Placement_APull_DoesNotTripTheWatch`
-- `Placement_APush_DoesNotTripTheWatch`
-- `Cleanse_CancelsTheWatch_AndNoStrikeFollows`
-- `TargetNeutralized_TheReadDiesWithIt_AndARedeployedTargetIsClean`
-- `KurbynNeutralized_TheReadStillTrips_AndCreditsHim`
-- `ReSettingAWatch_ReplacesRatherThanStacks`
-- `Engine_ADiceMoveByTheMarkedTarget_TripsTheWatch`
+- `TheDesignersNumbers`
+- `TheKit_IsTwoActives_AndThePassive`
+- `BothPassives_AreLiveFromMatchStart`
+- `KurbynMovesAtHisBaseSpeed_PlusHaste` (`GameEngineTests`)
+- `KurbynHaste_IsCappedAtTwo_NotThree` (`HasteCapTests`)
+- `Kurbyn_IsOffTheSpeedChannel_Entirely` (`SpeedCapTests`)
+
+The watch machinery (§6.7) is dormant: `PredatorsReadTests` and `WatchBotTests` were retired with the ability.
 
 **Kian's 2026-09-17 buff — `AbilityResolverTests`** (§10.6)
 
@@ -1658,3 +1665,5 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - 2026-09-17 — **Self-targeting settled: per-ability opt-in** (designer). §10's cast-mode rule made every friendly mode reachable by its own caster, and blanket self-cast was rejected on that ground — All-In Mauling's friendly mode is a heal, and Bouncer self-sustaining was never intended. `AbilityDefinition` gains `allowsSelfTarget`; the resolver excludes the caster from `LegalTargets` unless it is set and refuses a self-aimed cast without it (`TargetingVerdict.CannotTargetSelf`, costing nothing); the UI filter that had been settling the question by omission is removed, so the board offers the caster's own piece exactly when the ability declares it. Four defensive abilities opt in: Javi's Nanite Infusion, Trauma Plate and Neural Purge, and Lethe's Nano Cell, whose self-bubble pays the stun as its price. Bots keep their no-self-cast policy. §10, §10.5, §10.10 amended. Tests +13 (`SelfTargetTests`).
 - 2026-09-17 — **Mimi buffed** (designer): health 6 → 7 (the roster's common figure at last), Cryo Field tick 1 → 2 and radius 2 → 3. Bots sweep, before/after on the same tree: Mimi 17% → 21% (+4, about 2.7 standard errors — out of the noise); Cryo Field 1.35 → 2.69 casts per match; no other operator moved more than 2 points. §1.1 and §10.4 amended; the EditMode expectations pinned to the old numbers (radius-edge fixtures and tick arithmetic in `CryoFieldTests`, the designer's-numbers assertions in `MimiBotTests`) moved with it, 679 passing.
 - 2026-09-17 — **Speed bonus capped per turn** (designer): at most `CombatConfig.SpeedBonusCellCap` (2) extra cells from a speed above 1.0× per operator per turn, charged on every move that collects it — the ceiling the speed channel never had (§6.3, §12). `GameEngine` keeps a second per-turn budget beside haste's; `CellsFor` gained a speed-bonus out parameter so `Move` charges it and `PreviewLandings` and `HasLegalMove` agree. Bots sweep: the bottom compressed (Mimi 21% → 23%, Bouncer 21% → 24%) but the 1.5× tier stayed on top (Kurbyn 33%, Syla 30%, Javi 27%); a cap of 1 was measured and not adopted (§12). §6.3, §12 amended. Tests +10 (`SpeedCapTests`); `HasteCapTests`' speedster expectations and the tallied-match seed moved to the new rule. 679 → 689 passing.
+- 2026-09-17 — **Syla's Ace Shards patched down** (designer): damage 3 → 2, range 3 → 2, the bleed rider untouched (§10.2). She was second in the speed-cap sweep at 30%. Measured together with the Kurbyn rebuild below: Syla 30% → 24%, confounded by design. The `AbilityResolverTests` expectations moved with it.
+- 2026-09-17 — **Kurbyn rebuilt** (designer): Predator's Read removed (id 303; the watch machinery — §5.15, §6.7, `EffectKind.Watch` — stays in the core, dormant), evasion 30% → 12% (`EvasionChance`; he is the only holder, so the global dial is his number), base speed a plain 1.0, and the +0.5 passive speed replaced by permanent flat haste (+1 on a roll of 6 or less, +2 above) capped at **2** cells a turn — the first per-operator haste cap, read as `OperatorState.HasteCellCap` with `HasteBonusCellCap` (3) the fallback. `OperatorDefinition` gains a second passive slot, `MatchFactory` applies both, and the draft card and `DraftPicker.EffectiveSpeed` read both. Miracle Pull's cooldown went 2 → 3 in the same pass. Bots sweep, 800 matches against the speed-cap baseline: Kurbyn 33% → 28%, Bouncer 24% → 28%, Javi 27% → 31% (the new outlier — watch), Syla 30% → 24% (her patch is in the same tree), Revú 20% → 23%, the rest within a point; turns per seat 27.8 → 27.5; personalities back to 25/25/25. §5.5, §5.9, §9.1, §10.2, §10.3, §11, §12, §13 amended. Tests: `PredatorsReadTests` (16) and `WatchBotTests` (9) retired with the ability; +3 (`KurbynTests`), +1 (`HasteCapTests`' cap-2 case); stale expectations moved in `GameEngineTests`, `BurdenTests`, `HasteCapTests`, `SpeedCapTests` and — for Syla's patch — `AbilityResolverTests`. 689 → 668 passing.

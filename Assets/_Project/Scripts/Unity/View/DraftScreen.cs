@@ -789,6 +789,8 @@ namespace NonaRoyale.Unity.View
 
             if (op.Passive.HasValue)
                 UiKit.Tag(stats, StatusPalette.Label(op.Passive.Value), StatusPalette.For(op.Passive.Value), 11f);
+            if (op.Passive2.HasValue)
+                UiKit.Tag(stats, StatusPalette.Label(op.Passive2.Value), StatusPalette.For(op.Passive2.Value), 11f);
             if (op.Aura != null)
                 UiKit.Tag(stats, "AURA", UiTheme.GoldDeep, 11f);
 
@@ -1034,10 +1036,13 @@ namespace NonaRoyale.Unity.View
             var traits = new List<string> { $"{op.MaxHealth} health", $"speed ×{op.BaseSpeed:0.0}" };
             if (op.Passive.HasValue)
             {
-                // A passive's magnitude is a speed bonus (Kurbyn); Lethe's haste carries none.
+                // A passive's magnitude was a speed bonus (Kurbyn, before
+                // 2026-09-17); the roster's passives now carry none.
                 string magnitude = op.PassiveMagnitude != 0.0 ? $" ({op.PassiveMagnitude:+0.0;-0.0} speed)" : "";
                 string passiveLabel = op.PassiveName ?? StatusPalette.Label(op.Passive.Value);
                 traits.Add($"passive {passiveLabel}{magnitude}");
+                if (op.Passive2.HasValue)
+                    traits.Add($"passive {StatusPalette.Label(op.Passive2.Value)}");
             }
             if (op.Aura != null) traits.Add($"aura {op.Aura.Name}, radius {op.Aura.Radius}, {AuraReach(op.Aura)}");
 

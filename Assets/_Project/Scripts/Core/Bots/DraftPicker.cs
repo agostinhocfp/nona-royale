@@ -109,9 +109,9 @@ namespace NonaRoyale.Core.Bots
         {
             const double RollAdjustment = 57.0 / 36.0 / 7.0;   // P(≤6)·1 + P(>6)·2, per mean pip total
 
-            double speed = op.BaseSpeed + op.PassiveMagnitude;
-            if (op.Passive == StatusKind.Hastened) speed += RollAdjustment;
-            if (op.Passive == StatusKind.Burdened) speed -= RollAdjustment;
+            double speed = op.BaseSpeed + op.PassiveMagnitude + op.Passive2Magnitude;
+            if (op.Passive == StatusKind.Hastened || op.Passive2 == StatusKind.Hastened) speed += RollAdjustment;
+            if (op.Passive == StatusKind.Burdened || op.Passive2 == StatusKind.Burdened) speed -= RollAdjustment;
             return speed;
         }
 

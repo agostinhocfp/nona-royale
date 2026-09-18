@@ -1372,7 +1372,8 @@ namespace NonaRoyale.Core
 
             if (hastened)
             {
-                int budget = Math.Max(0, _config.HasteBonusCellCap - HasteCellsUsed(op));
+                int cap = op.HasteCellCap ?? _config.HasteBonusCellCap;
+                int budget = Math.Max(0, cap - HasteCellsUsed(op));
                 hasteCells = Math.Min(_config.HasteCellsFor(_rollTotal), budget);
             }
 

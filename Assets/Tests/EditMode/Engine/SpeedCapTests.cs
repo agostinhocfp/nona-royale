@@ -98,15 +98,18 @@ namespace NonaRoyale.Core.Tests.Engine
         }
 
         [Test]
-        public void Kurbyn_PassiveSpeed_IsCappedToo()
+        public void Kurbyn_IsOffTheSpeedChannel_Entirely()
         {
-            // His 1.5 arrives through the status channel (ADR-0002 Amendment 5),
-            // not his base — the cap reads effective speed, wherever it came from.
+            // Since 2026-09-17 his traversal edge is flat haste, not speed: a 6
+            // still moves 8, but through the haste channel (+2), and the speed
+            // cap has nothing of his to trim.
             var match = RolledSolo(r => !r.IsDouble && (r.First == 6 || r.Second == 6), out var roll);
             var kurbyn = Named(match, "Kurbyn");
             int six = roll.First == 6 ? roll.First : roll.Second;
 
-            Assert.That(Travelled(match, new MoveCommand(kurbyn.Id, six)), Is.EqualTo(8));
+            Assert.That(match.Statuses.SpeedModifier(kurbyn), Is.EqualTo(0.0), "no speed bonus remains");
+            Assert.That(Travelled(match, new MoveCommand(kurbyn.Id, six)),
+                Is.EqualTo(8), "6 pips at 1.0× plus 2 haste cells");
         }
 
         [Test]

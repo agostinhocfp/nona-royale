@@ -16,7 +16,7 @@ namespace NonaRoyale.Core.Config
     {
         public CombatConfig(
             int collisionDamage = 3,
-            double evasionChance = 0.3,
+            double evasionChance = 0.12,
             int bleedDamagePerStack = 1,
             double slowSpeedPenalty = 0.5,
             int markDamagePerTurn = 2,
@@ -118,10 +118,13 @@ namespace NonaRoyale.Core.Config
         /// spread of 1, 2, 2, 2, 3 and collision at 3.
         /// </summary>
         /// <remarks>
-        /// <b>0.3, not the 0.5 the prose still says in places.</b> §12 named
+        /// <b>0.12 (2026-09-17, designer).</b> It was 0.5, then 0.3 — §12 named
         /// this as the next dial if Kurbyn stayed dominant after the targeted
-        /// counter in §10.1, and it was pulled. At 0.3 it prevents 0.65 a round
-        /// where 0.5 prevented 1.08.
+        /// counter in §10.1, and it was pulled — and he outlasted both, plus the
+        /// per-turn speed cap (§6.3). The same day's rebuild of his kit (§10.3)
+        /// cut the rate to 0.12: 0.26 prevented a round where 0.3 prevented
+        /// 0.65 and 0.5 prevented 1.08. Kurbyn is the only holder, so the global
+        /// dial is his number.
         ///
         /// <b>Still probabilistic, and that was a choice.</b>
         /// <c>_HANDOFF_mitigation.md</c> proposed replacing the roll with a flat
@@ -132,8 +135,8 @@ namespace NonaRoyale.Core.Config
         /// rewrites five test fixtures' construction. The cheap lever first.
         ///
         /// <b>What the rate does not fix.</b> Lowering the frequency leaves the
-        /// variance per event untouched — a 30% negation of a 3-damage instance
-        /// is rarer than a 50% one and no more predictable. If evasion still
+        /// variance per event untouched — a 12% negation of a 3-damage instance
+        /// is rarer than a 30% one and no more predictable. If evasion still
         /// reads as arbitrary in human play, the answer is the deterministic
         /// pass, not a smaller number here. Reasoned, never measured.
         /// </remarks>

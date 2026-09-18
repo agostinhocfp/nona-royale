@@ -141,18 +141,37 @@ namespace NonaRoyale.Core.Tests.Engine
         }
 
         [Test]
-        public void APassiveSpeedBonus_StillApplies()
+        public void APassiveHaste_StillApplies()
         {
-            // Kurbyn's Evasive Protocol is speed, not haste: his move is his
-            // passive speed — inside the per-turn cap like any speed (§6.3) —
-            // plus the flat bonus.
-            double kurbyn = Kurbyn.BaseSpeed + Kurbyn.PassiveSpeedBonus;
+            // Kurbyn's Evasive Protocol is haste, not speed, since 2026-09-17:
+            // his move is his plain 1.0× plus the flat bonus (§10.3).
             var match = RolledSolo(r => !r.IsDouble && !Low(r), out var roll);
             var op = Named(match, "Kurbyn");
-            Hasten(match, op);
+
+            Assert.That(match.Statuses.Has(op, StatusKind.Hastened), Is.True,
+                "precondition: the passive is live from match start");
+            Assert.That(match.Statuses.SpeedModifier(op), Is.EqualTo(0.0), "haste is not speed");
+            Assert.That(Travelled(match, new MoveCommand(op.Id)),
+                Is.EqualTo(Cells(roll.Total, Kurbyn.BaseSpeed) + 2));
+        }
+
+        [Test]
+        public void KurbynHaste_IsCappedAtTwo_NotThree()
+        {
+            // His per-turn budget is 2 where the roster's is 3 (§10.3, 2026-09-17).
+            // A high double pays 2; the re-roll — same turn, same budget — pays
+            // nothing, where the global cap would still pay 1.
+            var match = RolledSolo(r => r.IsDouble && !Low(r), out var roll);
+            var op = Named(match, "Kurbyn");
 
             Assert.That(Travelled(match, new MoveCommand(op.Id)),
-                Is.EqualTo(SpeedCells(roll.Total, kurbyn) + 2));
+                Is.EqualTo(Cells(roll.Total, Kurbyn.BaseSpeed) + 2));
+            Assert.That(match.Engine.CanRollAgain, Is.True, "precondition: doubles re-roll");
+
+            var second = match.Engine.Execute(new RollDiceCommand()).OfType<DiceRolled>().First().Roll;
+
+            Assert.That(Travelled(match, new MoveCommand(op.Id)),
+                Is.EqualTo(Cells(second.Total, Kurbyn.BaseSpeed)), "his budget was spent on the first roll");
         }
 
         [Test]

@@ -86,7 +86,7 @@ namespace NonaRoyale.Sim
             // of the loop. ADR-0002 Amendment 4: target roughly a fifth; past a
             // third a move stops being followable.
             double meanSpeed = (speeds.Bouncer + speeds.Syla +
-                                speeds.KurbynBase + Kurbyn.PassiveSpeedBonus) / 3.0;
+                                speeds.KurbynBase) / 3.0;
             double movePercent = 7.0 * meanSpeed / board.CircuitLength * 100.0;
 
             var turns = runs.Select(r => (double)r.Turns / 4).OrderBy(t => t).ToList();

@@ -9,10 +9,19 @@ namespace NonaRoyale.Core.Abilities
     /// <c>COMBAT_SYSTEMS.md</c> §10.3.
     /// </summary>
     /// <remarks>
-    /// <b>Evasion made him dominant in the first human sessions</b>, and the
-    /// response was a targeted counter — Velvet Rope becoming Atomic — rather
-    /// than touching the passive. Nothing here changed; what changed is that one
-    /// operator can now reliably go through him (§2.2, §10.1).
+    /// <b>Evasion made him dominant in every session, human and simulated, and
+    /// every tuning pass that left it in place failed to move him.</b> It was
+    /// cut 50% → 30% (2026-09-15), countered with Atomic (Velvet Rope), and
+    /// outlasted the per-turn speed cap (§6.3) — then the designer read the
+    /// roster table and saw what the kit had become: three actives plus a
+    /// permanent fourth ability's worth of defence. Evasive Protocol was meant
+    /// to be a single ability.
+    ///
+    /// <b>The 2026-09-17 rebuild (designer).</b> Predator's Read removed (the
+    /// kit is two actives and the passive again); evasion cut to 12%; the +0.5
+    /// speed bonus traded for permanent flat haste — +1 cell on a roll of 6 or
+    /// less, +2 above, capped at 2 cells per turn where the roster's haste cap
+    /// is 3 (§5.9). The passive is now two statuses, one fiction.
     /// </remarks>
     public static class Kurbyn
     {
@@ -22,24 +31,15 @@ namespace NonaRoyale.Core.Abilities
         /// </summary>
         public const int MaxHealth = 7;
 
-        /// <summary>Before Evasive Protocol, which adds its bonus on top.</summary>
-        public const double BaseSpeed = 1.0;
-
         /// <summary>
-        /// Evasive Protocol's speed bonus, on top of <see cref="BaseSpeed"/>.
+        /// 1.0 — plain, since 2026-09-17. Until then his speed was 1.0 plus
+        /// Evasive Protocol's +0.5, which made his mobility conditional on the
+        /// passive being live in a way no other operator's is — a Kurbyn moving
+        /// at 1.0 was a bug, not a balance state (ADR-0002 Amendment 5). His
+        /// traversal edge is now flat haste cells on the passive, capped at 2 a
+        /// turn, so the speed channel no longer carries him at all.
         /// </summary>
-        /// <remarks>
-        /// Carried on <see cref="Definition"/> as the passive's magnitude, and
-        /// handed to <c>StatusRegistry.ApplyPassive</c> at composition. That is
-        /// what makes it reach the engine at all: for a long time this constant
-        /// was read by nothing but a test that added it to the base speed, and
-        /// every simulated match ran him at 1.0 (ADR-0002 Amendment 5).
-        ///
-        /// It also makes his mobility <b>conditional on the passive being
-        /// live</b> in a way no other operator's is. A Kurbyn moving at 1.0 is a
-        /// bug, not a balance state.
-        /// </remarks>
-        public const double PassiveSpeedBonus = 0.5;
+        public const double BaseSpeed = 1.0;
 
         /// <summary>Self-origin area that damages and stuns. His control tool.</summary>
         public static AbilityDefinition DarginPulse { get; } = new AbilityDefinition(
@@ -91,56 +91,19 @@ namespace NonaRoyale.Core.Abilities
                     EffectAudience.EnemyOnly, radius: 3)
             });
 
-        /// <summary>
-        /// The rig reads the target's next move before the target makes it.
-        /// If the read target moves before Kurbyn's next turn, the answer
-        /// lands on its own; if it never moves, the read was the point.
-        /// </summary>
-        /// <remarks>
-        /// <b>The watch shape of the operator-anchored registry (§6.7), added
-        /// 2026-09-16 with this ability.</b> A marker the target carries until
-        /// Kurbyn's next upkeep: the first dice movement trips it for 2 Normal,
-        /// once; placement never trips it (§7.4), which is the escape hatch
-        /// alongside simply standing still. Telegraphed on application and
-        /// cleanseable — Neural Purge answers it exactly as it answers a
-        /// Zero-Day charge (§5.15).
-        ///
-        /// <b>It fills the three-energy rung.</b> His cheapest cast was 6, so
-        /// on a lean turn Kurbyn watched the fight rather than shaping it. At
-        /// 3 the read is priced with Short Circuit and From the Hip, the other
-        /// cheap control tools — and like both, its damage is not what is
-        /// being bought: the denial is. A target that stands still to dodge
-        /// the hit has spent its move, which on a board where movement is
-        /// compulsory is often the worse half of the choice.
-        ///
-        /// <b>It outlives him.</b> The condition reads only the target's
-        /// conduct, never his position, so the read is a deployed certainty in
-        /// the Zero-Day sense (ADR-0006), not a duel in the Blind Spot sense:
-        /// Kurbyn in his yard changes nothing. It dies with the target —
-        /// neutralize strips the marker with every other applied status (§1.2).
-        ///
-        /// <b>Normal damage, so his own passive's answer applies to it.</b>
-        /// The strike goes through the pipeline: an evasion charge can dodge
-        /// it and a plate can eat it. Atomic would put a second unblockable
-        /// tool on the operator the Atomic concentration rules already worry
-        /// about (§2.2).
-        /// </remarks>
-        public static AbilityDefinition PredatorsRead { get; } = new AbilityDefinition(
-            id: 303, name: "Predator's Read",
-            description:
-                "The rig finishes reading the target before it has finished deciding. If the target moves before the reading fades, the answer is already on its way.",
-            energyCost: 3, cooldownTurns: 2, range: 3,
-            effects: new[]
-            {
-                AbilityEffect.Watch(2, DamageType.Normal)
-            });
+        // Predator's Read (id 303) was removed on 2026-09-17: the kit is two
+        // actives and the passive again, as designed. The watch machinery it
+        // introduced (§5.15, §6.7, EffectKind.Watch) stays in the core, dormant,
+        // for the next operator who wants it.
 
         public static IReadOnlyList<AbilityDefinition> All { get; } =
-            new[] { PredatorsRead, DarginPulse, MiraclePull };
+            new[] { DarginPulse, MiraclePull };
 
         /// <summary>
-        /// His uniform shape, for drafting. The passive carries its speed bonus
-        /// as a magnitude — the only route by which it reaches the engine.
+        /// His uniform shape, for drafting. Evasive Protocol is one fiction
+        /// carried as two permanent statuses: Evasion (12%, COMBAT_SYSTEMS
+        /// §5.5) and Hastened — flat cells, capped at 2 a turn rather than the
+        /// roster's 3 (§5.9). No magnitude on either: neither is speed.
         /// </summary>
         public static OperatorDefinition Definition { get; } = new OperatorDefinition(
             name: "Kurbyn",
@@ -148,6 +111,8 @@ namespace NonaRoyale.Core.Abilities
             baseSpeed: BaseSpeed,
             abilities: All,
             passive: StatusKind.Evasion,
-            passiveMagnitude: PassiveSpeedBonus);
+            passiveName: "Evasive Protocol",
+            passive2: StatusKind.Hastened,
+            hasteCellCap: 2);
     }
 }

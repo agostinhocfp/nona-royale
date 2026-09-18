@@ -28,10 +28,11 @@ namespace NonaRoyale.Core.Abilities
     /// this folder rather than moving to <c>Core/Config</c> where it otherwise
     /// belongs. There is no point rehoming a type that is about to be rewritten.
     ///
-    /// <b><see cref="ToString"/> reports the effective band, not the base.</b>
-    /// It adds Kurbyn's passive bonus, and every sweep label in ADR-0002
-    /// Amendments 2 through 4 came from here — which is why those labels
-    /// overstated him by 0.5 for as long as the passive went unwired.
+    /// <b><see cref="ToString"/> reports the band as fielded.</b> Until
+    /// 2026-09-17 it added Kurbyn's passive bonus to his base, and every sweep
+    /// label in ADR-0002 Amendments 2 through 4 came from here — which is why
+    /// those labels overstated him by 0.5 for as long as the passive went
+    /// unwired. The passive is gone; his base is his speed.
     /// </remarks>
     public sealed class RosterSpeeds
     {
@@ -49,13 +50,13 @@ namespace NonaRoyale.Core.Abilities
         public double Bouncer { get; }
         public double Syla { get; }
 
-        /// <summary>Before Evasive Protocol, which adds its bonus on top.</summary>
+        /// <summary>His whole speed — there has been no passive to add since 2026-09-17.</summary>
         public double KurbynBase { get; }
 
         public static RosterSpeeds Default =>
             new RosterSpeeds(BouncerKit.Speed, SylaKit.Speed, KurbynKit.BaseSpeed);
 
         public override string ToString() =>
-            $"{Bouncer:0.0}/{Syla:0.0}/{KurbynBase + KurbynKit.PassiveSpeedBonus:0.0}";
+            $"{Bouncer:0.0}/{Syla:0.0}/{KurbynBase:0.0}";
     }
 }

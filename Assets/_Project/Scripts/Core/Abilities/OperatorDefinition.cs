@@ -21,10 +21,12 @@ namespace NonaRoyale.Core.Abilities
     /// and neither is an ability — Intimidating Presence and Evasive Protocol
     /// are never "used" (§10.1, §10.3).
     ///
-    /// <b>Speed is the base only.</b> Kurbyn's Evasive Protocol adds its bonus
-    /// as the passive's magnitude, which is what makes it reach the engine at
-    /// all (ADR-0002 Amendment 5). Reading <see cref="BaseSpeed"/> and expecting
-    /// his effective speed is the bug that went unnoticed for weeks.
+    /// <b>Speed is the base only.</b> Until 2026-09-17 Kurbyn's Evasive
+    /// Protocol added its bonus as the passive's magnitude, which is what made
+    /// it reach the engine at all (ADR-0002 Amendment 5) — and reading
+    /// <see cref="BaseSpeed"/> while expecting his effective speed was the bug
+    /// that went unnoticed for weeks. The bonus is gone: his mobility is flat
+    /// haste cells now, so the base is the whole speed again.
     /// </remarks>
     public sealed class OperatorDefinition
     {
@@ -36,7 +38,10 @@ namespace NonaRoyale.Core.Abilities
             AuraDefinition aura = null,
             StatusKind? passive = null,
             double passiveMagnitude = 0.0,
-            string passiveName = null)
+            string passiveName = null,
+            StatusKind? passive2 = null,
+            double passive2Magnitude = 0.0,
+            int? hasteCellCap = null)
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("An operator needs a name.", nameof(name));
@@ -55,6 +60,9 @@ namespace NonaRoyale.Core.Abilities
             Passive = passive;
             PassiveMagnitude = passiveMagnitude;
             PassiveName = passiveName;
+            Passive2 = passive2;
+            Passive2Magnitude = passive2Magnitude;
+            HasteCellCap = hasteCellCap;
         }
 
         public string Name { get; }
@@ -71,8 +79,25 @@ namespace NonaRoyale.Core.Abilities
         /// <summary>A permanent status granted at match start, or null.</summary>
         public StatusKind? Passive { get; }
 
-        /// <summary>The passive's magnitude — a speed bonus for Evasive Protocol.</summary>
+        /// <summary>The passive's magnitude — a speed bonus for Evasive Protocol, before 2026-09-17.</summary>
         public double PassiveMagnitude { get; }
+
+        /// <summary>
+        /// A second permanent status granted at match start, or null. The slot
+        /// exists because Kurbyn carries two (2026-09-17): his evasion and his
+        /// haste are one fiction, Evasive Protocol, but two statuses.
+        /// </summary>
+        public StatusKind? Passive2 { get; }
+
+        /// <summary>The second passive's magnitude.</summary>
+        public double Passive2Magnitude { get; }
+
+        /// <summary>
+        /// A per-operator override of <c>CombatConfig.HasteBonusCellCap</c>
+        /// (§5.9), or null for the global cap. Kurbyn's haste is capped at 2
+        /// (2026-09-17, designer) where the roster's is 3.
+        /// </summary>
+        public int? HasteCellCap { get; }
 
         /// <summary>
         /// The passive's name when it fills a kit slot (Revú's Equilibrium), or

@@ -451,8 +451,8 @@ namespace NonaRoyale.Core.Tests.Abilities
         {
             var result = Use(_syla, Syla.AceShards);
 
-            Assert.That(_enemy.Health, Is.EqualTo(3));
-            Assert.That(_enemyTwo.Health, Is.EqualTo(3));
+            Assert.That(_enemy.Health, Is.EqualTo(4), "2 damage since the 2026-09-17 patch (was 3)");
+            Assert.That(_enemyTwo.Health, Is.EqualTo(4));
 
             _clock.BeginTurnFor(PlayerColor.Blue);
             Assert.That(_statuses.IsBleeding(_enemy), Is.True);

@@ -178,7 +178,8 @@ namespace NonaRoyale.Core.Tests.Engine
         {
             Assert.That(DraftPicker.EffectiveSpeed(Sanity.Definition), Is.EqualTo(1.0 - 57.0 / 252.0).Within(1e-9));
             Assert.That(DraftPicker.EffectiveSpeed(Lethe.Definition), Is.EqualTo(1.0 + 57.0 / 252.0).Within(1e-9));
-            Assert.That(DraftPicker.EffectiveSpeed(Kurbyn.Definition), Is.EqualTo(1.5), "a speed passive is still speed");
+            Assert.That(DraftPicker.EffectiveSpeed(Kurbyn.Definition), Is.EqualTo(1.0 + 57.0 / 252.0).Within(1e-9),
+                "haste drafts as its speed equivalent — his speed passive is gone");
         }
 
         [Test]

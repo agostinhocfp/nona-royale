@@ -18,7 +18,7 @@ namespace NonaRoyale.Core.Model
     /// </remarks>
     public sealed class OperatorState
     {
-        public OperatorState(int id, string name, PlayerColor owner, int maxHealth, double baseSpeedMultiplier)
+        public OperatorState(int id, string name, PlayerColor owner, int maxHealth, double baseSpeedMultiplier, int? hasteCellCap = null)
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("An operator needs a name.", nameof(name));
@@ -34,6 +34,7 @@ namespace NonaRoyale.Core.Model
             Owner = owner;
             MaxHealth = maxHealth;
             BaseSpeedMultiplier = baseSpeedMultiplier;
+            HasteCellCap = hasteCellCap;
 
             Health = maxHealth;
             Progress = PathMap.YardProgress;
@@ -51,6 +52,13 @@ namespace NonaRoyale.Core.Model
         /// <c>GameConfig</c> and roster validation is its own concern.
         /// </summary>
         public double BaseSpeedMultiplier { get; }
+
+        /// <summary>
+        /// A per-operator override of <c>CombatConfig.HasteBonusCellCap</c>
+        /// (§5.9), or null for the global cap. Set from
+        /// <c>OperatorDefinition.HasteCellCap</c> at composition.
+        /// </summary>
+        public int? HasteCellCap { get; }
 
         public int Health { get; private set; }
 

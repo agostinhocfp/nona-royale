@@ -113,6 +113,7 @@ namespace NonaRoyale.Core
             var auras = new Dictionary<int, AuraDefinition>();
             var abilitiesByOperator = new Dictionary<int, IReadOnlyList<AbilityDefinition>>();
             var passives = new List<KeyValuePair<OperatorState, OperatorDefinition>>();
+            var passives2 = new List<KeyValuePair<OperatorState, OperatorDefinition>>();
 
             int nextId = 1;
 
@@ -128,13 +129,16 @@ namespace NonaRoyale.Core
                     var state = new OperatorState(
                         id, definition.Name, seat,
                         definition.MaxHealth,
-                        SpeedOf(definition, speedOverrides));
+                        SpeedOf(definition, speedOverrides),
+                        definition.HasteCellCap);
 
                     if (definition.Aura != null) auras[id] = definition.Aura;
                     abilitiesByOperator[id] = Retune(definition.Abilities, abilityRangeBonus);
 
                     if (definition.Passive != null)
                         passives.Add(new KeyValuePair<OperatorState, OperatorDefinition>(state, definition));
+                    if (definition.Passive2 != null)
+                        passives2.Add(new KeyValuePair<OperatorState, OperatorDefinition>(state, definition));
 
                     states.Add(state);
                 }
@@ -186,11 +190,13 @@ namespace NonaRoyale.Core
 
             // Permanent passives are granted once here rather than resolved as
             // abilities — they are never "used" (§10.1, §10.3). The magnitude is
-            // what StatusRegistry.SpeedModifier sums, and passing it is what
-            // connects Evasive Protocol's speed bonus to the engine at all
-            // (ADR-0002 Amendment 5).
+            // what StatusRegistry.SpeedModifier sums; since 2026-09-17 nothing
+            // on the roster uses that channel for speed, and an operator may
+            // carry two passives (Kurbyn: evasion and haste, §10.3).
             foreach (var pair in passives)
                 statuses.ApplyPassive(pair.Key, pair.Value.Passive.Value, pair.Value.PassiveMagnitude);
+            foreach (var pair in passives2)
+                statuses.ApplyPassive(pair.Key, pair.Value.Passive2.Value, pair.Value.Passive2Magnitude);
 
             var turns = new TurnStateMachine(
      players, clock, gameConfig, random, energy, statuses, damage, neutralize, win, cellEffects, operatorEffects);
