@@ -139,3 +139,4 @@ InitTestScene*.unity*
 
 # Loose experiment output at the repo root
 /meta_winrates.*
+/Claude outputs/
