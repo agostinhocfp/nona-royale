@@ -128,3 +128,14 @@ InitTestScene*.unity*
 /art/renders/
 # Meshy download bundles (the GLBs inside are kept one by one)
 /art/source/**/*.zip
+
+# Build output of the cloud/sim helpers (regenerable: tools/tests-verify/*.cmd).
+# nunit.framework.dll is kept: the cloud test runner stages it from the repo.
+/tools/sim/NonaRoyale.Sim/bin/
+/tools/sim/NonaRoyale.Sim/obj/
+/tools/tests-verify/obj/
+/tools/tests-verify/bin/
+!/tools/tests-verify/bin/nunit.framework.dll
+
+# Loose experiment output at the repo root
+/meta_winrates.*
