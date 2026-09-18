@@ -25,7 +25,10 @@ namespace NonaRoyale.EditorTools
     /// silhouette. Compressed formats cannot always be read back. The cost is
     /// about 1.2 MB per 512×768 render, twice (CPU and GPU copies). Revisit if
     /// all operators ship with three images each.</item>
-    /// <item>No mipmaps, bilinear, clamp: sprites at a fixed board zoom.</item>
+    /// <item>Mipmaps on, bilinear, clamp. A 768-pixel render is drawn about
+    /// 90 to 180 pixels tall (1080p to 4K), and shrinking that far without
+    /// mipmaps shimmers, worst while the figure breathes and hops. (Off until
+    /// 2026-09-17; files imported before then need Generate Mipmaps ticked.)</item>
     /// <item>Pixels per unit 512: arbitrary, since the game scales by height;
     /// 512 makes a 512-wide render one unit wide in the Scene view.</item>
     /// </list>
@@ -45,7 +48,8 @@ namespace NonaRoyale.EditorTools
             importer.spritePixelsPerUnit = 512f;
             importer.alphaIsTransparency = true;
             importer.alphaSource = TextureImporterAlphaSource.FromInput;
-            importer.mipmapEnabled = false;
+            importer.mipmapEnabled = true;
+            importer.mipmapFilter = TextureImporterMipFilter.KaiserFilter;
             importer.isReadable = true;
             importer.filterMode = FilterMode.Bilinear;
             importer.wrapMode = TextureWrapMode.Clamp;

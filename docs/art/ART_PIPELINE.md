@@ -165,7 +165,7 @@ The original doc covered this and the content is lost. Settle and record before 
 
 1. Render with `tools/blender/render_operator.py` into `art/renders/<name>/` and review the three images.
 2. Make sure Unity has compiled `NonaRoyale.EditorTools` (the import postprocessor) **before** copying images in.
-3. Copy them into `Assets/_Project/Art/Resources/Art/Operators/`. `OperatorArtImporter` sets the settings on first import: Sprite, bottom-centre pivot, Full Rect, PPU 512, no mipmaps, **Read/Write on, uncompressed**, bilinear, clamp, max 1024.
+3. Copy them into `Assets/_Project/Art/Resources/Art/Operators/`. `OperatorArtImporter` sets the settings on first import: Sprite, bottom-centre pivot, Full Rect, PPU 512, mipmaps on, **Read/Write on, uncompressed**, bilinear, clamp, max 1024.
 4. No atlas and no normal map for operators.
 5. Add a row to `docs/art/PROVENANCE.md`.
 6. Check at gameplay zoom and in a phone-sized Game view (the ART1 checklist in `ART_HOOKUP.md`).

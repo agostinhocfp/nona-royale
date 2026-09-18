@@ -48,7 +48,7 @@ Real operator art on the board, starting with Luka, without breaking what the pr
   - **Behaviour change for every piece:** squash, the rise's stretch and breathing now keep the feet on the floor (before, they scaled about the centre, so the feet moved a few percent). The pop and the hover lift still grow the whole figure. `transform.position` is still the figure's centre, give or take that anchor, so floaters, sounds, hit testing and the health label are unaffected.
   - New `ShowsRenderedArt`. Tuning constants: `ArtPinSize`, `ArtStandingHeightScale`, `ArtSeatedHeightScale`, `ArtFlashStrength`, `SeatBase*`.
 - **`View/DraftScreen.cs`:** a roster card shows the portrait when there is one, drawn as painted, with the shape as an 18 px seat-tinted pin in its corner. Seat slots (24 px) and the end screen (20 px) keep the shapes: a portrait is unreadable at that size.
-- **New `Scripts/Editor/OperatorArtImporter.cs`** in a new editor-only assembly, `NonaRoyale.EditorTools`. On the first import of a texture in the operators folder, it sets: Sprite, Single, bottom-centre pivot, Full Rect mesh, PPU 512, alpha is transparency, no mipmaps, **Read/Write on**, **uncompressed**, bilinear, clamp, max 1024. Later Inspector changes survive a re-import.
+- **New `Scripts/Editor/OperatorArtImporter.cs`** in a new editor-only assembly, `NonaRoyale.EditorTools`. On the first import of a texture in the operators folder, it sets: Sprite, Single, bottom-centre pivot, Full Rect mesh, PPU 512, alpha is transparency, mipmaps (Kaiser; off until the fix below), **Read/Write on**, **uncompressed**, bilinear, clamp, max 1024. Later Inspector changes survive a re-import.
   - The cost: about 1.2 MB per 512×768 image, twice. Fine for Luka; revisit before all eleven operators ship three images each (a shader-based flash would remove the need to read pixels).
 - `BoardArt.PawnHead` is no longer read by the piece (`FigureLayout.Pawn` holds the same numbers); a test pins them together.
 
@@ -72,6 +72,10 @@ Real operator art on the board, starting with Luka, without breaking what the pr
 ### Seated size (2026-09-17, after the designer's first look)
 
 - The seated figure read too small at the table. The seated render is waist up with the arms forward, so fitted to the bust's height its head was about 30% smaller than the bust's. `OperatorPiece` now fits each pose with its own height scale: standing 1.0, seated **1.4**, growing upward from the table line. Tune `ArtSeatedHeightScale` if 1.4 overlaps the table or its neighbours.
+
+### Mipmaps (2026-09-17)
+
+- The importer turned mipmaps off, which was wrong: a 768-pixel render is drawn about 90 to 180 pixels tall (1080p to 4K), and shrinking it that far without mipmaps shimmers in motion. `OperatorArtImporter` now turns them on (Kaiser filter), and the flash silhouette is mipmapped too. PNGs imported before this need **Generate Mipmaps** ticked in the Inspector (or their `.meta` deleted).
 
 ### Meshy reference sheet (2026-09-17, designer's pick)
 

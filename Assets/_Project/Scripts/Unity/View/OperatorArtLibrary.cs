@@ -182,14 +182,16 @@ namespace NonaRoyale.Unity.View
                 return null;
             }
 
-            var mask = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            // Mipmapped like the render it covers, so the flash does not
+            // shimmer where the figure does not.
+            var mask = new Texture2D(width, height, TextureFormat.RGBA32, true)
             {
                 name = sprite.name + "_silhouette",
                 filterMode = texture.filterMode,
                 wrapMode = TextureWrapMode.Clamp,
             };
             mask.SetPixels32(white);
-            mask.Apply(false, true);
+            mask.Apply(true, true);
 
             var silhouette = Sprite.Create(mask, new Rect(0f, 0f, width, height),
                 new Vector2(pivot.x / width, pivot.y / height), ppu, 0, SpriteMeshType.FullRect);
