@@ -92,6 +92,13 @@ namespace NonaRoyale.Unity.View
                 // targets, beacons and highlights. Placeholder until the art pass.
                 case "Revú": return Primitives.Star(3, 90f);
 
+                // Fortuna, the Dealer: a square on its point — the diamond of a
+                // card pip. It shares Kurbyn's four sides and is told apart by
+                // the rotation, which is the weakest distinction on the board;
+                // if it reads badly at piece size, Star(8, 22.5f) is a chip's
+                // notched edge and is unclaimed. Placeholder until the art pass.
+                case "Fortuna": return Primitives.Polygon(4, 45f);
+
                 // Nuetu, Bruiser: the disc — the only round piece, read as a
                 // plate or a swarm. It was the fallback he drew with by
                 // accident; adopted on purpose 2026-09-15, so the fallback

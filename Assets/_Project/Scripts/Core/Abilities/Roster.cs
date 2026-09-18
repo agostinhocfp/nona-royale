@@ -57,7 +57,8 @@ namespace NonaRoyale.Core.Abilities
             Sanity.Definition,
             Luka.Definition,
             Lethe.Definition,
-            Revu.Definition
+            Revu.Definition,
+            Fortuna.Definition
         };
 
         /// <summary>The alpha three, in order. What every sweep and test measured.</summary>

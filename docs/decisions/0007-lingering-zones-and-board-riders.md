@@ -1,7 +1,7 @@
 # ADR-0007: Lingering Zones and Board-Reading Riders
 
 > Location in repo: `docs/decisions/0007-lingering-zones-and-board-riders.md`
-> Status: **Accepted**, with one open design choice (see the end) · **Amendment 1, 2026-09-17** (crowd zones) · **Amendment 2, 2026-09-18** (zones that strike on the cast)
+> Status: **Accepted**, with one open design choice (see the end) · **Amendment 1, 2026-09-17** (crowd zones) · **Amendment 2, 2026-09-18** (zones that strike on the cast) · **Amendment 3, 2026-09-18** (tables)
 > Date: 2026-09-14 (decision, landed with Nuetu) · recorded 2026-09-15
 > Related: ADR-0006 (cell-targeted casting), `docs/design/COMBAT_SYSTEMS.md` §5.1, §9.1
 
@@ -65,6 +65,20 @@ Lethe's **Eris' Exploit** is a zone whose damage depends on how many enemies it 
 **What it does not change.** The deferred half is an ordinary zone: same radius, same crowd recount, same source keying, same credit.
 
 **Unmeasurable in the harness.** The bots never move out of a zone, so they always ate both ticks; the sweep shows 22.9% → 22.7% for Lethe, which is noise. This change is worth exactly what a human opponent's scatter was worth.
+
+> Status: **Accepted**, with one open design choice (see the end) · **Amendment 1, 2026-09-17** (crowd zones) · **Amendment 2, 2026-09-18** (tables)
+## Amendment 3 (2026-09-18): tables, and interception
+
+Fortuna's **The Table** is a cell effect that never resolves on a clock. It waits for traffic: the first enemy dice move that crosses or ends on its cell stops there and takes its hit (`COMBAT_SYSTEMS.md` §7.7). It needed one new effect kind and one new question asked of a move.
+
+1. **`EffectKind.SetTable`, the nineteenth kind.** A third cell kind beside the beacon and the zone, and the opposite question to both. A beacon bets on where somebody will be and a zone grinds whoever stands in it — both resolve at their owner's upkeep against whoever is there then. A table resolves against whoever *walks through it*, at the moment they do. `DeferredCellEffects` carries it as a `Pending` with `StopsMovers` set: it is aged by `Fire` and never billed by it.
+2. **Interception, which is new machinery in the engine.** Before a dice move resolves, `GameEngine` asks `FirstInterception` for the first enemy table on the cells the move would cross, excluding the cell it starts on. A hit truncates the move, the landing resolves normally with its collision contest, and the mover is billed afterwards through the service that holds the pipeline. `PreviewLandings` asks the same question and changes nothing, which is why the query is separate from `ConfirmStop`.
+
+**Three rules keep it from being a lock.** It stops each enemy operator once and is not spent by the first it stops; the cell a move starts on is not on its path, so a stopped piece leaves freely; and placement — pushes, pulls, swaps, dashes, bounce-backs — is not dice movement and never trips it (§7.4, and the watch precedent in §6.7).
+
+**It cannot stand on a safe cell or in a home column.** The first would shelter whoever it stopped; the second would reach into the finish, which §4.3 keeps out of the fight. The refusal is checked before payment, and the cell is filtered out of `LegalCells` so a tray never offers what the cast would refuse.
+
+**The view draws it as a zone for now.** `CellEffectSnapshot` reports it with `IsZone` set, which is correct enough to be visible and wrong enough to want its own art: a table is not dangerous ground, it is a checkpoint. Art pass.
 
 ## Open design choice
 

@@ -177,6 +177,18 @@ _(Added 2026-09-17 with Revú.)_
 - **Both need the seats.** `AbilityResolver` takes the match's players at composition. A resolver built without them refuses to run either effect instead of guessing.
 - **`EnergyDrained` is its own event**, so the view can show which seat paid and what it has left.
 
+### 3.4 Cashing a die
+
+_(Added 2026-09-18 with Fortuna.)_
+
+**Once a turn, a seat fielding Fortuna may cash one unspent die instead of moving it.** The die is consumed and the pool gains `EnergyConfig.CashedDieEnergy` (**2**), filling to the cap exactly as a kill bounty does; the remainder above the cap is never earned rather than burned, so `burned` keeps meaning what the drip generated and the cap destroyed (§3.1).
+
+- **It is the third thing a die can be spent on** (§6), after a deploy and a move, and the first new consumer since the core was written.
+- **The die must be one she could have moved.** A yarded, stunned, finished or home-column Fortuna cashes nothing, and neither does a die that her speed floors to no cells — a die with no legal consumer is forfeit, not money.
+- **Two is priced against a die, not against an ability.** A die is worth about 3.5 pips, and a seat needs very nearly every pip it rolls to bring three operators home, so cashing is a loss on the race that only pays when the board makes that movement worthless or dangerous. It is the first dial if she reads as too strong (§10.12).
+- **It answers compulsory movement** (§6.1) without repealing it: a turn whose only legal move is a bad one can be ended by selling the die. That is the rule's price, paid once a turn.
+- **Its own command and its own event** — `CashDieCommand` and `DieCashed` (§9.2, §9.3) — so the view can show a die leaving the tray and the harness can count sold dice apart from the drip.
+
 ---
 
 ## 4. Targeting and range
@@ -438,11 +450,20 @@ _(Added 2026-09-17: Revú's passive.)_
 - **The web it builds:** cheap casts are the best way to kill him, but casting empties the pool Sadist reads. The honest answer is collisions: dice combat costs no energy and bypasses Equilibrium.
 - **A passive**, so it survives cleanses and neutralize (§1.2). The view tags it `BALANCE`.
 
+### 5.18 HouseEdge
+
+_(Added 2026-09-18: Fortuna's passive.)_
+
+- **Effect:** the holder's seat may cash one unspent die a turn for energy (§3.4).
+- **A capability, not a modifier.** Every other passive changes a number the engine was going to compute anyway; this one adds a way to spend a die, which is why `GameEngine` reads it rather than the pipeline or the movement arithmetic.
+- **A passive**, so it survives neutralize and no cleanse strips it (§1.2) — but it does nothing from a yard, a home column, or under a stun, because the die it cashes is a die she could have moved.
+- The view tags it `HOUSE`.
+
 ---
 
 ## 6. Turn structure and resolution order
 
-**Every die is consumed exactly once, by a deploy or by a move.** Dice spent on movement may be pooled onto one operator or dealt one to each of two — or spent on the same operator in two separate steps. A die is forfeit only when no legal consumer exists for it. Energy may be spent by any owned operator and consumes no dice.
+**Every die is consumed exactly once, by a deploy, by a move, or — with Fortuna on the seat — by being cashed (§3.4, amended 2026-09-18).** Dice spent on movement may be pooled onto one operator or dealt one to each of two — or spent on the same operator in two separate steps. A die is forfeit only when no legal consumer exists for it. Energy may be spent by any owned operator and consumes no dice.
 
 | Phase         | What resolves                                                                                                                                                                                                                                                                                                                                  |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -552,6 +573,19 @@ A watch is the charge's third sibling: the same registry (`DeferredOperatorEffec
 - **Re-setting replaces**, as with every shape in the registry. With Predator's Read the case is unreachable in play — its cooldown outlasts its own marker — and the registry still answers it the same way.
 - **Damage is whatever the effect declares** — Normal for Predator's Read — through the pipeline at trip time (§2.1). Safe cells and stealth do not bear on it, as with the follow-up: the aim was legal when the watch was set.
 
+### 6.8 Dealing dice
+
+_(Added 2026-09-18 with Fortuna.)_
+
+An ability may change the dice the casting seat is holding: re-roll them, or set them to a face. `EffectKind.DealDice` is the eighteenth kind and the first whose subject is the roll rather than the board.
+
+- **The engine deals them, the resolver declares them.** The unspent dice are `GameEngine`'s state, so a cast records a `DiceDealt` outcome and the engine carries it out — the same division the deferred registries already use.
+- **The dice must be in hand, and the check runs before payment.** An ability that deals two dice is refused on a half-spent roll, and the refusal costs nothing (the invariant every refusal upholds). `AbilityAvailability` gains `DiceNotHeld` so a tray can grey the ability out and a bot can stop proposing it.
+- **A re-roll takes the lowest dice** (ruling, 2026-09-18). The command carries no die face, and the lowest is what a player wants re-dealt in every case the ability exists for: a one that walks nobody anywhere, or the die that is not the six. Stated as a ruling rather than offered as a choice the tray would have to carry.
+- **A dealt double is not a rolled one.** The doubles re-roll is decided when the dice leave the cup, so re-rolling never creates or destroys one. Setting a double asks for the roll it is owed explicitly, and only inside `MaxRollsPerTurn` (§6.2); at the cap the faces change and nothing else does. The extra roll grants no energy, like any second roll (§3.1).
+- **The roll total moves with the dice.** Haste and burden read the roll in hand (§5.9), so a dealt die adjusts the total by what changed rather than by what is left unspent.
+- **The stream shifts.** A re-roll draws the match's own RNG (§9.1), so a seed reproduces the match with every re-dealt die in it — and no figure measured before her survives her.
+
 ---
 
 ## 7. Collision
@@ -647,6 +681,22 @@ A dash moves the **caster** along the track to a chosen target and through whate
 - **It is placement throughout.** No collision, no cell effects, no bounce-back, no home entry — and the camping rule applies, because the ability contains a placement (§4.4, second amendment): a sheltered engineer may not dash to an ally behind himself.
 - **One operator moves, so it clamps** (§7.4's general rule). A landing computed past the home mouth clamps to the last track cell; one behind the start clamps to the start cell. The dash never carries anyone into a home column, its own included.
 
+### 7.7 Tables, and the first effect that shortens a move
+
+_(Added 2026-09-18 with Fortuna's The Table. ADR-0007 Amendment 3.)_
+
+A table is a cell effect that never resolves on a clock. It waits for traffic: **the first enemy dice move that crosses or ends on its cell stops there**, and the mover takes the table's hit.
+
+- **It reads the cells a move passes through**, which nothing else in the game does except a dash's path (§7.6). The truncation happens before the move resolves, so the landing — and its collision contest (§7.1) — is the one the table chose.
+- **The cell it starts on is not on its path.** An operator standing on a table is not stopped by it again, which is how a stopped piece leaves.
+- **Once per enemy operator.** A table can never hold anybody in place twice; it is not spent by the first operator it stops, and re-dealing it on the same cell forgets who it had already stopped.
+- **Placement never trips it** (§7.4), exactly as it never trips a watch (§6.7): pushes, pulls, swaps, dashes and bounce-backs are not dice movement. That is the counterplay the ability is priced around, and it makes eight abilities already on the roster newly valuable.
+- **Enemies only.** Allies and the seat that dealt it cross freely.
+- **It is billed on the attempted move, bounce or not.** The mover reached the table; a bounce-back is placement afterwards (§7.2), the same rule the haste bonus follows.
+- **Outer track only, and never a safe cell.** A table on a start cell would shelter whoever it stopped, which is backwards; the cast is refused before payment, and the cell never appears in the legal-cell list a tray or a bot picks from. Home columns are out of reach, so **the finish stays out of the fight** (§4.3) — a table one cell short of the mouth stops the leader on the approach, which is the whole of its endgame reach.
+- **A device, like every other cell effect.** It outlives the operator that dealt it (ADR-0006), ages on its owner's upkeeps, and a kill it lands credits the recorded source.
+- **The landing preview must show the truncation** (§9.1), or the board shows a landing the engine will not give.
+
 ---
 
 ## 8. Win condition
@@ -681,7 +731,7 @@ Noun-based, per `CONVENTIONS.md`. Each owns one rule family and nothing else.
 
 **`StatusRegistry` reports damage, it never applies it.** The pipeline consults the registry for evasion and shields, so a registry that called the pipeline would close a dependency cycle. Bleed and mark ticks are therefore _queried_ — the registry says what the tick owes and the caller pushes it through the pipeline as Atomic. The registry decides what damage is owed, the pipeline decides how damage lands, and neither knows the other exists.
 
-**An ability is a list of effects, and there are seventeen kinds:** Damage, Heal, ApplyStatus, PullToCaster, Execute, SwapWithCaster, RemoveStatuses, PushFromCaster, PaintCell, DeployZone, AttachCharge, DashToTarget, FollowUp, ProjectField, Watch, DrainEnergy, MissingEnergyDamage. The resolver never branches on which ability is being cast. A new operator that cannot be expressed in those fifteen gets an amendment to this document and a new kind — never an `if`. Ten have been added in earnest: the swap for Mimi, the cleanse for Javi, the push and the two cell-anchored deferred kinds for Kian and Nuetu, the operator-anchored charge and the dash for Sanity (§10.8), the follow-up for Luka (§10.9), the self-anchored field for Mimi's Cryo Field (§10.4, §6.6), and the watch for Kurbyn's Predator's Read (§10.3, §6.7). Luka's critical hits are a field on the Damage kind (§2.4), not a kind of their own. Lethe added none (§10.10): Eris' Exploit is a `DeployZone` with a crowd setting (ADR-0007 Amendment 1). Revú added two, the drain and the pool-scaled hit (§3.3, §10.11), the first effects that reach past an operator into a player.
+**An ability is a list of effects, and there are nineteen kinds:** Damage, Heal, ApplyStatus, PullToCaster, Execute, SwapWithCaster, RemoveStatuses, PushFromCaster, PaintCell, DeployZone, AttachCharge, DashToTarget, FollowUp, ProjectField, Watch, DrainEnergy, MissingEnergyDamage, DealDice, SetTable. The resolver never branches on which ability is being cast. A new operator that cannot be expressed in those fifteen gets an amendment to this document and a new kind — never an `if`. Ten have been added in earnest: the swap for Mimi, the cleanse for Javi, the push and the two cell-anchored deferred kinds for Kian and Nuetu, the operator-anchored charge and the dash for Sanity (§10.8), the follow-up for Luka (§10.9), the self-anchored field for Mimi's Cryo Field (§10.4, §6.6), and the watch for Kurbyn's Predator's Read (§10.3, §6.7). Luka's critical hits are a field on the Damage kind (§2.4), not a kind of their own. Lethe added none (§10.10): Eris' Exploit is a `DeployZone` with a crowd setting (ADR-0007 Amendment 1). Revú added two, the drain and the pool-scaled hit (§3.3, §10.11), the first effects that reach past an operator into a player. Fortuna added two more (§10.12): the dealt dice, the first effect whose subject is the roll (§6.8), and the table, the first that reads the cells a move passes through (§7.7).
 
 **The engine reports every move a roll could make, not just one.** `PreviewLandings` returns, per operator, the pooled landing and one per distinct unspent face. A preview that showed only the pooled option would hide exactly the choice §6.3 prices, and the view must not compute any of it itself (`PRESENTATION.md` §1).
 
@@ -689,13 +739,15 @@ Randomness reaches exactly three places: `MovementResolver` (dice), `DamagePipel
 
 ### 9.2 Commands (view → core)
 
-`RollDiceCommand` · `DeployCommand` · `MoveCommand` · `UseAbilityCommand` · `EndTurnCommand`
+`RollDiceCommand` · `DeployCommand` · `MoveCommand` · `CashDieCommand` · `UseAbilityCommand` · `EndTurnCommand`
+
+`CashDieCommand` is the first command added since the roster began (2026-09-18). It carries the operator selling and the face being sold, and it exists as a command rather than an ability because §6 is about dice and abilities spend energy (§3.4).
 
 `MoveCommand` carries an optional die face. Null means pool every unspent die onto this operator; a face means spend that one die. `EndTurnCommand` is rejected while §6.1 is unsatisfied.
 
 ### 9.3 Events (core → view)
 
-`CommandRejected` · `TurnBegan` · `DiceRolled` · `EnergyGranted` · `EnergySpent` · `OperatorDeployed` · `OperatorPityDeployed` · `OperatorMoved` · `CollisionResolved` · `DamageDealt` · `DamageEvaded` · `DamageAbsorbed` · `HealApplied` · `OperatorRegenerated` · `StatusApplied` · `StatusExpired` · `OperatorNeutralized` · `OperatorReachedHome` · `TurnEnded` · `GameWon` · `BeaconPlaced` · `BeaconFired` · `ZoneDeployed` · `ZoneTicked` · `ZeroDayAttached` · `ZeroDayDetonated` · `FollowUpMarked` · `FollowUpResolved` · `FieldProjected` · `FieldTicked` · `WatchMarked` · `WatchTripped`
+`CommandRejected` · `TurnBegan` · `DiceRolled` · `EnergyGranted` · `EnergySpent` · `OperatorDeployed` · `OperatorPityDeployed` · `OperatorMoved` · `CollisionResolved` · `DamageDealt` · `DamageEvaded` · `DamageAbsorbed` · `HealApplied` · `OperatorRegenerated` · `StatusApplied` · `StatusExpired` · `OperatorNeutralized` · `OperatorReachedHome` · `TurnEnded` · `GameWon` · `BeaconPlaced` · `BeaconFired` · `ZoneDeployed` · `ZoneTicked` · `ZeroDayAttached` · `ZeroDayDetonated` · `FollowUpMarked` · `FollowUpResolved` · `FieldProjected` · `FieldTicked` · `WatchMarked` · `WatchTripped` · `DieCashed` · `DiceDealt` · `TableDealt` · `MoveIntercepted`
 
 **`OperatorMoved` carries the attempted landing as well as the final one** (`AttemptedTo`, `Bounced`), so a bounced move can be drawn reaching the contested cell before it is thrown back (§7.2, `PRESENTATION.md` §3). For placement the two are equal.
 
@@ -705,7 +757,7 @@ Randomness reaches exactly three places: `MovementResolver` (dice), `DamagePipel
 
 ## 10. The roster, re-expressed
 
-Eleven operators are in the draft pool, and **all eleven are complete**. Mimi's Cryo Field and Kurbyn's Predator's Read, the last two unbuilt abilities, landed 2026-09-16 (§10.4, §10.3). Lethe and Revú arrived whole on 2026-09-17 (§10.10, §10.11). Bouncer and Lethe field two abilities and an aura, Revú fields two abilities and a named passive, Kurbyn fields two actives and a two-status passive since 2026-09-17 (§10.3), and everyone else fields three abilities. An operator the game can deal but this document does not describe is worse than an entry marked incomplete; the pool no longer has one.
+Twelve operators are in the draft pool, and **all twelve are complete**. Fortuna arrived whole on 2026-09-18 (§10.12) and fills the draft grid exactly — three rows at four columns hold twelve, so a thirteenth is a layout decision (§12). Mimi's Cryo Field and Kurbyn's Predator's Read, the last two unbuilt abilities, landed 2026-09-16 (§10.4, §10.3). Lethe and Revú arrived whole on 2026-09-17 (§10.10, §10.11). Bouncer and Lethe field two abilities and an aura, Revú fields two abilities and a named passive, Kurbyn fields two actives and a two-status passive since 2026-09-17 (§10.3), and everyone else fields three abilities. An operator the game can deal but this document does not describe is worse than an entry marked incomplete; the pool no longer has one.
 
 **The tables are copied from the roster files and the code wins any disagreement.** Numbers change there first (`Assets/_Project/Scripts/Core/Abilities/Roster/`), and a table that drifts is a second copy of a value that is now wrong. Last synced 2026-09-16.
 
@@ -1161,6 +1213,48 @@ Casts per match: Drone Strike 4.58 → 5.87, Sonic Disrupter 2.72 → 3.70, Inve
 - **Everyone else, tuned:** Kurbyn 33%, Syla 33%, Javi 29%, Luka 25%, Lethe 25%, Sanity 24%, Nuetu 23%, Bouncer 23%, Kian 19%, Mimi 16%.
 - **The bottom is now Kian and Mimi alone**, both further down than before. Their buffs are the open item.
 
+### 10.12 Fortuna — Dealer
+
+**HP 7 · Speed 1.0× · Complete — three abilities and the House Edge** _(added 2026-09-18)_
+
+| #   | Ability            | Type         | Cost | CD  | Range      | Effect                                                                                                                                                                  |
+| --- | ------------------ | ------------ | ---- | --- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | **The House Edge** | Passive      | —    | —   | self       | Once a turn, one unspent die she could have moved is **cashed**: the seat gains **2 energy** and the die is consumed (§3.4, §5.18).                                       |
+| 2   | **Deal Again**     | Active, self | 3    | 1   | —          | **Re-roll the lowest unspent die** (§6.8).                                                                                                                              |
+| 3   | **The Table**      | Active       | 6    | 3   | 4 (cell)   | A **table** on an outer-track cell for two of her turns. The first enemy dice move that crosses or ends on it **stops there** and takes **2 Normal**, once per operator (§7.7). |
+| 4   | **Boxcars**        | Active (Ult) | 9    | 4   | —          | Both unspent dice **become sixes**, and the dealt double is owed its roll inside the turn's budget (§6.8).                                                               |
+
+**Eleven operators fight over the board; she owns the dice.** Her kit reads health only in passing — two damage in the whole of it — and every other operator on the roster spends a currency she manufactures. She is the first operator whose subject is the roll, and the only one who makes the race itself contestable.
+
+**The House Edge is the third thing a die can be spent on.** §6 has said since the core was written that every die is consumed by a deploy or a move; she is the other answer, and specifically the answer to compulsory movement (§6.1) — the one rule in the game that can force a player into a mistake. It does not repeal it, it prices it, once a turn. **The race polices it by itself:** cash more than a handful of dice a match and three operators do not get home, which is why the figure needed no cooldown.
+
+**Deal Again is cast for the specific, not the average.** Three energy for an expected two and a half pips is a bad trade; a six that deploys an operator out of the yard is half a lap of lost progress bought back for three, and an exact number lands a collision that costs no energy at all. It re-deals the lowest die by ruling (§6.8).
+
+**The Table is the roster's first structural counter to speed.** Every other answer to a fast operator is a slow, and slows have a floor (§5.2) and stack in two channels the doc admits are in conflict (§12). A table makes speed itself a liability: the faster you move, the more cells you cross, and the likelier one of them is hers. Its counterplay is four kinds of cost — route the die elsewhere, split and stop short, bypass with placement, or walk in — and the third is the good one, because it makes eight existing abilities newly valuable rather than adding a counter of its own. **And it makes the finish contestable without touching the finish** (§4.3, §7.7).
+
+**Boxcars is the only ultimate that cannot kill anybody.** Twelve pips chosen rather than rolled, plus the roll a double is owed: about twelve pips of tempo over an average roll once the extra roll is counted, or two deploys and a squad back from a wipe. Priced at nine beside the other ultimates and deliberately worth less than Miracle Pull, which deletes an operator and takes half a lap with it. She is never the reason somebody dies; she is the reason somebody arrives.
+
+**Why she is not broken, in the rules rather than in the numbers.** The race polices the passive. She cannot defend herself — seven health, 1.0×, no shield, no ward, no escape, no cleanse, the only operator with three abilities and no answer to anybody walking up to her. Her bank is a target: Revú's Leech Round destroys exactly what she manufactures, and Sadist is worse against a full pool, so the two money operators counter each other by construction. And nothing she does is hidden.
+
+**Do not raise her speed.** At 1.5× she banks money and races, and the passive's whole cost is the tempo she gives up.
+
+**First bots sweep, 800 matches**, measured on the 2026-09-18 balance pass (twelve operators in the pool, so the draft distribution moved under it):
+
+| Operator | Win share | | Operator | Win share |
+| -------- | --------- | - | -------- | --------- |
+| Kurbyn   | 28%       | | Luka     | 25%       |
+| Kian     | 28%       | | Lethe    | 23%       |
+| Sanity   | 27%       | | **Fortuna** | **23%** |
+| Javi     | 27%       | | Nuetu    | 22%       |
+| Bouncer  | 26%       | | Mimi     | 22%       |
+| Syla     | 26%       | | Revú     | 22%       |
+
+Casts per match: Deal Again 2.96, Boxcars 2.62, The Table 2.54. **Dice sold: 5.35 per match fielding her** — inside the four-to-eight band the design predicted, and the figure to watch: a Fortuna selling fewer than four is a bot problem, not a balance result. Turns per seat 26.7, neutralizes 13.4, refusals 0.
+
+**She lands mid-field on her first measurement and nothing else moved much**, which is the result a utility operator should produce — and the field she joined is the tightest it has been (22% to 28%, where the sweep before the balance pass ran 19% to 32%).
+
+**The stall nobody has seen yet.** A player who has given up the race can cash every turn and become a pure combat engine that out-casts three opponents. The cap and the burn rule blunt it and losing is losing, but it is a strategy the game has never had. **Watch it in the first human session**, not in the sim.
+
 ---
 
 ## 11. Superseded and removed
@@ -1209,6 +1303,7 @@ Casts per match: Drone Strike 4.58 → 5.87, Sonic Disrupter 2.72 → 3.70, Inve
 | Ludo capture (land → instant send-home)                      | **Replaced** by collision (§7).                                                                                                                                                                      |
 | `[Range(3, 9)]` on `Operator.maxHealth`                      | **Dead**, and still dead — Bouncer at 9 is coincidence, not the rule returning.                                                                                                                      |
 | Player elimination ("until one player is left")              | **Not a mechanic** in the MVP (§1.2).                                                                                                                                                                |
+| `GameEngine.CheckAbility` answering Ready for a caster in a home column | **Fixed** 2026-09-18. It tested the yard and HOME but not the column, where the resolver has always refused (§4.3) — so a tray would have drawn the ability as castable and a bot proposed it. Found by Fortuna, whose self-cast abilities are the first a seat wants while an operator is on its last stretch. |
 | `MeshRenderer` fallback on `Operator`                        | Already dead (ADR-0001).                                                                                                                                                                             |
 
 ---
@@ -1301,6 +1396,8 @@ That makes 44/5 the only lever measured that buys pacing without giving up comba
 - **A speed ceiling.** Settled 2026-09-17 as the per-turn speed bonus cap (§6.3): `EffectiveSpeed` still floors at `MinSpeedMultiplier` with no hard maximum, but no operator collects more than `SpeedBonusCellCap` (2) bonus cells a turn, which is the ceiling that matters. A positive speed aura or status would still need a look — the cap trims its payout, not its legality.
 - **Drone Strike can split to zero.** Four damage over five or more caught enemies gives 0 each, and a zero-damage Normal hit still spends an evasion charge (§5.5). Rare, and left alone; Eris' Exploit skips the hit instead.
 - **The draft grid holds twelve.** The draft screen keeps three rows and widens to four columns for 10–12 operators (`DRAFT.md`). A thirteenth operator (Fuse, Ghost and Revú are drafted) needs a layout decision, not a smaller card.
+- **The draft picker reads Fortuna last** (2026-09-18). `DraftPicker.Value` is built from damage, burst and sustain, and she has none of the three; a tempo term (`DraftTempo`, one per dice ability and one for the House Edge) lifts her but not past the field. It costs nothing in the sweep, where squads are drafted at random, and it is wrong on the draft screen. Recorded as an honest failure rather than a weight bent until it passed — `FortunaBotTests` pins both the term and the ranking.
+- **Cashing dice as a stall** (2026-09-18, §3.4). A seat that has given up the race can sell a die a turn and out-cast three opponents. The cap, the burn rule and the win condition all push against it, and the sim cannot see it because a bot never gives up racing. **A human session is the only instrument.**
 - **Nona means nine.** Lethe is the tenth operator. Whether the title's number is canon is open (`OPERATORS.md`).
 - **Whether the same operator may take both dice in two steps.** §6 allows it, and it is Ludo-standard. It is also strictly worse in cells and strictly better in landings, which makes it a deliberate two-collision play rather than a mistake.
 
@@ -1630,6 +1727,18 @@ The watch machinery (§6.7) is dormant: `PredatorsReadTests` and `WatchBotTests`
 - `SonicDisrupter_ReachesThreeCells_AndNoFurther`
 - `Kian_Numbers_AreTheDesignersOf20260917`
 
+**Fortuna — `FortunaTests`, `FortunaTableTests`, `FortunaBotTests`** (§3.4, §6.8, §7.7, §10.12)
+
+- `Cash_TakesTheDieAndPaysTheHouse`, `Cash_IsOnceATurn`, `Cash_IsHersAlone`, `Cash_RefusedWhileStunned`
+- `Cash_AtTheCap_StillSpendsTheDie`, `Cash_AnswersCompulsoryMovement`
+- `DealAgain_ReDealsTheLowestDie`, `DealAgain_NeverCreatesTheDoublesRoll`, `DealAgain_RefusedWithNothingInHand_AndCostsNothing`
+- `Boxcars_SetsBothDiceToSix_AndOwesARoll`, `Boxcars_RefusedOnAHalfSpentRoll_AndCostsNothing`, `Boxcars_IsNotOfferedOnceADieIsSpent`, `Boxcars_AtTheRollCap_SetsTheFacesAndNothingMore`
+- `ItStopsTheFirstTableOnThePath_NotTheFurthest`, `ItStopsEachOperatorOnce`, `ItBillsThroughThePipeline_AndCreditsTheSourceSeat`
+- `AlliesAndTheHouseCrossFreely`, `ItBillsNothingAtAnUpkeep`, `ItRetiresAfterItsLastTurn`, `ARedealForgetsWhoItStopped`
+- `ItStopsARunAndBillsIt`, `ThePreviewShowsTheShortenedLanding`, `SomebodyStandingOnItLeavesFreely`
+- `Table_RefusedOnASafeCell_AndCostsNothing`, `Table_IsDealtAndDrawn`
+- Bots: `CashingIsWorthNothingWhenTheDieCouldDoSomething`, `CashingWinsWhenEveryLandingIsWorse`, `ADeployIsNeverSold`, `TheBrainSellsTheDie_AndTheEngineTakesIt`, `ARedealIsWorthMoreWithAWorseDieInHand`, `BoxcarsIsWorthThePipsAndTheRollItBuys`, `ATableIsWorthMoreInFrontOfARunner`, `TheDraftPaysForHerTempo`, `TheDraftStillReadsHerLast_AndThatIsRecorded`
+
 **Neutralize and win — `WinConditions`**
 
 - `NeutralizedOperator_ReturnsToYardAtFullHealth`
@@ -1689,3 +1798,4 @@ The watch machinery (§6.7) is dormant: `PredatorsReadTests` and `WatchBotTests`
 - 2026-09-18 — **All-In Mauling's self-damage 2 → 1** (designer), the follow-up to the reprice above. At ten health and roughly 2.4 casts a match, 2 a cast cost Bouncer his match in the sweep. Bots: Bouncer 24% → 25%, knockouts 14.9 → 14.7. Most of the reprice's 4-point drop was not the blood, so the rest waits for human games (§10.1).
 - 2026-09-18 — **Eris' Exploit strikes on the cast** (designer; ADR-0007 Amendment 2). Its first hit lands at cast time and the zone still ticks once at Lethe's next upkeep, so the total against a static crowd is unchanged while the scatter no longer voids the cast. `AbilityEffect.StrikesOnCast` and `AbilityResolver.StrikeZoneNow`; the instant hit carries the cast's cost, so Equilibrium halves it against Revú and the later tick is still clean. §10.10 updated. Bots sweep 1600 matches: 22.9% → 22.7%, casts 0.96 → 0.97 — the bots never dodge zones, so the sweep is blind to this.
 - 2026-09-18 — **Lineup read, 1600 matches, bots against bots** (±1.0 point): Javi 28.9%, Syla 27.7%, Kurbyn 27.5%, Bouncer 25.0%, Kian 24.8%, Sanity 24.5%, Nuetu 23.9%, Luka 23.6%, Mimi 23.4%, Lethe 22.9%, Revú 22.8%. Turns per seat 28.3, knockouts 14.7. The spread is 6 points, the tightest the roster has been; only Javi, Syla and Kurbyn (high) and Lethe and Revú (low) are outside noise. Rarest casts: Neural Purge 0.15, Trauma Plate 0.41, Miracle Pull 0.55, Eris' Exploit 0.96, Sadist 0.98, Nano Cell 1.17.
+- 2026-09-18 — **Fortuna added as §10.12**, complete, the twelfth operator and the first whose subject is the dice. **§3.4: cashing a die** — once a turn a seat fielding her sells an unspent die she could have moved for 2 energy, the third thing a die can be spent on (§6) and the priced answer to compulsory movement (§6.1). **§6.8: dealing dice** — `EffectKind.DealDice`, the eighteenth kind; the engine deals, the resolver declares; a re-roll takes the lowest die, a dealt double is not a rolled one, and the dice precondition refuses before payment (`AbilityAvailability.DiceNotHeld`). **§7.7: tables** — `EffectKind.SetTable`, the nineteenth kind and ADR-0007 Amendment 3: the first effect that reads the cells a move passes through and the only one that can shorten a move, once per enemy operator, never on a safe cell, placement never trips it. `StatusKind` gains `HouseEdge` (§5.18). New command `CashDieCommand`, the first since the roster began, and four events (§9.2, §9.3). **Fixed in passing:** `CheckAbility` answered Ready for a caster in a home column (§11). Bots sweep on the same day's balance pass: Fortuna 23%, 5.35 dice sold a match, Deal Again 2.96 / Boxcars 2.62 / The Table 2.54 casts, refusals 0. Two open items recorded: the draft picker reads her last, and cashing as a stall (§12).

@@ -36,7 +36,8 @@ namespace NonaRoyale.Core
                 IReadOnlyList<OperatorState> operators,
                 PathMap map,
                 IReadOnlyDictionary<int, IReadOnlyList<AbilityDefinition>> abilitiesByOperator,
-                StatusRegistry statuses)
+                StatusRegistry statuses,
+                EnergyLedger energy)
             {
                 Engine = engine;
                 Players = players;
@@ -44,6 +45,7 @@ namespace NonaRoyale.Core
                 Map = map;
                 AbilitiesByOperator = abilitiesByOperator;
                 Statuses = statuses;
+                Energy = energy;
             }
 
             public GameEngine Engine { get; }
@@ -64,6 +66,14 @@ namespace NonaRoyale.Core
             /// the engine and has no reason to touch this.
             /// </summary>
             public StatusRegistry Statuses { get; }
+
+            /// <summary>
+            /// The match's ledger, for the same reason <see cref="Statuses"/> is
+            /// here: a test or a tool that needs a funded pool without playing
+            /// four turns to earn it. The view spends through the engine and has
+            /// no reason to touch this.
+            /// </summary>
+            public EnergyLedger Energy { get; }
         }
 
         /// <summary>
@@ -214,7 +224,7 @@ namespace NonaRoyale.Core
     operatorEffects);
 
 
-            return new Match(engine, players, operators, map, abilitiesByOperator, statuses);
+            return new Match(engine, players, operators, map, abilitiesByOperator, statuses, energy);
         }
 
         /// <summary>

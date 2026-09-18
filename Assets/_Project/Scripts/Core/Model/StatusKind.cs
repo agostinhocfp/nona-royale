@@ -151,6 +151,24 @@ namespace NonaRoyale.Core.Model
         /// lands later — zones, beacons, charges, follow-ups, fields, watches —
         /// and collisions, bleed and marks are not casts and pass untouched.
         /// </remarks>
-        Equilibrium = 14
+        Equilibrium = 14,
+
+        /// <summary>
+        /// The holder's seat may <b>cash</b> one unspent die a turn instead of
+        /// moving it: the die is consumed and the pool gains
+        /// <c>EnergyConfig.CashedDieEnergy</c> (§3.4). Fortuna's passive.
+        /// </summary>
+        /// <remarks>
+        /// <b>A capability, not a modifier.</b> Every other passive here changes
+        /// a number the engine was going to compute anyway; this one adds a
+        /// third thing a die can be spent on (§6), which is why it is checked by
+        /// <c>GameEngine</c> rather than by the damage pipeline or the movement
+        /// arithmetic.
+        ///
+        /// It rides the passive store, so it survives neutralize and no cleanse
+        /// can strip it (§1.2) — but a yarded, stunned or finished holder cannot
+        /// cash: the die she cashes is a die she could have moved.
+        /// </remarks>
+        HouseEdge = 15
     }
 }

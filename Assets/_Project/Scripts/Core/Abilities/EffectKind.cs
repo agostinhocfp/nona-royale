@@ -257,6 +257,54 @@ namespace NonaRoyale.Core.Abilities
         /// every 3 energy missing". A share of 0 is not dealt at all.
         /// <c>Stacks</c> carries the splash divisor.
         /// </remarks>
-        MissingEnergyDamage = 16
+        MissingEnergyDamage = 16,
+
+        /// <summary>
+        /// Changes the dice the caster's seat is holding: re-rolls
+        /// <c>AbilityEffect.Amount</c> unspent dice, or sets that many to the
+        /// face in <c>AbilityEffect.Stacks</c> when it is not zero (§6.8).
+        /// Fortuna's Deal Again and Boxcars.
+        /// </summary>
+        /// <remarks>
+        /// <b>The first kind whose subject is the roll rather than the board.</b>
+        /// Every other kind acts on an operator, a cell or a seat's pool, all of
+        /// which the resolver owns. The unspent dice belong to
+        /// <c>GameEngine</c>, so the resolver declares the intent as a
+        /// <c>DiceDealt</c> outcome and the engine carries it out — the same
+        /// division the deferred registries already use, where a cast records
+        /// something another service resolves.
+        ///
+        /// <b>The engine refuses the cast before it is paid for</b> when the seat
+        /// is not holding the dice the effect needs, so a Boxcars thrown at a
+        /// half-spent roll costs nothing (§6.8).
+        ///
+        /// <b>A dealt double is not a rolled one.</b> The doubles re-roll is
+        /// decided when the dice leave the cup, so re-rolling never creates or
+        /// destroys one; Boxcars grants its extra roll explicitly, and only
+        /// inside <c>GameConfig.MaxRollsPerTurn</c>.
+        /// </remarks>
+        DealDice = 17,
+
+        /// <summary>
+        /// Deals a table on a cell. Nothing happens now and nothing happens at an
+        /// upkeep either: the first enemy dice move that crosses or ends on the
+        /// cell stops there and takes <c>AbilityEffect.Amount</c>, once per
+        /// enemy operator, while it stands (§7.7, ADR-0007 Amendment 3).
+        /// Fortuna's The Table.
+        /// </summary>
+        /// <remarks>
+        /// <b>The third cell kind, and the only one that reads the cells a move
+        /// passes through.</b> A beacon (<see cref="PaintCell"/>) is a bet on
+        /// where somebody will be and a zone (<see cref="DeployZone"/>) is ground
+        /// that grinds whoever stands in it — both resolve on their owner's
+        /// upkeep, against whoever is there then. A table never resolves on a
+        /// clock at all. It is a rule about traffic, and it is the only effect in
+        /// the game that can shorten a move.
+        ///
+        /// <c>Amount</c> carries what a stopped mover is billed, <c>Stacks</c> how
+        /// many of its owner's turns it stands for. Reused fields, the same trade
+        /// <see cref="DeployZone"/> makes.
+        /// </remarks>
+        SetTable = 18
     }
 }

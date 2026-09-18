@@ -143,7 +143,29 @@ namespace NonaRoyale.Core.Services
         /// is what was actually taken. Emitted even when that is 0, so the view
         /// can say the pool was already dry.
         /// </summary>
-        EnergyDrained = 15
+        EnergyDrained = 15,
+
+        /// <summary>
+        /// The caster's seat was dealt dice (§6.8): <see cref="EffectOutcome.Amount"/>
+        /// of them, set to <see cref="EffectOutcome.Duration"/> when that is not
+        /// zero and re-rolled when it is. <see cref="EffectOutcome.Recipient"/>
+        /// is the caster.
+        /// </summary>
+        /// <remarks>
+        /// <b>The one outcome the engine acts on rather than only reports.</b>
+        /// The dice are the engine's state, so the resolver declares what the
+        /// cast is owed and <c>GameEngine</c> applies it — and the faces it ends
+        /// up with are what the event carries, since a re-roll is not known
+        /// until it is rolled.
+        /// </remarks>
+        DiceDealt = 16,
+
+        /// <summary>
+        /// A table was dealt on a cell (§7.7). Nothing has happened to anybody:
+        /// it waits for traffic rather than for an upkeep.
+        /// <see cref="EffectOutcome.Cell"/> carries where.
+        /// </summary>
+        TableDealt = 17
     }
 
     /// <summary>
@@ -246,6 +268,18 @@ namespace NonaRoyale.Core.Services
 
         public static EffectOutcome EnergyDrained(OperatorState recipient, int amount) =>
             new EffectOutcome(EffectOutcomeKind.EnergyDrained, recipient, default, amount, default, 0, 0);
+
+        /// <summary>A table dealt by <paramref name="caster"/> on <paramref name="cell"/>.</summary>
+        public static EffectOutcome TableDealt(OperatorState caster, CellRef cell, int stopDamage) =>
+            new EffectOutcome(EffectOutcomeKind.TableDealt, caster, default, stopDamage,
+                default, 0, 0, cell);
+
+        /// <summary>
+        /// Dice owed to the caster's seat: <paramref name="dice"/> of them, set
+        /// to <paramref name="face"/>, or re-rolled when that is zero (§6.8).
+        /// </summary>
+        public static EffectOutcome DiceDealt(OperatorState caster, int dice, int face) =>
+            new EffectOutcome(EffectOutcomeKind.DiceDealt, caster, default, dice, default, face, 0);
 
         public static EffectOutcome Executed(OperatorState recipient) =>
             new EffectOutcome(EffectOutcomeKind.Executed, recipient, default, 0, default, 0, 0);

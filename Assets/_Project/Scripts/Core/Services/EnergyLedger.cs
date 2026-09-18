@@ -32,6 +32,9 @@ namespace NonaRoyale.Core.Services
         /// <summary>The most a pool can hold (§3.1). Read-only, for display.</summary>
         public int Cap => _config.EnergyCap;
 
+        /// <summary>What one cashed die pays (§3.4).</summary>
+        public int CashedDieEnergy => _config.CashedDieEnergy;
+
         /// <summary>
         /// Grants this turn's energy: <c>floor(diceTotal / 2)</c>, capped, with
         /// the overflow burned rather than stored.
@@ -104,6 +107,20 @@ namespace NonaRoyale.Core.Services
                 burned: 0,
                 total: player.Energy);
         }
+
+        /// <summary>
+        /// Credits a cashed die to a pool and reports what it stored (§3.4).
+        /// Fortuna's House Edge.
+        /// </summary>
+        /// <remarks>
+        /// <b>The bounty's arithmetic, deliberately.</b> Both are energy from
+        /// outside the drip: they fill to the cap and the remainder is never
+        /// earned rather than burned, so <c>burned</c> keeps meaning "what the
+        /// drip generated and the cap destroyed" (§3.1). Its own method rather
+        /// than a second caller of <see cref="GrantBounty"/> so the event log
+        /// and the harness can tell a kill's pay from a sold die.
+        /// </remarks>
+        public EnergyGrant GrantCash(PlayerState player, int amount) => GrantBounty(player, amount);
 
         /// <summary>
         /// Takes up to <paramref name="amount"/> from a pool and reports what

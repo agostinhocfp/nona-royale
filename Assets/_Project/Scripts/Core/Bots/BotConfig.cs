@@ -63,6 +63,29 @@ namespace NonaRoyale.Core.Bots
         /// <summary>Per point of energy an ability destroys in an enemy pool (§3.3).</summary>
         public double EnergyDenial { get; set; } = 0.5;
 
+        /// <summary>
+        /// What a point of energy <i>gained</i> is worth, in the same units a
+        /// cell of progress is (§3.4). One, deliberately above
+        /// <see cref="EnergyCost"/>: that figure is the price the planner charges
+        /// itself so bots spend rather than hoard, and using it here would make a
+        /// bot refuse free money. Fortuna's House Edge is the only thing that
+        /// reads it.
+        /// </summary>
+        public double EnergyGain { get; set; } = 1.0;
+
+        /// <summary>
+        /// How far behind a table an enemy can stand and still be counted as
+        /// traffic (§7.7). Eight: a mean roll is seven pips, and a 1.5 operator
+        /// covers more.
+        /// </summary>
+        public int TableReach { get; set; } = 8;
+
+        /// <summary>
+        /// Cells a stopped runner is expected to lose, on top of the hit. Two: a
+        /// table catches a move roughly in the middle of what was left of it.
+        /// </summary>
+        public double TableStolenCells { get; set; } = 2.0;
+
         /// <summary>Per point of damage an operator deals to itself.</summary>
         public double SelfHarm { get; set; } = 1.5;
 
@@ -141,6 +164,14 @@ namespace NonaRoyale.Core.Bots
 
         /// <summary>Per stun or slow the operator can apply.</summary>
         public double DraftControl { get; set; } = 0.6;
+
+        /// <summary>
+        /// What a draft pays for tempo it cannot convert into damage: dice
+        /// abilities and the House Edge (§6.8, §3.4). One, beside control's 0.6 and
+        /// under a speed step's 1.0 — a die is worth about a cell, and a kit made
+        /// of them should draft near the middle rather than last.
+        /// </summary>
+        public double DraftTempo { get; set; } = 1.0;
 
         /// <summary>Bonus for filling a gap: the squad's first sustain, or its first burst.</summary>
         public double DraftComposition { get; set; } = 2.0;

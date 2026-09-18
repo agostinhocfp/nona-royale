@@ -131,6 +131,37 @@ namespace NonaRoyale.Core.Bots
             return found;
         }
 
+        /// <summary>
+        /// Enemies close enough <i>behind</i> a cell to cross it on their next
+        /// dice move: between one and <paramref name="reach"/> steps short of it
+        /// along their own direction of travel (§7.7). Fortuna's table.
+        /// </summary>
+        /// <remarks>
+        /// <b>Behind, not near.</b> A table only ever catches traffic coming
+        /// toward it — an enemy that has already passed the cell can never be
+        /// stopped by it, and one that is standing on it is not stopped either.
+        /// The forward gap is measured from the enemy to the cell, which is the
+        /// same arithmetic <see cref="EnemiesAhead"/> uses in the other
+        /// direction, and it is a track gap rather than a route, so an enemy
+        /// about to turn into its home column is over-counted by at most a cell
+        /// or two.
+        /// </remarks>
+        public List<OperatorState> EnemiesBehind(PlayerColor seat, CellRef cell, int reach)
+        {
+            var found = new List<OperatorState>();
+            if (!cell.IsOnTrack) return found;
+
+            foreach (var op in Match.Operators)
+            {
+                if (op.Owner == seat || !OnLoop(op)) continue;
+
+                int gap = ForwardGap(CellOf(op), cell);
+                if (gap >= 1 && gap <= reach) found.Add(op);
+            }
+
+            return found;
+        }
+
         /// <summary>Enemies standing exactly on a cell.</summary>
         public List<OperatorState> EnemiesOn(PlayerColor seat, CellRef cell) => EnemiesNear(seat, cell, 0);
 

@@ -633,6 +633,54 @@ namespace NonaRoyale.Core.Abilities
         /// which is also why a watch outlives its caster exactly as a charge
         /// does (ADR-0006).
         /// </remarks>
+        /// <summary>
+        /// Deals a table on the targeted cell: the first enemy dice move that
+        /// crosses or ends on it stops there and takes
+        /// <paramref name="stopDamage"/>, once per enemy operator, for
+        /// <paramref name="lifetimeTurns"/> of the caster's turns (§7.7).
+        /// Fortuna's The Table.
+        /// </summary>
+        /// <remarks>
+        /// <b>It names a place</b>, so it carries no real scope and is routed past
+        /// <c>RunEffect</c> exactly as <see cref="PaintCell"/> and
+        /// <see cref="DeployZone"/> are. <c>Amount</c> is the bill,
+        /// <c>Stacks</c> the lifetime.
+        /// </remarks>
+        public static AbilityEffect SetTable(
+            int stopDamage, int lifetimeTurns, EffectAudience audience = EffectAudience.Any)
+        {
+            if (stopDamage < 0) throw new ArgumentOutOfRangeException(nameof(stopDamage));
+            if (lifetimeTurns < 1) throw new ArgumentOutOfRangeException(nameof(lifetimeTurns));
+
+            return new AbilityEffect(EffectKind.SetTable, EffectScope.PrimaryTarget, audience,
+                stopDamage, default, 0, default, 0, lifetimeTurns, 0, 0, 0, 0);
+        }
+
+        /// <summary>
+        /// Changes the dice the caster's seat is holding: re-rolls
+        /// <paramref name="dice"/> unspent dice, or sets that many to
+        /// <paramref name="face"/> when a face is given (§6.8). Fortuna's Deal
+        /// Again and Boxcars.
+        /// </summary>
+        /// <remarks>
+        /// <b>No recipients and no place</b> — the subject is the roll, so it is
+        /// routed past <c>RunEffect</c> the way <see cref="PaintCell"/> is, and
+        /// the engine applies what it declares.
+        ///
+        /// Packed into the shared fields: <c>Amount</c> is how many dice,
+        /// <c>Stacks</c> the face they are set to, zero meaning a re-roll.
+        /// Audience is <see cref="EffectAudience.Any"/> because a roll has no
+        /// side; the cast mode never scopes it away.
+        /// </remarks>
+        public static AbilityEffect DealDice(int dice, int face = 0)
+        {
+            if (dice < 1) throw new ArgumentOutOfRangeException(nameof(dice));
+            if (face < 0) throw new ArgumentOutOfRangeException(nameof(face));
+
+            return new AbilityEffect(EffectKind.DealDice, EffectScope.Caster, EffectAudience.Any,
+                dice, default, 0, default, 0, face, 0, 0, 0, 0);
+        }
+
         public static AbilityEffect Watch(
             int damage, DamageType damageType,
             EffectAudience audience = EffectAudience.EnemyOnly)

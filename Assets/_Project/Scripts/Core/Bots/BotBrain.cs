@@ -22,7 +22,9 @@ namespace NonaRoyale.Core.Bots
     /// <item>Before the roll: roll.</item>
     /// <item>The best cast, if it clears the personality's bar. Casts spend no
     /// dice, so a worthwhile one is taken while it is still in reach.</item>
-    /// <item>The best way to spend the dice: a deploy or a landing.</item>
+    /// <item>The best way to spend the dice: a deploy, a landing, or — with
+    /// Fortuna on the seat — a die sold for energy when no landing is worth
+    /// more (§3.4).</item>
     /// <item>A second roll, if doubles earned one.</item>
     /// <item>End the turn.</item>
     /// </list>
@@ -110,7 +112,21 @@ namespace NonaRoyale.Core.Bots
 
             if (engine.UnspentDice.Count > 0)
             {
-                foreach (var option in MoveScorer.Rank(board, Weights, _random))
+                var moves = MoveScorer.Rank(board, Weights, _random);
+
+                // Selling a die is measured against the best thing that die could
+                // have done instead (§3.4), so it is considered here rather than
+                // ranked with the casts: it is a way of spending the roll, not a
+                // cast, and it costs no energy.
+                var cash = CashPlanner.Best(board, Weights, moves);
+
+                if (cash != null)
+                {
+                    var command = cash.Value.ToCommand();
+                    if (!_refused.Contains(Key(command))) return command;
+                }
+
+                foreach (var option in moves)
                     if (!_refused.Contains(Key(option.Command))) return option.Command;
             }
 
@@ -182,6 +198,7 @@ namespace NonaRoyale.Core.Bots
                 case EndTurnCommand _: return "end";
                 case DeployCommand deploy: return $"deploy:{deploy.OperatorId}";
                 case MoveCommand move: return $"move:{move.OperatorId}:{move.DieFace?.ToString() ?? "all"}";
+                case CashDieCommand cash: return $"cash:{cash.OperatorId}:{cash.DieFace}";
                 case UseAbilityCommand cast:
                     string cell = cast.TargetCell.HasValue ? cast.TargetCell.Value.ToString() : "-";
                     return $"cast:{cast.CasterOperatorId}:{cast.AbilityId}:{cast.TargetOperatorId?.ToString() ?? "-"}:{cell}";

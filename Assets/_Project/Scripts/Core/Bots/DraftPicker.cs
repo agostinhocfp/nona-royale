@@ -68,6 +68,7 @@ namespace NonaRoyale.Core.Bots
         {
             int offence = 0;
             int control = 0;
+            int tempo = 0;
 
             foreach (var ability in op.Abilities)
             {
@@ -84,17 +85,31 @@ namespace NonaRoyale.Core.Bots
                     if (effect.Kind == EffectKind.DeployZone && effect.CarriesStatus &&
                         effect.Status == StatusKind.Stun)
                         control++;
+
+                    // A table takes a run away from whoever walks into it, which is
+                    // the same thing a stun buys (§7.7).
+                    if (effect.Kind == EffectKind.SetTable) control++;
+
+                    // Dice are tempo, and tempo is what the draft calls speed
+                    // (§6.8). Counted once per ability rather than by pips: which
+                    // operator ends up spending them is not a draft-time fact.
+                    if (effect.Kind == EffectKind.DealDice) tempo++;
                 }
             }
 
             double speed = EffectiveSpeed(op);
+
+            // The House Edge is a pool nobody else has, and a kit of pure tempo
+            // would otherwise draft as the worst operator in the game (2026-09-18).
+            if (op.Passive == StatusKind.HouseEdge) tempo++;
 
             return offence * weights.DraftOffence
                    + Burst(op) * weights.DraftBurst
                    + (HasSustain(op) ? weights.DraftSustain : 0.0)
                    + speed * weights.DraftSpeed
                    + op.MaxHealth * weights.DraftHealth
-                   + control * weights.DraftControl;
+                   + control * weights.DraftControl
+                   + tempo * weights.DraftTempo;
         }
 
         /// <summary>

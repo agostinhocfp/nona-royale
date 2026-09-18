@@ -96,10 +96,19 @@ namespace NonaRoyale.Core.Bots
 
                         case AbilityTargeting.Cell:
                             int radius = CellRadius(ability);
+                            bool table = SetsTable(ability);
+
                             foreach (var cell in engine.LegalCellsFor(caster, ability))
                             {
-                                // A painted cell nobody stands near is a guess; skip the empty ones.
-                                if (board.EnemiesNear(seat.Color, cell, radius).Count == 0) continue;
+                                // A painted cell nobody stands near is a guess; skip the empty
+                                // ones. A table is the opposite question (§7.7): the cell wants
+                                // to be empty, with traffic behind it — testing it for occupants
+                                // is what kept it at 0.61 casts a match (BOTS.md, 2026-09-18).
+                                int candidates = table
+                                    ? board.EnemiesBehind(seat.Color, cell, weights.TableReach).Count
+                                    : board.EnemiesNear(seat.Color, cell, radius).Count;
+
+                                if (candidates == 0) continue;
                                 ranked.Add(Score(board, weights, seat, caster, ability, null, cell, random));
                             }
                             break;
@@ -109,6 +118,15 @@ namespace NonaRoyale.Core.Bots
 
             ranked.Sort((a, b) => b.Score.CompareTo(a.Score));
             return ranked;
+        }
+
+        /// <summary>Whether an ability deals a table, which is aimed at traffic rather than at occupants (§7.7).</summary>
+        private static bool SetsTable(AbilityDefinition ability)
+        {
+            for (int i = 0; i < ability.Effects.Count; i++)
+                if (ability.Effects[i].Kind == EffectKind.SetTable) return true;
+
+            return false;
         }
 
         /// <summary>The most expensive ability the seat could ever cast now, ignoring energy: the Banker's savings target.</summary>
@@ -345,6 +363,32 @@ namespace NonaRoyale.Core.Bots
                     break;
                 }
 
+                case EffectKind.SetTable:
+                {
+                    // A table is worth the traffic it can catch: enemies close
+                    // enough behind it to cross it on a normal roll, the hit it
+                    // bills, and the cells it steals from each of them. Discounted
+                    // like any delayed effect — they can route around it.
+                    if (!cell.HasValue) break;
+
+                    foreach (var r in board.EnemiesBehind(own, cell.Value, w.TableReach))
+                    {
+                        double hit = Hit(board, w, r, board.ExpectedHit(r, effect.Amount, DamageType.Normal));
+                        offence += (hit + w.TableStolenCells * w.Progress) * w.DelayedDiscount;
+                    }
+
+                    break;
+                }
+
+                case EffectKind.DealDice:
+                {
+                    // Dice, valued in cells (§6.8). A re-deal is worth what the
+                    // lowest die is expected to gain; a set face is worth the pips
+                    // it adds, plus the deploys and the extra roll it buys.
+                    defence += DiceValue(board, w, effect);
+                    break;
+                }
+
                 case EffectKind.DashToTarget:
                     // The dash itself is positional; its path damage is small and its
                     // real payload is the effects that follow it in the list.
@@ -392,6 +436,62 @@ namespace NonaRoyale.Core.Bots
             double strike = Hit(board, w, target, board.ExpectedHit(target, effect.Amount, effect.DamageType));
 
             return moves * strike + (1.0 - moves) * w.WatchDenial;
+        }
+
+
+        /// <summary>
+        /// What changing the dice is worth, in cells (§6.8). Fortuna's Deal Again
+        /// and Boxcars.
+        /// </summary>
+        /// <remarks>
+        /// <b>Pips are the currency.</b> A re-deal replaces the lowest die with a
+        /// uniform one, so it is worth the mean face less that die, and nothing
+        /// when the lowest is already above the mean. A set face is worth the pips
+        /// it adds outright, and both are credited with what a six is worth when
+        /// somebody is waiting in the yard.
+        ///
+        /// <b>The speed of who will spend them is ignored.</b> A pip is scored as
+        /// a cell, which under-values every 1.5 operator on the seat — accepted,
+        /// because which operator ends up spending the dice is a decision the
+        /// move scorer has not made yet.
+        /// </remarks>
+        public static double DiceValue(BotBoard board, BotWeights w, AbilityEffect effect)
+        {
+            var engine = board.Engine;
+            var seat = engine.CurrentPlayer;
+            if (seat == null || engine.UnspentDice.Count == 0) return 0.0;
+
+            int dice = Math.Min(effect.Amount, engine.UnspentDice.Count);
+            int face = effect.Stacks;
+
+            var hand = new List<int>(engine.UnspentDice);
+            hand.Sort();
+
+            double pips = 0.0;
+            double mean = (board.Game.DiceSides + 1) / 2.0;
+
+            for (int i = 0; i < dice && i < hand.Count; i++)
+                pips += (face > 0 ? face : mean) - hand[i];
+
+            double value = Math.Max(0.0, pips) * w.Progress;
+
+            // A six takes somebody out of the yard, which is worth far more than
+            // its pips. A re-deal buys a chance at one; a set six buys it outright.
+            int yarded = 0;
+            foreach (var op in seat.Operators)
+                if (op.IsInYard) yarded++;
+
+            if (yarded > 0 && hand[0] < board.Game.DeployRequirement)
+            {
+                double odds = face >= board.Game.DeployRequirement ? 1.0 : 1.0 / board.Game.DiceSides;
+                value += Math.Min(yarded, dice) * odds * w.Deploy;
+            }
+
+            // A dealt double is owed a roll, and a roll is another hand of pips.
+            if (face > 0 && dice >= engine.UnspentDice.Count && engine.RollsRemaining > 0)
+                value += board.Game.DicePerRoll * mean * w.Progress * w.DelayedDiscount;
+
+            return value;
         }
 
         /// <summary>

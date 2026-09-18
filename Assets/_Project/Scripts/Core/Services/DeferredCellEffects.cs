@@ -118,11 +118,48 @@ namespace NonaRoyale.Core.Services
     /// a status lands. Two parallel registries would have duplicated the hard
     /// part to avoid duplicating the easy one.
     /// </remarks>
+    /// <summary>
+    /// A table standing in the way of a dice move: where it is, whose it is, what
+    /// it bills, and how far the mover gets before it stops (§7.7).
+    /// </summary>
+    public readonly struct TableInterception
+    {
+        public TableInterception(CellRef cell, PlayerColor owner, int sourceOperatorId, int damage, int cells)
+        {
+            Cell = cell;
+            Owner = owner;
+            SourceOperatorId = sourceOperatorId;
+            Damage = damage;
+            Cells = cells;
+        }
+
+        public CellRef Cell { get; }
+
+        /// <summary>The seat that dealt it — the one a kill here pays.</summary>
+        public PlayerColor Owner { get; }
+
+        public int SourceOperatorId { get; }
+
+        /// <summary>What the stopped mover takes, through the pipeline like anything else.</summary>
+        public int Damage { get; }
+
+        /// <summary>
+        /// Cells the mover travels before it stops: its whole move, truncated at
+        /// the table. Always at least one, so a stopped move still moves (§6.3).
+        /// </summary>
+        public int Cells { get; }
+
+        public override string ToString() => $"table {Cell} ({Owner}) stops at {Cells}";
+    }
+
     public sealed class DeferredCellEffects
     {
         /// <summary>Causes recorded on the damage these produce, for the view (§2.1).</summary>
         private const string BeaconCause = "beacon";
         private const string ZoneCause = "killzone";
+
+        /// <summary>The cause recorded on the hit a table bills a mover it stops (§7.7).</summary>
+        public const string TableCause = "table";
 
         private sealed class Pending
         {
@@ -151,8 +188,25 @@ namespace NonaRoyale.Core.Services
             public StatusKind? DetonationStatus;
             public int DetonationStatusDuration;
 
-            public bool IsZone => LingerDamage > 0 || DetonationStatus != null || TicksRemaining > 1;
-            public string Cause => SplitsDamage ? BeaconCause : ZoneCause;
+            /// <summary>
+            /// A table: it bills nothing at an upkeep and instead stops the first
+            /// enemy dice move that crosses or ends on it (§7.7, ADR-0007
+            /// Amendment 2). Fortuna's The Table.
+            /// </summary>
+            public bool StopsMovers;
+
+            /// <summary>What a stopped mover takes. Read only when <see cref="StopsMovers"/>.</summary>
+            public int StopDamage;
+
+            /// <summary>
+            /// Operators this table has already stopped. Each is stopped once
+            /// and passes freely afterwards, so a table can never hold anybody
+            /// in place twice.
+            /// </summary>
+            public HashSet<int> Stopped;
+
+            public bool IsZone => StopsMovers || LingerDamage > 0 || DetonationStatus != null || TicksRemaining > 1;
+            public string Cause => StopsMovers ? TableCause : SplitsDamage ? BeaconCause : ZoneCause;
         }
 
         private readonly List<Pending> _pending = new List<Pending>();
@@ -350,6 +404,141 @@ namespace NonaRoyale.Core.Services
             entry.DetonationStatusDuration = detonationStatus != null ? statusDuration : 0;
         }
 
+        /// <summary>
+        /// Sets a table on a cell for <paramref name="lifetimeTurns"/> of
+        /// <paramref name="owner"/>'s turns. It bills nothing at an upkeep: it
+        /// stops the first enemy dice move that crosses or ends on it, once per
+        /// enemy operator, for <paramref name="stopDamage"/> (§7.7, ADR-0007
+        /// Amendment 2).
+        /// </summary>
+        /// <remarks>
+        /// <b>A device, like every other entry here</b>: it outlives the operator
+        /// that dealt it (ADR-0006) and ages on its owner's upkeeps, which is the
+        /// only arrangement that gives every seat the same warning whatever the
+        /// turn order.
+        ///
+        /// <b>Re-dealing on a cell you already hold replaces it</b>, the shape
+        /// every placement here follows — and the replacement forgets who it had
+        /// already stopped, which is the cost of spending the energy again.
+        /// </remarks>
+        public void SetTable(
+            CellRef cell,
+            PlayerColor owner,
+            int sourceOperatorId,
+            int stopDamage,
+            int lifetimeTurns)
+        {
+            if (stopDamage < 0) throw new ArgumentOutOfRangeException(nameof(stopDamage));
+            if (lifetimeTurns < 1) throw new ArgumentOutOfRangeException(nameof(lifetimeTurns));
+
+            var entry = Require(cell, owner, sourceOperatorId);
+
+            entry.ResolvesOnOwnerTurn = _clock.TurnIndexOf(owner) + 1;
+            entry.TicksRemaining = lifetimeTurns;
+            entry.HasDetonated = false;
+            entry.Radius = 0;
+            entry.DamageType = DamageType.Normal;
+            entry.DetonationDamage = 0;
+            entry.LingerDamage = 0;
+            entry.SplitsDamage = false;
+            entry.ScalesWithCrowd = false;
+            entry.DetonationStatus = null;
+            entry.DetonationStatusDuration = 0;
+            entry.StopsMovers = true;
+            entry.StopDamage = stopDamage;
+            entry.Stopped = new HashSet<int>();
+        }
+
+        /// <summary>Cells holding a table right now, for the board to draw.</summary>
+        public IReadOnlyList<CellRef> ActiveTables()
+        {
+            var cells = new List<CellRef>();
+
+            foreach (var entry in _pending)
+                if (entry.StopsMovers) cells.Add(entry.Cell);
+
+            return cells;
+        }
+
+        /// <summary>Whether a seat holds a table on this cell.</summary>
+        public bool HasTableOn(CellRef cell, PlayerColor owner)
+        {
+            foreach (var entry in _pending)
+                if (entry.StopsMovers && entry.Owner == owner && entry.Cell == cell) return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// The first table on <paramref name="path"/> that would stop
+        /// <paramref name="mover"/>, or null. The path is the cells a dice move
+        /// would cross, in order, excluding the cell it starts on (§7.7).
+        /// </summary>
+        /// <remarks>
+        /// <b>It answers and changes nothing</b>, because the landing preview
+        /// asks the same question for every option the player has not taken yet
+        /// (§9.1). The engine calls <see cref="ConfirmStop"/> once a move has
+        /// actually been stopped.
+        ///
+        /// <b>Allies cross freely</b> and so does the seat that dealt it: a table
+        /// is aimed at the traffic, not at the house. An operator it has already
+        /// stopped passes too.
+        /// </remarks>
+        public TableInterception? FirstInterception(
+            PlayerColor moverSeat, int moverOperatorId, IReadOnlyList<CellRef> path)
+        {
+            if (path == null) throw new ArgumentNullException(nameof(path));
+
+            for (int step = 0; step < path.Count; step++)
+            {
+                foreach (var entry in _pending)
+                {
+                    if (!entry.StopsMovers || entry.Owner == moverSeat) continue;
+                    if (entry.Cell != path[step]) continue;
+                    if (entry.Stopped != null && entry.Stopped.Contains(moverOperatorId)) continue;
+
+                    return new TableInterception(
+                        entry.Cell, entry.Owner, entry.SourceOperatorId, entry.StopDamage, step + 1);
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Bills a stopped mover the table's hit, through the pipeline like
+        /// anything else, and records that this table has now stopped it (§7.7).
+        /// </summary>
+        /// <remarks>
+        /// <b>The service bills it because the service holds the pipeline.</b>
+        /// <c>GameEngine</c> owns the move and the truncation; the damage a device
+        /// deals belongs here beside the zone and beacon hits, with the same cause
+        /// and the same kill credit.
+        /// </remarks>
+        public DamageResult BillStop(TableInterception interception, OperatorState mover)
+        {
+            if (mover == null) throw new ArgumentNullException(nameof(mover));
+
+            ConfirmStop(interception, mover.Id);
+
+            return _damage.Apply(mover, new DamageInstance(
+                interception.Damage, DamageType.Normal,
+                interception.SourceOperatorId, TableCause));
+        }
+
+        /// <summary>
+        /// Records that a table stopped an operator, so it never stops the same
+        /// one again. Called after the move has been resolved.
+        /// </summary>
+        public void ConfirmStop(TableInterception interception, int moverOperatorId)
+        {
+            var entry = Find(interception.Cell, interception.Owner, interception.SourceOperatorId);
+            if (entry == null || !entry.StopsMovers) return;
+
+            if (entry.Stopped == null) entry.Stopped = new HashSet<int>();
+            entry.Stopped.Add(moverOperatorId);
+        }
+
         // ── Resolving ────────────────────────────────────────────────────
 
         /// <summary>
@@ -386,6 +575,19 @@ namespace NonaRoyale.Core.Services
 
                 if (entry.Owner != owner) continue;
                 if (ownerTurn < entry.ResolvesOnOwnerTurn) continue;
+
+                // A table bills nobody at an upkeep — its whole payload is
+                // charged to whoever it stops (§7.7). All an upkeep does is age
+                // it, and retire it when its last turn has passed.
+                if (entry.StopsMovers)
+                {
+                    entry.TicksRemaining--;
+
+                    if (entry.TicksRemaining <= 0) _pending.RemoveAt(i);
+                    else entry.ResolvesOnOwnerTurn = ownerTurn + 1;
+
+                    continue;
+                }
 
                 if (fired == null) fired = new List<CellEffectResolution>();
                 fired.Add(Resolve(entry, allOperators));

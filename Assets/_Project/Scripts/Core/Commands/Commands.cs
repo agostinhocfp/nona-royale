@@ -99,6 +99,33 @@ namespace NonaRoyale.Core.Commands
     }
 
     /// <summary>
+    /// Cash one unspent die instead of moving it: the die is consumed and the
+    /// seat's pool gains <c>EnergyConfig.CashedDieEnergy</c> (§3.4, §6.8). Legal
+    /// once a turn, and only for an operator carrying Fortuna's House Edge that
+    /// could have moved that die.
+    /// </summary>
+    /// <remarks>
+    /// <b>The first command added since the roster began</b>, and the reason it
+    /// is a command rather than an ability: §6 says every die is consumed by a
+    /// deploy or a move, and this is the third answer. An ability cannot be it —
+    /// abilities spend energy and dice belong to the roll.
+    /// </remarks>
+    public sealed class CashDieCommand : ICommand
+    {
+        public CashDieCommand(int operatorId, int dieFace)
+        {
+            OperatorId = operatorId;
+            DieFace = dieFace;
+        }
+
+        /// <summary>The operator cashing it — the one carrying the passive.</summary>
+        public int OperatorId { get; }
+
+        /// <summary>The face of the unspent die being cashed.</summary>
+        public int DieFace { get; }
+    }
+
+    /// <summary>
     /// Close the turn and hand over to the next seat. Rejected while an unspent
     /// die still has an operator that could legally move with it (§6).
     /// </summary>

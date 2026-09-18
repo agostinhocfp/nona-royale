@@ -87,7 +87,7 @@ namespace NonaRoyale.Core.Tests.Bots
 
                 Assert.That(result.Finished, Is.True, $"seed {seed}: {result.StopReason}");
                 Assert.That(result.Winner, Is.Not.Null, $"seed {seed}");
-                Assert.That(result.Refusals, Is.EqualTo(0), $"seed {seed}");
+                Assert.That(result.Refusals, Is.EqualTo(0), $"seed {seed}: {result.LastRefusal}");
             }
         }
 

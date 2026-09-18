@@ -326,6 +326,9 @@ namespace NonaRoyale.Core.Services
         /// distance is still measured and reported, so the view can say how far
         /// a beacon was thrown even when nothing was stopping it.
         /// </remarks>
+        /// <summary>Whether a cell is safe from collision (§4.4), for callers that aim at cells.</summary>
+        public bool IsSafeCell(CellRef cell) => _map.IsSafe(cell);
+
         public TargetingResult CanTargetCell(OperatorState caster, CellRef cell, int range)
         {
             if (caster == null) throw new ArgumentNullException(nameof(caster));

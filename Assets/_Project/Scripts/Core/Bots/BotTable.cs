@@ -18,6 +18,13 @@ namespace NonaRoyale.Core.Bots
 
         /// <summary>Why the run stopped short, or null if it finished.</summary>
         public string StopReason { get; internal set; }
+
+        /// <summary>
+        /// The last command a bot had refused, and why. Null when there were none.
+        /// A well-behaved bot never produces one, so this exists to name the
+        /// offender when the sweep's refusal count is not zero.
+        /// </summary>
+        public string LastRefusal { get; internal set; }
     }
 
     /// <summary>
@@ -103,7 +110,17 @@ namespace NonaRoyale.Core.Bots
                     if (e is TurnBegan) endTurn = true;
                 }
 
-                if (refused) result.Refusals++;
+                if (refused)
+                {
+                    result.Refusals++;
+
+                    foreach (var e in events)
+                    {
+                        if (!(e is CommandRejected rejected)) continue;
+                        result.LastRefusal = rejected.Reason;
+                        break;
+                    }
+                }
 
                 // An end-turn that keeps being refused is a stall the bot cannot leave.
                 if (refused && !endTurn) endTurnRefusalsInARow++;

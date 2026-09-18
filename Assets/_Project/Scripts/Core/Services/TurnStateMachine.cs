@@ -105,6 +105,9 @@ namespace NonaRoyale.Core.Services
         /// <summary>The energy cap every pool is held to (§3.1).</summary>
         public int EnergyCap => _energy.Cap;
 
+        /// <summary>What one cashed die pays (§3.4).</summary>
+        public int CashedDieEnergy => _energy.CashedDieEnergy;
+
         /// <summary>
         /// The current round: 1 while the first seat's first turn has not yet
         /// been followed by its second, and so on.
@@ -224,6 +227,49 @@ namespace NonaRoyale.Core.Services
             Phase = TurnPhase.Action;
             return new RollReport(roll, grant, CanRollAgain, RollsRemaining);
         }
+
+        /// <summary>
+        /// Cashes one die for the seat (§3.4): the pool gains the configured
+        /// figure, filling to the cap. Fortuna's House Edge.
+        /// </summary>
+        /// <remarks>
+        /// The die itself belongs to <c>GameEngine</c>, which removes it and
+        /// decides whether cashing was legal at all. This owns only the money,
+        /// because the ledger lives here.
+        /// </remarks>
+        public EnergyGrant CashDie(PlayerState player)
+        {
+            if (player == null) throw new ArgumentNullException(nameof(player));
+
+            return _energy.GrantCash(player, _energy.CashedDieEnergy);
+        }
+
+        /// <summary>
+        /// Grants the extra roll a <i>dealt</i> double is owed (§6.8), inside the
+        /// same budget a rolled one obeys. Returns whether the roll was granted.
+        /// Fortuna's Boxcars.
+        /// </summary>
+        /// <remarks>
+        /// <b>Setting a double and then denying the roll it is owed would be a
+        /// special case</b>, and the roster avoids those. The budget still binds:
+        /// at <see cref="GameConfig.MaxRollsPerTurn"/> the faces change and
+        /// nothing else does.
+        /// </remarks>
+        public bool GrantDealtDouble()
+        {
+            if (Phase != TurnPhase.Action || RollsRemaining <= 0) return false;
+
+            _lastRollWasDouble = true;
+            return true;
+        }
+
+        /// <summary>One die from the match's own stream (§6.8). Fortuna's Deal Again.</summary>
+        /// <remarks>
+        /// The same stream and the same bounds the roll itself uses, so a re-roll
+        /// is an ordinary die — and a seed still reproduces the whole match, with
+        /// the stream shifted by every die she re-deals.
+        /// </remarks>
+        public int RollOneDie() => _random.NextInt(1, _config.DiceSides + 1);
 
         /// <summary>
         /// Closes the turn: status durations expire, then the win check runs.

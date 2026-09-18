@@ -123,6 +123,13 @@ namespace NonaRoyale.Core
         /// <summary>The total of the roll in hand; it sets the haste bonus (§5.9).</summary>
         private int _rollTotal;
 
+        /// <summary>
+        /// Whether this seat has already cashed a die this turn (§3.4). Reset in
+        /// <see cref="ResetRollState"/>, which runs once a turn — so a doubles
+        /// chain does not buy a second sale.
+        /// </summary>
+        private bool _cashedThisTurn;
+
         private PlayerColor? _winner;
 
         private readonly Dictionary<PlayerColor, int> _knockoutsScored = new Dictionary<PlayerColor, int>();
@@ -197,8 +204,17 @@ namespace NonaRoyale.Core
         /// <summary>The most energy a pool can hold (§3.1). Display only.</summary>
         public int EnergyCap => _turns.EnergyCap;
 
+        /// <summary>What one cashed die pays the seat (§3.4). Read by the tray and the bots.</summary>
+        public int CashedDieEnergy => _turns.CashedDieEnergy;
+
         /// <summary>Whether the current seat may roll again this turn (doubles, §6).</summary>
         public bool CanRollAgain => _turns.CanRollAgain;
+
+        /// <summary>
+        /// Rolls left in this turn's budget (§6.2). Read by the bots when they
+        /// price a dealt double, which is owed a roll only if there is one left.
+        /// </summary>
+        public int RollsRemaining => _turns.RollsRemaining;
 
         /// <summary>
         /// The faces still unspent on the current roll, in the order they were
@@ -248,6 +264,7 @@ namespace NonaRoyale.Core
             else if (command is DeployCommand deploy) Deploy(deploy, events);
             else if (command is MoveCommand move) Move(move, events);
             else if (command is UseAbilityCommand ability) UseAbility(ability, events);
+            else if (command is CashDieCommand cash) CashDie(cash, events);
             else if (command is EndTurnCommand) EndTurn(events);
             else events.Add(new CommandRejected($"unknown command {command.GetType().Name}"));
 
@@ -622,6 +639,74 @@ namespace NonaRoyale.Core
             return null;
         }
 
+        /// <summary>
+        /// Cashes one unspent die for energy instead of moving it (§3.4, §6.8).
+        /// Fortuna's House Edge.
+        /// </summary>
+        /// <remarks>
+        /// <b>It consumes the die, which is what makes it an answer to compulsory
+        /// movement</b> (§6.1): a die sold is a die with no legal consumer left,
+        /// so a turn whose only legal move was a bad one can now be ended. Once a
+        /// turn is the whole limiter.
+        /// </remarks>
+        private void CashDie(CashDieCommand command, List<IGameEvent> events)
+        {
+            if (!RequireAction(events)) return;
+
+            var op = FindOwnedOperator(command.OperatorId, events);
+            if (op == null) return;
+
+            string refusal = CashRefusal(op, command.DieFace);
+
+            if (refusal != null)
+            {
+                events.Add(new CommandRejected(refusal));
+                return;
+            }
+
+            _unspentDice.Remove(command.DieFace);
+            _cashedThisTurn = true;
+
+            var grant = _turns.CashDie(_turns.CurrentPlayer);
+
+            events.Add(new DieCashed(op, command.DieFace, grant.Stored, grant.Total));
+        }
+
+        /// <summary>
+        /// Why cashing this die with this operator would be refused, or null if it
+        /// would not be. Shared by <see cref="CashDie"/> and
+        /// <see cref="CanCash"/>, exactly as <c>DeployRefusal</c> is.
+        /// </summary>
+        private string CashRefusal(OperatorState op, int face)
+        {
+            if (_turns.Phase != TurnPhase.Action) return "roll first";
+            if (op.Owner != _turns.CurrentPlayer.Color) return $"{op.Name} is not yours to command";
+            if (!_statuses.Has(op, StatusKind.HouseEdge)) return $"{op.Name} cannot cash a die";
+            if (_cashedThisTurn) return "the house takes one die a turn";
+            if (op.IsInYard) return $"{op.Name} is in the yard";
+            if (_win.HasFinished(op)) return $"{op.Name} is already home";
+            if (_statuses.IsStunned(op)) return $"{op.Name} is stunned";
+            if (!_unspentDice.Contains(face)) return $"no unspent die showing {face}";
+
+            // The die she cashes is a die she could have moved. Without this a
+            // die with no legal consumer — one a heavy slow floors to nowhere —
+            // would turn into money instead of being forfeit (§6.1).
+            if (CellsFor(op, face, out _, out _) <= 0) return $"{face} moves {op.Name} nowhere at its current speed";
+
+            return null;
+        }
+
+        /// <summary>
+        /// Whether this operator could cash this die right now (§3.4) — for the
+        /// tray and for the bots, on the same terms the command uses.
+        /// </summary>
+        public bool CanCash(OperatorState op, int face)
+        {
+            if (op == null) throw new ArgumentNullException(nameof(op));
+
+            return CashRefusal(op, face) == null;
+        }
+
         private void Move(MoveCommand command, List<IGameEvent> events)
         {
             if (!RequireAction(events)) return;
@@ -689,6 +774,17 @@ namespace NonaRoyale.Core
                 return;
             }
 
+            // A table stops the first enemy dice move that crosses or ends on it
+            // (§7.7). The truncation happens before the move resolves, so the
+            // landing — and its collision contest — is the one the table chose.
+            var table = FirstTableOnPath(op, cells);
+
+            if (table != null)
+            {
+                cells = table.Value.Cells;
+                events.Add(new MoveIntercepted(op, table.Value.Cell, table.Value.Owner, cells));
+            }
+
             var move = _movement.ResolveMove(op, cells);
             var collision = _collisions.Resolve(op, move, _operators);
 
@@ -731,6 +827,27 @@ namespace NonaRoyale.Core
 
                     if (result.Outcome == DamageOutcome.Neutralized)
                         Neutralize(occupant, result.Cause, op.Id, events);
+                }
+            }
+
+            // The table bills what it stopped, after the landing has resolved.
+            // Charged on the attempted move, bounce or not: the mover reached the
+            // table, and a bounce-back is placement afterwards (§7.2) — the same
+            // rule the haste bonus already follows.
+            if (table != null)
+            {
+                if (table.Value.Damage > 0)
+                {
+                    var billed = _cellEffects.BillStop(table.Value, op);
+
+                    EmitDamage(op, billed, events);
+
+                    if (billed.Outcome == DamageOutcome.Neutralized)
+                        Neutralize(op, billed.Cause, table.Value.SourceOperatorId, events);
+                }
+                else
+                {
+                    _cellEffects.ConfirmStop(table.Value, op.Id);
                 }
             }
 
@@ -786,6 +903,17 @@ namespace NonaRoyale.Core
                 }
             }
 
+            // The dice belong to the engine, so the dice precondition is checked
+            // here — before the resolver charges for the cast, which is the
+            // invariant every other refusal upholds (§6.8).
+            int diceNeeded = DiceNeeded(ability);
+            if (diceNeeded > _unspentDice.Count)
+            {
+                events.Add(new CommandRejected(
+                    $"{ability.Name}: the roll is not holding {diceNeeded} unspent dice"));
+                return;
+            }
+
             int energyBefore = _turns.CurrentPlayer.Energy;
             var resolution = _abilities.Use(
     caster, ability, target, _turns.CurrentPlayer, _operators, command.TargetCell);
@@ -802,6 +930,76 @@ namespace NonaRoyale.Core
 
             foreach (var outcome in resolution.Outcomes)
                 EmitOutcome(outcome, caster, events);
+
+            DealDice(resolution.Outcomes, caster, events);
+        }
+
+        /// <summary>
+        /// Carries out whatever the cast dealt to the dice (§6.8): a set face, or
+        /// a re-roll from the match's own stream.
+        /// </summary>
+        /// <remarks>
+        /// <b>A re-roll takes the lowest dice.</b> The command carries no die
+        /// face, and the lowest is what a player wants re-dealt in every case the
+        /// ability exists for — a 1 that moves nowhere useful, or the die that
+        /// is not the six. Stated as a ruling rather than left to a choice the
+        /// tray would have to offer (§6.8).
+        ///
+        /// <b>A dealt double is not a rolled one.</b> Re-rolling never creates or
+        /// destroys the doubles roll; only a set double asks for one, and only
+        /// inside the turn's roll budget.
+        /// </remarks>
+        private void DealDice(
+            IReadOnlyList<EffectOutcome> outcomes, OperatorState caster, List<IGameEvent> events)
+        {
+            foreach (var outcome in outcomes)
+            {
+                if (outcome.Kind != EffectOutcomeKind.DiceDealt) continue;
+
+                int dice = Math.Min(outcome.Amount, _unspentDice.Count);
+                if (dice <= 0) continue;
+
+                int face = outcome.Duration;
+
+                for (int i = 0; i < dice; i++)
+                {
+                    int index = LowestUnspentIndex();
+                    int was = _unspentDice[index];
+
+                    _unspentDice[index] = face > 0 ? face : _turns.RollOneDie();
+
+                    // The haste bonus reads the roll in hand, not the dice still
+                    // unspent (§5.9), so the total is adjusted by what changed
+                    // rather than recomputed from what is left — recomputing would
+                    // shrink the roll every time a die had already been moved.
+                    _rollTotal += _unspentDice[index] - was;
+                }
+
+                bool extraRoll = false;
+
+                if (face > 0 && _unspentDice.Count > 1 && AllUnspentShow(face))
+                    extraRoll = _turns.GrantDealtDouble();
+
+                events.Add(new DiceDealt(caster, new List<int>(_unspentDice), extraRoll));
+            }
+        }
+
+        private int LowestUnspentIndex()
+        {
+            int index = 0;
+
+            for (int i = 1; i < _unspentDice.Count; i++)
+                if (_unspentDice[i] < _unspentDice[index]) index = i;
+
+            return index;
+        }
+
+        private bool AllUnspentShow(int face)
+        {
+            for (int i = 0; i < _unspentDice.Count; i++)
+                if (_unspentDice[i] != face) return false;
+
+            return true;
         }
 
         // ── Event translation ────────────────────────────────────────────
@@ -897,6 +1095,16 @@ namespace NonaRoyale.Core
                 // a move from a progress to itself, exactly as a swap is,
                 // because the piece has already been placed and placement is
                 // not movement (§7.4).
+                case EffectOutcomeKind.TableDealt:
+                    events.Add(new TableDealt(caster, outcome.Cell, outcome.Amount));
+                    break;
+
+                // Dealt dice are applied by DealDice, once the whole cast has
+                // been reported, and the event carries the faces the seat ends up
+                // holding — which a re-roll does not know until it is rolled.
+                case EffectOutcomeKind.DiceDealt:
+                    break;
+
                 case EffectOutcomeKind.Dashed:
                     events.Add(new OperatorMoved(outcome.Recipient, outcome.Progress, outcome.Progress,
                         _map.CellAt(outcome.Recipient.Owner, outcome.Progress)));
@@ -1011,13 +1219,42 @@ namespace NonaRoyale.Core
             if (ability == null) throw new ArgumentNullException(nameof(ability));
 
             if (_statuses.IsStunned(caster)) return AbilityAvailability.CasterStunned;
-            if (caster.IsInYard || _win.HasFinished(caster)) return AbilityAvailability.CasterOutOfPlay;
+            // A home column is out of the fight too (§4.3) — the resolver has
+            // always refused a caster standing in one, and this answered Ready,
+            // which a tray would have drawn as castable and a bot proposed. Found
+            // 2026-09-18 by Fortuna, whose two self-cast abilities are the first
+            // that a seat wants while an operator is on its last stretch.
+            if (caster.IsInYard || _win.HasFinished(caster) || _map.IsInHomeColumn(caster.Progress))
+                return AbilityAvailability.CasterOutOfPlay;
             if (!_abilities.IsReady(caster, ability)) return AbilityAvailability.OnCooldown;
 
             if (_turns.CurrentPlayer == null || _turns.CurrentPlayer.Energy < ability.EnergyCost)
                 return AbilityAvailability.InsufficientEnergy;
 
+            // An ability that deals dice needs dice to deal with (§6.8). Checked
+            // here as well as in UseAbility so a tray greys Boxcars out the
+            // moment the first die is spent.
+            if (_unspentDice.Count < DiceNeeded(ability)) return AbilityAvailability.DiceNotHeld;
+
             return AbilityAvailability.Ready;
+        }
+
+        /// <summary>
+        /// How many unspent dice an ability needs before it can be cast at all
+        /// (§6.8): the largest count any of its dice effects deals with. Zero for
+        /// every ability that does not touch the roll.
+        /// </summary>
+        private static int DiceNeeded(AbilityDefinition ability)
+        {
+            int needed = 0;
+
+            for (int i = 0; i < ability.Effects.Count; i++)
+            {
+                var effect = ability.Effects[i];
+                if (effect.Kind == EffectKind.DealDice && effect.Amount > needed) needed = effect.Amount;
+            }
+
+            return needed;
         }
 
 
@@ -1171,8 +1408,44 @@ namespace NonaRoyale.Core
             int cells = CellsFor(op, pips, out _, out _);
             if (cells <= 0) return;
 
+            // A table truncates this option, and hiding that would show the
+            // player a landing the engine will not give them (§7.7, §9.1).
+            var table = FirstTableOnPath(op, cells);
+            if (table != null) cells = table.Value.Cells;
+
             var move = _movement.ResolveMove(op, cells);
             into.Add(new LandingPreview(op.Id, die, move.To, cells));
+        }
+
+        /// <summary>
+        /// The first enemy table this move would cross or end on, or null (§7.7).
+        /// Asks and changes nothing, so the preview may call it freely.
+        /// </summary>
+        /// <remarks>
+        /// The path is the cells the move crosses, in order, <b>excluding the one
+        /// it starts on</b> — an operator standing on a table is not stopped by it
+        /// again, which is how a stopped piece gets to leave. Cells in a home
+        /// column are included in the walk and never match: a table can only be
+        /// dealt on the outer track, so the finish stays out of the fight (§4.3).
+        /// </remarks>
+        private TableInterception? FirstTableOnPath(OperatorState op, int cells)
+        {
+            if (cells <= 0 || !_map.IsOnOuterTrack(op.Progress)) return null;
+
+            int journey = _map.Profile.Journey;
+            var path = new List<CellRef>(cells);
+
+            for (int step = 1; step <= cells; step++)
+            {
+                int progress = op.Progress + step;
+                if (progress > journey) break;
+
+                path.Add(_map.CellAt(op.Owner, progress));
+            }
+
+            if (path.Count == 0) return null;
+
+            return _cellEffects.FirstInterception(op.Owner, op.Id, path);
         }
 
         private bool IsRepeatedFace(int index)
@@ -1250,6 +1523,17 @@ namespace NonaRoyale.Core
         public IReadOnlyList<CellRef> ActiveBeacons() => _cellEffects.ActiveBeacons();
         /// <summary>Cells holding a lingering zone right now (ADR-0007).</summary>
         public IReadOnlyList<CellRef> ActiveZones() => _cellEffects.ActiveZones();
+
+        /// <summary>Cells holding a table right now (§7.7). Drawn differently again.</summary>
+        /// <remarks>
+        /// A table is the only cell effect that never resolves on a clock, so the
+        /// board must show it for as long as it stands or a player has no way to
+        /// know why a run stopped.
+        /// </remarks>
+        public IReadOnlyList<CellRef> ActiveTables() => _cellEffects.ActiveTables();
+
+        /// <summary>Whether a seat holds a table on this cell (§7.7).</summary>
+        public bool HasTableOn(CellRef cell, PlayerColor owner) => _cellEffects.HasTableOn(cell, owner);
 
         /// <summary>
         /// Every pending beacon and zone, with its owner and the cells it will
@@ -1433,6 +1717,7 @@ namespace NonaRoyale.Core
             _speedCellsUsed.Clear();
             _hastePaidThisRoll.Clear();
             _rollTotal = 0;
+            _cashedThisTurn = false;
         }
 
         private OperatorState FindOperator(int id)

@@ -29,6 +29,18 @@ namespace NonaRoyale.Core.Services
         CasterStunned = 3,
 
         /// <summary>In a yard, a home column, or home — out of the fight (§4.3).</summary>
-        CasterOutOfPlay = 4
+        CasterOutOfPlay = 4,
+
+        /// <summary>
+        /// The seat is not holding the unspent dice the ability deals with
+        /// (§6.8). Fortuna's Boxcars needs both; Deal Again needs one.
+        /// </summary>
+        /// <remarks>
+        /// The first availability that depends on the roll rather than on the
+        /// caster, and the reason it exists here rather than as a refusal: a tray
+        /// can grey Boxcars out the moment the first die is spent, and a bot can
+        /// stop proposing it without having to be refused first.
+        /// </remarks>
+        DiceNotHeld = 5
     }
 }

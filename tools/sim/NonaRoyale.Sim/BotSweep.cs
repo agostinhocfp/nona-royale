@@ -119,6 +119,13 @@ namespace NonaRoyale.Sim
             var casts = new Dictionary<int, int>();
             var runs = new List<MatchStats>();
             int refusals = 0;
+            string lastRefusal = null;
+
+            // Dice sold for energy (§3.4). Its own counter because it is not a
+            // cast and would otherwise be invisible: a Fortuna who never sells is
+            // a bot problem, not a balance result.
+            int cashed = 0;
+            int matchesWithHer = 0;
 
             for (int seed = 0; seed < matches; seed++)
             {
@@ -134,6 +141,7 @@ namespace NonaRoyale.Sim
                 }
 
                 foreach (var op in match.Operators) Bump(appearances, op.Name);
+                if (match.Operators.Any(o => o.Name == "Fortuna")) matchesWithHer++;
 
                 var stats = new MatchStats();
                 var table = new BotTable(match, bots);
@@ -141,10 +149,12 @@ namespace NonaRoyale.Sim
                 {
                     Record(stats, c, events);
                     if (c is UseAbilityCommand cast && events.Any(e => e is EnergySpent)) Bump(casts, cast.AbilityId);
+                    cashed += events.Count(e => e is DieCashed);
                 };
 
                 var result = table.PlayToEnd(CommandGuard);
                 refusals += result.Refusals;
+                if (result.LastRefusal != null) lastRefusal = result.LastRefusal;
                 stats.Completed = result.Finished;
                 runs.Add(stats);
 
@@ -159,7 +169,14 @@ namespace NonaRoyale.Sim
             Console.WriteLine(
                 $"turns/seat {runs.Average(r => r.Turns / 4.0):0.0}  neut {runs.Average(r => r.Neutralizes):0.0}  " +
                 $"abil {runs.Average(r => r.AbilitiesFired):0.0}  coll {runs.Average(r => r.Collisions):0.0}  " +
-                $"done {Percent(runs.Count(r => r.Completed), matches)}  refusals {refusals}");
+                $"done {Percent(runs.Count(r => r.Completed), matches)}  refusals {refusals}"
+                + (lastRefusal == null ? "" : $" ({lastRefusal})"));
+
+            if (matchesWithHer > 0)
+            {
+                Console.WriteLine(
+                    $"dice sold {cashed / (double)matchesWithHer:0.00} per match fielding Fortuna (§3.4)");
+            }
 
             Console.WriteLine($"\n{"personality",-12} {"seats",6} {"wins",6} {"win/seat",9}");
             foreach (BotPersonality p in Enum.GetValues(typeof(BotPersonality)))

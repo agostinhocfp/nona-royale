@@ -30,6 +30,7 @@ namespace NonaRoyale.Unity.View
                 case "Nuetu": return "Bruiser";
                 case "Lethe": return "Catalyst";
                 case "Revú": return "Loan Shark";
+                case "Fortuna": return "Dealer";
                 default: return FallbackRole;
             }
         }

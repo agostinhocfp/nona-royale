@@ -18,7 +18,7 @@ That divergence is the same failure that caused the project restart, one layer u
 
 ## Roster scope
 
-The pool is **eleven operators**; each player fields **three per match**, distinct within a squad (`GDD.md` §2.2). **All eleven are complete.** Mimi's Cryo Field, the last missing ability, landed 2026-09-16 (`COMBAT_SYSTEMS.md` §10.4), and Lethe and Revú joined complete on 2026-09-17 (§10.10, §10.11). The pool is now past nine, which reopens the "Nona" question under Open items. **Kian and Nuetu have no entry in this file yet**; their kits are in §10.6 and §10.7, and their identities are unwritten.
+The pool is **twelve operators**; each player fields **three per match**, distinct within a squad (`GDD.md` §2.2). **All twelve are complete.** Fortuna arrived whole on 2026-09-18 (§10.12) and fills the draft grid exactly — three rows at four columns hold twelve, and a thirteenth needs a layout decision before it needs a kit. Mimi's Cryo Field, the last missing ability, landed 2026-09-16 (`COMBAT_SYSTEMS.md` §10.4), and Lethe and Revú joined complete on 2026-09-17 (§10.10, §10.11). The pool is now past nine, which reopens the "Nona" question under Open items. **Kian and Nuetu have no entry in this file yet**; their kits are in §10.6 and §10.7, and their identities are unwritten.
 
 A new operator must be expressible in the existing combat rules. One that needs a genuinely new _mechanic_ gets an amendment to `COMBAT_SYSTEMS.md` — never a special case inside its own stat block. That rule is what stops the roster from becoming nine sets of bespoke exceptions, and it has now fired twice in earnest: Mimi's coordinate swap forced a sixth effect kind and a rewrite of §7.4, and Javi's cleanse forced a seventh — the first that removes from the status registry rather than adding to it.
 
@@ -199,6 +199,22 @@ Read at the table: _the one who makes you pay to touch him._
 **Complete and in the pool.** His live kit is in `COMBAT_SYSTEMS.md` §10.11. **Loan Shark** is the provisional role tag, a ninth label.
 
 ---
+
+### Fortuna — Dealer _(archetype label provisional)_
+
+_(Added 2026-09-18. Her mechanics are `COMBAT_SYSTEMS.md` §10.12; the design record is `OPERATOR_12.md`.)_
+
+**She deals at the Royale.** Not the house's staff and not a contractor: the room is hers, the table is hers, and the other eleven are playing on it. A croupier who never touches a weapon, wearing the house's charcoal and brass as a waistcoat rather than a uniform — they are wearing her colours, not the other way round. The oldest joke in the noir book, told straight: the dealer decides, everybody else calls it luck.
+
+**She is the fourth camp**, after the four house operators, the four contractors and Luka's grudge. That is a decision to ratify or reject, not a fact: it gives the setting an owner, which it has never had, and it is the only way her kit reads — an operator who sells the dice has to be the one who owns them.
+
+**On the name.** She was proposed as **Nona**, which would have made the game's title her name and closed the "Nona is nine" item below with a person instead of a rule. The designer chose Fortuna (2026-09-18), so **the naming item stays open** and the title still means nine while the pool holds twelve.
+
+**Silhouette:** a square on its point — the diamond of a card pip. It is placeholder art and the weakest distinction on the board, because it shares Kurbyn's four sides and differs only by rotation; a chip's notched edge (an eight-pointed star) is unclaimed if it reads badly at piece size.
+
+**Device, still to design.** A dealer's shoe, a chip rack, a rake. Nothing on her is a weapon, which is the whole tell: the table is the weapon.
+
+**Complete and in the pool.** Her live kit is in `COMBAT_SYSTEMS.md` §10.12. **Dealer** is the provisional role tag, a tenth label.
 
 ## Design constraints on future operators
 

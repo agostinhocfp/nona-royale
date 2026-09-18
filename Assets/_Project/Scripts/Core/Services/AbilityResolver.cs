@@ -215,8 +215,14 @@ namespace NonaRoyale.Core.Services
             for (int index = 0; index < circuit; index++)
             {
                 var cell = CellRef.Track(index);
-                if (_targeting.CanTargetCell(caster, cell, ability.Range).IsLegal)
-                    cells.Add(cell);
+                if (!_targeting.CanTargetCell(caster, cell, ability.Range).IsLegal) continue;
+
+                // A table cannot stand on a safe cell (§7.7), and this list is
+                // what the tray marks and what a bot picks from — a cell offered
+                // here and refused on the cast is a bug in both.
+                if (!TableCellWouldBeLegal(ability, cell)) continue;
+
+                cells.Add(cell);
             }
 
             return cells;
@@ -324,6 +330,13 @@ namespace NonaRoyale.Core.Services
                     AbilityRefusal.IllegalTarget, TargetingVerdict.AimedBehindFromSafeCell);
             }
 
+            // A table on a safe cell would shelter whoever it stopped, which is
+            // backwards (§7.7). Checked here rather than in TargetingRules
+            // because it depends on what the ability contains, on the same terms
+            // as the swap and ally-placement rules above — before payment.
+            if (!TableCellWouldBeLegal(ability, targetCell))
+                return AbilityResolution.Refused(AbilityRefusal.IllegalTarget, TargetingVerdict.OnASafeCell);
+
             // Energy last, so a refusal names the problem the player can fix and
             // an illegal attempt never costs anything.
             if (!_energy.CanAfford(casterPlayer, ability.EnergyCost))
@@ -357,6 +370,12 @@ namespace NonaRoyale.Core.Services
                     if (effect.Kind == EffectKind.DeployZone)
                     {
                         RunDeployZone(effect, caster, targetCell, allOperators, outcomes);
+                        continue;
+                    }
+
+                    if (effect.Kind == EffectKind.SetTable)
+                    {
+                        RunSetTable(effect, caster, targetCell, outcomes);
                         continue;
                     }
 
@@ -484,8 +503,56 @@ namespace NonaRoyale.Core.Services
                     case EffectKind.MissingEnergyDamage:
                         RunMissingEnergyDamage(effect, caster, recipient, allOperators, outcomes);
                         break;
+
+                    // The dice are the engine's state, not the resolver's, so
+                    // this records what the cast is owed and the engine deals it
+                    // (§6.8). The engine also decides whether the seat is
+                    // holding enough dice to cast at all, before payment.
+                    case EffectKind.DealDice:
+                        outcomes.Add(EffectOutcome.DiceDealt(caster, effect.Amount, effect.Stacks));
+                        break;
                 }
             }
+        }
+
+        /// <summary>
+        /// Whether this ability's table could stand on the chosen cell (§7.7). A
+        /// safe cell is refused; every other outer-track cell is fair game, and
+        /// cell targeting has already ruled out the rest (§4.4).
+        /// </summary>
+        private bool TableCellWouldBeLegal(AbilityDefinition ability, CellRef? cell)
+        {
+            if (cell == null) return true;
+
+            for (int i = 0; i < ability.Effects.Count; i++)
+            {
+                if (ability.Effects[i].Kind != EffectKind.SetTable) continue;
+                if (_targeting.IsSafeCell(cell.Value)) return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Deals a table on a cell. Nothing resolves now and nothing resolves at
+        /// an upkeep: it waits for an enemy dice move to cross it (§7.7).
+        /// </summary>
+        /// <remarks>
+        /// The null check guards the same content bug <see cref="RunPaintCell"/>
+        /// describes: an ability that lists a table without declaring itself
+        /// cell-targeted.
+        /// </remarks>
+        private void RunSetTable(
+            AbilityEffect effect, OperatorState caster, CellRef? cell, List<EffectOutcome> outcomes)
+        {
+            if (cell == null) return;
+
+            _cellEffects.SetTable(
+                cell.Value, caster.Owner, caster.Id,
+                stopDamage: effect.Amount,
+                lifetimeTurns: effect.Stacks);
+
+            outcomes.Add(EffectOutcome.TableDealt(caster, cell.Value, effect.Amount));
         }
 
         /// <summary>
