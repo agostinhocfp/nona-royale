@@ -63,7 +63,7 @@ legal and funny, or refused?
 
 ---
 
-## 3. Revú
+## 3. Revú - Implemented
 
 > **Implemented 2026-09-17** as `Revu.cs`, ids 1101–1102, then tuned the same day: health 8, Leech Round 2 damage with cooldown 1, Sadist cooldown 4. Rulings: Equilibrium reads instant hits only, its halves are at least 1, and it applies to Atomic; Sadist reads the target's seat and splashes half; Leech Round's energy is destroyed. The "4 HP" reasoning below predates the draft-health pass.
 

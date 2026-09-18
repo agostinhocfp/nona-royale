@@ -337,14 +337,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 65abe5476ee7bc64ead91ec42b0d2b82, type: 3}
   m_Name: 
   m_EditorClassIdentifier: NonaRoyale.Unity::NonaRoyale.Unity.Composition.MatchBootstrap
-  randomSquads: 1
+  skipSetup: 0
+  squadMode: 0
   useCompactBoard: 0
   players: 4
+  cpuSeats: 
+  cpuSpeed: 0
   openingDeployments: 2
-  seed: 20260912
+  seed: 0
   cellSpacing: 1
-  showPanel: 1
+  showDevPanel: 0
   useLegacyPanel: 0
+  showFullLog: 0
+  reducedMotion: 0
+  animationSpeed: 0
+  lightingEffects: 1
   showPieceHealth: 1
 --- !u!4 &430266707
 Transform:
