@@ -1,7 +1,7 @@
 # Nona Royale — Visual Pass
 
 > Location in repo: `docs/design/VISUAL_PASS.md` · Project copy: `claude/VISUAL_PASS.md`
-> Status: **Open, 2026-09-18.** Mockups approved. V4 (the colour grade) is in. V0 (the lighting spike) is written and waits for the designer's check, which blocks V1.
+> Status: **Open, 2026-09-18.** V4 (the colour grade) is in. V3's room and title layout are chosen from mockups and not yet built. V0 (the lighting spike) is written and waits for the designer's check, which blocks V1.
 > Related: `ART_DIRECTION.md` §3, §6, §6.1, ADR-0009 (figures rendered looking down about 25°), ADR-0010 (URP 2D Renderer), `LIGHTING.md`, `GUI_PHASE.md` (G2–G4)
 
 ## Goal
@@ -32,6 +32,60 @@ Rendered in Blender with the scripts in `tools/mockup/` from the G3 board textur
 - **Figures read well** as upright cards leaned back by about half the camera tilt.
 - **The room is mostly a menu-screen asset** (see decision 2).
 
+## V3 mockup review: the room and the title layout (2026-09-18)
+
+Decision 2 said the room gets its own review before it is built. Four rooms were
+rendered at the title's 58°, then the title screen's real lockup was laid over them
+with `tools/mockup/title.py`, which reads its sizes off `View/TitleScreen` and
+`View/UiTheme` so a mockup is judged as the screen and not as a bare room. Sent in
+the chat as `v3_rooms.png`, `v3_lockup.png` and `v3_salon.png`.
+
+**The four rooms:**
+
+| | Room | Verdict |
+| - | ---- | ------- |
+| A | Parlour: five back columns, four curtain panels, a tiered chandelier | The ring of sconces is the best thing in the set — it reads as a room of tables going off into the dark. The columns are invisible silhouettes and the curtain hem zigzags. |
+| B | Vault room: a Deco relief wall and a round brass vault door | **Failed as built.** The door read as a pale face, not brass, and the rest of the wall went black. The idea is on-theme; the execution needs another pass before it can be judged. |
+| C | Curtain call: one velvet wall, one low chandelier | Strongest single image, and the cheapest real room. The chandelier is the best-built object. The velvet read as a flat maroon field. |
+| D | Bare: a patterned floor and one far glow | Nearly free and not bad, but the procedural ring pattern read as horizontal banding, which looks like a bug rather than a Deco floor. |
+
+**Findings:**
+
+- **A lit floor kills the room.** The first pass used a large area lamp as the
+  figures' key. At the title's grazing angle it washed the carpet into a milky grey
+  haze and the room stopped reading as dark. The key and the rim are spots now, aimed
+  at the table, and the carpet's sheen is off — sheen at a grazing angle turns a dark
+  carpet into a retroreflective sheet. This is the one lighting lesson to carry into
+  Unity: light the table, not the room.
+- **The centred lockup buries the board.** `TitleScreen` stacks the wordmark and all
+  three buttons in a 520-wide column at the centre of the screen, over a 0.45 scrim.
+  Laid over any of the four rooms, it covers the board almost entirely — the same
+  problem the match HUD has. Whatever room is built behind it would be about 85%
+  invisible, which is reason enough to question building one at all.
+- **Velvet only reads from the side.** The folds are displaced in depth, so they all
+  face the table equally and light from the front leaves them flat. Two spots raking
+  *along* the cloth are what make the folds shade.
+- **The room's hero object and the wordmark want the same place.** A single chandelier
+  dead centre lands exactly where NONA ROYALE goes. A symmetrical *pair*, flanking the
+  wordmark, keeps the Deco symmetry and leaves the middle of the upper frame free.
+
+**Chosen (designer, from pickers):**
+
+1. **The room is C plus A's sconces** — `ROOM=salon` in `scene.py`: a velvet wall with a
+   pelmet and a skirting at the hem, a pair of chandeliers flanking the wordmark, and a
+   ring of sconces on side columns framing the table.
+2. **The title layout is the wordmark on top and the buttons in a row along the bottom**,
+   with the board whole in the middle and a lighter scrim (0.20, not 0.45). This is the
+   only layout in which the board is fully visible, and it is what makes the room worth
+   building. `FIT=title_top` is the band it leaves: x 0.08–0.92, y 0.20–0.76.
+
+**Noticed in passing, for the designer:**
+
+- The tagline reads "Nine operators. One vault." and the roster is eleven.
+- `TitleScreen` shows the table **empty**. Every mockup above has figures standing on it,
+  and that is a good part of why they look alive. V3 should draw a posed table behind the
+  menu screens.
+
 ## Risk: 2D lights under a perspective camera
 
 Forum reports (Unity 2021.1 onward) say URP 2D point and spot lights have no effect with a perspective camera; only the global light remains. If that holds on Unity 6.6 / URP 17.6, the tilted view would lose LT1's pools and cyan cells and all of LT2. It has to be checked in the editor before V1 is built.
@@ -43,7 +97,7 @@ Forum reports (Unity 2021.1 onward) say URP 2D point and spot lights have no eff
 | V0 | **Lighting spike** | `View/PerspectiveSpike` (editor and development builds only): F9 tilts the main camera into perspective over the current board, F10 cycles 30°/40°/48°, F9 restores it. Answers one question: do the 2D lights still work? |
 | V1 | **Tilted view mode** (if V0 passes) | A view-mode setting (Top-down or Tilted, top-down kept). A camera rig with the pitch and the fitted framing; board clicks by ray against the board plane; HUD overlays placed through the tilted camera; figures standing and facing the camera, sorted by depth. |
 | V2 | **Table body** | The table's thickness and its gilt band, seen along the near edge; contact shadows under figures. |
-| V3 | **Room for the menu screens** | A layered backdrop (wall, curtains, columns with sconces, chandelier) behind the title, setup, draft and end screens, and a camera move from the room shot into the match framing. Mockup review first. |
+| V3 | **Room for the menu screens** | The chosen salon (velvet wall, a pair of chandeliers, a sconce ring on side columns) behind the title, setup, draft and end screens; the title's lockup moved to the top with the buttons in a bottom row and the scrim at 0.20; a posed table instead of an empty one; and a camera move from the room shot into the match framing. Mockups reviewed and chosen 2026-09-18. |
 | V4 | **Colour grade** ✅ | URP Volume overrides beside the existing bloom: tonemapping, split toning, edge falloff (vignette), light grain. Off with Lighting effects. |
 | V5 | **Surface sheen** | Normal maps for the board's procedural sprites, generated from the same shapes, so 2D lights pick out marble, gilt and felt. |
 
@@ -76,3 +130,10 @@ If V0 fails: decide between "top-down, deeper" and moving the board to URP's 3D 
   - **Reduced motion drops the grain** to 0. URP's grain scrolls every frame and has no still setting, so stilling it means turning it off.
   - Every field is read each frame and sits under a `Colour grade (V4)` header, so the grade can be dragged in the inspector during Play Mode like the rest of the lighting.
   - **The check (designer):** deal a match and look at the table's dark quarters — the corners should fall off without going muddy, the gold should stay gold, and turning Lighting effects off should snap the frame back to the flat look. If the room reads too dim, `gradeExposure` is the one dial to move.
+- 2026-09-18 — **V3 mockups reviewed and the room chosen.** Four rooms rendered at the
+  title framing and judged with the real lockup over them (see the V3 review section
+  above). The designer chose the salon and the top-wordmark layout. Two new mockup
+  tools: `tools/mockup/title.py` (the lockup, read off `TitleScreen` and `UiTheme`,
+  with `LAYOUT=center|left|top` and `LOCKUP=0` for a room-only frame) and
+  `tools/mockup/sheet.py` (contact sheets). `scene.py` gains `ROOM`, `CARPET`,
+  `FIT=title_top`, and spots in place of the area key and rim. Not yet built in Unity.
