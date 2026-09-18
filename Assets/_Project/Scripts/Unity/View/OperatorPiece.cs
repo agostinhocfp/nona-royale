@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using NonaRoyale.Core.Model;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace NonaRoyale.Unity.View
 {
@@ -136,6 +137,15 @@ namespace NonaRoyale.Unity.View
 
         private readonly Queue<Vector3> _path = new Queue<Vector3>();
 
+        /// <summary>Everything that stands up under the tilt (V1b). The ground markings stay on the root.</summary>
+        private Transform _figure;
+
+        /// <summary>Makes the piece one unit for depth sorting, so a near piece covers a far one.</summary>
+        private SortingGroup _sorting;
+
+        /// <summary>The pitch the ground markings were last shaped for, so they are reshaped only on a change.</summary>
+        private float _shapedPitch = -1f;
+
         private SpriteRenderer _body;
         private SpriteRenderer _flashOverlay;
         private SpriteRenderer _outline;
@@ -207,6 +217,48 @@ namespace NonaRoyale.Unity.View
         /// <summary>The drawn radius in world units, for hit testing. Ignores the hover lift.</summary>
         public float Radius => _baseScale * 0.4f;
 
+        /// <summary>
+        /// The figure's footprint on screen, in pixels, for hit testing under
+        /// the tilt (VISUAL_PASS.md, V1b).
+        /// </summary>
+        /// <remarks>
+        /// A standing figure is drawn well above the cell it stands on, so a
+        /// click on its head turns into a board point roughly a cell behind it.
+        /// Testing against where the figure actually appears is the only way
+        /// clicking a figure can select that figure. The body's world bounds
+        /// already account for the lean, so its eight corners projected to the
+        /// screen give the rectangle; a rectangle is generous at the shoulders,
+        /// which suits a target this small.
+        /// </remarks>
+        public bool TryScreenBounds(Camera camera, out Rect rect)
+        {
+            rect = default;
+            if (camera == null || _body == null || !_body.enabled || _hidden) return false;
+
+            var bounds = _body.bounds;
+            float minX = float.MaxValue, minY = float.MaxValue;
+            float maxX = float.MinValue, maxY = float.MinValue;
+
+            for (int corner = 0; corner < 8; corner++)
+            {
+                var point = new Vector3(
+                    (corner & 1) == 0 ? bounds.min.x : bounds.max.x,
+                    (corner & 2) == 0 ? bounds.min.y : bounds.max.y,
+                    (corner & 4) == 0 ? bounds.min.z : bounds.max.z);
+
+                var screen = camera.WorldToScreenPoint(point);
+                if (screen.z <= 0f) return false;
+
+                if (screen.x < minX) minX = screen.x;
+                if (screen.x > maxX) maxX = screen.x;
+                if (screen.y < minY) minY = screen.y;
+                if (screen.y > maxY) maxY = screen.y;
+            }
+
+            rect = new Rect(minX, minY, maxX - minX, maxY - minY);
+            return rect.width > 0f && rect.height > 0f;
+        }
+
         public PieceMark Marks => _marks;
 
         private bool Reduced => _motion != null && _motion.ReducedMotion;
@@ -230,10 +282,21 @@ namespace NonaRoyale.Unity.View
             // Pieces breathe out of step with each other.
             _idlePhase = (op.Id * 0.618f) % 1f * Mathf.PI * 2f;
 
+            // Everything that stands up hangs off one child, so the lean is
+            // applied once (V1b). The ground markings stay on the root, where
+            // the camera foreshortens them as it should. A SortingGroup makes
+            // the whole piece one unit for depth, with the parts inside it
+            // keeping the orders they always had.
+            _figure = new GameObject("figure").transform;
+            _figure.SetParent(transform, false);
+
+            _sorting = gameObject.GetComponent<SortingGroup>();
+            if (_sorting == null) _sorting = gameObject.AddComponent<SortingGroup>();
+
             // The body is a child so a render can be scaled and moved inside
             // the figure's frame. For the procedural figure it sits at the
             // origin, exactly where the root's own renderer used to be.
-            _body = Child("body", 1f, Vector3.zero);
+            _body = Child("body", 1f, Vector3.zero, _figure);
             _body.color = _seatColour;
             _body.sortingOrder = 4;
 
@@ -242,11 +305,11 @@ namespace NonaRoyale.Unity.View
             _flashOverlay.sortingOrder = 4;
             _flashOverlay.enabled = false;
 
-            _outline = Child("outline", 1f, Vector3.zero);
+            _outline = Child("outline", 1f, Vector3.zero, _figure);
             _outline.color = UiTheme.PieceOutline;
             _outline.sortingOrder = 3;
 
-            _pin = Child("pin", PinSize, Vector3.zero);
+            _pin = Child("pin", PinSize, Vector3.zero, _figure);
             _pin.sprite = PieceShape.For(op);
             _pin.color = UiTheme.PieceEmblem;
             _pin.sortingOrder = 5;
@@ -550,13 +613,13 @@ namespace NonaRoyale.Unity.View
 
         private void BuildHealthBar()
         {
-            _healthBack = Child("health_back", 1f, new Vector3(0f, FigureLayout.Pawn.BarY, 0f));
+            _healthBack = Child("health_back", 1f, new Vector3(0f, FigureLayout.Pawn.BarY, 0f), _figure);
             _healthBack.sprite = Primitives.Square;
             _healthBack.color = UiTheme.PieceBarBack;
             _healthBack.sortingOrder = 5;
             _healthBack.transform.localScale = new Vector3(0.74f, 0.13f, 1f);
 
-            _healthFill = Child("health_fill", 1f, new Vector3(0f, FigureLayout.Pawn.BarY, 0f));
+            _healthFill = Child("health_fill", 1f, new Vector3(0f, FigureLayout.Pawn.BarY, 0f), _figure);
             _healthFill.sprite = Primitives.Square;
             _healthFill.sortingOrder = 6;
         }
@@ -565,13 +628,13 @@ namespace NonaRoyale.Unity.View
         {
             // A glow behind the figure: it reads around any silhouette and
             // never hides the one it marks.
-            _glow = Child("select_glow", 1.35f, Vector3.zero);
+            _glow = Child("select_glow", 1.35f, Vector3.zero, _figure);
             _glow.sprite = DecoSprites.Glow;
             _glow.color = SelectColour;
             _glow.sortingOrder = 1;
             _glow.enabled = false;
 
-            _halo = Child("halo", 0.5f, Vector3.zero);
+            _halo = Child("halo", 0.5f, Vector3.zero, _figure);
             _halo.sprite = BoardArt.Halo;
             _halo.color = SelectColour;
             _halo.sortingOrder = 6;
@@ -727,9 +790,72 @@ namespace NonaRoyale.Unity.View
             // figure, so they are left alone.
             float anchor = _layout.FootAnchorOffset(scale, sy);
 
-            transform.position = _ground + Vector3.up * (_lift + anchor);
-            transform.localScale = new Vector3(scale * sx, scale * sy, 1f);
+            // The squash compensation is along the board, where the feet are;
+            // the hop rises on screen, which under the tilt is out of the table
+            // as well as up it (V1b). Both are world up for the flat camera.
+            transform.position = _ground + Vector3.up * anchor + BoardTilt.ScreenUp * _lift;
+
+            // z takes the same scale as y, which it did not need to before: the
+            // leaning child rotates about x, so it turns its own y into z, and
+            // a parent that scaled y by 0.6 and z by 1 would shear the figure
+            // instead of tipping it. Flat sprites do not care about z scale, so
+            // the top-down view is unaffected.
+            transform.localScale = new Vector3(scale * sx, scale * sy, scale * sy);
             transform.localRotation = Quaternion.Euler(0f, 0f, roll);
+
+            Stand();
+            Depth();
+        }
+
+        /// <summary>
+        /// Leans the figure up out of the table, about its feet (V1b). Nothing
+        /// happens under the flat camera: the lean is zero and the pivot is the
+        /// origin, so the piece is drawn exactly as it always was.
+        /// </summary>
+        private void Stand()
+        {
+            if (_figure == null) return;
+
+            float lean = BoardTilt.Lean;
+            FigureTilt.LeanPivot(BoardTilt.Pitch, _layout.Feet, out float py, out float pz);
+
+            _figure.localPosition = new Vector3(0f, py, pz);
+            _figure.localRotation = Quaternion.Euler(lean, 0f, 0f);
+
+            if (Mathf.Approximately(_shapedPitch, BoardTilt.Pitch)) return;
+
+            _shapedPitch = BoardTilt.Pitch;
+            ShapeGround();
+        }
+
+        /// <summary>
+        /// The seat disc and its ring. The flat view fakes a foreshortened
+        /// ellipse, because nothing was foreshortening it; under the tilt the
+        /// camera does that itself, so the disc is drawn as a true circle.
+        /// </summary>
+        private void ShapeGround()
+        {
+            float depth = BoardTilt.IsTilted ? SeatBaseWidth : SeatBaseDepth;
+            var shape = new Vector3(SeatBaseWidth, depth, 1f);
+
+            if (_seatBase != null) _seatBase.transform.localScale = shape;
+            if (_seatRing != null) _seatRing.transform.localScale = shape;
+        }
+
+        /// <summary>
+        /// Which pieces draw in front. Nearer the camera is a lower y, so the
+        /// order rises as the piece comes forward. Left alone under the flat
+        /// camera, where creation order never showed.
+        /// </summary>
+        private void Depth()
+        {
+            if (_sorting == null) return;
+
+            int order = BoardTilt.IsTilted
+                ? FigureTilt.SortOrder(transform.position.y, BoardTilt.SortExtent)
+                : 0;
+
+            if (_sorting.sortingOrder != order) _sorting.sortingOrder = order;
         }
 
         /// <summary>The hover lift, and the pulse that says "click to deploy".</summary>

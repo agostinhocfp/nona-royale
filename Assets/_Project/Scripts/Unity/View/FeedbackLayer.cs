@@ -118,7 +118,8 @@ namespace NonaRoyale.Unity.View
             var renderer = go.AddComponent<SpriteRenderer>();
             renderer.sprite = Primitives.Ring;
             renderer.color = colour;
-            renderer.sortingOrder = 15;
+            // Over the pieces' depth band (V1b, FigureTilt).
+            renderer.sortingOrder = FigureTilt.FeedbackOrder;
 
             go.AddComponent<ExpandingPulse>().Begin(_scale * 0.5f, _scale * finalScale);
         }

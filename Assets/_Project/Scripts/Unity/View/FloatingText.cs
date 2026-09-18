@@ -47,7 +47,8 @@ namespace NonaRoyale.Unity.View
             text.alignment = TextAlignmentOptions.Center;
             text.textWrappingMode = TextWrappingModes.NoWrap;
             text.overflowMode = TextOverflowModes.Overflow;
-            text.sortingOrder = 20;
+            // Over everything the board draws (V1b, FigureTilt).
+            text.sortingOrder = FigureTilt.FloatingTextOrder;
             floating._text = text;
 
             return floating;

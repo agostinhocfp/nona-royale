@@ -57,6 +57,49 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
+        /// The piece under the pointer: the figure the player can see at
+        /// <paramref name="screen"/> when the board is tilted, and otherwise
+        /// the one nearest <paramref name="world"/>.
+        /// </summary>
+        /// <remarks>
+        /// <b>Standing figures have to be hit where they are drawn</b>
+        /// (VISUAL_PASS.md, V1b). A figure stands up out of the cell it
+        /// occupies, so a click on its chest becomes a board point a cell or so
+        /// behind its feet, and the world test below would select the wrong
+        /// piece or none. When two figures overlap the nearer one wins, which
+        /// is the one the player sees in front.
+        ///
+        /// The world test is still the fallback, so clicking the seat disc at a
+        /// figure's feet works either way, and the flat camera is unchanged.
+        /// </remarks>
+        public static OperatorPiece PieceAt(
+            Vector3 world, Vector2 screen, IReadOnlyList<OperatorPiece> pieces, float minRadius)
+        {
+            if (BoardTilt.IsTilted)
+            {
+                var camera = Camera.main;
+                OperatorPiece front = null;
+                float nearest = float.MaxValue;
+
+                foreach (var piece in pieces)
+                {
+                    if (piece == null) continue;
+                    if (!piece.TryScreenBounds(camera, out var rect) || !rect.Contains(screen)) continue;
+
+                    float depth = piece.transform.position.y;
+                    if (depth >= nearest) continue;
+
+                    nearest = depth;
+                    front = piece;
+                }
+
+                if (front != null) return front;
+            }
+
+            return PieceAt(world, pieces, minRadius);
+        }
+
+        /// <summary>
         /// The piece nearest to <paramref name="world"/>, if it lies within its
         /// own drawn radius or <paramref name="minRadius"/>, whichever is larger.
         /// </summary>

@@ -1,7 +1,7 @@
 # Nona Royale — Visual Pass
 
 > Location in repo: `docs/design/VISUAL_PASS.md` · Project copy: `claude/VISUAL_PASS.md`
-> Status: **Open, 2026-09-18.** V0 passed and is retired. V4 (the colour grade) and V1a (the tilted camera) are in; V1b and V1c are next. V3's room and title layout are chosen from mockups and not yet built.
+> Status: **Open, 2026-09-18.** V0 passed and is retired. V4 (the colour grade), V1a (the tilted camera) and V1b (standing figures) are in; V1c is next. V3's room and title layout are chosen from mockups and not yet built.
 > Related: `ART_DIRECTION.md` §3, §6, §6.1, ADR-0009 (figures rendered looking down about 25°), ADR-0010 (URP 2D Renderer), `LIGHTING.md`, `GUI_PHASE.md` (G2–G4)
 
 ## Goal
@@ -103,8 +103,8 @@ Two things the spike showed that were not being asked about:
 | -- | --------- | ---------------- |
 | V0 | **Lighting spike** | `View/PerspectiveSpike` (editor and development builds only): F9 tilts the main camera into perspective over the current board, F10 cycles 30°/40°/48°, F9 restores it. Answers one question: do the 2D lights still work? |
 | V1a | **Tilted camera** ✅ | `View/TiltFraming` and the Board camera setting (Top-down or Tilted, top-down the default). The perspective branch in `FrameCamera`; board clicks by ray against the board plane; the camera nudge shoved along screen axes; stereo panning measured on screen. Pieces still lie flat. |
-| V1b | **Figures stand up** | Billboarding, and real depth sorting between pieces. Nothing in the view sorts by position today — every `sortingOrder` is a compile-time constant and all pieces share 0–6 on one layer — so a far piece can occlude a near one. Needs a project-wide decision: a per-piece `SortingGroup` with a y-derived order, or the 2D renderer's custom-axis transparency sort. |
-| V1c | **Overlays** | The four things that anchor to a world position and assume "up" is up on screen: `PieceHudLayer`'s health and tags (a fixed world-up offset), `CellLabelLayer`'s landing pips, `FloatingText`'s damage numbers and `FeedbackLayer`'s rings (world-space, so they lie flat on the table), and `DiceRoller`'s landing spot. Plus the fake-plane constants that should follow the pitch: `OperatorPiece`'s 0.9 × 0.36 seat disc, and `CastTell`'s tall diamond. |
+| V1b | **Figures stand up** ✅ | `View/FigureTilt` and `View/BoardTilt`. A `SortingGroup` per piece with its order taken from world y; the figure leaning up out of the table about its feet; the hop rising on screen; the seat disc drawn as a true circle for the camera to foreshorten; and piece hit testing in screen space, without which a click on a standing figure selects the cell behind it. |
+| V1c | **Overlays** | The things that anchor to a world position and assume "up" is up on screen: `PieceHudLayer`'s health and tags (a fixed world-up offset), `CellLabelLayer`'s landing pips, `FloatingText`'s damage numbers and `FeedbackLayer`'s rings (world-space, so they lie flat on the table and rise up it), and `DiceRoller`'s landing spot. Plus `CastTell`'s deliberately tall diamond, which fakes a perspective that now exists. `BoardTilt` is the seam they all read. |
 | V2 | **Table body** | The table's thickness and its gilt band, seen along the near edge; contact shadows under figures. |
 | V3 | **Room for the menu screens** | The chosen salon (velvet wall, a pair of chandeliers, a sconce ring on side columns) behind the title, setup, draft and end screens; the title's lockup moved to the top with the buttons in a bottom row and the scrim at 0.20; a posed table instead of an empty one; and a camera move from the room shot into the match framing. Mockups reviewed and chosen 2026-09-18. |
 | V4 | **Colour grade** ✅ | URP Volume overrides beside the existing bloom: tonemapping, split toning, edge falloff (vignette), light grain. Off with Lighting effects. |
@@ -210,3 +210,55 @@ V0 passed, so neither fallback was needed: "top-down, deeper" and moving the boa
     5. Wear headphones and let a CPU turn play: sounds on the left should be on the left.
     6. Known and expected: the pieces still lie flat on the table, and far pieces may
        draw in front of near ones. That is V1b.
+- 2026-09-18 — **V1b in: the figures stand up, and depth sorting exists at all.**
+  - **The scope grew by one thing.** Standing a figure up breaks clicking: the figure is
+    drawn well above the cell it stands on, so a click on its chest becomes a board point
+    about a cell behind its feet. `BoardPointer.PieceAt` gained a screen-space path —
+    the figure whose drawn rectangle is under the pointer wins, and the nearer of two
+    overlapping figures wins — with the old world-circle test kept as the fallback, so
+    clicking the seat disc still works and the flat camera is untouched. It had to ship
+    with the lean rather than after it.
+  - **The lean is `LeanFraction` (0.55) of the pitch back from upright**, which is where
+    the mockups put the figures. The three candidates: flat on the table (the top-down
+    view), bolt upright in the world (foreshortened to 79% of its height at 52°, head
+    leaning away), or square to the camera (full height, but leaning 38° back and reading
+    as floating). The chosen lean shows **99%** of the art and still reads as standing.
+  - **Feet, not middles.** A piece's origin is the centre of its figure frame, so leaning
+    about the origin swings the feet off the cell. The lean goes on a new `figure` child
+    whose position cancels the swing, which leaves every sprite inside it at the local
+    coordinates it already had — `SetPose`, the health bar and the pin needed no changes.
+  - **The ground markings stay on the root** and are foreshortened by the camera, which
+    is why the seat disc stops being a hand-faked 0.9 × 0.36 ellipse under the tilt and
+    becomes a true circle. The flat view keeps the fake, because nothing foreshortens it
+    there.
+  - **Depth sorting did not exist.** Every `sortingOrder` in the view was a compile-time
+    constant, and all of a piece's parts shared 0–6 on one layer, so two pieces on
+    different rows drew in GameObject creation order. A `SortingGroup` per piece makes it
+    one unit, with its order taken from world y over a band of 3–39. The cast tell, the
+    feedback rings and the damage numbers moved from 14, 15 and 20 to 42, 43 and 48 to
+    open that band; they were above the pieces either way, so nothing changed visually.
+    The renderer's custom-axis transparency sort was considered and rejected: it only
+    breaks ties *within* one order, so a near piece's base disc would still draw behind a
+    far piece's body, and it would quietly change how the board art ties as well.
+  - **Two bugs found while writing it.** The hop moved along world up, which under the
+    tilt slides the piece up the table instead of off it — it now rises along the
+    camera's up. And the piece's root scaled y by about 0.6 while leaving z at 1, which
+    is harmless for flat sprites but shears a child rotated about x; z now takes the same
+    scale as y.
+  - **`View/BoardTilt`** is the seam: the composition root writes the pitch there every
+    time it frames the camera, and the pieces, the pointer and the hop read it. Zero
+    means the flat camera and every derived value is the identity, so top-down behaves
+    exactly as it did before the tilt existed. V1c will read the same seam.
+  - Checks: view, tests and editor assemblies compile; **812 tests green** (19 new
+    `FigureTiltTests`). Twelve mutations of the tilt maths were tried and all twelve fail
+    a test.
+  - **Play Mode watch-list (designer):**
+    1. With TILTED on, do the figures stand on the table rather than lie on it, and do
+       their feet sit on the right cells?
+    2. Click a figure's **body**, not its base. Does it select that figure?
+    3. Move a piece so it passes another one. Does the nearer piece always draw in front?
+    4. Hop a piece: does it rise off the table, or slide up it?
+    5. Do the seat discs read as circles on the floor rather than as standing ellipses?
+    6. Switch to TOP-DOWN: everything should look exactly as it did yesterday.
+    7. Still expected, and V1c: health readouts, damage numbers and the feedback rings
+       are placed as if "up" were up on screen, so they will sit oddly.

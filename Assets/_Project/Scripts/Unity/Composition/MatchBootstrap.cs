@@ -894,6 +894,11 @@ namespace NonaRoyale.Unity.Composition
 
             if (!tilted) FrameFlat(camera, extent, aspect, left, right, top, bottom, usableWidth, usableHeight);
 
+            // The pieces, the pointer and the hop all follow the pitch (V1b).
+            // Written here rather than on the setting, so a tilt that could not
+            // be solved leaves everything flat to match the camera.
+            BoardTilt.Set(tilted ? (hud ? TiltFraming.MatchPitch : TiltFraming.MenuPitch) : 0f, extent);
+
             // A nudge in progress continues around the new resting place.
             if (_nudge != null) _nudge.SetBase(camera.transform.position);
 
@@ -1306,7 +1311,7 @@ namespace NonaRoyale.Unity.Composition
 
             if (!_match.Engine.MatchOver && !PointerOverPanel() && BoardPointer.TryWorldPoint(out var world))
             {
-                var piece = BoardPointer.PieceAt(world, _pieces, PieceClickRadius * cellSpacing);
+                var piece = BoardPointer.PieceAt(world, Input.mousePosition, _pieces, PieceClickRadius * cellSpacing);
 
                 if (piece != null && (IsCommandable(piece.Operator) || _castTargets.Contains(piece.Operator)))
                     hovered = piece;
@@ -1370,7 +1375,7 @@ namespace NonaRoyale.Unity.Composition
                 return cell != null && !Busy ? CursorLook.Aim : CursorLook.AimBlocked;
             }
 
-            var piece = BoardPointer.PieceAt(world, _pieces, PieceClickRadius * cellSpacing);
+            var piece = BoardPointer.PieceAt(world, Input.mousePosition, _pieces, PieceClickRadius * cellSpacing);
 
             if (piece != null && _castTargets.Contains(piece.Operator))
                 return Busy ? CursorLook.AimBlocked : CursorLook.Aim;
@@ -1405,7 +1410,7 @@ namespace NonaRoyale.Unity.Composition
             if (_match.Engine.MatchOver || PointerOverPanel()) return;
             if (!BoardPointer.TryWorldPoint(out var world)) return;
 
-            var piece = BoardPointer.PieceAt(world, _pieces, PieceClickRadius * cellSpacing);
+            var piece = BoardPointer.PieceAt(world, Input.mousePosition, _pieces, PieceClickRadius * cellSpacing);
 
             if (_selectedOperator != null && _selectedAbility != null)
             {

@@ -25,7 +25,8 @@ namespace NonaRoyale.Unity.View
         private const float ReachSeconds = 0.2f;
         private const float LingerSeconds = 0.18f;
 
-        private const int Sorting = 14;
+        /// <summary>Over the pieces' depth band (V1b, <see cref="FigureTilt"/>).</summary>
+        private const int Sorting = FigureTilt.CastTellOrder;
 
         private float _cell = 1f;
         private MotionSettings _motion;
