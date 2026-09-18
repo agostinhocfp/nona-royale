@@ -102,20 +102,20 @@ namespace NonaRoyale.Unity.View
         // ── Panels ───────────────────────────────────────────────────────
 
         /// <summary>
-        /// A panel docked to a screen edge: smoked glass with one gilt
+        /// A panel docked to a screen edge: a dark field with one gilt
         /// hairline along <paramref name="rule"/> (G3; it was a double rule
-        /// with a diamond at its middle. G5 made the field glass).
+        /// with a diamond at its middle).
         /// </summary>
         /// <remarks>
-        /// The fill thins toward <paramref name="rule"/> - the edge that faces
-        /// the board - so the room shows faintly through the near side and the
-        /// dock reads as a pane over the table rather than a card laid on it.
-        /// The far side stays opaque, which is where the text sits.
+        /// Flat, deliberately. G5 gave the field a translucency ramp so the
+        /// room would show through its board-facing edge, and it was removed:
+        /// FrameCamera reserves the screen edges and fits the board inside
+        /// them, so a dock has void behind it, not board. There was nothing
+        /// to see through to.
         /// </remarks>
         public static void Dock(RectTransform rect, bool blocksPointer, RectTransform.Edge rule)
         {
-            var body = Fill(rect, UiTheme.Panel, blocksPointer);
-            body.sprite = DecoSprites.Glass(rule);
+            Fill(rect, UiTheme.Panel, blocksPointer);
             EdgeRule(rect, rule, UiTheme.Line);
         }
 

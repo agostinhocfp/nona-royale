@@ -1,7 +1,7 @@
 # Nona Royale — GUI Phase
 
 > Location in repo: `docs/design/GUI_PHASE.md`
-> Status: **Closed at J, 2026-09-16; reopened 2026-09-17 for G3 (polish pass), which passed Play Mode and was committed as `46c1ce1`; reopened again for G4 (the board texture hookup; its corner lamps were tried and removed), which was committed with LT2 as `9514e90`; closed again; reopened 2026-09-18 for G5 (the data face and smoked glass).** E through J are committed. K (stranger test, then the OnGUI cut) is parked until testers are available. What comes next is `NEXT_PHASES.md`.
+> Status: **Closed at J, 2026-09-16; reopened 2026-09-17 for G3 (polish pass), which passed Play Mode and was committed as `46c1ce1`; reopened again for G4 (the board texture hookup; its corner lamps were tried and removed), which was committed with LT2 as `9514e90`; closed again; reopened 2026-09-18 for G5 (the data face and smoked glass; the glass was tried and removed, and the data face stands).** E through J are committed. K (stranger test, then the OnGUI cut) is parked until testers are available. What comes next is `NEXT_PHASES.md`.
 > Related: ADR-0008 (uGUI; its removal order stays binding), `PRESENTATION.md` (what the view may do and must show), `ART_DIRECTION.md` §3 and §8 (palette, UI registers), `STRANGER_TEST.md` (the gate before `OnGUI` is deleted)
 
 ## Goal
@@ -245,3 +245,8 @@ Each increment ends with a Play Mode check and a commit.
     - The docks (top bar, rail, tray, history strip) thin slightly toward the board and stay opaque at the screen edge; text on them is unaffected.
     - With the tilted camera on, the glass still reads — the board behind the near edge is brighter there than it was.
     - One `UiFonts` warning in the console means a TTF did not import; the screen should still be readable on the default face.
+- 2026-09-18 — **G5's smoked glass removed** (same day, before it was ever seen in a build). The type half stands and is unaffected.
+  - **The premise was wrong, not the tuning.** The glass thinned a dock's fill toward the board so the room would show through. `FrameCamera` reserves the screen edges and fits the board *inside* what is left, so a dock has **void** behind it, not board. There was nothing to see through to. A screenshot of the running game made it obvious in a way the code never did; the ramp's maths was checked and what sat behind it was not.
+  - **And it was invisible anyway.** Composited against `UiTheme.Panel` at 0.95, the 0.86 ramp moves the brightest channel by 0.3/255 over `BoardVoid` (where the docks actually are), 0.7 over the table, 2.8 over the cross floor and 6.6 in a lit pool at best. Nothing under about 2 reads on a dark panel. This is the same failure U4 hit on its first Play Mode look — "not seeing much different" — reached from the opposite direction.
+  - Gone: `DecoSprites.Glass`, `BuildGlass`, `GlassNear` and the sprite cache; `UiKit.Dock` is back to a flat fill and its hairline. The notes above are kept as a record of what was tried, the way G4's corner lamps are.
+  - **If it comes back** it should be a *luminance* ramp baked through `RasterizeShaded` rather than an alpha one — a painted sheen across the panel's own surface, which does not care what is behind it. Translucency only becomes a real idea if the HUD ever overlaps the board, which is the footprint question.
