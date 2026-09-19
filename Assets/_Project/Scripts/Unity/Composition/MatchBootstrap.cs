@@ -249,6 +249,7 @@ namespace NonaRoyale.Unity.Composition
         private HitStop _hitStop;
         private SceneLighting _lighting;
         private RoomBackdrop _room;
+        private TableBody _tableBody;
 
         /// <summary>Light that answers play: selection, casts, knockouts, HOME (LT2).</summary>
         private EventLights _eventLights;
@@ -442,9 +443,12 @@ namespace NonaRoyale.Unity.Composition
             if (_draftScreen != null) _draftScreen.Close();
             if (_end != null) _end.Close();
 
+            // Opened before the table is dressed: FrameCamera asks the title
+            // whether it is on screen, and the room asks the camera whether it
+            // can be seen at all. Opening last showed one tilted frame.
+            _title.Open();
             TearDownMatch();
             ShowEmptyTable();
-            _title.Open();
         }
 
         /// <summary>
@@ -495,11 +499,15 @@ namespace NonaRoyale.Unity.Composition
             var boardView = GetComponent<BoardView>() ?? gameObject.AddComponent<BoardView>();
             var map = new PathMap(board);
             boardView.Build(map, _layout, 3);
+
+            // Before the room: building it settles whether it is visible, and
+            // that answer is BoardTilt, which FrameCamera writes.
+            FrameCamera();
+
+            Slab().Build(_layout);
             Room().Build(_layout);
             if (_lighting != null) _lighting.Arrange(_layout, map);
             if (_eventLights != null) _eventLights.Bind(_lighting, _layout, _motion);
-
-            FrameCamera();
         }
 
         /// <summary>The full-screen cards. Bound before the first match, and again after each deal.</summary>
@@ -578,6 +586,7 @@ namespace NonaRoyale.Unity.Composition
                 seatsPerTable = Mathf.Max(seatsPerTable, player.Operators.Count);
 
             boardView.Build(_match.Map, _layout, seatsPerTable);
+            Slab().Build(_layout);
             Room().Build(_layout);
             if (_lighting != null) _lighting.Arrange(_layout, _match.Map);
             if (_eventLights != null) _eventLights.Bind(_lighting, _layout, _motion);
@@ -826,6 +835,7 @@ namespace NonaRoyale.Unity.Composition
         private bool _framedLegacy;
         private float _framedScale;
         private bool _framedWithHud;
+        private bool _framedOnTitle;
         private BoardCamera _framedCamera;
 
         /// <summary>
@@ -876,16 +886,26 @@ namespace NonaRoyale.Unity.Composition
             float width = Mathf.Max(1f, Screen.width);
             float height = Mathf.Max(1f, Screen.height);
 
-            // With no match on the table (the title's room), nothing is
-            // reserved and the room is centred.
             bool hud = _match != null;
+            bool title = _title != null && _title.IsShowing;
+
+            // Nothing takes the sides off a menu screen; the room, and the
+            // title's board, are centred.
             float leftUnits = hud ? LeftReservedUnits(scale) : 0f;
             float rightUnits = hud ? HistoryStrip.ReservedWidth : 0f;
 
+            // The title reserves its two bands the way a match reserves the
+            // strip and the tray, so the board sits whole between the wordmark
+            // and the menu row rather than under them (V3b). The other menus
+            // reserve nothing: their cards are centred over a room, and the
+            // room is the picture.
+            float topUnits = hud ? TurnStrip.ReservedHeight : title ? TitleScreen.ReservedTop : 0f;
+            float bottomUnits = hud ? ActionTray.ReservedHeight : title ? TitleScreen.ReservedBottom : 0f;
+
             float left = Mathf.Clamp(leftUnits * scale / width, 0f, 0.45f);
             float right = Mathf.Clamp(rightUnits * scale / width, 0f, 0.45f);
-            float top = hud ? Mathf.Clamp(TurnStrip.ReservedHeight * scale / height, 0f, 0.3f) : 0f;
-            float bottom = hud ? Mathf.Clamp(ActionTray.ReservedHeight * scale / height, 0f, 0.35f) : 0f;
+            float top = Mathf.Clamp(topUnits * scale / height, 0f, 0.3f);
+            float bottom = Mathf.Clamp(bottomUnits * scale / height, 0f, 0.35f);
 
             // Never let the panels claim so much of a tiny window that the board
             // is sized into nothing.
@@ -898,7 +918,14 @@ namespace NonaRoyale.Unity.Composition
             // what makes the room worth building - every part of it stands
             // vertically, and a straight-down camera sees a vertical wall
             // edge-on (V3).
-            bool wantsTilt = !hud || _display.Camera == BoardCamera.Tilted;
+            //
+            // The title is then the one screen that opts out (V3b). Its lockup
+            // runs along the top and bottom edges with the board whole between
+            // them, and that composition is drawn for a board lying straight
+            // down. The room goes with the tilt, and goes quietly: RoomBackdrop
+            // hides itself under a flat camera rather than draw a wall edge-on.
+            // Setup, draft and the end card keep the salon.
+            bool wantsTilt = !title && (!hud || _display.Camera == BoardCamera.Tilted);
             bool tilted = wantsTilt &&
                           FrameTilted(camera, extent, aspect, left, 1f - right, bottom, 1f - top, hud);
 
@@ -924,6 +951,7 @@ namespace NonaRoyale.Unity.Composition
             _framedLegacy = useLegacyPanel;
             _framedScale = scale;
             _framedWithHud = hud;
+            _framedOnTitle = title;
             _framedCamera = tilted ? BoardCamera.Tilted : BoardCamera.TopDown;
         }
 
@@ -1010,6 +1038,14 @@ namespace NonaRoyale.Unity.Composition
         private RoomBackdrop Room() =>
             _room ?? (_room = GetComponent<RoomBackdrop>() ?? gameObject.AddComponent<RoomBackdrop>());
 
+        /// <summary>
+        /// The table's near edge (VISUAL_PASS.md, V2), made on first use. It
+        /// takes itself off screen under a flat camera, so unlike the room it
+        /// needs nothing said to it once it is built.
+        /// </summary>
+        private TableBody Slab() =>
+            _tableBody ?? (_tableBody = GetComponent<TableBody>() ?? gameObject.AddComponent<TableBody>());
+
         private void Update()
         {
             // A menu backdrop, so it is up whenever a card is. RoomBackdrop
@@ -1068,6 +1104,7 @@ namespace NonaRoyale.Unity.Composition
                 showDevPanel != _framedWithPanel ||
                 useLegacyPanel != _framedLegacy ||
                 (_match != null) != _framedWithHud ||
+                (_title != null && _title.IsShowing) != _framedOnTitle ||
                 _display.Camera != _framedCamera ||
                 (_hudRoot != null && !Mathf.Approximately(_hudRoot.ScaleFactor, _framedScale)))
             {

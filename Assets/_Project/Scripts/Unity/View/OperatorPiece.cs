@@ -128,6 +128,25 @@ namespace NonaRoyale.Unity.View
         private const float SeatBaseAlpha = 0.45f;
         private const float SeatRingAlpha = 0.9f;
 
+        // ── Contact shadow (VISUAL_PASS.md, V2) ─────────────────
+
+        /// <summary>
+        /// Where the figure meets the table: tighter than the seat disc and
+        /// darker, because it is a contact and not a marker.
+        /// </summary>
+        private const float ContactWidth = 0.56f;
+        private const float ContactAlpha = 0.5f;
+
+        /// <summary>
+        /// What a hop does to it: spreads it and takes the dark out, the way a
+        /// shadow loses its edge as the thing casting it leaves the ground.
+        /// </summary>
+        private const float ContactSpread = 0.5f;
+        private const float ContactFade = 0.62f;
+
+        /// <summary>And what a landing does: one frame of a tighter, harder shadow under the impact.</summary>
+        private const float ContactPunch = 0.4f;
+
         private const float PopSeconds = 0.3f;
         private const float ShatterSeconds = 0.45f;
         private const int ShardCount = 9;
@@ -154,6 +173,7 @@ namespace NonaRoyale.Unity.View
         private SpriteRenderer _healthFill;
         private SpriteRenderer _seatBase;
         private SpriteRenderer _seatRing;
+        private SpriteRenderer _contact;
         private float _alpha = 1f;
         private Color _seatColour;
         private Vector3 _target;
@@ -379,6 +399,11 @@ namespace NonaRoyale.Unity.View
             _seatBase.transform.localPosition = new Vector3(0f, _layout.Feet, 0f);
             _seatRing.transform.localPosition = new Vector3(0f, _layout.Feet, 0f);
 
+            // The contact is the figure's own, not the render's, so it goes
+            // under a placeholder pawn too - but only while the figure stands
+            // up out of the table.
+            ShowContact(!seated);
+
             _body.color = WithAlpha(BodyColour);
         }
 
@@ -595,7 +620,16 @@ namespace NonaRoyale.Unity.View
 
         private void BuildSeatBase()
         {
-            // Under everything the piece draws: the floor it stands on.
+            // Under everything else the piece draws, on its own negative order
+            // inside the piece's SortingGroup - so it stays beneath this
+            // figure while a nearer figure's shadow still draws over it.
+            _contact = Child("contact_shadow", 1f, Vector3.zero);
+            _contact.sprite = BoardArt.SoftDisc;
+            _contact.sortingOrder = -1;
+            _contact.color = UiTheme.WithAlpha(Color.black, ContactAlpha);
+            _contact.enabled = false;
+
+            // The floor it stands on.
             _seatBase = Child("seat_base", 1f, Vector3.zero);
             _seatBase.sprite = BoardArt.SoftDisc;
             _seatBase.sortingOrder = 0;
@@ -803,6 +837,7 @@ namespace NonaRoyale.Unity.View
             transform.localScale = new Vector3(scale * sx, scale * sy, scale * sy);
             transform.localRotation = Quaternion.Euler(0f, 0f, roll);
 
+            Contact(scale);
             Stand();
             Depth();
         }
@@ -840,6 +875,61 @@ namespace NonaRoyale.Unity.View
 
             if (_seatBase != null) _seatBase.transform.localScale = shape;
             if (_seatRing != null) _seatRing.transform.localScale = shape;
+
+            ShowContact(!Seated);
+        }
+
+        /// <summary>
+        /// Whether the contact shadow is up. Tilted and standing, and nothing
+        /// else: under the flat camera there is no gap between the figure and
+        /// the table to cast one across, and the seat disc already says where
+        /// the piece stands. That keeps the top-down view exactly as it was,
+        /// which is the rule the rest of the tilt work followed.
+        /// </summary>
+        private void ShowContact(bool standing)
+        {
+            if (_contact != null) _contact.enabled = standing && BoardTilt.IsTilted;
+        }
+
+        /// <summary>
+        /// The contact shadow, every frame: it stays on the table while the
+        /// figure leaves it, spreading and paling at the top of a hop and
+        /// snapping tight and dark on the landing.
+        /// </summary>
+        /// <remarks>
+        /// <b>It has to be un-hopped.</b> The shadow rides the root, and the
+        /// root carries <c>ScreenUp * _lift</c>; left alone it would sail up
+        /// with the piece, which is the one thing a contact shadow must not
+        /// do. The lift is taken back out through
+        /// <see cref="Transform.InverseTransformVector"/>, so the root's scale
+        /// and roll are accounted for without repeating them here.
+        ///
+        /// The roll is deliberately left in. It is a degree or two of idle
+        /// sway, and countering it every frame would buy nothing anyone could
+        /// see.
+        /// </remarks>
+        private void Contact(float scale)
+        {
+            if (_contact == null || !_contact.enabled) return;
+
+            var at = new Vector3(0f, _layout.Feet, 0f);
+            if (_lift > 0f && scale > 0.0001f)
+                at -= transform.InverseTransformVector(BoardTilt.ScreenUp * _lift);
+
+            _contact.transform.localPosition = at;
+
+            // Reduced motion has no hop and never sets the landing, so both
+            // terms fall to zero and the shadow simply sits there.
+            float air = _hopping && !Reduced ? Mathf.Sin(_hopT * Mathf.PI) : 0f;
+
+            float width = ContactWidth * (1f + ContactSpread * air) * (1f - 0.12f * _land);
+
+            // A true circle under the tilt, which the camera foreshortens; the
+            // flat view never shows this at all, so there is no ellipse to fake.
+            _contact.transform.localScale = new Vector3(width, width, 1f);
+
+            float alpha = ContactAlpha * _alpha * (1f - ContactFade * air) * (1f + ContactPunch * _land);
+            _contact.color = UiTheme.WithAlpha(Color.black, Mathf.Clamp01(alpha));
         }
 
         /// <summary>

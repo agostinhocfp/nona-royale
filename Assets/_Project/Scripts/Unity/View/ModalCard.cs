@@ -36,6 +36,17 @@ namespace NonaRoyale.Unity.View
 
         public bool IsOpen => _root != null && _root.gameObject.activeSelf;
 
+        /// <summary>Open and not already on its way out.</summary>
+        /// <remarks>
+        /// <see cref="Close"/> fades over a beat and only deactivates the scrim
+        /// when the fade lands, so <see cref="IsOpen"/> stays true through it -
+        /// which is what keeps the keys routed to the card that is still on
+        /// screen. Anything that should react to the decision rather than to the
+        /// fade reads this instead: the title's flat camera tilts back as the
+        /// card starts to go, not a tenth of a second after.
+        /// </remarks>
+        public bool IsShowing => IsOpen && !_closing;
+
         protected bool IsBuilt => _root != null;
 
         /// <summary>The full-screen scrim the card sits on.</summary>

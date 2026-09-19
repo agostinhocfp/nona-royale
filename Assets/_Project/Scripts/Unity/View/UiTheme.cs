@@ -225,6 +225,21 @@ namespace NonaRoyale.Unity.View
         /// <summary>The tables' gilt rim: gold warmed toward the highlight. The sprite adds the streak.</summary>
         public static readonly Color TableRim = Color.Lerp(Gold, GoldBright, 0.6f);
 
+        /// <summary>
+        /// The table's side, seen along its near edge under the tilt (V2): a
+        /// warm dark the surface can sit a step above. The sprite carries the
+        /// fall from the lip, so this is the colour at its brightest.
+        /// </summary>
+        /// <remarks>
+        /// Set by eye against the void, not measured. It and
+        /// <see cref="TableBand"/> are the first two values to try in Play
+        /// Mode if the slab reads as a hole or as a shelf.
+        /// </remarks>
+        public static readonly Color TableEdge = Color.Lerp(Gunmetal, Brass, 0.45f);
+
+        /// <summary>The gilt band at the table's lip, at the top of its roll.</summary>
+        public static readonly Color TableBand = Color.Lerp(Brass, Gold, 0.55f);
+
         /// <summary>Dotted ring, arc and chips on the felt.</summary>
         public static readonly Color FeltTrim = WithAlpha(Gold, 0.5f);
         public static readonly Color FeltChip = WithAlpha(GoldBright, 0.85f);

@@ -67,6 +67,27 @@ namespace NonaRoyale.Unity.View
         /// <summary>A disc with a soft edge, for drop shadows.</summary>
         public static Sprite SoftDisc => _softDisc ?? (_softDisc = BuildSoftDisc(128, 0.35f));
 
+        // ── Table body (VISUAL_PASS.md, V2) ──────────────────
+
+        private static Sprite _edge, _band;
+
+        /// <summary>
+        /// The table's side, seen along its near edge: a lit lip over a face
+        /// that falls away into the dark.
+        /// </summary>
+        /// <remarks>
+        /// Authored lip at the top, the way it is seen. The slab hangs below
+        /// the surface, so <see cref="TableBody"/> flips it rather than asking
+        /// this to be written upside down.
+        ///
+        /// Eight texels wide because nothing varies across it - the whole face
+        /// is one vertical ramp, and it is stretched to the table's width.
+        /// </remarks>
+        public static Sprite TableEdge => _edge ?? (_edge = BuildEdge(8, 128));
+
+        /// <summary>The gilt band around the table's lip: a bright roll over a body that melts into the face.</summary>
+        public static Sprite TableBand => _band ?? (_band = BuildBand(8, 64));
+
         // ── Figures ─────────────────────────────────────────────────────
 
         private static Sprite _bust, _bustOutline, _pawn, _pawnOutline, _halo;
@@ -117,6 +138,51 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>Cells of margin the cross sprites carry around the grid, for the shadow.</summary>
         public const float CrossMargin = 1f;
+
+        /// <summary>
+        /// The table's side face. White with the shading in the luminance, like
+        /// everything else here, so <see cref="UiTheme"/> still owns the colour.
+        /// </summary>
+        /// <remarks>
+        /// <b>Not one gradient down the whole face.</b> A square edge lit from
+        /// above reads as a hard catch of light just under the lip and a long
+        /// dark body below it; a single ramp from top to bottom reads as a
+        /// cylinder instead, which is what the first pass looked like.
+        /// </remarks>
+        private static Sprite BuildEdge(int w, int h)
+        {
+            return DecoSprites.RasterizeShaded(w, h, (px, py) =>
+            {
+                float v = py / h;
+
+                // Squared, so the body darkens fastest near the lip and then
+                // flattens out: the foot of a table edge is all one shadow.
+                float body = Mathf.Lerp(0.05f, 0.30f, v * v);
+                float lip = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.80f, 1f, v));
+
+                float l = Mathf.Clamp01(body + lip * 0.5f);
+                return new Color(l, l, l, 1f);
+            }, h, Vector4.zero);
+        }
+
+        /// <summary>
+        /// The gilt band at the lip. Opaque along its top and fading out at its
+        /// bottom, so it sits on the face rather than being a stripe painted
+        /// across it.
+        /// </summary>
+        private static Sprite BuildBand(int w, int h)
+        {
+            return DecoSprites.RasterizeShaded(w, h, (px, py) =>
+            {
+                float v = py / h;
+
+                float body = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.06f, 0.34f, v));
+                float roll = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.58f, 0.92f, v));
+
+                float l = Mathf.Clamp01(Mathf.Lerp(0.26f, 0.58f, body) + roll * 0.42f);
+                return new Color(l, l, l, body);
+            }, h, Vector4.zero);
+        }
 
         /// <summary>A few faint curved lines, the grain of the table.</summary>
         public static Sprite Veins => _veins ?? (_veins = BuildVeins(512, 7));
