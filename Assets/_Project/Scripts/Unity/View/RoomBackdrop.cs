@@ -4,31 +4,37 @@ using UnityEngine;
 namespace NonaRoyale.Unity.View
 {
     /// <summary>
-    /// The salon behind the menu screens: a velvet wall with its trim, a pair
-    /// of chandeliers flanking the wordmark, and a ring of sconces on side
-    /// columns framing the table (VISUAL_PASS.md, V3).
+    /// The salon behind the setup, draft and end screens: a velvet wall with
+    /// its trim, and a ring of sconces on side columns framing the table
+    /// (VISUAL_PASS.md, V3).
     /// </summary>
     /// <remarks>
     /// <b>It only exists under the tilt.</b> Every part of the room stands
     /// vertically in world space, and a straight-down camera sees a vertical
-    /// plane edge-on - the wall, the columns and the chandeliers would all
-    /// vanish, and nothing would be left but the board. That is why the Board
-    /// camera setting became match-only in V3: the menus are always tilted, so
-    /// there is one menu look rather than two. <see cref="Visible"/> is still
-    /// guarded by <see cref="BoardTilt.IsTilted"/>, because a tilt that cannot
-    /// be solved for the window falls back to flat and the room has to go with
-    /// it.
+    /// plane edge-on - the wall and the columns would vanish, and nothing
+    /// would be left but the board. That is why the Board camera setting became
+    /// match-only in V3: it no longer gives the menus two looks.
+    /// <see cref="Visible"/> is guarded by <see cref="BoardTilt.IsTilted"/> on
+    /// top of that, which covers both a tilt that cannot be solved for the
+    /// window and the title, which is deliberately flat and so shows no room at
+    /// all (V3b).
     ///
     /// <b>Geometry is the approved mockup's, scaled.</b> The numbers below are
     /// in `tools/mockup/scene.py`'s units, where the table's half-side is 8.3,
     /// and are multiplied into board units by <see cref="_scale"/>. Keeping the
     /// mockup's frame of reference means the render that was signed off and the
-    /// scene that ships can be compared number for number.
+    /// scene that ships can be compared number for number. They are written the
+    /// way the mockup states them - z counting up from the floor - and
+    /// <see cref="Stand"/> turns that into world z, which runs the other way.
     ///
-    /// <b>The light is painted, not cast.</b> Chandeliers and sconces carry
-    /// their own glow (<see cref="RoomArt"/>), so the room still reads with
-    /// Lighting effects off, the way G4's corner lamps did. Real
-    /// <c>Light2D</c>s over the top are a follow-up.
+    /// <b>The light is painted, not cast.</b> The sconces carry their own halo
+    /// and flame (<see cref="RoomArt"/>), so the room still reads with Lighting
+    /// effects off, the way G4's corner lamps did. Real <c>Light2D</c>s over
+    /// the top are a follow-up.
+    ///
+    /// <b>The chandeliers are gone</b> (designer, 2026-09-19). The pair was
+    /// placed so as not to land on the wordmark, and the title they were
+    /// composed for no longer shows the room at all.
     ///
     /// <b>Brightness is an inspector field, not a constant.</b> It was set from
     /// a Blender approximation of the game's lights; the value that matters is
@@ -44,7 +50,6 @@ namespace NonaRoyale.Unity.View
 
         private const float WallY = 17.5f, WallHalfWidth = 24f, WallHeight = 21f;
         private const float PelmetZ = 20.2f, PelmetHeight = 1.1f, SkirtingZ = 0.28f, SkirtingHeight = 0.56f;
-        private const float ChandelierX = 9.5f, ChandelierY = 10.5f, ChandelierZ = 3.2f, ChandelierSize = 7.4f;
         private const float ColumnX = 15.5f, ColumnHeight = 14f, ColumnWidth = 1.35f;
         private const float SconceZ = 6.4f, SconceSize = 1.5f;
         private static readonly float[] ColumnYs = { 12.5f, 4.5f, -3.5f };
@@ -93,7 +98,6 @@ namespace NonaRoyale.Unity.View
             _root.transform.SetParent(transform, false);
 
             Wall();
-            Chandeliers();
             Columns();
 
             Apply();
@@ -145,23 +149,6 @@ namespace NonaRoyale.Unity.View
                 WallHalfWidth * 2f * _scale, SkirtingHeight * 2.2f * _scale, Lit(UiTheme.Gunmetal, 1.1f), -76);
         }
 
-        private void Chandeliers()
-        {
-            // A pair, flanking the wordmark. One dead centre lands exactly where
-            // NONA ROYALE goes (V3's first salon pass); two keeps the Deco
-            // symmetry and leaves the middle of the upper frame free.
-            foreach (float sx in new[] { -1f, 1f })
-            {
-                var at = new Vector3(sx * ChandelierX * _scale, ChandelierY * _scale, ChandelierZ * _scale);
-                float size = ChandelierSize * _scale;
-
-                Stand("chandelier_glow", RoomArt.Chandelier[RoomArt.ChandelierGlow], at,
-                    size * 1.9f, size * 1.9f, Lit(UiTheme.WithAlpha(UiTheme.GoldBright, 0.20f), 1f), -74);
-                Stand("chandelier", RoomArt.Chandelier[RoomArt.ChandelierBody], at,
-                    size, size * 0.64f, Lit(UiTheme.TableRim, 1f), -73);
-            }
-        }
-
         private void Columns()
         {
             foreach (float sx in new[] { -1f, 1f })
@@ -179,7 +166,7 @@ namespace NonaRoyale.Unity.View
                     var at = foot + new Vector3(0f, -0.35f * _scale, SconceZ * _scale);
                     float size = SconceSize * _scale;
 
-                    Stand("sconce_glow", RoomArt.Chandelier[RoomArt.ChandelierGlow], at,
+                    Stand("sconce_glow", RoomArt.Halo, at,
                         size * 5.5f, size * 5.5f, Lit(UiTheme.WithAlpha(UiTheme.GoldBright, 0.13f), 1f), -71);
                     Stand("sconce", RoomArt.Sconce, at, size, size * 1.3f, Lit(UiTheme.Brass, 1.3f), -70);
                     Stand("flame", RoomArt.Flame, at + new Vector3(0f, 0f, size * 0.7f),
@@ -191,11 +178,28 @@ namespace NonaRoyale.Unity.View
         // ── Placement ───────────────────────────────────────────────────
 
         /// <summary>
-        /// A sprite stood up in the room: rotated a quarter turn about x so its
-        /// own up runs along world +z and it faces -y, back toward the camera,
-        /// then scaled to <paramref name="width"/> by <paramref name="height"/>
-        /// world units with its foot at <paramref name="foot"/>.
+        /// A sprite stood up in the room: rotated a quarter turn about x so it
+        /// faces -y, back toward the camera, then scaled to
+        /// <paramref name="width"/> by <paramref name="height"/> world units
+        /// with its foot at <paramref name="foot"/>, whose z counts **up** from
+        /// the floor.
         /// </summary>
+        /// <remarks>
+        /// <b>Up off the board is -z</b> (corrected 2026-09-19). Screen up is
+        /// <c>(0, cos p, -sin p)</c> - <see cref="FigureTilt.ScreenUp"/>, which
+        /// the hop and the figures' lean both follow - so a part placed at +z
+        /// hangs below the board instead of standing over it. Until this was
+        /// turned round the whole salon was built upside down: putting the
+        /// wall's head at world z = 21 puts it at screen v = -0.13 against its
+        /// foot's +0.16, so the pelmet and the gilt rail rendered along the
+        /// wall's *bottom* edge and the skirting ran across the top of the
+        /// frame. A flat velvet gradient reads as a wall either way up, which
+        /// is how it passed V3a's Play Mode check.
+        ///
+        /// The sign is turned here and nowhere else, so the geometry above
+        /// still reads as the mockup wrote it. <see cref="SpriteRenderer.flipY"/>
+        /// goes with it, so each sprite's own up still reads as up.
+        /// </remarks>
         private SpriteRenderer Stand(string name, Sprite sprite, Vector3 foot,
             float width, float height, Color colour, int order)
         {
@@ -208,13 +212,14 @@ namespace NonaRoyale.Unity.View
             float sy = size.y > 0f ? height / size.y : 1f;
             go.transform.localScale = new Vector3(sx, sy, 1f);
 
-            // The sprite is pivoted at its middle, so lift it by half its height
-            // along what is now world up.
-            go.transform.position = foot + new Vector3(0f, 0f, height * 0.5f);
+            // The sprite is pivoted at its middle, so lift it by half its
+            // height above its foot - and then negate, because up is -z.
+            go.transform.position = new Vector3(foot.x, foot.y, -(foot.z + height * 0.5f));
 
             var renderer = go.AddComponent<SpriteRenderer>();
             renderer.sprite = sprite;
             renderer.color = colour;
+            renderer.flipY = true;
             renderer.sortingLayerName = SceneLighting.BoardLayer;
             renderer.sortingOrder = order;
             return renderer;

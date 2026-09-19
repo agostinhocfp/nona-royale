@@ -4,9 +4,8 @@ using UnityEngine;
 namespace NonaRoyale.Unity.View
 {
     /// <summary>
-    /// The salon's procedural sprites: the velvet wall and its trim, the
-    /// chandeliers, and the side columns with their sconces (VISUAL_PASS.md,
-    /// V3).
+    /// The salon's procedural sprites: the velvet wall and its trim, and the
+    /// side columns with their sconces (VISUAL_PASS.md, V3).
     /// </summary>
     /// <remarks>
     /// <b>Drawn in code, like everything else</b> (PRESENTATION §6). White with
@@ -23,27 +22,37 @@ namespace NonaRoyale.Unity.View
     /// A plain panel gives the same image for none of the geometry, so the
     /// folds and their two lights are not built (designer, 2026-09-18).
     ///
-    /// <b>The light is painted in.</b> A chandelier carries its own glow and a
-    /// sconce its own flame, the way G4's corner lamps did, so the room still
-    /// reads with Lighting effects off. Real <c>Light2D</c>s over the top are a
-    /// follow-up, not a requirement.
+    /// <b>The light is painted in.</b> A sconce carries its own flame and its
+    /// own halo, the way G4's corner lamps did, so the room still reads with
+    /// Lighting effects off. Real <c>Light2D</c>s over the top are a follow-up,
+    /// not a requirement.
+    ///
+    /// <b>No chandeliers.</b> The pair that flanked the wordmark is gone
+    /// (designer, 2026-09-19): the title they were composed for is flat now and
+    /// never shows the room, and on the screens that do show it they read as
+    /// the wrong kind of ornament for the rest of the design. The sconces are
+    /// the room's light.
     ///
     /// <b>The room only exists under the tilt.</b> Every piece of it stands
     /// vertically in world space, which a straight-down camera sees edge-on.
     /// <see cref="RoomBackdrop"/> is what knows that; these are just shapes.
+    ///
+    /// <b>Written the way they are seen</b>, lit edge at the top of the
+    /// texture. Up off the board is world -z, so <c>RoomBackdrop.Stand</c>
+    /// flips them on placement - the shapes here never have to be authored
+    /// upside down to come out the right way up.
     /// </remarks>
     public static class RoomArt
     {
         /// <summary>Texels per world unit for the room's sprites. Coarser than the board: nothing here is read closely.</summary>
         private const float Texels = 24f;
 
-        private static Sprite _wall, _pelmet, _skirting, _rail, _column, _sconce, _flame;
-        private static Sprite[] _chandelier;
+        private static Sprite _wall, _pelmet, _skirting, _rail, _column, _sconce, _flame, _halo;
 
         /// <summary>
-        /// The velvet field. Lit from above, where the chandeliers hang, and
-        /// falling to near-nothing at the skirting; dimmed toward the left and
-        /// right ends so the wall has no visible edge.
+        /// The velvet field. Lit from above, under the pelmet, and falling to
+        /// near-nothing at the skirting; dimmed toward the left and right ends
+        /// so the wall has no visible edge.
         /// </summary>
         public static Sprite Wall => _wall ?? (_wall = BuildWall(192, 128));
 
@@ -62,17 +71,15 @@ namespace NonaRoyale.Unity.View
         /// <summary>The sconce's bracket and cup, unlit.</summary>
         public static Sprite Sconce => _sconce ?? (_sconce = BuildSconce(28, 36));
 
-        /// <summary>A candle flame, for a sconce and for a chandelier's points.</summary>
+        /// <summary>A candle flame, for a sconce.</summary>
         public static Sprite Flame => _flame ?? (_flame = BuildFlame(14, 22));
 
         /// <summary>
-        /// The chandelier, as body and glow. Two sprites so the glow can be
-        /// tinted and faded on its own, the way the vault's is.
+        /// A soft round falloff, drawn under a light so its spill reads without
+        /// a real <c>Light2D</c>. Its own sprite so it can be tinted and faded
+        /// apart from whatever it sits behind, the way the vault's glow is.
         /// </summary>
-        public static Sprite[] Chandelier => _chandelier ?? (_chandelier = BuildChandelier(224, 144));
-
-        /// <summary>Index into <see cref="Chandelier"/>.</summary>
-        public const int ChandelierBody = 0, ChandelierGlow = 1;
+        public static Sprite Halo => _halo ?? (_halo = BuildHalo(96));
 
         // ── Builders ────────────────────────────────────────────────────
 
@@ -194,53 +201,17 @@ namespace NonaRoyale.Unity.View
             }, Texels, Vector4.zero);
         }
 
-        private static Sprite[] BuildChandelier(int w, int h)
+        private static Sprite BuildHalo(int size)
         {
-            // Three tiers, widest at the bottom, each a thin ellipse of gilt
-            // with candle points stood on it. Drawn as an ellipse rather than a
-            // circle because the tiers are seen from below and slightly to one
-            // side; the camera's own perspective is not enough at this distance.
-            var tiers = new[] { (y: 0.30f, rx: 0.46f, n: 12), (y: 0.52f, rx: 0.33f, n: 9), (y: 0.72f, rx: 0.20f, n: 6) };
-
-            var body = DecoSprites.RasterizeShaded(w, h, (px, py) =>
+            // Cubed falloff: bright at the middle and gone well before the
+            // sprite's edge, so two overlapping halos do not build a seam.
+            float half = size * 0.5f;
+            return DecoSprites.Rasterize(size, size, (px, py) =>
             {
-                float u = px / w - 0.5f;
-                float v = py / h;
-                float a = 0f, lum = 0f;
-
-                // The stem, and a short chain up to the ceiling.
-                a = Mathf.Max(a, DecoSprites.Coverage((Mathf.Abs(u) - 0.012f) * w) * (v > 0.28f ? 1f : 0f));
-
-                foreach (var t in tiers)
-                {
-                    float ry = t.rx * 0.22f;
-                    float d = Mathf.Sqrt(Mathf.Pow(u / t.rx, 2f) + Mathf.Pow((v - t.y) / ry, 2f));
-                    float ring = DecoSprites.Line(Mathf.Abs(d - 1f) * t.rx * w * 0.5f, 1.6f);
-                    if (ring > a) { a = ring; lum = 1f; }
-
-                    // Candle points around the rim, on the near half where they read.
-                    for (int i = 0; i < t.n; i++)
-                    {
-                        float ang = Mathf.PI * 2f * i / t.n;
-                        float cx = Mathf.Cos(ang) * t.rx;
-                        float cy = t.y + Mathf.Sin(ang) * ry;
-                        float dot = DecoSprites.Coverage((Mathf.Sqrt(Mathf.Pow((u - cx) * w, 2f) + Mathf.Pow((v - cy) * h, 2f)) - 2.2f));
-                        if (dot > a) { a = dot; lum = 1.6f; }
-                    }
-                }
-
-                float l = Mathf.Lerp(0.5f, 1f, lum);
-                return new Color(l, l, l, Mathf.Clamp01(a));
-            }, Texels, Vector4.zero);
-
-            var glow = DecoSprites.Rasterize(96, 96, (px, py) =>
-            {
-                float r = Mathf.Sqrt(Mathf.Pow(px - 48f, 2f) + Mathf.Pow(py - 48f, 2f)) / 48f;
+                float r = Mathf.Sqrt(Mathf.Pow(px - half, 2f) + Mathf.Pow(py - half, 2f)) / half;
                 float t = Mathf.Clamp01(1f - r);
                 return t * t * t;
             }, Texels, Vector4.zero);
-
-            return new[] { body, glow };
         }
 
         // ── Helpers ─────────────────────────────────────────────────────
