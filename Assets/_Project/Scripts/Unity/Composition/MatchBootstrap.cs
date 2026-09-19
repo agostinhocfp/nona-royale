@@ -248,6 +248,7 @@ namespace NonaRoyale.Unity.Composition
         private CameraNudge _nudge;
         private HitStop _hitStop;
         private SceneLighting _lighting;
+        private RoomBackdrop _room;
 
         /// <summary>Light that answers play: selection, casts, knockouts, HOME (LT2).</summary>
         private EventLights _eventLights;
@@ -494,6 +495,7 @@ namespace NonaRoyale.Unity.Composition
             var boardView = GetComponent<BoardView>() ?? gameObject.AddComponent<BoardView>();
             var map = new PathMap(board);
             boardView.Build(map, _layout, 3);
+            Room().Build(_layout);
             if (_lighting != null) _lighting.Arrange(_layout, map);
             if (_eventLights != null) _eventLights.Bind(_lighting, _layout, _motion);
 
@@ -576,6 +578,7 @@ namespace NonaRoyale.Unity.Composition
                 seatsPerTable = Mathf.Max(seatsPerTable, player.Operators.Count);
 
             boardView.Build(_match.Map, _layout, seatsPerTable);
+            Room().Build(_layout);
             if (_lighting != null) _lighting.Arrange(_layout, _match.Map);
             if (_eventLights != null) _eventLights.Bind(_lighting, _layout, _motion);
 
@@ -889,7 +892,14 @@ namespace NonaRoyale.Unity.Composition
             float usableWidth = Mathf.Max(0.25f, 1f - left - right);
             float usableHeight = Mathf.Max(0.25f, 1f - top - bottom);
 
-            bool tilted = _display.Camera == BoardCamera.Tilted &&
+            // The Board camera setting is a play preference: the tilt is opted
+            // into because a player counts cells to plan a move (V1a), and a menu
+            // has no cells to count. So it gates the match alone. That is also
+            // what makes the room worth building - every part of it stands
+            // vertically, and a straight-down camera sees a vertical wall
+            // edge-on (V3).
+            bool wantsTilt = !hud || _display.Camera == BoardCamera.Tilted;
+            bool tilted = wantsTilt &&
                           FrameTilted(camera, extent, aspect, left, 1f - right, bottom, 1f - top, hud);
 
             if (!tilted) FrameFlat(camera, extent, aspect, left, right, top, bottom, usableWidth, usableHeight);
@@ -996,8 +1006,16 @@ namespace NonaRoyale.Unity.Composition
             return ControlPanel.ReservedWidth;
         }
 
+        /// <summary>The menu backdrop (VISUAL_PASS.md, V3), made on first use.</summary>
+        private RoomBackdrop Room() =>
+            _room ?? (_room = GetComponent<RoomBackdrop>() ?? gameObject.AddComponent<RoomBackdrop>());
+
         private void Update()
         {
+            // A menu backdrop, so it is up whenever a card is. RoomBackdrop
+            // holds it off when the camera could not be tilted.
+            if (_room != null) _room.Visible = CurrentScreen != AppScreen.Match;
+
             bool paused = ModalOpen;
 
             // The menu mirrors these flags, so their keys stay dead while it

@@ -211,6 +211,7 @@ def curtain(x0, y, half_width, height, waves=(3.3, 0.32), cuts=60):
 
 
 def chandelier(cy, base_z, tiers=((2.4, 0.0), (1.7, 0.6), (1.0, 1.2)), scale=1.0, energy=120, cx=0.0):
+    energy *= ROOM_LIGHT
     """Stepped gilt rings hung with small lamps."""
     for k, (rad, dz) in enumerate(tiers):
         rad *= scale
@@ -265,6 +266,12 @@ def vault_door(y, cz=6.2, radius=2.5):
               rot=(math.radians(-58), 0, 0), spot=50)
 
 
+# Multiplies the room's own fixtures - the chandeliers and the velvet rakes -
+# and never the table's pools. The V3 review's lesson was to light the table and
+# not the room, so these are the only lights it is safe to turn up.
+ROOM_LIGHT = float(os.environ.get("ROOM_LIGHT", "1"))
+
+
 def rake_velvet(y, cz=8.0, energy=1400, reach=22.0):
     """Two spots raking along the cloth from either side.
 
@@ -273,7 +280,7 @@ def rake_velvet(y, cz=8.0, energy=1400, reach=22.0):
     light travelling *along* the wall shades one side of each fold.
     """
     for side in (-1, 1):
-        light("rake", "SPOT", (side * reach, y - 4.0, cz), energy, (1.0, 0.70, 0.52), size=0.5,
+        light("rake", "SPOT", (side * reach, y - 4.0, cz), energy * ROOM_LIGHT, (1.0, 0.70, 0.52), size=0.5,
               rot=(math.radians(90), 0, math.radians(side * 81)), spot=42)
 
 
@@ -281,7 +288,8 @@ if VARIANT == "room":
     if ROOM == "salon":
         carpet_floor()
         # The velvet wall, lifted off near-black so the folds have something to shade.
-        velvet.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.082, 0.011, 0.026, 1)
+        _v = float(os.environ.get("VELVET", "1"))
+        velvet.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.082 * _v, 0.011 * _v, 0.026 * _v, 1)
         curtain(0, 17.5, 24, 21, waves=(1.15, 1.05), cuts=140)
         box("pelmet", (0, 17.2, floor_z + 20.2), (49, 0.9, 1.1), velvet)
         box("pelmet_rail", (0, 16.7, floor_z + 19.6), (49, 0.12, 0.16), gilt)
@@ -340,13 +348,16 @@ else:
     bpy.context.object.data.materials.append(mat("void", (0.006, 0.005, 0.006), rough=0.9))
 
 # ── Figures ────────────────────────────────────────────────────────────
+# FIGURES=0 leaves the table empty, for judging a room without the stand-in
+# cast reading as the subject of the frame (V3, 2026-09-18).
+FIGURES = os.environ.get("FIGURES", "1") != "0"
 TILT = PITCH * 0.55  # lean the cards back part-way toward the camera
 seats = {"red": (0.84, 0.27, 0.31), "blue": (0.32, 0.56, 0.88), "green": (0.34, 0.72, 0.44), "violet": (0.5, 0.4, 0.84)}
 standing = [((1, 4), "red"), ((-1, -3), "blue"), ((5, -1), "green"), ((0, 6), "red"), ((-5, 1), "violet"), ((1, -5), "violet")]
-for i, ((x, y), s) in enumerate(standing):
+for i, ((x, y), s) in enumerate(standing if FIGURES else []):
     disc(f"base{i}", (x, y, 0.012), 0.34, seats[s], 0.08)
     sprite(f"fig{i}", ART + "luka_standing.png", (x, y, 0.02), 1.55, None, TILT)
-for k, (cx, cy) in enumerate([(-4.5, 4.5), (4.5, 4.5), (-4.5, -4.5), (4.5, -4.5)]):
+for k, (cx, cy) in enumerate([(-4.5, 4.5), (4.5, 4.5), (-4.5, -4.5), (4.5, -4.5)] if FIGURES else []):
     for j, ang in enumerate((180, 90, 0)):
         if (k + j) % 3 == 0: continue
         a = math.radians(ang)
@@ -403,7 +414,12 @@ if FIT == "hud":
     cam_d.shift_x = -((fx0 + fx1) / 2 - 0.5)
     cam_d.shift_y = -((fy0 + fy1) / 2 - 0.5) * (H / W)
 best = None
-for dist in [14 + 0.25 * i for i in range(120)]:
+# The search range scales with the lens. A long lens needs proportionally more
+# distance for the same framing, and 14-43 was tuned for the 30mm default: at
+# the shipping camera's 96mm nothing in the old range fits, so the fit silently
+# failed. k is 1 at 30mm, so every earlier render is reproduced exactly.
+_k = cam_d.lens / 30.0
+for dist in [(14 + 0.25 * i) * _k for i in range(120)]:
     for ty in [-4 + 0.1 * j for j in range(81)]:
         place(dist, ty)
         pts = [world_to_camera_view(scn, cam, c) for c in corners]
@@ -416,7 +432,7 @@ for dist in [14 + 0.25 * i for i in range(120)]:
         score = area - off
         if best is None or score > best[0]:
             best = (score, dist, ty)
-    if best is not None and best[1] < dist - 2:
+    if best is not None and best[1] < dist - 2 * _k:
         break
 print("FIT", best)
 place(best[1], best[2])
