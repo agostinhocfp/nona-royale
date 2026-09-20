@@ -45,6 +45,31 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
+        /// The board's version of a status colour (HUD_PASS.md, H3): the same
+        /// hue, off full chroma and brightness.
+        /// </summary>
+        /// <remarks>
+        /// The palette above is tuned for a chip on a panel. The same chips over
+        /// the near-black board were the brightest thing on screen after the
+        /// vault, which put a passive status above the piece it described. The
+        /// hue still tells them apart; it just stops shouting. The tray's
+        /// operator card keeps the full-strength colour - it shows one piece at
+        /// a time, on a panel, which is where these were tuned.
+        ///
+        /// Toward <see cref="UiTheme.Text"/> rather than toward grey, because
+        /// that warm off-white is what everything else on this board
+        /// desaturates into.
+        /// </remarks>
+        public static Color OnBoard(StatusKind kind)
+        {
+            var mixed = Color.Lerp(For(kind), UiTheme.Text, BoardMix);
+            return new Color(mixed.r * BoardValue, mixed.g * BoardValue, mixed.b * BoardValue, 1f);
+        }
+
+        private const float BoardMix = 0.22f;
+        private const float BoardValue = 0.78f;
+
+        /// <summary>
         /// True for a status the piece itself shows, which therefore gets no tag.
         /// </summary>
         /// <remarks>

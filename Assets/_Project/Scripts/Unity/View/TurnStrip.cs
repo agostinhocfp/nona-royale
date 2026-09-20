@@ -115,10 +115,10 @@ namespace NonaRoyale.Unity.View
             _round.characterSpacing = UiTheme.HeadingSpacing * 0.5f;
             UiKit.Fixed(_round, 120f);
 
+            // The turn's one instruction, and the widest thing on the bar now
+            // that the key legend has gone (H4).
             _prompt = UiKit.Label(_rect, "", UiTheme.FontLarge, UiTheme.GoldBright, TextAlignmentOptions.Center);
             UiKit.Size(_prompt, flexibleWidth: 1f);
-
-            UiKit.Label(_rect, KeyLegend(), UiTheme.FontSmall, UiTheme.TextDim, TextAlignmentOptions.MidlineRight);
 
             // The pause menu's button (GUI increment H), for pointer and touch
             // players. Held in a fixed box so the bar's height does not
@@ -209,17 +209,6 @@ namespace NonaRoyale.Unity.View
 
             for (int i = before; i < energy && i < shown; i++)
                 UiPopIn.On(_pipImages[i].transform, 0.05f * (i - before));
-        }
-
-        /// <summary>The key legend, keys in gold.</summary>
-        private static string KeyLegend()
-        {
-            string gold = UiTheme.Hex(UiTheme.Gold);
-            string Key(string key, string what) => $"<color=#{gold}><b>{key}</b></color> {what}";
-
-            return string.Join("   ",
-                Key("Space", "roll"), Key("E", "end"), Key("1–3", "ability"), Key("Enter", "cast"),
-                Key("Esc", "back / menu"), Key("L", "log"));
         }
 
         private static string Prompt(GameEngine engine)

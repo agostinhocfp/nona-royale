@@ -1066,7 +1066,15 @@ namespace NonaRoyale.Unity.Composition
 
             // Driven every frame rather than on the keypress, so flipping the
             // inspector checkbox works too.
-            if (_pieceHud != null) _pieceHud.Visible = showPieceHealth;
+            if (_pieceHud != null)
+            {
+                _pieceHud.Visible = showPieceHealth;
+
+                // Every frame, like the flag above: selection changes in half a
+                // dozen places and a readout that missed one would sit wrong
+                // until the next hit (H3).
+                _pieceHud.SetFocus(_hovered != null ? _hovered.Operator : null, _selectedOperator);
+            }
 
             // Before the pause check: the switch lives on the pause menu.
             if (_lighting != null)

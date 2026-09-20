@@ -1,7 +1,7 @@
 # Nona Royale — HUD Pass
 
 > Location in repo: `docs/design/HUD_PASS.md` · Project copy: `claude/HUD_PASS.md`
-> Status: **Open, 2026-09-20.** Opened the day the visual pass closed. H1 and H2 are in; H3 and H4 remain.
+> Status: **Closed, 2026-09-20.** All four increments in. Two of the six diagnosis items were wrong and are retracted in the log below; H4 shrank to one deletion because of it.
 > Related: `GUI_PHASE.md` (the HUD this reworks), `VISUAL_PASS.md` (the board it sits on), `PRESENTATION.md`, ADR-0008
 
 ## Goal
@@ -42,8 +42,8 @@ What the capture shows, in order of cost:
 | -- | --------- | ---------------- |
 | H1 | **The contextual bar** ✅ | `ActionTray` at 132 rather than 196, with the four section headings and all four empty-state strings gone. Slots keep their width and fill in: dice, the selected operator, its abilities, the aim and Cast. |
 | H2 | **The rail** ✅ | Your seat in full rows; each CPU one line with colour, name, three health-tinted operator silhouettes and a home count, opening on hover and for its whole turn. 290 down to **220**. The status chips left the rail here rather than in H3, since the rows were being rewritten anyway. |
-| H3 | **A quiet board** | `PieceHudLayer` shows health on hover, on selection and on damage only, and the board's status chips come down to a saturation the palette can hold. The rail half of this landed in H2. |
-| H4 | **One primary, one instruction** | The redundant strings go, the keyboard legend leaves the top bar, the history folds into it, and one primary slot carries the live step's action. |
+| H3 | **A quiet board** ✅ | `PieceHudLayer` shows health on hover, on selection and on damage only; a piece at full health says nothing. Board chips go through `StatusPalette.OnBoard`, off full chroma and brightness. Chips stay always-visible - they are transient and they are the point. The rail half landed in H2. |
+| H4 | **The key legend goes** ✅ | Six shortcuts leave the top bar; every one of them was already printed on the control it drives. The history fold and the one-primary change were both dropped — see the retractions. |
 
 ## Log
 
@@ -62,3 +62,22 @@ What the capture shows, in order of cost:
     - The spine's three marks are the same silhouettes as the pieces, dim for home, pale for the yard, reddening as one is hurt.
     - No operator name is cut in an expanded row.
     - Status chips appear on the board only. Nothing on the rail shows them.
+- 2026-09-20 — **H3 in: the board goes quiet.**
+  - **Health is on request or on damage.** Eight readouts over eight untouched pieces was most of the board's clutter, and every one repeated a number the rail already carried. `showHealth` is now `standing && (hurt || focused)`, where `hurt` reads `ShownHealth` rather than the engine's health so the label and the hit's number change together, the way MO2 already had it.
+  - **Focus is driven every frame**, beside the `Visible` flag it sits next to. Selection changes in half a dozen places in the composition root; a readout wired to one of them would sit wrong until the next hit.
+  - **Chips are muted, not hidden.** Health can wait to be asked for; a STUN or a MARKED cannot — they are transient and they are the reason to look. So they stay always-visible and lose about a fifth of their brightness instead: peaks go from 0.95 to 0.74, hues intact and still separable. `StatusPalette.OnBoard` mixes 22% toward `UiTheme.Text` and scales value to 0.78 — toward the warm off-white everything else on this board desaturates into, not toward grey.
+  - **The tray's operator card keeps full-strength chips.** It shows one piece at a time, on a panel, which is where that palette was tuned.
+  - **Play Mode checklist:**
+    - A full-health piece shows no readout. Hovering it shows one; so does selecting it; both go away again.
+    - A damaged piece keeps its readout with nothing hovered or selected.
+    - Take a hit: the readout appears as the number lands, not a frame early or late.
+    - Status chips are still on every piece that has one, and no longer the brightest thing on the board after the vault.
+    - The tray's operator card chips are unchanged.
+- 2026-09-20 — **H4 in, and two of the diagnosis items retracted.**
+  - **The key legend is gone.** Six shortcuts, permanently right-aligned in the top bar, and every one of them already lives on the control it drives: `Space` and `E` are the turn button's own hint line, `1`–`3` are printed on the ability cards, `Enter` is on Cast, `Esc` is on MENU, and `L` is on the history strip's LOG button. The prompt takes the freed width, which is the right trade — it is the turn's one instruction and it is now the widest thing on the bar.
+  - **Retracted: "two competing primaries".** `TurnButton` is already one state-driven primary — ROLL, MOVE FIRST, END TURN, with the key or the reason underneath — and Cast is cyan against its gold. That is ART_DIRECTION §8's own split: gold is the turn's ritual, cyan is the live step. Not a conflict, and nothing to fix.
+  - **Retracted: "the history strip is dead space".** The empty-looking box at the top of it is the LOG button, which carries its own key; the "R1" below it is a real history chip. The strip is sparse at round one and fills with play, which is not the same failure as a tray section that is empty by construction. Folding it would have been a rewrite with no win.
+  - **What that leaves of the original six:** the four narration strings (H1), the rail's flat hierarchy (H2), the duplicated chips and the eight floating readouts (H2 and H3), and the legend (H4). Two of six were me reading a screenshot instead of the code.
+  - **Play Mode checklist:**
+    - No key legend on the top bar; the prompt is centred and has room.
+    - Every key still findable: ROLL and END TURN show theirs, the ability cards show 1-3, Cast shows Enter, MENU shows Esc, LOG shows L.

@@ -63,6 +63,11 @@ namespace NonaRoyale.Unity.View
         /// <summary>Health switch. MatchBootstrap drives it from its inspector flag and the H key.</summary>
         public bool Visible { get; set; } = true;
 
+        // What the player is pointing at and what they have selected, so a
+        // full-health piece can still show its readout on request (H3).
+        private OperatorState _hovered;
+        private OperatorState _selected;
+
         private sealed class Entry
         {
             public OperatorPiece Piece;
@@ -127,6 +132,18 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         public void SetCeiling(float canvasUnits) => _ceiling = Mathf.Max(0f, canvasUnits);
 
+        /// <summary>
+        /// The two pieces whose readout shows whatever their health (H3): the
+        /// one under the pointer and the one selected. Driven every frame by
+        /// the composition root, so it cannot go stale behind a selection that
+        /// changed somewhere else.
+        /// </summary>
+        public void SetFocus(OperatorState hovered, OperatorState selected)
+        {
+            _hovered = hovered;
+            _selected = selected;
+        }
+
         public void Clear()
         {
             foreach (var entry in _entries)
@@ -173,7 +190,9 @@ namespace NonaRoyale.Unity.View
                 var kind = statuses[i];
                 entry.Statuses.Add(kind);
 
-                var colour = StatusPalette.For(kind);
+                // Muted for the board (H3). ReadableOn takes the muted colour
+                // too, so the word keeps its contrast against what it sits on.
+                var colour = StatusPalette.OnBoard(kind);
                 string label = StatusPalette.Label(kind);
 
                 entry.TagBacks[i].color = colour;
@@ -358,7 +377,15 @@ namespace NonaRoyale.Unity.View
                 // number and the label change together, and a shattered piece
                 // shows nothing until it is seated again.
                 bool standing = !entry.Piece.Seated && !entry.Piece.IsHidden;
-                bool showHealth = Visible && standing;
+
+                // A piece at full health says nothing (H3). Eight readouts over
+                // eight untouched pieces was most of the board's clutter, and
+                // every one repeated a number the rail already carried. Damage
+                // is worth interrupting for; hover and selection are the player
+                // asking.
+                bool hurt = entry.Piece.ShownHealth < op.MaxHealth;
+                bool focused = ReferenceEquals(op, _hovered) || ReferenceEquals(op, _selected);
+                bool showHealth = Visible && standing && (hurt || focused);
                 bool showStatuses = standing && entry.Statuses.Count > 0;
 
                 if (showHealth != entry.Shown)
