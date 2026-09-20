@@ -131,7 +131,7 @@ namespace NonaRoyale.Unity.View
         private static readonly Dictionary<int, Sprite> TableRules = new Dictionary<int, Sprite>();
 
         /// <summary>Index of each part in the array <see cref="Cross"/> returns.</summary>
-        public const int CrossFill = 0, CrossEdge = 1, CrossShadow = 2, CrossPattern = 3;
+        public const int CrossFill = 0, CrossEdge = 1, CrossShadow = 2, CrossPattern = 3, CrossSheen = 4;
 
         /// <summary>Texels per cell in the cross sprites.</summary>
         public const int CrossTexelsPerCell = 40;
@@ -217,6 +217,7 @@ namespace NonaRoyale.Unity.View
                 BuildCross(gridCells, armWidth, CrossPart.Edge, null),
                 BuildCross(gridCells, armWidth, CrossPart.Shadow, null),
                 BuildCross(gridCells, armWidth, CrossPart.Pattern, null),
+                BuildCross(gridCells, armWidth, CrossPart.Sheen, null),
             };
 
             Crosses[key] = sprites;
@@ -519,13 +520,35 @@ namespace NonaRoyale.Unity.View
 
         // ── Builders: floor ─────────────────────────────────────────────
 
-        private enum CrossPart { Fill, Edge, Shadow, Pattern }
+        private enum CrossPart { Fill, Edge, Shadow, Pattern, Sheen }
 
         /// <summary>Padding around the cells, in cells: how far the floor reaches past them.</summary>
         private const float CrossPad = 0.12f;
 
         /// <summary>The cross's gilt edge, in texels (G3: was 2.2).</summary>
         private const float CrossEdgeWidth = 1.4f;
+
+        // ── The floor's sheen (VISUAL_PASS.md, V5) ────────────────
+
+        /// <summary>
+        /// Which way the raking light crosses the floor, and where its middle
+        /// falls across the board as a fraction of the half-grid.
+        /// </summary>
+        /// <remarks>
+        /// Off the diagonal and off centre, on purpose. A band along an arm
+        /// lines up with a lane and reads as a seam; a band through the middle
+        /// sits under the vault's own glow and is wasted there.
+        /// </remarks>
+        private const float SheenDegrees = 34f;
+        private const float SheenCentre = -0.34f;
+        private const float SheenWidth = 0.42f;
+
+        /// <summary>
+        /// How much of the sheen the bare stone takes. The rest belongs to the
+        /// veins, which is the whole difference between a polished marble and
+        /// a matte one.
+        /// </summary>
+        private const float SheenStone = 0.35f;
 
         /// <summary>
         /// Stepped Deco corners where the arms meet (ART_DIRECTION §6): three
@@ -548,6 +571,10 @@ namespace NonaRoyale.Unity.View
 
             float length = gridCells * 0.5f + CrossPad;
             float arm = armWidth * 0.5f + CrossPad;
+
+            float sheenCos = Mathf.Cos(SheenDegrees * Mathf.Deg2Rad);
+            float sheenSin = Mathf.Sin(SheenDegrees * Mathf.Deg2Rad);
+            float sheenSpan = Mathf.Max(1f, gridCells * 0.5f);
 
             // The deliberate break: one length of the south arm's west edge,
             // a little under halfway out (ART_DIRECTION §6).
@@ -583,6 +610,26 @@ namespace NonaRoyale.Unity.View
 
                     case CrossPart.Shadow:
                         return new Color(1f, 1f, 1f, 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0f, 0.9f * ppc, d)));
+
+                    case CrossPart.Sheen:
+                    {
+                        // Kept off the edge, like the pattern: a highlight that
+                        // runs into the gilt trim reads as a smear on the trim.
+                        float inside = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.15f * ppc, -0.45f * ppc, d));
+                        if (inside <= 0f) return Color.clear;
+
+                        float along = (x * sheenCos + y * sheenSin) / sheenSpan - SheenCentre;
+                        float band = Mathf.Exp(-(along * along) / (SheenWidth * SheenWidth));
+
+                        // The veins take the light first. With a painted marble
+                        // the fill has its own veins and these do not register
+                        // with them, so the band simply falls back to an even
+                        // rake - which is why this part is never painted.
+                        Veining(x, y, out _, out float veins, out float threads);
+                        float catches = SheenStone + (1f - SheenStone) * Mathf.Max(veins, threads * 0.6f);
+
+                        return new Color(1f, 1f, 1f, band * catches * inside);
+                    }
 
                     default:
                     {
@@ -624,17 +671,27 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         private static float Marble(float x, float y)
         {
-            float cloud = Fbm(x * 1.1f, y * 1.1f, 3, 21);
-            float warp = Fbm(x * 0.45f + 7.1f, y * 0.45f - 3.3f, 3, 22);
-
-            float main = Mathf.Sin((x * 0.55f + y * 0.35f) * 2.1f + warp * 7f);
-            float veins = 1f - Mathf.SmoothStep(0f, 1f, Mathf.Abs(main) / 0.07f);
-
-            float fine = Mathf.Sin((x * -0.3f + y * 0.62f) * 4.3f + warp * 11f);
-            float threads = 1f - Mathf.SmoothStep(0f, 1f, Mathf.Abs(fine) / 0.05f);
+            Veining(x, y, out float cloud, out float veins, out float threads);
 
             float lum = 0.84f + 0.08f * (cloud - 0.5f) * 2f + 0.09f * veins + 0.045f * threads;
             return Mathf.Min(lum, 1f);
+        }
+
+        /// <summary>
+        /// The marble's cloud and its two sets of veins, shared by the stone
+        /// and by its sheen (V5) so the highlight lands on the veins that are
+        /// actually there rather than on a second, unrelated pattern.
+        /// </summary>
+        private static void Veining(float x, float y, out float cloud, out float veins, out float threads)
+        {
+            cloud = Fbm(x * 1.1f, y * 1.1f, 3, 21);
+            float warp = Fbm(x * 0.45f + 7.1f, y * 0.45f - 3.3f, 3, 22);
+
+            float main = Mathf.Sin((x * 0.55f + y * 0.35f) * 2.1f + warp * 7f);
+            veins = 1f - Mathf.SmoothStep(0f, 1f, Mathf.Abs(main) / 0.07f);
+
+            float fine = Mathf.Sin((x * -0.3f + y * 0.62f) * 4.3f + warp * 11f);
+            threads = 1f - Mathf.SmoothStep(0f, 1f, Mathf.Abs(fine) / 0.05f);
         }
 
         /// <summary>

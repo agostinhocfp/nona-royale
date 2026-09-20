@@ -1,7 +1,7 @@
 # Nona Royale — Visual Pass
 
 > Location in repo: `docs/design/VISUAL_PASS.md` · Project copy: `claude/VISUAL_PASS.md`
-> Status: **Open, 2026-09-19.** V0 passed and is retired. V1a (the tilted camera), V1b (standing figures), V1c (the overlays), V2 (the table body), V3a (the salon), V3b (the title layout) and V4 (the colour grade) are in; only V5 remains. The title is the one screen that is **flat**, by the decision of 2026-09-19 below.
+> Status: **Closed, 2026-09-20.** V0 passed and is retired; V1a, V1b, V1c, V2, V3a, V3b, V4 and V5 are all in and all passed Play Mode. The title is the one screen that is **flat**, and the salon stands the right way up.
 > Related: `ART_DIRECTION.md` §3, §6, §6.1, ADR-0009 (figures rendered looking down about 25°), ADR-0010 (URP 2D Renderer), `LIGHTING.md`, `GUI_PHASE.md` (G2–G4)
 
 ## Goal
@@ -109,7 +109,7 @@ Two things the spike showed that were not being asked about:
 | V3a | **The salon** ✅ | `RoomArt` and `RoomBackdrop`: a **flat** velvet wall with pelmet, gilt rail and skirting, and a ring of sconces on side columns. Behind the setup, draft and end screens; the title is flat and shows no room (V3b). The chandeliers were cut on 2026-09-19. The Board camera setting became match-only so those menus are always tilted, without which none of it is visible. The table stays **empty** (designer). |
 | V3b | **The title layout** ✅ | The lockup to the top, the buttons in one bottom row, the scrim at 0.20, the tagline gone and the build line moved to a corner stamp. The board between them is **flat**, and `TitleScreen.ReservedTop`/`ReservedBottom` keep it there. The camera move from the room shot into the match framing was not built. |
 | V4 | **Colour grade** ✅ | URP Volume overrides beside the existing bloom: tonemapping, split toning, edge falloff (vignette), light grain. Off with Lighting effects. |
-| V5 | **Surface sheen** | Normal maps for the board's procedural sprites, generated from the same shapes, so 2D lights pick out marble, gilt and felt. |
+| V5 | **Surface sheen** ✅ | **Painted, not normal-mapped** — `Light2D.normalMapQuality` is read-only in this URP and every light here is made at runtime. A `CrossSheen` part on the cross: one broad band of the room's light raking across the floor, with the marble's own veins taking more of it than the stone does. Gilt and felt already carried painted light and were left alone. |
 
 V0 passed, so neither fallback was needed: "top-down, deeper" and moving the board to URP's 3D renderer (which would have needed a new ADR against ADR-0010) are both off the table.
 
@@ -353,3 +353,23 @@ V0 passed, so neither fallback was needed: "top-down, deeper" and moving the boa
     - On setup, draft or the end card: the pelmet and the gilt rail run along the **top** of the velvet wall and the skirting along its **bottom**, where the cloth meets the floor.
     - The sconces sit above their columns' feet, and each flame sits above its cup.
     - `brightness` and `velvet` were dragged into place against the inverted room — expect to re-tune them.
+- 2026-09-20 — **V5 in, and not the way it was specified: the sheen is painted.**
+  - **Normal maps are not reachable from code here.** `Light2D.normalMapQuality` is a get-only property over a private `[SerializeField]` that defaults to `Disabled`, with no public or internal setter anywhere in the URP package. Every light in the game is made at runtime by `SceneLighting.AddRig` with `AddComponent<Light2D>()`, so all of them come up with normal maps off and a normal map on a sprite would have done nothing at all. The alternatives were to write the private field through reflection or `JsonUtility`, which is one package upgrade from silently reverting, or to move the light rig into an authored prefab, which is a real refactor of the lighting setup. **Designer took the third road: paint it**, which is what this project does everywhere else — G4's corner lamps, the sconces, the chandeliers that were, the table rim's streak.
+  - **It also survives the switch.** Lighting effects is a player-facing setting. A normal-mapped sheen vanishes when it is off; a painted one does not, and "the room still reads finished with Lighting effects off" is already the rule `BoardView` states.
+  - **Marble was the only real gap.** The table rim already had a bead, a directional light and a glint streak; the felt already had a vignette, a highlight toward the light, grain and a nap; the table band from V2 has its own roll. The cross floor was flat stone with a faint inlay. So V5 is one new part, `BoardArt.CrossSheen`, drawn at order −27 between the inlay and the arm pools.
+  - **The veins take the light first**, which is the whole difference between a polished marble and a matte one. `Veining` is now shared by the stone and its sheen, so the highlight lands on the veins that are actually there rather than on a second, unrelated pattern. The band rakes at 34°, off the diagonal so it never lines up with a lane and reads as a seam, and off centre so it is not wasted under the vault's own glow.
+  - **Within G3's few percent, measured not guessed:** peak alpha is 0.024 on bare stone and 0.07 on a full vein. G3's rule is that nothing competes with the lit cells or sits loud under a piece.
+  - **With a painted marble it degrades to an even rake.** The fill would carry the texture's own veins, which these do not register with, so the sheen part is never painted. No painted board textures exist in the project today.
+  - **Play Mode checklist:**
+    - The floor reads as polished stone, not as a bright shape: a soft band low and left of centre, brightest where veins cross it.
+    - It does not line up with any lane, does not stop at the gilt trim, and is invisible under a piece.
+    - With Lighting effects **off** it is still there.
+    - `UiTheme.FloorSheen` is the one value to tune; `SheenDegrees`, `SheenCentre` and `SheenWidth` in `BoardArt` move and shape the band.
+- 2026-09-20 — **Pass closed. Play Mode passed on all five outstanding changes.**
+  - The designer ran the checklists for V3b, V2, the room's flip and V5 together and reported all pass. That settles the two things a shell could not: the table's gilt lip hangs **below** its surface, and the salon's pelmet and rail now run along the **top** of the velvet wall. The sign convention in `TableBody.Hang` and `RoomBackdrop.Stand` is confirmed correct — up off the board is −z.
+  - **Eight increments in, none open.** V0 was a spike and is deleted. Both fallbacks it existed to test — "top-down, deeper", and moving the board to URP's 3D renderer against ADR-0010 — were never needed.
+  - **What the pass left behind, for whoever picks the board up next:**
+    - `seat_base` and `seat_ring` are children of the piece root, so they ride `ScreenUp * _lift` and fly with the figure through a hop. V2's contact shadow deliberately does not. One line, same mechanism, not done because one new thing at a time.
+    - `tools/mockup/title.py` and `tools/mockup/scene.py` still draw the pre-V3b lockup with its tagline, and a room with chandeliers in it. They did their job in the V3 review; nothing depends on them now.
+    - `brightness` and `velvet` on the MatchBootstrap object were dragged into place against the inverted room. They pass as they are, but they were never re-tuned against the corrected one.
+    - V5's sheen is painted because `Light2D.normalMapQuality` is read-only in this URP. If the light rig ever moves to an authored prefab, real normal maps become available and this decision is worth revisiting.

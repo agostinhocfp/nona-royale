@@ -10,6 +10,14 @@ namespace NonaRoyale.Unity.View
     /// itself never changes during a match.
     /// </summary>
     /// <remarks>
+    /// <b>Polished, not matte</b> (V5). A broad band of the room's light rakes
+    /// across the cross, and the marble's veins take more of it than the stone
+    /// does. It is painted into its own sprite rather than lit by a
+    /// <c>Light2D</c> through a normal map, because <c>Light2D.normalMapQuality</c>
+    /// is read-only in this URP and every light here is made at runtime - and
+    /// because a painted sheen still reads with Lighting effects off, which the
+    /// player can switch.
+    ///
     /// <b>The casino floor</b> (GUI increments G, G2 and G3, ART_DIRECTION
     /// §6.1, and the designer's reference image of 2026-09-15). A dark square
     /// table with a faint gold grain and one gilt rule; a cross-shaped marble
@@ -62,6 +70,7 @@ namespace NonaRoyale.Unity.View
         private const int CrossShadowOrder = -30;
         private const int CrossOrder = -29;
         private const int PatternOrder = -28;
+        private const int SheenOrder = -27;
         private const int ArmGlowOrder = -26;
         private const int CrossEdgeOrder = -25;
         private const int LaneOrder = -24;
@@ -147,6 +156,11 @@ namespace NonaRoyale.Unity.View
             var floorTint = BoardTextures.Marble != null ? UiTheme.PaintedFloor : UiTheme.CrossFloor;
             Sprite("cross", cross[BoardArt.CrossFill], centre, spacing, floorTint, CrossOrder);
             Sprite("cross_pattern", cross[BoardArt.CrossPattern], centre, spacing, UiTheme.FloorPattern, PatternOrder);
+
+            // Over the stone and its inlay, under the arm pools: the floor is
+            // polished, and its veins take the light first (V5).
+            Sprite("cross_sheen", cross[BoardArt.CrossSheen], centre, spacing, UiTheme.FloorSheen, SheenOrder);
+
             Sprite("cross_edge", cross[BoardArt.CrossEdge], centre, spacing, UiTheme.CrossEdge, CrossEdgeOrder);
 
             // Per arm: a pool of light, and the lane from the tip to the vault.

@@ -181,6 +181,13 @@ namespace NonaRoyale.Unity.View
         /// <summary>The Deco sunburst set into the cross floor (G3): texture, not ornament.</summary>
         public static readonly Color FloorPattern = WithAlpha(Gold, 0.04f);
 
+        /// <summary>
+        /// The room's light raking across the polished floor (V5). Warm, and
+        /// within G3's few percent: the sheen has to read as the stone being
+        /// polished, never as a shape competing with the lit cells.
+        /// </summary>
+        public static readonly Color FloorSheen = WithAlpha(Color.Lerp(GoldBright, Color.white, 0.35f), 0.07f);
+
         /// <summary>The cross's gilt edge, thinner since G3.</summary>
         public static readonly Color CrossEdge = WithAlpha(Color.Lerp(Brass, Gold, 0.45f), 0.9f);
 
