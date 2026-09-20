@@ -70,7 +70,7 @@ namespace NonaRoyale.Core.Abilities
         /// survives two collisions, not three, and the slowest speed ever
         /// fielded is the one override left.
         /// </remarks>
-        public const int MaxHealth = 10;
+        public const int MaxHealth = 9;
 
         /// <summary>
         /// 1.0, with the crawl carried by <see cref="Definition"/>'s Burdened
@@ -214,7 +214,7 @@ namespace NonaRoyale.Core.Abilities
             id: 803, name: "Collision",
             description:
                 "Upon striking a target (be it an enemy or an ally), the caster anchors himself to it, launching himself towards him causing damage to enemies in his path and stunning the target. Lands a cell behind the target.",
-            energyCost: 6, cooldownTurns: 3, range: 6,
+            energyCost: 6, cooldownTurns: 3, range: 5,
             effects: new[]
             {
                 AbilityEffect.Dash(pathDamage: 1),
