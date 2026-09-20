@@ -33,12 +33,35 @@ namespace NonaRoyale.Core.Services
     {
         private readonly PathMap _map;
         private readonly StatusRegistry _statuses;
+        private readonly TeamMap _teams;
 
-        public TargetingRules(PathMap map, StatusRegistry statuses)
+        /// <param name="teams">
+        /// Who is on whose side (ADR-0012). Null is
+        /// <see cref="TeamMap.FreeForAll"/>, under which every ally test below
+        /// reduces to seat equality and this type behaves exactly as it did
+        /// before team play existed.
+        /// </param>
+        public TargetingRules(PathMap map, StatusRegistry statuses, TeamMap teams = null)
         {
             _map = map ?? throw new ArgumentNullException(nameof(map));
             _statuses = statuses ?? throw new ArgumentNullException(nameof(statuses));
+            _teams = teams ?? TeamMap.FreeForAll;
         }
+
+        /// <summary>
+        /// Who is on whose side. Exposed because the services built on top of
+        /// this one — auras, deferred effects, the ability resolver — already
+        /// hold a <see cref="TargetingRules"/> and must ask the same question
+        /// the same way; a second map passed alongside is a second map that can
+        /// disagree.
+        /// </summary>
+        public TeamMap Teams => _teams;
+
+        /// <summary>Whether two seats are on the same side (ADR-0012).</summary>
+        public bool AreAllied(PlayerColor a, PlayerColor b) => _teams.AreAllied(a, b);
+
+        /// <summary>Whether two seats are on opposite sides (ADR-0012).</summary>
+        public bool AreEnemies(PlayerColor a, PlayerColor b) => _teams.AreEnemies(a, b);
 
         /// <summary>
         /// Whether an operator is in the fight at all: deployed, on the shared
@@ -105,7 +128,8 @@ namespace NonaRoyale.Core.Services
             // rule exists to stop. The one allied thing a camper may not do —
             // relocate them — depends on what the ability contains, so that
             // half lives in AbilityResolver beside SwapWouldBeLegal.
-            if (caster.Owner != target.Owner && IsAimedBehindFromSafeCell(caster, CellOf(target)))
+            if (_teams.AreEnemies(caster.Owner, target.Owner)
+                && IsAimedBehindFromSafeCell(caster, CellOf(target)))
                 return TargetingResult.Illegal(TargetingVerdict.AimedBehindFromSafeCell, distance);
 
             // Safe cells refuse enemy single-targeting (§4.4, first amendment).
@@ -119,7 +143,7 @@ namespace NonaRoyale.Core.Services
             //
             // Checked before stealth because a player can see the cell and cannot
             // see the status, so it is the more useful of the two to be told.
-            if (caster.Owner != target.Owner && _map.IsSafe(CellOf(target)))
+            if (_teams.AreEnemies(caster.Owner, target.Owner) && _map.IsSafe(CellOf(target)))
                 return TargetingResult.Illegal(TargetingVerdict.OnASafeCell, distance);
 
             // Checked last so "out of range" wins over "stealthed" — a player
@@ -222,7 +246,8 @@ namespace NonaRoyale.Core.Services
         }
 
         /// <summary>
-        /// Every enemy of <paramref name="casterColor"/> inside an area.
+        /// Every operator inside an area that is on a side opposed to
+        /// <paramref name="casterColor"/>.
         /// </summary>
         /// <remarks>
         /// <b>Stealth does not protect against this.</b> Stealth stops an
@@ -253,7 +278,7 @@ namespace NonaRoyale.Core.Services
             foreach (var candidate in candidates)
             {
                 if (candidate == null) continue;
-                if (candidate.Owner == casterColor) continue;
+                if (!_teams.AreEnemies(candidate.Owner, casterColor)) continue;
                 if (exclude != null && ReferenceEquals(candidate, exclude)) continue;
                 if (!IsInPlay(candidate)) continue;
 
@@ -265,9 +290,10 @@ namespace NonaRoyale.Core.Services
         }
 
         /// <summary>
-        /// Every operator belonging to <paramref name="casterColor"/> inside an
-        /// area. Javi's Nanite Infusion, whose splash heal is centred on the
-        /// enemy it just damaged.
+        /// Every operator inside an area that is on
+        /// <paramref name="casterColor"/>'s own side — in a team match, the
+        /// partner seat's operators included (ADR-0012). Javi's Nanite
+        /// Infusion, whose splash heal is centred on the enemy it just damaged.
         /// </summary>
         /// <remarks>
         /// <b>The caster is included when it stands close enough.</b> It is an
@@ -296,7 +322,7 @@ namespace NonaRoyale.Core.Services
             foreach (var candidate in candidates)
             {
                 if (candidate == null) continue;
-                if (candidate.Owner != casterColor) continue;
+                if (!_teams.AreAllied(candidate.Owner, casterColor)) continue;
                 if (exclude != null && ReferenceEquals(candidate, exclude)) continue;
                 if (!IsInPlay(candidate)) continue;
 
@@ -403,7 +429,7 @@ namespace NonaRoyale.Core.Services
             {
                 if (candidate == null) continue;
                 if (ReferenceEquals(candidate, caster)) continue;
-                if (candidate.Owner == caster.Owner) continue;
+                if (!_teams.AreEnemies(candidate.Owner, caster.Owner)) continue;
                 if (!IsInPlay(candidate)) continue;
 
                 int candidateIndex = _map.CellAt(candidate.Owner, candidate.Progress).Index;

@@ -480,9 +480,10 @@ namespace NonaRoyale.Core.Services
         /// (§9.1). The engine calls <see cref="ConfirmStop"/> once a move has
         /// actually been stopped.
         ///
-        /// <b>Allies cross freely</b> and so does the seat that dealt it: a table
-        /// is aimed at the traffic, not at the house. An operator it has already
-        /// stopped passes too.
+        /// <b>Allies cross freely</b> and so does the seat that dealt it — in a
+        /// team match, the partner seat as well (ADR-0012): a table is aimed at
+        /// the traffic, not at the house. An operator it has already stopped
+        /// passes too.
         /// </remarks>
         public TableInterception? FirstInterception(
             PlayerColor moverSeat, int moverOperatorId, IReadOnlyList<CellRef> path)
@@ -493,7 +494,10 @@ namespace NonaRoyale.Core.Services
             {
                 foreach (var entry in _pending)
                 {
-                    if (!entry.StopsMovers || entry.Owner == moverSeat) continue;
+                    // A side's own tables let it through, both seats of it in
+                    // a team match (ADR-0012): a table is aimed at the traffic,
+                    // not at the house.
+                    if (!entry.StopsMovers || !_targeting.AreEnemies(entry.Owner, moverSeat)) continue;
                     if (entry.Cell != path[step]) continue;
                     if (entry.Stopped != null && entry.Stopped.Contains(moverOperatorId)) continue;
 

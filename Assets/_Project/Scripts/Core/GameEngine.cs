@@ -70,6 +70,9 @@ namespace NonaRoyale.Core
         /// <summary>Whether any roll this turn showed the deploy face. Reset in <see cref="ResetRollState"/>.</summary>
         private bool _sawDeployFace;
 
+        /// <summary>Every seat of the winning side. Empty until the match is over.</summary>
+        private IReadOnlyList<PlayerColor> _winningSeats = Array.Empty<PlayerColor>();
+
 
         /// <summary>
         /// The dice from this roll that have not been spent yet.
@@ -184,6 +187,13 @@ namespace NonaRoyale.Core
 
         /// <summary>Who won, once the match is over. Null until then.</summary>
         public PlayerColor? Winner => _winner;
+
+        /// <summary>
+        /// Every seat of the winning side, in table order; empty while the
+        /// match runs (ADR-0012). One seat under free-for-all, two in a 1v1
+        /// team match.
+        /// </summary>
+        public IReadOnlyList<PlayerColor> WinningSeats => _winningSeats;
 
         /// <summary>
         /// Knockouts credited to <paramref name="seat"/> this match: enemy
@@ -516,7 +526,8 @@ namespace NonaRoyale.Core
             if (report.MatchOver)
             {
                 _winner = report.Winner.Value;
-                events.Add(new GameWon(report.Winner.Value));
+                _winningSeats = report.WinningSeats;
+                events.Add(new GameWon(report.Winner.Value, report.WinningSeats));
                 return;
             }
 
@@ -1325,31 +1336,20 @@ namespace NonaRoyale.Core
         }
 
         /// <summary>
-        /// Whether the match is in its final stretch: some seat has every
+        /// Whether the match is in its final stretch: some side has every
         /// operator but one home, so one more arrival wins it.
         /// </summary>
         /// <remarks>
         /// A presentation query, never a rule: it switches the music to the
-        /// showdown (AUDIO.md). It lives here rather than in the view because
-        /// "how close is anyone to winning" is the win condition's business,
-        /// and the view computes nothing (PRESENTATION §1). A one-operator
-        /// squad has no stretch to speak of.
+        /// showdown (AUDIO.md). It is exposed here rather than in the view
+        /// because the view computes nothing (PRESENTATION §1), and it is
+        /// <i>answered</i> by <see cref="WinConditions"/> because "how close is
+        /// anyone to winning" is the win condition's business — counted per
+        /// seat, a team match would cue the showdown while the partner seat
+        /// still had three operators in its yard (ADR-0012).
         /// </remarks>
-        public bool IsFinalStretch
-        {
-            get
-            {
-                if (MatchOver) return false;
-
-                foreach (var player in _turns.Players)
-                {
-                    int squad = player.Operators.Count;
-                    if (squad > 1 && squad - _win.FinishedCount(player) == 1) return true;
-                }
-
-                return false;
-            }
-        }
+        public bool IsFinalStretch =>
+            !MatchOver && _win.IsFinalStretch(_turns.Players);
 
 
         /// <summary>

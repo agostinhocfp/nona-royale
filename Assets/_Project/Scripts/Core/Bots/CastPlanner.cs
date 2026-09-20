@@ -154,7 +154,7 @@ namespace NonaRoyale.Core.Bots
         {
             var mode = target == null
                 ? EffectAudience.Any
-                : target.Owner == caster.Owner ? EffectAudience.AllyOnly : EffectAudience.EnemyOnly;
+                : board.IsAlly(target, caster.Owner) ? EffectAudience.AllyOnly : EffectAudience.EnemyOnly;
 
             double offence = 0.0;
             double defence = 0.0;
@@ -196,7 +196,7 @@ namespace NonaRoyale.Core.Bots
                         if (effect.BonusIfBleeding > 0 && board.Has(r, StatusKind.Bleed)) amount += effect.BonusIfBleeding;
 
                         double hit = board.ExpectedHit(r, amount, effect.DamageType, ability.EnergyCost);
-                        if (r.Owner == own) defence -= SelfHarm(w, r, hit);
+                        if (board.IsAlly(r, own)) defence -= SelfHarm(w, r, hit);
                         else
                         {
                             offence += Hit(board, w, r, hit);
@@ -218,7 +218,7 @@ namespace NonaRoyale.Core.Bots
                 case EffectKind.Heal:
                     foreach (var r in Recipients(board, caster, target, effect))
                     {
-                        if (r.Owner != own) continue;
+                        if (!board.IsAlly(r, own)) continue;
                         int missing = r.MaxHealth - r.Health;
                         if (missing <= 0) continue;
 
@@ -230,13 +230,13 @@ namespace NonaRoyale.Core.Bots
                 case EffectKind.ApplyStatus:
                     foreach (var r in Recipients(board, caster, target, effect))
                     {
-                        if (r.Owner == own) defence += Buff(board, w, r, effect);
+                        if (board.IsAlly(r, own)) defence += Buff(board, w, r, effect);
                         else offence += Debuff(board, r, effect);
                     }
                     break;
 
                 case EffectKind.Execute:
-                    if (target == null || target.Owner == own) break;
+                    if (target == null || !board.IsEnemy(target, own)) break;
                     bool below = target.Health * effect.ExecuteDenominator < target.MaxHealth * effect.ExecuteNumerator;
                     offence += below
                         ? Kill(board, w, target)
@@ -245,7 +245,7 @@ namespace NonaRoyale.Core.Bots
 
                 case EffectKind.PullToCaster:
                     // Dragging an enemy next to the caster sets up a landing; a small plus.
-                    if (target != null && target.Owner != own) offence += 0.5;
+                    if (target != null && board.IsEnemy(target, own)) offence += 0.5;
                     break;
 
                 case EffectKind.SwapWithCaster:
@@ -253,14 +253,14 @@ namespace NonaRoyale.Core.Bots
                     break;
 
                 case EffectKind.RemoveStatuses:
-                    if (target != null && target.Owner == own)
+                    if (target != null && board.IsAlly(target, own))
                         defence += HarmfulWorth(board, target) * w.Cleanse;
                     break;
 
                 case EffectKind.PushFromCaster:
                     foreach (var r in Recipients(board, caster, target, effect))
                     {
-                        if (r.Owner == own || !board.OnLoop(r)) continue;
+                        if (!board.IsEnemy(r, own) || !board.OnLoop(r)) continue;
                         double before = HitFromThisCast(board, caster, ability, target, r);
                         offence += PushValue(board, w, caster, r, effect.Amount, before, board.ReachableTrackCells());
                     }
@@ -299,7 +299,7 @@ namespace NonaRoyale.Core.Bots
                     break;
 
                 case EffectKind.AttachCharge:
-                    if (target == null || target.Owner == own || !board.OnLoop(target)) break;
+                    if (target == null || !board.IsEnemy(target, own) || !board.OnLoop(target)) break;
                     offence += Hit(board, w, target,
                         board.ExpectedHit(target, effect.Amount + effect.Stacks, effect.DamageType)) * w.DelayedDiscount;
                     foreach (var r in board.EnemiesNear(own, board.CellOf(target), effect.Radius))
@@ -310,7 +310,7 @@ namespace NonaRoyale.Core.Bots
                     break;
 
                 case EffectKind.FollowUp:
-                    if (target == null || target.Owner == own) break;
+                    if (target == null || !board.IsEnemy(target, own)) break;
                     int follow = effect.Amount + (effect.CountsAsHeavy(target.MaxHealth) ? effect.HeavyBonus : 0);
                     offence += Hit(board, w, target, board.ExpectedHit(target, follow, effect.DamageType)) * w.DelayedDiscount;
                     break;
@@ -336,7 +336,7 @@ namespace NonaRoyale.Core.Bots
 
                 case EffectKind.DrainEnergy:
                 {
-                    if (target == null || target.Owner == own) break;
+                    if (target == null || !board.IsEnemy(target, own)) break;
                     int pool = board.SeatOf(target.Owner)?.Energy ?? 0;
                     offence += Math.Min(effect.Amount, pool) * w.EnergyDenial;
                     break;
@@ -346,7 +346,7 @@ namespace NonaRoyale.Core.Bots
                 {
                     // Sadist: one figure from the target's seat, half to the
                     // enemies around it (§3.3).
-                    if (target == null || target.Owner == own || !board.OnLoop(target)) break;
+                    if (target == null || !board.IsEnemy(target, own) || !board.OnLoop(target)) break;
                     int pool = board.SeatOf(target.Owner)?.Energy ?? 0;
                     int primary = Math.Max(0, board.Engine.EnergyCap - pool) / effect.Amount;
                     int splash = primary / Math.Max(1, effect.Stacks);
@@ -685,7 +685,7 @@ namespace NonaRoyale.Core.Bots
         /// </summary>
         private static double SwapValue(BotBoard board, BotWeights w, OperatorState caster, OperatorState target)
         {
-            if (target == null || target.Owner == caster.Owner) return 0.0;
+            if (target == null || !board.IsEnemy(target, caster.Owner)) return 0.0;
             if (!board.OnLoop(caster) || !board.OnLoop(target)) return 0.0;
 
             int gap = board.ForwardGap(board.CellOf(caster), board.CellOf(target));

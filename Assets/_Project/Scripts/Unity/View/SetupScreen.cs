@@ -40,6 +40,9 @@ namespace NonaRoyale.Unity.View
         private static readonly SquadMode[] Modes =
             { SquadMode.AllPick, SquadMode.Snake, SquadMode.Random, SquadMode.Alpha };
 
+        private static readonly TableMode[] Tables =
+            { TableMode.FreeForAll, TableMode.CrossedPairs };
+
         private IMatchFlowHost _host;
         private MatchSettings _edit;
         private string _notice;
@@ -102,7 +105,16 @@ namespace NonaRoyale.Unity.View
         {
             Title("New match", "Choose the table.");
 
+            // ── Table ──
+            Heading("Table");
+
+            var tables = ButtonRow("table");
+            foreach (var mode in Tables) TableOption(tables, mode);
+
+            Note(TableNote(_edit.Table), UiTheme.TextNote, 38f);
+
             // ── Seats ──
+            Gap(4f);
             Heading($"Seats · {_edit.Seats.Count} playing");
 
             var seats = ButtonRow("seats", 124f);
@@ -147,11 +159,81 @@ namespace NonaRoyale.Unity.View
 
         private string SeatNote()
         {
+            if (_edit.Table.IsTeams())
+            {
+                return _edit.HumanCount == 0
+                    ? "No human seats: watch mode, two CPU sides."
+                    : "A seat and its partner cycle together — one player holds both. " +
+                      "The chip under a CPU side sets its style.";
+            }
+
             if (_edit.HumanCount == 0)
                 return "No human seats: watch mode. Esc pauses; hold Space to hurry the CPUs.";
 
             return "Click a seat: empty, human, CPU. The chip under a CPU sets its style. " +
                    "Opposite seats make a fair two-player table.";
+        }
+
+        private static string TableNote(TableMode mode)
+        {
+            switch (mode)
+            {
+                case TableMode.CrossedPairs:
+                    return "Two players, four seats. One holds Red and Green, the other Blue and Violet — " +
+                           "partners start opposite each other. A side wins when all six of its operators are home.";
+                default:
+                    return "Every seat for itself: two to four players, first squad home wins.";
+            }
+        }
+
+        private void TableOption(Transform row, TableMode mode)
+        {
+            UiKit.Button(row, mode.Label(), () => SetTable(mode), Rebuild,
+                selected: _edit.Table == mode, size: UiTheme.FontSmall);
+        }
+
+        /// <summary>
+        /// Switches the table mode, and fills the four seats when it needs
+        /// them (ADR-0012).
+        /// </summary>
+        /// <remarks>
+        /// A crossed table with an empty seat is a side of one against a side
+        /// of two, which no one is choosing on purpose. Filling is done here
+        /// rather than refused at DEAL so the screen shows what it is about to
+        /// deal instead of arguing with the player afterwards; every filled
+        /// seat keeps whatever kind it was last set to.
+        /// </remarks>
+        private void SetTable(TableMode mode)
+        {
+            _notice = null;
+            _edit.Table = mode;
+
+            if (!mode.IsTeams()) return;
+
+            if (_edit.Seats.Count < MatchSettings.AllSeats.Length)
+            {
+                _edit.FillTable();
+                _notice = "A crossed table needs all four seats.";
+            }
+
+            // Both seats of a side belong to one player, so their kinds have
+            // to agree from the moment the mode is chosen, not only when a
+            // tile is next clicked.
+            foreach (var seat in MatchSettings.AllSeats) MatchPartner(seat);
+        }
+
+        /// <summary>Copies a seat's kind and style onto its partner, if it has one.</summary>
+        private void MatchPartner(PlayerColor seat)
+        {
+            var partner = _edit.PartnerOf(seat);
+            if (partner == null) return;
+
+            // Only one direction, and the caller walks the seats in table
+            // order, so a side settles on its first seat's kind.
+            if (_edit.KindOf(partner.Value) == _edit.KindOf(seat)) return;
+
+            _edit.SetKind(partner.Value, _edit.KindOf(seat));
+            _edit.SetPersonality(partner.Value, _edit.PersonalityOf(seat));
         }
 
         private static string SquadNote(SquadMode mode)
@@ -191,7 +273,17 @@ namespace NonaRoyale.Unity.View
                 on ? UiTheme.Readable(colour) : UiTheme.TextOff, TextAlignmentOptions.Center, bold: true);
             UiKit.Size(name, 120f, 24f);
 
+            // At a crossed table a tile says which side it is on rather than
+            // just who plays it: two tiles reading "HUMAN" and two reading
+            // "CPU" does not tell a player which two are partners.
             string kind = !on ? "EMPTY" : cpu ? "CPU" : "HUMAN";
+
+            if (on && _edit.Table.IsTeams())
+            {
+                var partner = _edit.PartnerOf(seat);
+                if (partner != null)
+                    kind += $" · {partner.Value.ToString().ToUpperInvariant()}";
+            }
             var state = UiKit.Label(button.transform, kind, 11f,
                 on ? UiTheme.Cyan : UiTheme.TextOff, TextAlignmentOptions.Center, bold: cpu);
             state.characterSpacing = UiTheme.HeadingSpacing * 0.5f;
@@ -212,9 +304,24 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>EMPTY → HUMAN → CPU → EMPTY. The last two seats skip EMPTY and say why.</summary>
+        /// <remarks>
+        /// At a crossed table the cycle is HUMAN ↔ CPU only, and it moves the
+        /// partner seat with it (ADR-0012): the two seats are one player, so
+        /// switching one off, or making it a CPU on its own, would describe a
+        /// table the mode does not allow.
+        /// </remarks>
         private void CycleSeat(PlayerColor seat)
         {
             _notice = null;
+
+            if (_edit.Table.IsTeams())
+            {
+                var kind = _edit.KindOf(seat) == SeatKind.Human ? SeatKind.Cpu : SeatKind.Human;
+
+                _edit.SetKind(seat, kind);
+                MatchPartner(seat);
+                return;
+            }
 
             if (!_edit.Has(seat))
             {

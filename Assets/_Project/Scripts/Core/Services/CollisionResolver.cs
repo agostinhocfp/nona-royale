@@ -24,7 +24,8 @@ namespace NonaRoyale.Core.Services
     /// <list type="bullet">
     /// <item><b>Collision is one-directional.</b> The mover never takes damage.</item>
     /// <item><b>A contested cell can hold more than one enemy.</b> Friendly
-    /// operators stack freely (§4.5), and both bounce-back and pulls are
+    /// operators — in a team match, both of a side's seats (ADR-0012) —
+    /// stack freely (§4.5), and both bounce-back and pulls are
     /// placement that never collides — so a stack of enemies on a non-safe cell
     /// is reachable by ordinary play. The mover strikes <i>every</i> enemy on
     /// the cell, and takes it only if all of them fall. Running into a pair
@@ -44,17 +45,25 @@ namespace NonaRoyale.Core.Services
         private readonly CombatConfig _config;
         private readonly DamagePipeline _damage;
         private readonly MovementResolver _movement;
+        private readonly TeamMap _teams;
 
+        /// <param name="teams">
+        /// Who is on whose side (ADR-0012). Null is
+        /// <see cref="TeamMap.FreeForAll"/>, under which "friendly" means the
+        /// same seat and nothing here changes.
+        /// </param>
         public CollisionResolver(
             PathMap map,
             CombatConfig config,
             DamagePipeline damage,
-            MovementResolver movement)
+            MovementResolver movement,
+            TeamMap teams = null)
         {
             _map = map ?? throw new ArgumentNullException(nameof(map));
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _damage = damage ?? throw new ArgumentNullException(nameof(damage));
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
+            _teams = teams ?? TeamMap.FreeForAll;
         }
 
         /// <summary>
@@ -112,7 +121,13 @@ namespace NonaRoyale.Core.Services
             foreach (var candidate in allOperators)
             {
                 if (candidate == null || ReferenceEquals(candidate, mover)) continue;
-                if (candidate.Owner == mover.Owner) continue;      // friendlies stack freely (§4.5)
+
+                // Friendlies stack freely (§4.5), and in a team match a
+                // partner seat's operators are friendlies (ADR-0012): landing
+                // on your own side is never an attack, so a team can stack two
+                // seats' pieces on one cell and a clumsy roll costs the
+                // partnership nothing.
+                if (!_teams.AreEnemies(candidate.Owner, mover.Owner)) continue;
                 if (!_map.IsOnOuterTrack(candidate.Progress)) continue;
                 if (_map.CellAt(candidate.Owner, candidate.Progress) != cell) continue;
 

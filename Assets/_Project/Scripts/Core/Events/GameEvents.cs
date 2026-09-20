@@ -390,8 +390,27 @@ namespace NonaRoyale.Core.Events
 
     public sealed class GameWon : IGameEvent
     {
-        public GameWon(PlayerColor winner) { Winner = winner; }
+        /// <param name="seats">
+        /// Every seat of the winning side, in table order (ADR-0012). Null is
+        /// just <paramref name="winner"/>, which is what a free-for-all match
+        /// means by "the winner" anyway.
+        /// </param>
+        public GameWon(PlayerColor winner, IReadOnlyList<PlayerColor> seats = null)
+        {
+            Winner = winner;
+            Seats = seats ?? new[] { winner };
+        }
+
+        /// <summary>The seat the winning side is named after: its first at the table.</summary>
         public PlayerColor Winner { get; }
-        public override string ToString() => $"{Winner} wins";
+
+        /// <summary>
+        /// Every seat of the winning side. One under free-for-all, two in a
+        /// 1v1 team match — so a view that wants to say "RED &amp; GREEN TAKE
+        /// THE HOUSE" has both without inferring the partner from the map.
+        /// </summary>
+        public IReadOnlyList<PlayerColor> Seats { get; }
+
+        public override string ToString() => $"{string.Join(" & ", Seats)} wins";
     }
 }

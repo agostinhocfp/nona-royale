@@ -1,5 +1,6 @@
 // Assets/_Project/Scripts/Unity/View/EndScreen.cs
 using System.Collections.Generic;
+using System.Linq;
 using NonaRoyale.Core.Board;
 using NonaRoyale.Core.Model;
 using TMPro;
@@ -79,8 +80,19 @@ namespace NonaRoyale.Unity.View
 
             if (winner.HasValue)
             {
+                // The side, not the seat (ADR-0012): in a 1v1 the banner reads
+                // "RED & GREEN WIN", because a player who held two seats did
+                // not win with one of them. It is still tinted by the seat the
+                // side is named after — a partnership has no colour of its own,
+                // and inventing one would fight the seat palette everywhere
+                // else on this screen.
+                var seats = engine.WinningSeats;
+                string names = seats.Count > 1
+                    ? string.Join(" & ", seats.Select(s => s.ToString().ToUpperInvariant()))
+                    : winner.Value.ToString().ToUpperInvariant();
+
                 var colour = UiTheme.Readable(UiTheme.Seat(winner.Value));
-                Title($"{winner.Value.ToString().ToUpperInvariant()} WINS",
+                Title($"{names} {(seats.Count > 1 ? "WIN" : "WINS")}",
                     $"Round {engine.Round}  ·  seed {_host.Settings.Seed}", colour);
             }
             else

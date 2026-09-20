@@ -19,7 +19,8 @@ namespace NonaRoyale.Core.Services
     /// service knows nothing about the roster.
     ///
     /// <b>Two sides since 2026-09-17.</b> An aura reaches enemies (Bouncer) or
-    /// the projector's own squad (Lethe). The projector is never its own
+    /// the projector's own side (Lethe) — which in a team match is both of
+    /// that player's seats (ADR-0012). The projector is never its own
     /// recipient: Lethe's own haste is her passive, not her aura.
     /// </remarks>
     public sealed class AuraRules
@@ -111,9 +112,12 @@ namespace NonaRoyale.Core.Services
             if (source == null || ReferenceEquals(source, op)) return null;
             if (!_auras.TryGetValue(source.Id, out var aura)) return null;
 
-            bool sameSeat = source.Owner == op.Owner;
-            if (aura.Side == AuraSide.Enemies && sameSeat) return null;
-            if (aura.Side == AuraSide.Allies && !sameSeat) return null;
+            // Side, not seat: in a team match Lethe's Catalyst reaches the
+            // partner seat and Bouncer's drag does not slow it (ADR-0012).
+            // Under free-for-all this is seat equality and nothing changes.
+            bool sameSide = _targeting.AreAllied(source.Owner, op.Owner);
+            if (aura.Side == AuraSide.Enemies && sameSide) return null;
+            if (aura.Side == AuraSide.Allies && !sameSide) return null;
 
             if (!_targeting.IsInPlay(source)) return null;
 

@@ -150,22 +150,40 @@ namespace NonaRoyale.Core.Services
         public EndTurnReport(
             PlayerColor player,
             IReadOnlyList<ExpiredStatus> expired,
-            PlayerColor? winner)
+            PlayerColor? winner,
+            IReadOnlyList<PlayerColor> winningSeats = null)
         {
             Player = player;
             Expired = expired ?? throw new ArgumentNullException(nameof(expired));
             Winner = winner;
+
+            // Defaulted from the winner so a caller that knows nothing of sides
+            // still produces a coherent report (ADR-0012).
+            WinningSeats = winningSeats ??
+                (winner == null ? Array.Empty<PlayerColor>() : new[] { winner.Value });
         }
 
         public PlayerColor Player { get; }
         public IReadOnlyList<ExpiredStatus> Expired { get; }
 
-        /// <summary>Set once someone has every operator home. Null while the match runs.</summary>
+        /// <summary>
+        /// The seat the winning side is named after, or null while the match
+        /// runs. Under free-for-all it is the winning seat.
+        /// </summary>
         public PlayerColor? Winner { get; }
+
+        /// <summary>
+        /// Every seat of the winning side, in table order. Empty while the
+        /// match runs, one seat under free-for-all, two in a 1v1 team match
+        /// (ADR-0012).
+        /// </summary>
+        public IReadOnlyList<PlayerColor> WinningSeats { get; }
 
         public bool MatchOver => Winner != null;
 
         public override string ToString() =>
-            MatchOver ? $"{Winner} wins" : $"{Player} ends turn, {Expired.Count} statuses expired";
+            MatchOver
+                ? $"{string.Join(" & ", WinningSeats)} wins"
+                : $"{Player} ends turn, {Expired.Count} statuses expired";
     }
 }

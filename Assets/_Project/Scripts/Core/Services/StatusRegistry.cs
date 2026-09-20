@@ -63,12 +63,19 @@ namespace NonaRoyale.Core.Services
         private readonly HashSet<int> _evasionSpentThisRound = new HashSet<int>();
 
         private readonly ITurnClock _clock;
+        private readonly TeamMap _teams;
         private readonly CombatConfig _config;
 
-        public StatusRegistry(ITurnClock clock, CombatConfig config)
+        /// <param name="teams">
+        /// Who is on whose side (ADR-0012). Only stealth reads it — see
+        /// <see cref="CanBeSingleTargetedBy"/>. Null is
+        /// <see cref="TeamMap.FreeForAll"/>.
+        /// </param>
+        public StatusRegistry(ITurnClock clock, CombatConfig config, TeamMap teams = null)
         {
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _config = config ?? throw new ArgumentNullException(nameof(config));
+            _teams = teams ?? TeamMap.FreeForAll;
         }
 
         // ── Applying ─────────────────────────────────────────────────────
@@ -315,16 +322,18 @@ namespace NonaRoyale.Core.Services
         /// </summary>
         /// <remarks>
         /// Stealth scopes untargetability to <b>enemies only</b>, so it never
-        /// locks an operator out of its own team's repositioning or healing
-        /// (§5.4). It is also the whole of what stealth does: AOE, passive auras,
-        /// collision and already-applied bleed or marks all still reach it.
+        /// locks an operator out of its own side's repositioning or healing
+        /// (§5.4) — and in a team match its own side is both seats
+        /// (ADR-0012). It is also the whole of what stealth does: AOE, passive
+        /// auras, collision and already-applied bleed or marks all still reach
+        /// it.
         /// </remarks>
         public bool CanBeSingleTargetedBy(OperatorState target, PlayerColor by)
         {
             if (target == null) throw new ArgumentNullException(nameof(target));
 
             if (!Has(target, StatusKind.Stealth)) return true;
-            return target.Owner == by;
+            return _teams.AreAllied(target.Owner, by);
         }
 
         /// <summary>

@@ -85,7 +85,14 @@ namespace NonaRoyale.Core.Services
         private readonly IReadOnlyList<PlayerState> _players;
         private readonly CombatConfig _config;
         private readonly DeferredOperatorEffects _operatorEffects;
+        private readonly TeamMap _teams;
 
+        /// <param name="teams">
+        /// Who is on whose side (ADR-0012). It decides three things here: a
+        /// kill of a partner seat pays no bounty and earns no credit, and the
+        /// mark payout hastens the whole side. Null is
+        /// <see cref="TeamMap.FreeForAll"/>.
+        /// </param>
         public NeutralizeRules(
             StatusRegistry statuses,
             AbilityResolver abilities,
@@ -93,8 +100,10 @@ namespace NonaRoyale.Core.Services
             IReadOnlyList<OperatorState> operators,
             IReadOnlyList<PlayerState> players,
             CombatConfig config,
-            DeferredOperatorEffects operatorEffects = null)
+            DeferredOperatorEffects operatorEffects = null,
+            TeamMap teams = null)
         {
+            _teams = teams ?? TeamMap.FreeForAll;
             _statuses = statuses ?? throw new ArgumentNullException(nameof(statuses));
             _abilities = abilities ?? throw new ArgumentNullException(nameof(abilities));
             _energy = energy ?? throw new ArgumentNullException(nameof(energy));
@@ -167,7 +176,11 @@ namespace NonaRoyale.Core.Services
         /// self-inflicted kill — All-In Mauling is the only route (§2.3) — and a
         /// kill of an operator you own both pay zero. Otherwise the Bouncer
         /// could farm his own pool, and the rule that makes the bounty a reward
-        /// for fighting would make it a reward for anything.
+        /// for fighting would make it a reward for anything. <b>In a team match
+        /// the partner seat is your own side</b> (ADR-0012), so a player
+        /// holding two seats cannot farm one with the other — which is the
+        /// whole of why this test goes through the map rather than comparing
+        /// colours.
         ///
         /// <b>A killer already in its own yard still collects.</b> A bleed or a
         /// mark can outlive the operator that applied it, and the pool belongs
@@ -183,7 +196,7 @@ namespace NonaRoyale.Core.Services
             if (killerOperatorId == null || killerOperatorId.Value == victim.Id) return null;
 
             var killer = FindOperator(killerOperatorId.Value);
-            if (killer == null || killer.Owner == victim.Owner) return null;
+            if (killer == null || _teams.AreAllied(killer.Owner, victim.Owner)) return null;
 
             return killer.Owner;
         }
@@ -197,7 +210,7 @@ namespace NonaRoyale.Core.Services
             if (killerOperatorId.Value == victim.Id) return nothing;
 
             var killer = FindOperator(killerOperatorId.Value);
-            if (killer == null || killer.Owner == victim.Owner) return nothing;
+            if (killer == null || _teams.AreAllied(killer.Owner, victim.Owner)) return nothing;
 
             var player = FindPlayer(killer.Owner);
             if (player == null) return nothing;
@@ -222,6 +235,14 @@ namespace NonaRoyale.Core.Services
         /// says it should be. Left alone here deliberately: it changes when an
         /// existing, tested behaviour fires, and belongs in its own commit with
         /// its own test rather than riding along with the bounty.
+        ///
+        /// <b>The payout is seat-scoped even in a team match</b>, unlike every
+        /// other rule in this file (ADR-0012). Three operators are hastened,
+        /// never six: the ability's value must not depend on which table it is
+        /// cast at, and a partner seat that spent nothing on the mark has
+        /// earned nothing from it. It is the deliberate exception, so a reader
+        /// who finds a colour comparison here has found the documented one
+        /// rather than a bug.
         /// </remarks>
         private IReadOnlyList<OperatorState> PayOutMark(OperatorState dying)
         {
@@ -238,6 +259,12 @@ namespace NonaRoyale.Core.Services
 
             foreach (var candidate in _operators)
             {
+                // The marker's seat, not its side — and this is the one
+                // friend/foe test in the game that deliberately does not go
+                // through the team map (ADR-0012). §10.2 hands the kill to the
+                // squad that spent the cast, and a squad is three operators.
+                // Paying it to a partner seat that did nothing would double
+                // the ability's value in a 1v1 for no design reason.
                 if (candidate.Owner != marker.Owner) continue;
 
                 _statuses.Apply(candidate, StatusKind.Hastened, _config.HasteDurationTurns);

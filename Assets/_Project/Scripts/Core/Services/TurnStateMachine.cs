@@ -300,10 +300,13 @@ namespace NonaRoyale.Core.Services
                     expired.Add(new ExpiredStatus(op, kind));
             }
 
-            PlayerColor? winner = _win.Winner(_players);
+            // One call, both answers: asking Winner() and WinningSeats()
+            // separately would walk the board twice and let the two disagree.
+            var winningSeats = _win.WinningSeats(_players);
+            PlayerColor? winner = winningSeats.Count == 0 ? (PlayerColor?)null : winningSeats[0];
 
             Phase = winner == null ? TurnPhase.BetweenTurns : TurnPhase.MatchOver;
-            var report = new EndTurnReport(CurrentPlayer.Color, expired, winner);
+            var report = new EndTurnReport(CurrentPlayer.Color, expired, winner, winningSeats);
 
             if (winner == null) CurrentPlayer = null;
             return report;

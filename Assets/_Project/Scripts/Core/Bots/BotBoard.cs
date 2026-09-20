@@ -50,6 +50,20 @@ namespace NonaRoyale.Core.Bots
 
         public GameEngine Engine => Match.Engine;
         public PathMap Map => Match.Map;
+
+        /// <summary>
+        /// Who is on whose side (ADR-0012). Read off the match rather than
+        /// passed in, so the bot cannot be reasoning about a different set of
+        /// sides than the rules are enforcing — which would show up as a bot
+        /// cheerfully shelling its own partner.
+        /// </summary>
+        public TeamMap Teams => Match.Teams;
+
+        /// <summary>Whether an operator is on <paramref name="seat"/>'s side, that seat included.</summary>
+        public bool IsAlly(OperatorState op, PlayerColor seat) => Teams.AreAllied(op.Owner, seat);
+
+        /// <summary>Whether an operator is on a side opposed to <paramref name="seat"/>.</summary>
+        public bool IsEnemy(OperatorState op, PlayerColor seat) => Teams.AreEnemies(op.Owner, seat);
         public int Circuit => Map.Profile.CircuitLength;
 
         // ── Positions ────────────────────────────────────────────────────
@@ -91,7 +105,7 @@ namespace NonaRoyale.Core.Bots
 
             foreach (var op in Match.Operators)
             {
-                if (op.Owner == seat || !OnLoop(op)) continue;
+                if (!IsEnemy(op, seat) || !OnLoop(op)) continue;
                 var distance = Distance(CellOf(op), cell);
                 if (distance.HasValue && distance.Value <= radius) found.Add(op);
             }
@@ -107,7 +121,7 @@ namespace NonaRoyale.Core.Bots
 
             foreach (var op in Match.Operators)
             {
-                if (op.Owner != seat || !OnLoop(op)) continue;
+                if (!IsAlly(op, seat) || !OnLoop(op)) continue;
                 var distance = Distance(CellOf(op), cell);
                 if (distance.HasValue && distance.Value <= radius) found.Add(op);
             }
@@ -123,7 +137,7 @@ namespace NonaRoyale.Core.Bots
 
             foreach (var op in Match.Operators)
             {
-                if (op.Owner == seat || !OnLoop(op)) continue;
+                if (!IsEnemy(op, seat) || !OnLoop(op)) continue;
                 int gap = ForwardGap(cell, CellOf(op));
                 if (gap >= 1 && gap <= length) found.Add(op);
             }
@@ -153,7 +167,7 @@ namespace NonaRoyale.Core.Bots
 
             foreach (var op in Match.Operators)
             {
-                if (op.Owner == seat || !OnLoop(op)) continue;
+                if (!IsEnemy(op, seat) || !OnLoop(op)) continue;
 
                 int gap = ForwardGap(CellOf(op), cell);
                 if (gap >= 1 && gap <= reach) found.Add(op);
@@ -359,7 +373,7 @@ namespace NonaRoyale.Core.Bots
 
             foreach (var enemy in Match.Operators)
             {
-                if (enemy.Owner == seat || !OnLoop(enemy)) continue;
+                if (!IsEnemy(enemy, seat) || !OnLoop(enemy)) continue;
                 if (Has(enemy, StatusKind.Stun)) continue;
 
                 var enemyCell = CellOf(enemy);

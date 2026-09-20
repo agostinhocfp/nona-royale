@@ -396,6 +396,7 @@ namespace NonaRoyale.Unity.View
             bool showBase = _rendered && !seated;
             _seatBase.enabled = showBase;
             _seatRing.enabled = showBase;
+            // First placement only; GroundMarks owns these every frame after.
             _seatBase.transform.localPosition = new Vector3(0f, _layout.Feet, 0f);
             _seatRing.transform.localPosition = new Vector3(0f, _layout.Feet, 0f);
 
@@ -837,7 +838,7 @@ namespace NonaRoyale.Unity.View
             transform.localScale = new Vector3(scale * sx, scale * sy, scale * sy);
             transform.localRotation = Quaternion.Euler(0f, 0f, roll);
 
-            Contact(scale);
+            GroundMarks(scale);
             Stand();
             Depth();
         }
@@ -892,29 +893,46 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
-        /// The contact shadow, every frame: it stays on the table while the
-        /// figure leaves it, spreading and paling at the top of a hop and
-        /// snapping tight and dark on the landing.
+        /// Everything the piece draws on the table, every frame: the seat disc,
+        /// its ring, and the contact shadow. All three stay on the table while
+        /// the figure leaves it; the shadow also spreads and pales at the top
+        /// of a hop and snaps tight and dark on the landing.
         /// </summary>
         /// <remarks>
-        /// <b>It has to be un-hopped.</b> The shadow rides the root, and the
-        /// root carries <c>ScreenUp * _lift</c>; left alone it would sail up
-        /// with the piece, which is the one thing a contact shadow must not
-        /// do. The lift is taken back out through
+        /// <b>They have to be un-hopped.</b> All three ride the root, and the
+        /// root carries <c>ScreenUp * _lift</c>; left alone they sail up with
+        /// the piece, which is the one thing a mark on the floor must not do.
+        /// The lift is taken back out through
         /// <see cref="Transform.InverseTransformVector"/>, so the root's scale
         /// and roll are accounted for without repeating them here.
+        ///
+        /// <b>This owns their position from here on.</b> <c>SetPose</c> still
+        /// places the seat disc and ring once, for the frame before the first
+        /// draw; after that it is this, every frame, because the correction
+        /// changes with the hop.
         ///
         /// The roll is deliberately left in. It is a degree or two of idle
         /// sway, and countering it every frame would buy nothing anyone could
         /// see.
         /// </remarks>
-        private void Contact(float scale)
+        private void GroundMarks(float scale)
         {
-            if (_contact == null || !_contact.enabled) return;
-
             var at = new Vector3(0f, _layout.Feet, 0f);
+
             if (_lift > 0f && scale > 0.0001f)
                 at -= transform.InverseTransformVector(BoardTilt.ScreenUp * _lift);
+
+            // The seat disc and its ring are the floor the figure stands on, so
+            // they stay on the floor when it jumps. They rode the hop from the
+            // day they were written - the root carries ScreenUp * _lift and
+            // they are children of it - which nothing noticed under the flat
+            // camera, where the lift is straight up the screen and a disc
+            // sliding up behind a piece reads as the piece's own shadow moving.
+            // The tilt made it a mark flying off the table.
+            if (_seatBase != null) _seatBase.transform.localPosition = at;
+            if (_seatRing != null) _seatRing.transform.localPosition = at;
+
+            if (_contact == null || !_contact.enabled) return;
 
             _contact.transform.localPosition = at;
 

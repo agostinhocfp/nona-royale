@@ -37,7 +37,8 @@ namespace NonaRoyale.Core
                 PathMap map,
                 IReadOnlyDictionary<int, IReadOnlyList<AbilityDefinition>> abilitiesByOperator,
                 StatusRegistry statuses,
-                EnergyLedger energy)
+                EnergyLedger energy,
+                TeamMap teams = null)
             {
                 Engine = engine;
                 Players = players;
@@ -46,6 +47,7 @@ namespace NonaRoyale.Core
                 AbilitiesByOperator = abilitiesByOperator;
                 Statuses = statuses;
                 Energy = energy;
+                Teams = teams ?? TeamMap.FreeForAll;
             }
 
             public GameEngine Engine { get; }
@@ -74,6 +76,14 @@ namespace NonaRoyale.Core
             /// no reason to touch this.
             /// </summary>
             public EnergyLedger Energy { get; }
+
+            /// <summary>
+            /// Who is on whose side (ADR-0012). Carried on the match so
+            /// anything already holding one — the bot board, the sim harness,
+            /// the view — asks the same map the rules were built with, rather
+            /// than being handed a second copy that can drift.
+            /// </summary>
+            public TeamMap Teams { get; }
         }
 
         /// <summary>
@@ -100,10 +110,18 @@ namespace NonaRoyale.Core
             EnergyConfig energyConfig = null,
             IReadOnlyDictionary<string, double> speedOverrides = null,
             int openingDeployments = 0,
-            int abilityRangeBonus = 0)
+            int abilityRangeBonus = 0,
+            TeamMap teams = null)
         {
             if (seats == null) throw new ArgumentNullException(nameof(seats));
             if (seats.Count == 0) throw new ArgumentException("A match needs at least one seat.", nameof(seats));
+
+            // One map for the whole match, built here and handed to every
+            // service that has to answer "friend or foe" (ADR-0012). Null is
+            // free-for-all, which is what every caller written before team play
+            // means and what keeps the four-way game on exactly the code path
+            // it has always been on.
+            teams = teams ?? TeamMap.FreeForAll;
 
             board = board ?? BoardProfile.Standard;
             gameConfig = gameConfig ?? GameConfig.Default;
@@ -164,12 +182,12 @@ namespace NonaRoyale.Core
             }
 
             var clock = new MatchClock(players);
-            var statuses = new StatusRegistry(clock, combatConfig);
+            var statuses = new StatusRegistry(clock, combatConfig, teams);
             var energy = new EnergyLedger(energyConfig);
             var damage = new DamagePipeline(statuses, random, combatConfig);
-            var targeting = new TargetingRules(map, statuses);
+            var targeting = new TargetingRules(map, statuses, teams);
             var movement = new MovementResolver(map, gameConfig);
-            var collisions = new CollisionResolver(map, combatConfig, damage, movement);
+            var collisions = new CollisionResolver(map, combatConfig, damage, movement, teams);
             // Deferred cell effects (ADR-0006). Built before the resolver, which
             // writes beacons into it, and before the turn machine, which fires
             // them at upkeep — one registry, two callers, no second copy.
@@ -194,9 +212,9 @@ namespace NonaRoyale.Core
             // the attacker's pool, which is player-level, so neither the victim nor
             // the operator that landed the hit is enough on its own.
             var neutralize = new NeutralizeRules(
-                statuses, abilities, energy, operators, players, combatConfig, operatorEffects);
+                statuses, abilities, energy, operators, players, combatConfig, operatorEffects, teams);
 
-            var win = new WinConditions(map);
+            var win = new WinConditions(map, teams);
 
             // Permanent passives are granted once here rather than resolved as
             // abilities — they are never "used" (§10.1, §10.3). The magnitude is
@@ -224,7 +242,7 @@ namespace NonaRoyale.Core
     operatorEffects);
 
 
-            return new Match(engine, players, operators, map, abilitiesByOperator, statuses, energy);
+            return new Match(engine, players, operators, map, abilitiesByOperator, statuses, energy, teams);
         }
 
         /// <summary>
@@ -246,7 +264,8 @@ namespace NonaRoyale.Core
             EnergyConfig energyConfig = null,
             RosterSpeeds speeds = null,
             int openingDeployments = 0,
-            int abilityRangeBonus = 0)
+            int abilityRangeBonus = 0,
+            TeamMap teams = null)
         {
             if (seats == null) throw new ArgumentNullException(nameof(seats));
 
@@ -264,7 +283,7 @@ namespace NonaRoyale.Core
 
             return Create(
                 seats, seed, squads, board, gameConfig, combatConfig, energyConfig,
-                overrides, openingDeployments, abilityRangeBonus);
+                overrides, openingDeployments, abilityRangeBonus, teams);
         }
 
         // ── Helpers ──────────────────────────────────────────────────────

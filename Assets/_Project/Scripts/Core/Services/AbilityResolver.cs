@@ -884,7 +884,7 @@ namespace NonaRoyale.Core.Services
                 {
                     if (op == null) continue;
                     if (ReferenceEquals(op, caster) || ReferenceEquals(op, target)) continue;
-                    if (op.Owner == caster.Owner) continue;
+                    if (!_targeting.AreEnemies(op.Owner, caster.Owner)) continue;
                     if (!_targeting.IsInPlay(op)) continue;
                     if (_map.CellAt(op.Owner, op.Progress).Index != index) continue;
 
@@ -1199,7 +1199,7 @@ namespace NonaRoyale.Core.Services
         /// cost, take its cooldown, and produce an empty outcome list that the
         /// view has nothing to draw from.
         /// </remarks>
-        private static bool AnyEffectApplies(AbilityDefinition ability, EffectAudience castMode)
+        private static bool AnyEffectApplies(AbilityDefinition ability, EffectAudience castMode)  // castMode from CastMode
         {
             foreach (var effect in ability.Effects)
                 if (AudienceAllows(effect.Audience, castMode)) return true;
@@ -1311,7 +1311,7 @@ namespace NonaRoyale.Core.Services
             AbilityDefinition ability, OperatorState caster, OperatorState primaryTarget)
         {
             if (primaryTarget == null) return true;
-            if (caster.Owner != primaryTarget.Owner) return true;
+            if (!_targeting.AreAllied(caster.Owner, primaryTarget.Owner)) return true;
             if (!ability.ContainsPlacement) return true;
 
             return !_targeting.IsAimedBehindFromSafeCell(
@@ -1393,11 +1393,17 @@ namespace NonaRoyale.Core.Services
         /// abilities have no primary target and run every effect they list —
         /// their scopes already restrict them to enemies.
         /// </summary>
-        private static EffectAudience CastMode(OperatorState caster, OperatorState primaryTarget)
+        private EffectAudience CastMode(OperatorState caster, OperatorState primaryTarget)
         {
             if (primaryTarget == null) return EffectAudience.Any;
 
-            return primaryTarget.Owner == caster.Owner
+            // An instance method, and not for convenience: whether the target
+            // counts as an ally is a property of the match's sides, not of the
+            // two colours (ADR-0012). In a team match the partner seat's
+            // operators put a cast into ally mode, which is what makes every
+            // heal, plate, cleanse and relocation on the roster reach across
+            // the partnership without a single ability being rewritten.
+            return _targeting.AreAllied(primaryTarget.Owner, caster.Owner)
                 ? EffectAudience.AllyOnly
                 : EffectAudience.EnemyOnly;
         }

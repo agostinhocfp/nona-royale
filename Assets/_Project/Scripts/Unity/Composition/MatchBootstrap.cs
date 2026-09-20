@@ -94,7 +94,13 @@ namespace NonaRoyale.Unity.Composition
                  "Amendment 6 (59 against 58). Kept switchable for comparison only.")]
         public bool useCompactBoard = false;
 
-        [Tooltip("Seats at the first deal, filled Red, Blue, Green, Violet. The setup screen overrides it.")]
+        [Tooltip("How the table is divided into sides at the first deal (ADR-0012). " +
+                 "Crossed Pairs is 1v1: Red+Green against Blue+Violet, and it uses all four seats. " +
+                 "The setup screen overrides it.")]
+        public TableMode tableMode = TableMode.FreeForAll;
+
+        [Tooltip("Seats at the first deal, filled Red, Blue, Green, Violet. The setup screen overrides it. " +
+                 "Ignored by a crossed table, which always seats four.")]
         [Range(2, 4)] public int players = 4;
 
         [Tooltip("Seats the CPU plays at the first deal (useful with Skip Setup). The setup screen overrides it.")]
@@ -305,7 +311,13 @@ namespace NonaRoyale.Unity.Composition
         private void Start()
         {
             _seats.Clear();
-            _seats.AddRange(MatchSettings.AllSeats.Take(players));
+
+            // A crossed table is two sides of two, so it seats four whatever
+            // the inspector says (ADR-0012).
+            _seats.AddRange(MatchSettings.AllSeats.Take(
+                tableMode.IsTeams() ? MatchSettings.AllSeats.Length : players));
+
+            _seatPlan.Table = tableMode;
 
             if (cpuSeats != null)
                 foreach (var seat in cpuSeats) _seatPlan.SetKind(seat, SeatKind.Cpu);
@@ -339,7 +351,7 @@ namespace NonaRoyale.Unity.Composition
             if (skipSetup)
             {
                 // A drafted mode still opens the draft; the others deal at once.
-                ((IMatchFlowHost)this).Deal(new MatchSettings(_seats, squadMode, seed));
+                ((IMatchFlowHost)this).Deal(new MatchSettings(_seats, squadMode, seed, tableMode));
                 return;
             }
 
@@ -550,13 +562,20 @@ namespace NonaRoyale.Unity.Composition
             if (_seats.Count == 0) _seats.AddRange(MatchSettings.AllSeats.Take(players));
             var seats = _seats.ToList();
 
+            // Who is on whose side (ADR-0012). One map for the whole match,
+            // handed to the factory rather than consulted by the view: the
+            // view decides nothing about the rules, it only says which table
+            // the player chose.
+            var teams = _seatPlan.Teams;
+
             switch (squadMode)
             {
                 case SquadMode.Alpha:
                     _match = MatchFactory.CreateAlphaMatch(
                         seats, seed,
                         board: board,
-                        openingDeployments: openingDeployments);
+                        openingDeployments: openingDeployments,
+                        teams: teams);
                     break;
 
                 case SquadMode.Random:
@@ -564,7 +583,8 @@ namespace NonaRoyale.Unity.Composition
                         seats, seed,
                         squads: null,                  // null draws every seat at random
                         board: board,
-                        openingDeployments: openingDeployments);
+                        openingDeployments: openingDeployments,
+                        teams: teams);
                     break;
 
                 default:
@@ -574,7 +594,8 @@ namespace NonaRoyale.Unity.Composition
                         seats, seed,
                         squads: _squads,
                         board: board,
-                        openingDeployments: openingDeployments);
+                        openingDeployments: openingDeployments,
+                        teams: teams);
                     break;
             }
 
@@ -686,6 +707,7 @@ namespace NonaRoyale.Unity.Composition
 
             return new BotDriver(brains);
         }
+
 
         /// <summary>
         /// The component of this type on this object, added if missing. An

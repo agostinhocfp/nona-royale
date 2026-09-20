@@ -15,6 +15,35 @@ namespace NonaRoyale.Unity.View
         Cpu = 1
     }
 
+    /// <summary>
+    /// How the four seats are divided into sides: setup's table row
+    /// (ADR-0012).
+    /// </summary>
+    public enum TableMode
+    {
+        /// <summary>The default: every seat for itself.</summary>
+        FreeForAll = 0,
+
+        /// <summary>
+        /// 1v1 across the table. One player holds Red and Green, the other
+        /// Blue and Violet. Needs all four seats.
+        /// </summary>
+        CrossedPairs = 1
+    }
+
+    public static class TableModes
+    {
+        /// <summary>The core side map this mode means.</summary>
+        public static TeamMap ToTeamMap(this TableMode mode) =>
+            mode == TableMode.CrossedPairs ? TeamMap.CrossedPairs : TeamMap.FreeForAll;
+
+        /// <summary>Whether the mode pairs seats up, so the setup screen must fill the table.</summary>
+        public static bool IsTeams(this TableMode mode) => mode != TableMode.FreeForAll;
+
+        public static string Label(this TableMode mode) =>
+            mode == TableMode.CrossedPairs ? "1v1 CROSSED" : "FREE-FOR-ALL";
+    }
+
     /// <summary>How the seats get their squads: setup's squad row (DRAFT.md).</summary>
     public enum SquadMode
     {
@@ -86,13 +115,42 @@ namespace NonaRoyale.Unity.View
         /// <summary>How the squads are chosen. Replaced the Drafted flag in DR2.</summary>
         public SquadMode Squads { get; set; }
 
+        /// <summary>
+        /// How the table is divided into sides (ADR-0012). Free-for-all unless
+        /// the setup screen says otherwise.
+        /// </summary>
+        public TableMode Table { get; set; }
+
         public int Seed { get; set; }
 
-        public MatchSettings(IEnumerable<PlayerColor> seats, SquadMode squads, int seed)
+        /// <summary>The core side map for this table. What the composition root hands the factory.</summary>
+        public TeamMap Teams => Table.ToTeamMap();
+
+        /// <summary>
+        /// The other seat on <paramref name="seat"/>'s side, or null when it
+        /// plays alone.
+        /// </summary>
+        /// <remarks>
+        /// The setup screen uses it to keep a partnership consistent: one
+        /// player holds both seats, so "human here, CPU there" is not a table
+        /// anyone wants and the tile cycles both together.
+        /// </remarks>
+        public PlayerColor? PartnerOf(PlayerColor seat)
+        {
+            foreach (var other in Teams.SeatsOn(seat))
+                if (other != seat) return other;
+
+            return null;
+        }
+
+        public MatchSettings(
+            IEnumerable<PlayerColor> seats, SquadMode squads, int seed,
+            TableMode table = TableMode.FreeForAll)
         {
             foreach (var seat in seats) SetSeat(seat, true);
             Squads = squads;
             Seed = seed;
+            Table = table;
         }
 
         public bool Has(PlayerColor seat) => _seats.Contains(seat);
@@ -130,6 +188,17 @@ namespace NonaRoyale.Unity.View
             if (other == null) return;
             foreach (var pair in other._kinds) _kinds[pair.Key] = pair.Value;
             foreach (var pair in other._personalities) _personalities[pair.Key] = pair.Value;
+            Table = other.Table;
+        }
+
+        /// <summary>
+        /// Switches every seat on, in table order. A team table needs all four
+        /// (ADR-0012), and the setup screen calls this when the mode changes
+        /// rather than leaving a partnership half-seated.
+        /// </summary>
+        public void FillTable()
+        {
+            foreach (var seat in AllSeats) SetSeat(seat, true);
         }
 
         /// <summary>Turns a seat on or off. Refuses to go below <see cref="MinSeats"/>; returns whether it changed.</summary>
@@ -147,7 +216,7 @@ namespace NonaRoyale.Unity.View
 
         public MatchSettings Clone()
         {
-            var copy = new MatchSettings(_seats, Squads, Seed);
+            var copy = new MatchSettings(_seats, Squads, Seed, Table);
             copy.CopySeatsFrom(this);
             return copy;
         }
