@@ -142,6 +142,7 @@ namespace NonaRoyale.Core.Abilities
             allowsSelfTarget: true,
             effects: new[]
             {
+                AbilityEffect.Heal(EffectScope.PrimaryTarget, 2, EffectAudience.AllyOnly),
                 AbilityEffect.Status_(
                     EffectScope.PrimaryTarget, StatusKind.Shield, duration: NanoCellDurationTurns,
                     EffectAudience.AllyOnly, magnitude: NanoCellPool),
