@@ -18,6 +18,14 @@ namespace NonaRoyale.Unity.View
 
         public FigureImage Standing { get; }
 
+        /// <summary>
+        /// The cel-facet normal maps (<see cref="FigureNormals"/>), texel for
+        /// texel with <see cref="Standing"/> and <see cref="Seated"/>. The
+        /// powered image shares the standing one's canvas, so its normals too.
+        /// </summary>
+        public byte[] StandingNormals { get; }
+        public byte[] SeatedNormals { get; }
+
         /// <summary>The part with its cyan tell lit (LB5c), for the cast's hold; null for a part with no powered layer.</summary>
         public FigureImage Powered { get; }
 
@@ -28,8 +36,11 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         public FigureImage Seated { get; }
 
-        public RigPartImages(RigPart part, int boneIndex, FigureImage standing, FigureImage seated, FigureImage powered = null)
+        public RigPartImages(RigPart part, int boneIndex, FigureImage standing, FigureImage seated, FigureImage powered = null,
+            byte[] standingNormals = null, byte[] seatedNormals = null)
         {
+            StandingNormals = standingNormals;
+            SeatedNormals = seatedNormals;
             Part = part;
             BoneIndex = boneIndex;
             Standing = standing;
@@ -128,34 +139,51 @@ namespace NonaRoyale.Unity.View
             var seatedPose = rig.Pose(RigPoseNames.Seated);
             var seatedWorld = rig.Skeleton.Evaluate(seatedPose);
             var parts = new List<RigPartImages>();
+            var metals = palette?.Metals();
 
             foreach (var part in rig.Parts(palette))
             {
                 var bone = rig.Skeleton[part.Bone];
                 var standing = Render(part.Drawing);
+                var standingNormals = FigureNormals.Render(part.Drawing, standing.Canvas, metals, rig.FacesLeft);
 
                 FigureImage seated = null;
+                byte[] seatedNormals = null;
                 if (part.VisibleIn(seatedPose))
                 {
-                    seated = seatedPose.TableLine.HasValue
-                        ? CutAtTable(part.Drawing, standing, bone, seatedWorld[part.Bone], seatedPose.TableLine.Value)
-                        : standing;
+                    var cut = seatedPose.TableLine.HasValue
+                        ? CutAtTable(part.Drawing, bone, seatedWorld[part.Bone], seatedPose.TableLine.Value)
+                        : part.Drawing;
+
+                    if (ReferenceEquals(cut, part.Drawing))
+                    {
+                        seated = standing;
+                        seatedNormals = standingNormals;
+                    }
+                    else if (cut != null)
+                    {
+                        seated = Render(cut);
+                        if (seated.IsEmpty) seated = null;
+                        else seatedNormals = FigureNormals.Render(cut, seated.Canvas, metals, rig.FacesLeft);
+                    }
                 }
 
                 // The tell is drawn only on the parts that carry it, and only standing: nobody casts from the table.
                 var powered = part.Drawing.HasPowered ? Render(part.Drawing, powered: true) : null;
 
-                parts.Add(new RigPartImages(part, rig.Skeleton.IndexOf(part.Bone), standing, seated, powered));
+                parts.Add(new RigPartImages(part, rig.Skeleton.IndexOf(part.Bone), standing, seated, powered,
+                    standingNormals, seatedNormals));
             }
 
             return new RigFacingImages(rig, parts);
         }
 
         /// <summary>
-        /// The part as the seated pose draws it: whole, cut along the table
-        /// line carried into its rest space, or nothing.
+        /// The part as the seated pose draws it: the drawing itself when it is
+        /// wholly above the table, the drawing cut along the table line
+        /// carried into its rest space, or null when it is wholly below.
         /// </summary>
-        private static FigureImage CutAtTable(FigureDrawing drawing, FigureImage standing, RigBone bone, BoneWorld placed, float tableLine)
+        private static FigureDrawing CutAtTable(FigureDrawing drawing, RigBone bone, BoneWorld placed, float tableLine)
         {
             var box = drawing.Silhouette.Bounds.Expand(drawing.LineWeight);
             float low = float.MaxValue, high = float.MinValue;
@@ -169,7 +197,7 @@ namespace NonaRoyale.Unity.View
                 high = Math.Max(high, wy);
             }
 
-            if (low >= tableLine) return standing;
+            if (low >= tableLine) return drawing;
             if (high <= tableLine) return null;
 
             // The line, and the way down, in the part's rest space. The cut
@@ -179,8 +207,7 @@ namespace NonaRoyale.Unity.View
             RigSkeleton.Untransform(placed, bone.PivotX, bone.PivotY, placed.PivotX, cutAt, out float px, out float py);
             RigSkeleton.Untransform(placed, bone.PivotX, bone.PivotY, placed.PivotX, cutAt - 1f, out float qx, out float qy);
 
-            var cut = Render(drawing.CroppedBy(px, py, qx - px, qy - py, py));
-            return cut.IsEmpty ? null : cut;
+            return drawing.CroppedBy(px, py, qx - px, qy - py, py);
         }
 
         /// <summary>A part on a canvas just big enough for its ink and rim, as the composer does it.</summary>

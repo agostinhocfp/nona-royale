@@ -15,6 +15,16 @@ namespace NonaRoyale.Unity.View
     /// </remarks>
     public sealed class LookBookPalette
     {
+        /// <summary>
+        /// The colours that are metal: brass, gold, silver, steel. The normal
+        /// maps turn them steeper than cloth, so a light flashes on them
+        /// (<see cref="FigureNormals"/>, LB5d).
+        /// </summary>
+        public System.Collections.Generic.IReadOnlyList<FigureColour> Metals() => new[]
+        {
+            Brass, FortunaGold, FortunaGoldLight, LetheSilver, JaviSteel, SanitySteel, MimiSteel,
+        };
+
         // ── Shared: the §2.2 drawn light and the §3 swatches ────────────
 
         /// <summary>The one ink line, <c>#1C0E12</c>.</summary>

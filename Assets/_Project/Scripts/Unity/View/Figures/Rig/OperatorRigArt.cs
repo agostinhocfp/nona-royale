@@ -108,6 +108,9 @@ namespace NonaRoyale.Unity.View
     /// </remarks>
     public static class OperatorRigArt
     {
+        /// <summary>The secondary texture URP's lit sprite shader reads as the normal map.</summary>
+        public const string NormalMapName = "_NormalMap";
+
         /// <summary>Off draws the look-book figure instead, for a side-by-side check and for the look book's own tests.</summary>
         public static bool Enabled { get; set; } = true;
 
@@ -208,16 +211,20 @@ namespace NonaRoyale.Unity.View
         private static RigFacingArt Upload(RigFacingImages facing, string id,
             Dictionary<FigureImage, (Sprite sprite, Sprite silhouette)> cache)
         {
+            var normals = new Dictionary<byte[], Texture2D>();
             var parts = new List<RigPartSprites>();
             foreach (var entry in facing.Parts)
             {
                 var bone = facing.Rig.Skeleton[entry.Part.Bone];
                 string name = $"rig_{id}_{entry.Part.Name}";
 
-                var standing = Sprites(entry.Standing, name, cache);
-                var seated = Sprites(entry.Seated, name + "_seated", cache);
+                var standingNormals = Normals(entry.StandingNormals, entry.Standing, name, normals);
+                var standing = Sprites(entry.Standing, standingNormals, name, cache);
+                var seated = Sprites(entry.Seated, Normals(entry.SeatedNormals, entry.Seated, name + "_seated", normals), name + "_seated", cache);
+
+                // The powered image shares the standing canvas, so it shares its normals.
                 var powered = entry.Powered != null && !entry.Powered.IsEmpty
-                    ? Upload(entry.Powered.Pixels, entry.Powered, name + "_powered")
+                    ? Upload(entry.Powered.Pixels, entry.Powered, name + "_powered", standingNormals)
                     : null;
 
                 parts.Add(new RigPartSprites(entry.Part, entry.BoneIndex,
@@ -232,14 +239,18 @@ namespace NonaRoyale.Unity.View
         private static Vector2 Offset(FigureImage image, RigBone bone) =>
             image == null ? Vector2.zero : new Vector2(image.Canvas.Left - bone.PivotX, image.Canvas.Bottom - bone.PivotY);
 
-        /// <summary>A part image as a sprite and its white silhouette; one upload per image, shared by both poses when uncut.</summary>
-        private static (Sprite sprite, Sprite silhouette) Sprites(FigureImage image, string name,
+        /// <summary>
+        /// A part image as a sprite with its normal map, and its white
+        /// silhouette; one upload per image, shared by both poses when uncut.
+        /// The silhouette has no normal map: the flash is a white-out, not a surface.
+        /// </summary>
+        private static (Sprite sprite, Sprite silhouette) Sprites(FigureImage image, Texture2D normalMap, string name,
             Dictionary<FigureImage, (Sprite, Sprite)> cache)
         {
             if (image == null || image.IsEmpty) return (null, null);
             if (cache.TryGetValue(image, out var shared)) return shared;
 
-            var sprite = Upload(image.Pixels, image, name);
+            var sprite = Upload(image.Pixels, image, name, normalMap);
 
             var white = new byte[image.Pixels.Length];
             for (int i = 0; i < white.Length; i += 4)
@@ -255,7 +266,33 @@ namespace NonaRoyale.Unity.View
             return result;
         }
 
-        private static Sprite Upload(byte[] rgba, FigureImage image, string name)
+        /// <summary>
+        /// A part's cel-facet normal map (<see cref="FigureNormals"/>) as a
+        /// linear texture, uploaded once however many sprites share it.
+        /// </summary>
+        private static Texture2D Normals(byte[] encoded, FigureImage image, string name,
+            Dictionary<byte[], Texture2D> uploaded)
+        {
+            if (encoded == null || image == null || image.IsEmpty) return null;
+            if (uploaded.TryGetValue(encoded, out var shared)) return shared;
+
+            // Linear, not sRGB: these are directions, not colours.
+            var texture = new Texture2D(image.Width, image.Height, TextureFormat.RGBA32, true, true)
+            {
+                name = name + "_normal",
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp,
+            };
+
+            texture.SetPixelData(encoded, 0);
+            texture.Apply(true, true);
+
+            Owned.Add(texture);
+            uploaded[encoded] = texture;
+            return texture;
+        }
+
+        private static Sprite Upload(byte[] rgba, FigureImage image, string name, Texture2D normalMap = null)
         {
             // Mipmapped, as the look book's figures are: a part is drawn far
             // smaller than it is rendered, and a limb that shimmers as it
@@ -270,8 +307,15 @@ namespace NonaRoyale.Unity.View
             texture.SetPixelData(rgba, 0);
             texture.Apply(true, true);
 
+            // The normal map rides as the sprite's _NormalMap secondary
+            // texture, which URP's lit sprite shader reads for 2D lights that
+            // use normal maps (LB5d).
+            var secondary = normalMap != null
+                ? new[] { new SecondarySpriteTexture { name = NormalMapName, texture = normalMap } }
+                : System.Array.Empty<SecondarySpriteTexture>();
+
             var sprite = Sprite.Create(texture, new Rect(0f, 0f, image.Width, image.Height), Vector2.zero,
-                image.Canvas.PixelsPerUnit, 0, SpriteMeshType.FullRect);
+                image.Canvas.PixelsPerUnit, 0, SpriteMeshType.FullRect, Vector4.zero, false, secondary);
             sprite.name = name;
 
             Owned.Add(texture);

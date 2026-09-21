@@ -1,7 +1,7 @@
 # Nona Royale — Operator Look Book (procedural Dark Deco figures)
 
 > Location in repo: `docs/design/OPERATOR_LOOKBOOK.md` · Project copy: `claude/OPERATOR_LOOKBOOK.md`
-> Status: **LB0 and LB3 done. LB2 closed at 9 of 12 front-view recipes. LB5a–c done and committed (Bouncer rigged on the board with his event poses). LB5d under way: batches 1–3 passed review; batch 4 (Fortuna, Lethe) delivered 2026-09-21, awaiting review: all twelve operators now stand as rigs. Normal maps are the last LB5d item.** Written 2026-09-21. **v2 — ambition raised: these are meant to be good, not merely distinct.**
+> Status: **LB0 and LB3 done. LB2 closed at 9 of 12 front-view recipes. LB5a–c done and committed (Bouncer rigged on the board with his event poses). LB5d under way: all four batches passed review and all twelve operators stand as rigs. The normal maps, the last LB5d item, are delivered 2026-09-21, awaiting Play Mode.** Written 2026-09-21. **v2 — ambition raised: these are meant to be good, not merely distinct.**
 > Related: `ART_DIRECTION.md` §2.2 (Dark Deco cel — the spec), §3 (palette), §5.1 (the value ledger — the source of the recipes), §6.1; `ART_HOOKUP.md` (ART1 — the real-art path this must not break); `STAGE4_HANDOFF.md`; ADR-0009; ADR-0010 (URP 2D lights).
 
 ## Goal
@@ -138,7 +138,7 @@ Plain C# for everything but the Unity view, as before.
 | LB5a | Rig core **(delivered)** | `FigureRig`, `RigPart`, `RigPose`, `OperatorRig`, the build templates, composition of a posed rig into one image for judging, and tests. **Bouncer** redrawn in three-quarter view with rest, idle, cast and seated poses, previewed animated in the Look Book window. No game changes yet. |
 | LB5b | On the board **(delivered)** | `RigView` and `RigAnimator` on `OperatorPiece`: idle, the step, the rise, facing, the hit flash per part, screen bounds, sorting. Bouncer only. |
 | LB5c | Event poses **(delivered)** | Cast aimed at the target, hit recoil, knockout before the shatter, the seated activity, and the cast's cyan tell on the device. |
-| LB5d | The cast **(all twelve rigged; normal maps to come)** | The eight other recipes redrawn in three-quarter view with a head pass each (hair masses, one face shadow, a signature head shape), and **Luka, Fortuna and Lethe** drawn rigged. Normal maps. |
+| LB5d | The cast **(all twelve rigged; normal maps delivered)** | The eight other recipes redrawn in three-quarter view with a head pass each (hair masses, one face shadow, a signature head shape), and **Luka, Fortuna and Lethe** drawn rigged. Normal maps. |
 
 Stop for Play Mode after each.
 
@@ -313,6 +313,18 @@ All under `Assets/_Project/Scripts/Unity/View/Figures/`. Everything but `FigureS
   - **Checks:** outside Unity all 396 plain C# tests pass; all three assemblies compile against the editor's DLLs with no errors or warnings.
   - **For the designer to judge in the window:** whether Fortuna's gold now reads as hers rather than as costume, and whether her silhouette needs its own point (the review question); Lethe's headdress at board scale, where five thin blades may merge; Lethe's seated reach.
 
+- **2026-09-21 — LB5d batch 4 passed review** and is committed (`22cc707`); this document's batch 4 entry was left out of that commit and goes in with the next.
+
+- **2026-09-21 — LB5d, the normal maps.** The designer chose **cel facets** over rounded (pillow) or edge-only normals, and **the room's warm pools plus the knockout burst** as the lights that read them, over a figure-only key light or both.
+  - **New, plain C#: `FigureNormals`.** A normal map per drawing, texel for texel with its colour image, built from the drawing's own layers: a light layer's shape faces the key (back and up), a shade layer's faces away (front and down), everything else faces the camera, and a band as wide as the rim turns outward along the silhouette, so a pool beside a figure catches its outline. Blocks in a metal colour (brass, Fortuna's gold, Lethe's silver, the steels; `LookBookPalette.Metals()`) turn 1.7 times as far, so the metal flashes where the cloth only brightens. A left-facing drawing's facets are reflected with it, so a side plane facing left is lit from the left. Encoded x in R, y in G, z in B, alpha 255: what URP's `UnpackNormal` reads on both its RGB and its RG-or-AG paths.
+  - **`RigImages`** renders the normals for every part's standing and seated images (the seated cut gets its own; an uncut seated part and the powered image share the standing one's). Cold build time for Bouncer's both facings goes from about 0.5 s to 0.63 s, on the thread pool.
+  - **`OperatorRigArt`** uploads each normal map once, as a linear mipmapped texture, and attaches it to the part's sprite as the `_NormalMap` secondary texture through `Sprite.Create`. The flash silhouettes carry none.
+  - **New, Unity: `FigureLighting.UseNormals`.** URP 17 exposes a `Light2D`'s normal-map quality and distance read-only (they are inspector settings), and every light here is built in code, so the serialized fields behind them are written by reflection. If an upgrade renames them, one `[Lighting]` warning is logged and the figures are simply lit as before.
+  - **`SceneLighting`:** the vault, arm and table pools read normal maps (Accurate) at a height of 1.2 times their reach; new inspector fields `figureNormals` and `normalHeight`, read every frame like the rest. The cyan floor lights are unchanged: they reach only the board. **`EventLights`:** the knockout burst reads them too (`knockoutNormals`, `knockoutNormalHeight`).
+  - **What changes on the board:** a sprite with no normal map is lit as flat, so the pools now dim toward their edges, to 77% of their added light at the rim at height 1.2. The ambient light is global and unaffected, and Lighting effects off still gives back the flat room. Luka's renders carry no normal map, so while they win he is lit flat.
+  - **Tests:** new `FigureNormalsTests` (flat and unit-length everywhere, opaque alpha; lit faces the key and shaded faces away; facing left reflects the facets; metal turns further; the edge turns outward and the middle does not; every part of every rig has normals the size of its image, shared when uncut). Mutating the facing flip or the metal tilt fails them. `RigPieceTests` checks every part sprite carries a `_NormalMap`. Outside Unity all 402 plain C# tests pass; all three assemblies compile against the editor's DLLs with no errors or warnings.
+  - **For the designer to judge in Play Mode:** whether figures in a pool now read as lit from its side (the effect is meant to be subtle, in bands); the board's pool edges, which dim a little (lower `normalHeight` for more drama, raise it for less); the gauntlet, the gold and the silver catching the light; the knockout burst lighting the neighbours from the fall's side; the frame rate on a phone-sized view with Lighting effects on. In the Inspector, a table light should show Normal Map Quality: Accurate.
+
 ## Read before writing anything
 
 `ART_DIRECTION.md` §2.2, §3, §5 and §5.1 in full — they are the spec, and this document is a summary of them. Then `View/BoardArt.cs`, `View/OperatorPiece.cs`, `View/FigureLayout.cs`, `View/OperatorArtLibrary.cs`, `View/UiTheme.cs`, `View/FigureTilt.cs`, the draft card, and `Core/Abilities/Roster.cs` for the authoritative names. For LB2 onward, also everything under `View/Figures/`. File names come from the design logs and need verifying against the tree.
@@ -333,6 +345,6 @@ feat(tools): operator contact sheet, squint sheet and distinctness tests
 feat(ui): Deco portraits and the powered cast overlay
 ```
 
-## Start prompt for the implementing session (LB5d, normal maps)
+## Start prompt for the next implementing session
 
-> Read `docs/design/OPERATOR_LOOKBOOK.md` in full, especially the LB5 section and the log, then ADR-0010 (URP 2D lights) and `LIGHTING.md`. Then everything under `View/Figures/` and `View/Figures/Rig/`, especially `FigureRasterizer`, `RigImages`, `OperatorRigArt` and `RigView`. Ask me for the batch 4 review first and fix what it raises. Then plan the normal maps: one per part, derived from the shade and light layers (the cel shapes as flat facets), uploaded as secondary textures so URP's 2D lights catch the brass, the gold and the black cloth. Confirm the approach with me before building it. Stop for Play Mode.
+> Read `docs/design/OPERATOR_LOOKBOOK.md` in full, especially the LB5 section and the log, then `LIGHTING.md` and ADR-0010. Ask me for the normal-map Play Mode result first and fix what it raises. LB5 is then complete: all twelve operators are rigged, event-posed and normal-mapped. The open items are the ones the log names for the designer: Fortuna's silhouette against the eight-pointed chip notch, LB4's portraits (likely generator or Blender art), and whether the front-view look-book recipes stay as the judging fallback or are retired now that every operator has a rig. Ask which to take next.

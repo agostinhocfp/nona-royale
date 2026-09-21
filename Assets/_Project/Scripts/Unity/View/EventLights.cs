@@ -64,6 +64,9 @@ namespace NonaRoyale.Unity.View
         [Range(0.2f, 5f)] public float knockoutReach = 2.2f;
         public float knockoutSeconds = 0.6f;
         public Color knockoutColour = new Color(1f, 0.72f, 0.46f);
+        [Tooltip("The burst reads the rigged figures' normal maps, so the neighbours are lit from the fall's side (LOOKBOOK LB5d).")]
+        public bool knockoutNormals = true;
+        [Range(0.2f, 3f)] public float knockoutNormalHeight = FigureLighting.DefaultHeight;
 
         [Header("Vault on HOME (warm)")]
         [Tooltip("Added on top of the vault's resting light at the swell's peak.")]
@@ -151,7 +154,8 @@ namespace NonaRoyale.Unity.View
         public void Knockout(Vector3 at)
         {
             if (!CanLight) return;
-            Spawn("knockout_burst", at, knockoutColour, MultiplyStyle, knockoutReach * _cell, knockoutSeconds, knockoutIntensity, 0f, false);
+            var light = Spawn("knockout_burst", at, knockoutColour, MultiplyStyle, knockoutReach * _cell, knockoutSeconds, knockoutIntensity, 0f, false);
+            FigureLighting.UseNormals(light, knockoutNormals, knockoutNormalHeight);
         }
 
         /// <summary>The vault's light swells for a moment: an operator made it HOME.</summary>
@@ -223,10 +227,10 @@ namespace NonaRoyale.Unity.View
             }
         }
 
-        private void Spawn(string name, Vector3 at, Color colour, int style, float reach, float seconds, float peak,
+        private Light2D Spawn(string name, Vector3 at, Color colour, int style, float reach, float seconds, float peak,
             float delay, bool floorOnly)
         {
-            if (!(seconds > 0f) || !(peak > 0f)) return;
+            if (!(seconds > 0f) || !(peak > 0f)) return null;
 
             var light = MakeLight(name, colour, style, floorOnly);
             light.transform.position = at;
@@ -237,6 +241,7 @@ namespace NonaRoyale.Unity.View
 
             // A delay is a head start below zero: the flash reads 0 until it passes.
             _flashes.Add(new Flash { Light = light, Elapsed = -delay, Duration = seconds, Peak = peak });
+            return light;
         }
 
         private Light2D MakeLight(string name, Color colour, int style, bool floorOnly)

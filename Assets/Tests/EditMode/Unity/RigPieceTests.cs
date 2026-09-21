@@ -171,6 +171,29 @@ namespace NonaRoyale.Unity.Tests.View
             Assert.IsTrue(piece.IsHidden);
         }
 
+        [Test]
+        public void EveryPart_CarriesItsNormalMap()
+        {
+            var piece = Bind("Bouncer");
+            piece.Rise(Vector3.zero);
+
+            int parts = 0;
+            foreach (Transform joint in Rig(piece))
+            {
+                var art = joint.Find("art").GetComponent<SpriteRenderer>();
+                if (art.sprite == null) continue;
+
+                var secondary = new SecondarySpriteTexture[art.sprite.GetSecondaryTextureCount()];
+                art.sprite.GetSecondaryTextures(secondary);
+                Assert.AreEqual(1, secondary.Length, joint.name);
+                Assert.AreEqual(OperatorRigArt.NormalMapName, secondary[0].name, joint.name);
+                Assert.IsNotNull(secondary[0].texture, joint.name);
+                parts++;
+            }
+
+            Assert.Greater(parts, 0);
+        }
+
         private OperatorPiece Bind(string name)
         {
             _host = new GameObject("host");

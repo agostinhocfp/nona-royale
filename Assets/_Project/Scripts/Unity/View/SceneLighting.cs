@@ -109,6 +109,12 @@ namespace NonaRoyale.Unity.View
         public float poweredBreathPeriod = 3.4f;
         [Range(0f, 0.5f)] public float poweredBreathDepth = 0.15f;
 
+        [Header("Figure normal maps (LOOKBOOK LB5d)")]
+        [Tooltip("The warm pools read the rigged figures' normal maps, so a figure is lit from the pool's side.")]
+        public bool figureNormals = true;
+        [Tooltip("The lights' height over the table, as a fraction of each pool's reach. Lower is more dramatic on the figures and darker at the board's pool edges.")]
+        [Range(0.2f, 3f)] public float normalHeight = FigureLighting.DefaultHeight;
+
         [Header("Haze (G3)")]
         [Tooltip("Multiplies the haze's alpha from UiTheme. 0 hides it.")]
         [Range(0f, 3f)] public float hazeStrength = 1f;
@@ -351,6 +357,9 @@ namespace NonaRoyale.Unity.View
 
             light.pointLightOuterRadius = Mathf.Max(0.01f, outer);
             light.pointLightInnerRadius = Mathf.Clamp(inner, 0f, light.pointLightOuterRadius);
+
+            // The warm pools light the figures from their side (LB5d); the cyan floor lights reach only the board.
+            FigureLighting.UseNormals(light, figureNormals && rig.Kind != Kind.Powered, normalHeight);
         }
 
         /// <summary>
