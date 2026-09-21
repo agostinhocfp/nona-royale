@@ -218,6 +218,7 @@ namespace NonaRoyale.Unity.View
             private readonly Prepared[] _after;
             private readonly float _line, _halfLine, _spu, _margin;
             private readonly float _rim, _rimUp, _rimFloor, _rimR, _rimG, _rimB;
+            private readonly bool _rimLeft, _rimRight, _rimTop;
             private readonly float _baseR, _baseG, _baseB, _inkR, _inkG, _inkB;
 
             // The silhouette's distance at every texel centre, with a border.
@@ -244,6 +245,9 @@ namespace NonaRoyale.Unity.View
                 _rim = drawing.RimWidth;
                 _rimUp = _rim * 0.6f;
                 _rimFloor = drawing.RimFloor;
+                _rimLeft = (drawing.RimEdges & RimEdges.Left) != 0;
+                _rimRight = (drawing.RimEdges & RimEdges.Right) != 0;
+                _rimTop = (drawing.RimEdges & RimEdges.Top) != 0;
                 _rimR = drawing.RimColour.R; _rimG = drawing.RimColour.G; _rimB = drawing.RimColour.B;
                 _baseR = drawing.Base.R; _baseG = drawing.Base.G; _baseB = drawing.Base.B;
                 _inkR = drawing.Ink.R; _inkG = drawing.Ink.G; _inkB = drawing.Ink.B;
@@ -328,9 +332,10 @@ namespace NonaRoyale.Unity.View
                         // Inside the silhouette, but a rim-width step sideways
                         // or up leaves it: an edge the light wraps. Constant
                         // width, whatever the shape.
-                        float dl = Grid(x - _rim, y);
-                        float dr = Grid(x + _rim, y);
-                        float du = Grid(x, y + _rimUp);
+                        // An edge the rim does not light counts as always inside.
+                        float dl = _rimLeft ? Grid(x - _rim, y) : -1f;
+                        float dr = _rimRight ? Grid(x + _rim, y) : -1f;
+                        float du = _rimTop ? Grid(x, y + _rimUp) : -1f;
                         if (slack > 0f && (Near(dl, slack) || Near(dr, slack) || Near(du, slack))) uniform = false;
 
                         float cov = silCov * (1f - Coverage(dl * _spu) * Coverage(dr * _spu) * Coverage(du * _spu));

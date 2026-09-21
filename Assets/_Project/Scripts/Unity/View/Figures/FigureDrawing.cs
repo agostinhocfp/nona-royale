@@ -5,6 +5,23 @@ using System.Globalization;
 
 namespace NonaRoyale.Unity.View
 {
+    /// <summary>Which edges of a figure take the drawn rim (§2.2 rule 5).</summary>
+    /// <remarks>
+    /// A whole figure takes all three. A rig part takes only the edges that
+    /// are outer on the assembled figure: a far arm's outside edge, never the
+    /// edge that lies against the body (OPERATOR_LOOKBOOK.md, LB5).
+    /// </remarks>
+    [Flags]
+    public enum RimEdges
+    {
+        None = 0,
+        Left = 1 << 0,
+        Right = 1 << 1,
+        Top = 1 << 2,
+        Sides = Left | Right,
+        All = Left | Right | Top,
+    }
+
     /// <summary>A straight (not premultiplied) RGBA colour in 0..1. Plain C#, for the figure rasteriser.</summary>
     public readonly struct FigureColour
     {
@@ -116,6 +133,9 @@ namespace NonaRoyale.Unity.View
         /// <summary>No rim below this height: the rim is a light on the body, not on the shoes.</summary>
         public float RimFloor { get; private set; }
 
+        /// <summary>Which edges the rim lights. All of them unless a rig part says otherwise.</summary>
+        public RimEdges RimEdges { get; private set; } = RimEdges.All;
+
         public FigureDrawing(FigureShape silhouette, FigureColour baseColour, FigureColour ink, float lineWeight)
         {
             Silhouette = silhouette ?? throw new ArgumentNullException(nameof(silhouette));
@@ -134,11 +154,12 @@ namespace NonaRoyale.Unity.View
 
         public FigureDrawing Powered(FigureShape shape, FigureColour colour) => Add(_powered, shape, colour, FigureBlend.Powered);
 
-        public FigureDrawing Rim(float width, FigureColour colour, float floor)
+        public FigureDrawing Rim(float width, FigureColour colour, float floor, RimEdges edges = RimEdges.All)
         {
             RimWidth = Math.Max(0f, width);
             RimColour = colour;
             RimFloor = floor;
+            RimEdges = edges;
             return this;
         }
 
@@ -175,6 +196,35 @@ namespace NonaRoyale.Unity.View
             copy.RimWidth = RimWidth;
             copy.RimColour = RimColour;
             copy.RimFloor = Math.Max(RimFloor, waist);
+            copy.RimEdges = RimEdges;
+            return copy;
+        }
+
+        /// <summary>
+        /// The same drawing reflected across x = 0, the light left where it
+        /// was: every shape is mirrored, the rim's left and right swap, and
+        /// the rasteriser then lights the result from the upper left as
+        /// always. How a rig faces the other way without moving the key
+        /// (OPERATOR_LOOKBOOK.md, LB5).
+        /// </summary>
+        public FigureDrawing Mirrored()
+        {
+            var copy = new FigureDrawing(Silhouette.Mirrored(), Base, Ink, LineWeight);
+
+            foreach (var l in _blocks) copy._blocks.Add(new FigureLayer(l.Shape.Mirrored(), l.Colour, l.Blend));
+            foreach (var l in _shades) copy._shades.Add(new FigureLayer(l.Shape.Mirrored(), l.Colour, l.Blend));
+            foreach (var l in _lights) copy._lights.Add(new FigureLayer(l.Shape.Mirrored(), l.Colour, l.Blend));
+            foreach (var l in _lines) copy._lines.Add(new FigureLayer(l.Shape.Mirrored(), l.Colour, l.Blend));
+            foreach (var l in _powered) copy._powered.Add(new FigureLayer(l.Shape.Mirrored(), l.Colour, l.Blend));
+
+            var edges = RimEdges & RimEdges.Top;
+            if ((RimEdges & RimEdges.Left) != 0) edges |= RimEdges.Right;
+            if ((RimEdges & RimEdges.Right) != 0) edges |= RimEdges.Left;
+
+            copy.RimWidth = RimWidth;
+            copy.RimColour = RimColour;
+            copy.RimFloor = RimFloor;
+            copy.RimEdges = edges;
             return copy;
         }
 

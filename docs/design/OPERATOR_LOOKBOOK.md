@@ -1,7 +1,7 @@
 # Nona Royale — Operator Look Book (procedural Dark Deco figures)
 
 > Location in repo: `docs/design/OPERATOR_LOOKBOOK.md` · Project copy: `claude/OPERATOR_LOOKBOOK.md`
-> Status: **LB0 and LB3 done. LB2 at 9 of 12 recipes (2026-09-21); Luka, Fortuna and Lethe remain.** Written 2026-09-21. **v2 — ambition raised: these are meant to be good, not merely distinct.**
+> Status: **LB0 and LB3 done. LB2 closed at 9 of 12 front-view recipes; the remaining three and the redraw of all twelve move into LB5, the rig. LB5a (rig core, Bouncer) delivered 2026-09-21, awaiting review in the window.** Written 2026-09-21. **v2 — ambition raised: these are meant to be good, not merely distinct.**
 > Related: `ART_DIRECTION.md` §2.2 (Dark Deco cel — the spec), §3 (palette), §5.1 (the value ledger — the source of the recipes), §6.1; `ART_HOOKUP.md` (ART1 — the real-art path this must not break); `STAGE4_HANDOFF.md`; ADR-0009; ADR-0010 (URP 2D lights).
 
 ## Goal
@@ -84,15 +84,70 @@ This is where a procedural approach beats hand-drawn placeholders, and it's what
 | --- | --- | --- |
 | LB0 | Rasteriser | Polygon fill with analytic AA, 4× supersampling, dilation for the ink line, hard-edged shadow and rim cuts, the layer compositor, caching. Two throwaway figures to prove it. **Done 2026-09-21.** |
 | LB1 | Seat identity | Seat colour moves to the base disc and ring; the figure is untinted so its own value solution survives; optional name labels. **Done through ART1; labels skipped (designer, 2026-09-21).** |
-| LB2 | The twelve | `OperatorLook`, `OperatorLookBook`, the twelve recipes, the Deco motif library. **9 of 12: Syla, Bouncer, Kurbyn, Javi, Sanity, Mimi, Revú, Kian, Nuetu.** |
+| LB2 | The twelve | `OperatorLook`, `OperatorLookBook`, the twelve recipes, the Deco motif library. **Closed at 9 of 12 front-view recipes; Luka, Fortuna and Lethe are drawn rigged in LB5 instead.** |
 | LB3 | Judging tools | Contact sheet, squint sheet, distinctness and palette tests. **Delivered 2026-09-21.** |
-| LB4 | Portraits and tells | Draft-card portraits at a larger canvas with a Deco frame, plus the powered cyan overlay on cast. |
+| LB4 | Portraits and tells | Draft-card portraits at a larger canvas with a Deco frame, plus the powered cyan overlay on cast. **Portraits likely go to generator or Blender art instead (see LB5); the cast overlay moves into LB5c.** |
+| LB5 | The rig | Three-quarter figures built from parts that move at the joints: idle, step, cast, hit, knockout and seated activity, facing where they go. **Planned 2026-09-21; see below.** |
 
 LB3 is tempting to skip and should not be. Build it right after LB2's first two or three recipes, then author the rest with it open.
 
 **LB1 is not optional now.** With figures carrying assigned value solutions from §5.1, a seat tint over the top destroys the entire point: Nuetu's dove-grey and Mimi's near-black stop being distinguishable the moment both are painted the same seat colour. Seat identity has to live in the disc, the ring and the pin. This is also where Stage 4 decision 4 was already heading for real art, so it is one system, not two.
 
 **LB1 rides ART1 (designer, 2026-09-21).** ART1 already built this for real renders: any `FigureArt` from `OperatorArtLibrary` is drawn untinted over the seat disc and ring, fitted by `FigureLayout.Fit`, and flashed through a white silhouette. A look-book figure is handed to the piece as a `FigureArt`, so it gets all of that with **no change to `OperatorPiece`**. What LB1 still owes: the optional name labels, and whatever the four-seat Play Mode check says about the disc and ring's strength.
+
+## LB5 — the rig and the three-quarter redraw
+
+**Planned 2026-09-21. LB5a delivered the same day.**
+
+### Why
+
+The designer asked whether the front-view figures were the best procedural art could do. They are not: they are about halfway. Three authoring choices hold them back, and none of them is the rasteriser:
+
+- **Front-on and mirrored.** The board camera looks down about 25° in three-quarter view, and §5 asks for three-quarter figures. A symmetric front-on figure on a tilted board reads as a paper doll stood on a table. It is the biggest single tell.
+- **Frozen.** The only motion is the whole sprite squashing and hopping, and the seated pose is the standing one cut at the waist.
+- **Blank heads.** §2.2 asks for hair as one mass with carved highlights; the heraldic approach allows one face shadow, a brim, a jaw. Today every head is an oval with a cap.
+
+A rig fixes the first two, and the redraw it forces is the natural place to fix the third. It is also where procedural art can **beat** pre-rendered sprites at board scale, because pre-rendered sprites pay for every pose in frames. If LB5 lands well, ADR-0009's Blender pipeline can narrow to portraits and marketing art.
+
+### Decisions (designer, 2026-09-21)
+
+1. **Runtime cut-out rig**, not baked frames. Each part is its own small sprite, rotated at its joint in play: smooth at any frame rate, able to aim a cast at its target, little memory. Accepted costs: ink lines where limbs overlap the body (Dark Deco draws those anyway), and rim light on edges that are only outer in the rest pose.
+2. **The full motion set in the first rig increment**: idle breath and weight shift, a step instead of the hop, a cast pose that raises the device toward the target, a hit recoil, a knockout collapse, and each operator's seated activity at the table (ART_PROMPTS character blocks, "Seated").
+3. **Figures face where they go**: toward the next cell when walking, toward the target when casting, toward the board centre at rest.
+4. **Redraw the nine in three-quarter view on the rig, and draw Luka, Fortuna and Lethe rigged from the start**, so no front-view work is thrown away on them. The fallback order does not change: a real render still wins (Luka), then a rig, then the pawn.
+
+### Proposed design (to confirm before LB5a)
+
+Plain C# for everything but the Unity view, as before.
+
+- **`FigureRig`**: a skeleton in figure space, three-quarter view. Named joints (root, hips, chest, neck, head, both shoulders, elbows, wrists, hips, knees, ankles, a device mount) with rest positions per operator, since a slab and a dart do not share bones.
+- **`RigPart`**: one body part as a `FigureDrawing` in its joint's local space, with a draw order and **rim flags** (which edges take the rim: outer only for a far arm, both for the head). Parts overlap at the joints with round caps so a rotation never opens a seam.
+- **`RigPose`**: joint angles, root offset and draw-order overrides (an arm raised in front of the head). Poses are data. **Shared templates** by build (slab, dart, disc, column) supply the walk cycle, hit and knockout; a recipe overrides only what is its own, usually the cast and the seated activity. That keeps twelve rigs from costing twelve times the authoring.
+- **`OperatorRig`** replaces `OperatorLook` as the recipe type: the skeleton, the parts, the pose overrides, the seated table line.
+- **Facing** bakes each part twice, once mirrored as geometry. *Corrected in LB5a:* the rim, which the rasteriser computes, stays on the key side whichever way the figure faces; the form shadows are drawn shapes and travel with the form, so a left-facing figure's side plane is shaded on the left. That is how flipped animation cels behave, and at 64–90 px it reads as form, not as the light moving. Lighting each facing properly would mean authoring its shadows twice.
+- **`RigView`** (Unity) replaces the body sprite on `OperatorPiece` when an operator has a rig: one `SpriteRenderer` per part under the figure child, inside the existing `SortingGroup`; per-part white silhouettes for the hit flash; screen bounds from the union of parts. `FigureLayout` fits the rest pose.
+- **`RigAnimator`** (Unity) blends between poses with the existing `MotionSettings` clocks and Reduced motion. It takes its cues from the hooks the piece already has: `Walk` and `Stepped` for the step, `Rise`, `Flash` for the hit, `Shatter` for the knockout, and the cast tell queued in `MatchBootstrap.QueueCastTell` for the cast.
+- **Judging.** The Look Book window gains a pose strip per operator and an animated preview. The squint and overlap rules run on the composed rest pose, and new rig tests check that the feet stay planted through idle and cast, that no pose opens a seam at a joint, and that no pose shows cyan at rest.
+- **Normal maps** (planned since LB0) come per part from the shade and light layers, so URP's 2D lights catch the brass and black cloth.
+- **Cost.** Parts are rasterised once per facing, not per frame; animation is transforms only. Build time stays near today's, a little higher for the second facing, and runs on the thread pool as now.
+
+### Increments
+
+| # | Increment | What it delivers |
+| --- | --- | --- |
+| LB5a | Rig core **(delivered)** | `FigureRig`, `RigPart`, `RigPose`, `OperatorRig`, the build templates, composition of a posed rig into one image for judging, and tests. **Bouncer** redrawn in three-quarter view with rest, idle, cast and seated poses, previewed animated in the Look Book window. No game changes yet. |
+| LB5b | On the board | `RigView` and `RigAnimator` on `OperatorPiece`: idle, the step, the rise, facing, the hit flash per part, screen bounds, sorting. Bouncer only. |
+| LB5c | Event poses | Cast aimed at the target, hit recoil, knockout before the shatter, the seated activity, and the cast's cyan tell on the device. |
+| LB5d | The cast | The eight other recipes redrawn in three-quarter view with a head pass each (hair masses, one face shadow, a signature head shape), and **Luka, Fortuna and Lethe** drawn rigged. Normal maps. |
+
+Stop for Play Mode after each.
+
+### Risks
+
+- **Authoring cost.** Twelve rigs with poses is the most hand-placed geometry in the project. The shared templates are what keep it bounded; if a recipe needs more than its cast and seated poses of its own, the template is wrong.
+- **Joint seams** under large rotations. Round caps and limits on joint angles; a test renders every pose and looks for gaps.
+- **Style drift.** Per-part shading does not re-light as a part rotates, so a raised arm keeps its rest-pose shadow. Fine for the small angles of idle and step; the cast pose may need its own part drawing for the raised arm.
+- **Motion budget.** MOTION.md's timings still govern. The step must fit the hop's time per cell, and the cast pose the cast tell's duration, or the presentation queue slows down.
 
 ## Honest limits
 
@@ -179,6 +234,17 @@ All under `Assets/_Project/Scripts/Unity/View/Figures/`. Everything but `FigureS
   - **Syla's cape is dropped from the board figure only** (designer: "remove the cape for art type only, not the character in general"). Her character, portrait and generator briefs keep it. Without it, her dark frame is the drone housings (stepped wedges that slope down onto the shoulders, now the widest and hardest edge on her), the black opera gloves down both sides of the gown, the hip cradles and the bob, cut straight at the jaw with the face set into it. The ivory gown narrows to the ankle, so she still tapers from shoulders to feet. The trade-off: more ivory shows than inside the cape, so the core-in-a-frame reading is weaker; watch it against Luka's camel once his recipe lands. A black chevron low on the gown closes the frame at the bottom.
   - Overlap after the changes: Syla/Mimi 0.73, Syla/Kian 0.69; the rest unchanged.
 
+- **2026-09-21 — LB5 planned.** Asked whether the front-view figures are the best procedural art can do, the answer was no: they are front-on and mirrored under a three-quarter camera, frozen, and blank-headed. The designer chose a runtime cut-out rig, the full motion set, figures that face where they go, and redrawing the nine in three-quarter view with Luka, Fortuna and Lethe drawn rigged from the start. LB2 closes at nine front-view recipes. Design and increments are in the LB5 section; the design is to be confirmed before LB5a starts.
+
+- **2026-09-21 — LB5a, the rig core.** Go given on the LB5 design as written.
+  - **New, plain C#, under `Figures/Rig/`:** `RigSkeleton` (named bones, pivots in figure space, parents turn children), `RigPose` (a turn, shift and scale per bone, hidden and shown parts, the table line; `Lerp` and `Mirrored`), `OperatorRig` with `RigPart` and `RigAnchor`, `RigPoses` (the shared templates by build, Heavy and Light: rest, idle A/B, step A/B, hit, knockout, and default cast and seated poses for a recipe to replace), `RigClips` (idle, step, cast and seated as timed blends), `RigComposer` (parts rasterised once at rest on their own canvases, then turned, placed and laid back to front with bilinear sampling, the way a sprite per part will be in play), `RigChecks` (feet planted, no seams at joints, no cyan at rest), `RigRoster`, and `Rigs/BouncerRig.cs`.
+  - **The rasteriser** gains `RimEdges`, so a part lights only its outer edges (a far arm's right edge, never the edge against the body), and `FigureDrawing.Mirrored`, which reflects every shape and swaps the rim's sides.
+  - **Bouncer redrawn in three-quarter view**, turned toward the right: the front of the jacket to the camera and the side plane receding in shadow, the V and the bow tie off-centre toward the facing side, the brass house pin, stepped near shoulder. The gauntlet is on his right arm, which is the near arm. Head pass: a shaved oval with one carved highlight, the heavy brow as one shadow shape, the broken nose in profile, an ear. His cast swings the gauntlet up and across toward the target with the feet planted; seated, the gauntlet is off and lies on the table while his bare forearm rests beside it (ART_PROMPTS, "the only operator who takes his device off"). Twelve parts, two of them props.
+  - **The Look Book window** gains a Rig section: the pose strip (every pose, the cast with its tell, and the left-facing rest), the rule line, and an animated preview beside the rest pose with a clip picker, Play and Face left.
+  - **`RigTests`**: the skeleton maths, and over every rig in the roster: every part on a real bone, every pose present, feet planted in idle and cast, no seam at any joint in any pose, no cyan at rest, the tell on cast, nothing clipped, facing left is the same shape reflected, the cast clip starts at rest and peaks at the cast pose. Outside Unity against a shim, all 76 tests in `FigureRasterizerTests`, `LookBookRulesTests` and `RigTests` pass; all three assemblies compile against the editor's DLLs with no errors or warnings.
+  - **Cost:** Bouncer's twelve parts rasterise in about 45 ms per facing; composing a pose takes 7–17 ms, which only the judging window does. On the board the parts are sprites and a pose is transforms.
+  - **Known for LB5b:** the clip timings are placeholders until they are fitted to MOTION.md; the knockout pose is rough; the table line clips in the composer, and on the board the table or a mask will have to.
+
 ## Read before writing anything
 
 `ART_DIRECTION.md` §2.2, §3, §5 and §5.1 in full — they are the spec, and this document is a summary of them. Then `View/BoardArt.cs`, `View/OperatorPiece.cs`, `View/FigureLayout.cs`, `View/OperatorArtLibrary.cs`, `View/UiTheme.cs`, `View/FigureTilt.cs`, the draft card, and `Core/Abilities/Roster.cs` for the authoritative names. For LB2 onward, also everything under `View/Figures/`. File names come from the design logs and need verifying against the tree.
@@ -199,6 +265,6 @@ feat(tools): operator contact sheet, squint sheet and distinctness tests
 feat(ui): Deco portraits and the powered cast overlay
 ```
 
-## Start prompt for the implementing session (LB2, the next recipes)
+## Start prompt for the implementing session (LB5b, the rig on the board)
 
-> Read `docs/design/OPERATOR_LOOKBOOK.md` including its log, then `ART_DIRECTION.md` §2.2, §3, §5 and §5.1 in full, `ART_PROMPTS.md`'s character blocks for the operators in hand, then everything under `View/Figures/`. Ask me for the Look Book window's exported sheets and a Play Mode screenshot first. Then write the remaining recipes (Luka, Fortuna, Lethe), render them outside Unity against the sheets and the overlap matrix before handing them over, and stop for Play Mode.
+> Read `docs/design/OPERATOR_LOOKBOOK.md` in full, especially the LB5 section and the log, then `ART_DIRECTION.md` §2.2, §5 and §5.1, `MOTION.md`, `ART_PROMPTS.md`'s Bouncer block, everything under `View/Figures/`, `View/OperatorPiece.cs` and `View/FigureLayout.cs`. Also everything under `View/Figures/Rig/`, `View/OperatorPiece.cs`, `View/CastTell.cs` and `Composition/MatchBootstrap.cs` around `QueueCastTell`, `Rise`, `Flash` and `Shatter`. Ask me for the LB5a review first. Then build LB5b only: `RigView` and `RigAnimator` on `OperatorPiece` for Bouncer (idle, the step, the rise, facing, the hit flash per part, screen bounds, sorting, the seated table line), with the clip timings fitted to MOTION.md. Stop for Play Mode.

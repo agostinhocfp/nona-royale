@@ -47,6 +47,26 @@ namespace NonaRoyale.EditorTools
         }
 
         private readonly List<Row> _rows = new List<Row>();
+
+        // ── The rig (LB5) ───────────────────────────────────────────────
+
+        private sealed class RigEntry
+        {
+            public OperatorRig Right, Left;
+            public List<RigPartImage> PartsRight, PartsLeft, Powered;
+            public FigureImage RestRight, RestLeft;
+            public Texture2D Strip, Preview;
+            public float FootDrift;
+            public List<string> Seams;
+            public int Cyan;
+        }
+
+        private readonly List<RigEntry> _rigs = new List<RigEntry>();
+        private int _clipIndex;
+        private bool _playing = true;
+        private bool _facingLeft;
+        private double _clipStart;
+        private double _lastFrame;
         private Backdrop[] _backdrops;
         private Texture2D _contact, _squint;
         private SheetImage _contactSheet, _squintSheet;
@@ -59,9 +79,32 @@ namespace NonaRoyale.EditorTools
         [MenuItem("Window/Nona Royale/Look Book")]
         private static void Open() => GetWindow<LookBookWindow>("Look Book");
 
-        private void OnEnable() => Rebuild();
+        private void OnEnable()
+        {
+            Rebuild();
+            _clipStart = EditorApplication.timeSinceStartup;
+            EditorApplication.update += Tick;
+        }
 
-        private void OnDisable() => FreeTextures();
+        private void OnDisable()
+        {
+            EditorApplication.update -= Tick;
+            FreeTextures();
+            FreeRigTextures();
+        }
+
+        /// <summary>About fifteen frames a second of preview, only while playing.</summary>
+        private void Tick()
+        {
+            if (!_playing || _rigs.Count == 0) return;
+
+            double now = EditorApplication.timeSinceStartup;
+            if (now - _lastFrame < 1.0 / 15.0) return;
+            _lastFrame = now;
+
+            ComposePreviews((float)(now - _clipStart));
+            Repaint();
+        }
 
         private void Rebuild()
         {
@@ -105,6 +148,7 @@ namespace NonaRoyale.EditorTools
             };
 
             ComposeSheets();
+            BuildRigs(palette);
             _buildMs = clock.Elapsed.TotalMilliseconds;
         }
 
@@ -135,7 +179,11 @@ namespace NonaRoyale.EditorTools
                 EditorGUI.BeginChangeCheck();
                 _heightIndex = EditorGUILayout.Popup(_heightIndex, HeightNames, EditorStyles.toolbarPopup, GUILayout.Width(170));
                 _showPowered = GUILayout.Toggle(_showPowered, "Show cast tell", EditorStyles.toolbarButton, GUILayout.Width(100));
-                if (EditorGUI.EndChangeCheck()) ComposeSheets();
+                if (EditorGUI.EndChangeCheck())
+                {
+                    ComposeSheets();
+                    ComposeRigStrips();
+                }
 
                 GUILayout.FlexibleSpace();
                 GUILayout.Label($"{_rows.Count} recipes · {_buildMs:0} ms", EditorStyles.miniLabel);
@@ -156,6 +204,10 @@ namespace NonaRoyale.EditorTools
 
             Heading("Ledger rules", "No cyan at rest (§5). Gilt is Fortuna's alone (§3). Nothing clipped by the canvas.");
             DrawRules();
+
+            Heading("Rig (LB5)", "Three-quarter figures on the rig, assembled the way the board will assemble them. " +
+                                 "The strip: " + string.Join(", ", RigPoseNames.Strip) + ", then the cast with its tell. Not on the board until LB5b.");
+            DrawRigs();
 
             EditorGUILayout.EndScrollView();
         }
@@ -276,6 +328,115 @@ namespace NonaRoyale.EditorTools
             texture.SetPixelData(sheet.Pixels, 0);
             texture.Apply(false, false);
             return texture;
+        }
+
+        private void BuildRigs(LookBookPalette palette)
+        {
+            FreeRigTextures();
+            _rigs.Clear();
+
+            foreach (var rig in RigRoster.All)
+            {
+                var entry = new RigEntry { Right = rig, Left = rig.Mirrored() };
+                entry.PartsRight = RigComposer.RenderParts(entry.Right, palette, 96f, 4);
+                entry.PartsLeft = RigComposer.RenderParts(entry.Left, palette, 96f, 4);
+                entry.Powered = RigComposer.RenderParts(entry.Right, palette, 96f, 4, powered: true);
+                entry.RestRight = RigComposer.Compose(entry.Right, entry.PartsRight, entry.Right.Pose(RigPoseNames.Rest), RigComposer.PoseCanvas);
+                entry.RestLeft = RigComposer.Compose(entry.Left, entry.PartsLeft, entry.Left.Pose(RigPoseNames.Rest), RigComposer.PoseCanvas);
+                entry.FootDrift = RigChecks.FootDrift(rig);
+                entry.Seams = RigChecks.Seams(rig, entry.PartsRight, RigComposer.PoseCanvas);
+                entry.Cyan = RigChecks.CyanAtRest(rig, entry.PartsRight, RigComposer.PoseCanvas);
+                _rigs.Add(entry);
+            }
+
+            ComposeRigStrips();
+            ComposePreviews(0f);
+        }
+
+        private void ComposeRigStrips()
+        {
+            var floor = new[] { _backdrops[0] };
+            foreach (var entry in _rigs)
+            {
+                var poses = new List<FigureImage>();
+                foreach (var name in RigPoseNames.Strip)
+                    poses.Add(RigComposer.Compose(entry.Right, entry.PartsRight, entry.Right.Pose(name), RigComposer.PoseCanvas));
+
+                poses.Add(RigComposer.Compose(entry.Right, entry.Powered, entry.Right.Pose(RigPoseNames.Cast), RigComposer.PoseCanvas));
+                poses.Add(entry.RestLeft);
+
+                if (entry.Strip != null) DestroyImmediate(entry.Strip);
+                entry.Strip = ToTexture(LookSheet.Contact(new List<FigureImage[]> { poses.ToArray() }, floor, Heights[_heightIndex]), "LookBook_RigStrip");
+            }
+        }
+
+        private void ComposePreviews(float seconds)
+        {
+            if (_backdrops == null) return;
+            var floor = new[] { _backdrops[0] };
+            string clip = RigClips.All[_clipIndex];
+
+            foreach (var entry in _rigs)
+            {
+                var rig = _facingLeft ? entry.Left : entry.Right;
+                var parts = _facingLeft ? entry.PartsLeft : entry.PartsRight;
+                var image = RigComposer.Compose(rig, parts, RigClips.Sample(rig, clip, seconds), RigComposer.PoseCanvas);
+
+                // Scaled against the rest pose, so a seated or knocked-down
+                // figure shrinks with its pose instead of refilling the frame.
+                var rest = _facingLeft ? entry.RestLeft : entry.RestRight;
+                var sheet = LookSheet.Contact(new List<FigureImage[]> { new[] { rest, image } }, floor, Heights[_heightIndex]);
+
+                if (entry.Preview != null) DestroyImmediate(entry.Preview);
+                entry.Preview = ToTexture(sheet, "LookBook_RigPreview");
+            }
+        }
+
+        private void DrawRigs()
+        {
+            if (_rigs.Count == 0) return;
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUI.BeginChangeCheck();
+                _clipIndex = EditorGUILayout.Popup(_clipIndex, RigClips.All, GUILayout.Width(90));
+                _facingLeft = GUILayout.Toggle(_facingLeft, "Face left", GUILayout.Width(80));
+                if (EditorGUI.EndChangeCheck())
+                {
+                    _clipStart = EditorApplication.timeSinceStartup;
+                    ComposePreviews(0f);
+                }
+
+                _playing = GUILayout.Toggle(_playing, "Play", GUILayout.Width(50));
+                GUILayout.FlexibleSpace();
+            }
+
+            foreach (var entry in _rigs)
+            {
+                EditorGUILayout.Space(4f);
+                EditorGUILayout.LabelField(entry.Right.Name, EditorStyles.boldLabel);
+
+                string seams = entry.Seams.Count == 0 ? "none" : string.Join(", ", entry.Seams);
+                EditorGUILayout.LabelField(
+                    $"{Mark(entry.FootDrift <= RigChecks.FootTolerance)} feet planted ({entry.FootDrift:0.000})    " +
+                    $"{Mark(entry.Seams.Count == 0)} seams: {seams}    {Mark(entry.Cyan == 0)} no cyan at rest",
+                    EditorStyles.wordWrappedLabel);
+
+                DrawPixelTrue(entry.Strip);
+                EditorGUILayout.LabelField("Rest, then the clip:", EditorStyles.miniLabel);
+                DrawPixelTrue(entry.Preview);
+            }
+        }
+
+        private void FreeRigTextures()
+        {
+            foreach (var entry in _rigs)
+            {
+                if (entry.Strip != null) DestroyImmediate(entry.Strip);
+                if (entry.Preview != null) DestroyImmediate(entry.Preview);
+                entry.Strip = null;
+                entry.Preview = null;
+            }
         }
 
         private void FreeTextures()
