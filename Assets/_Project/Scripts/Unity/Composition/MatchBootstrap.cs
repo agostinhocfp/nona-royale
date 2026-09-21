@@ -388,12 +388,29 @@ namespace NonaRoyale.Unity.Composition
         }
 
         /// <summary>Pushes the display settings into the engine: mode and size, VSync, and the cap with VSync off.</summary>
+        /// <remarks>
+        /// <b>The size and the mode are skipped where the screen is the
+        /// device's</b> (MOBILE.md, M7). This is not a tidiness point. The
+        /// stored windowed size is 1920×1080, and on Android
+        /// <c>Screen.SetResolution</c> takes it literally: the log showed the
+        /// surface come up correct at 1080×2340 and then be reset to 1920×1080
+        /// the moment the settings were applied, which the compositor then
+        /// stretched across an upright screen. The board looked squashed and
+        /// every aspect-driven decision in the HUD was answering for a window
+        /// nobody had.
+        ///
+        /// VSync and the frame cap stay: both mean something on a phone.
+        /// </remarks>
         private static void ApplyDisplay(DisplaySettings display)
         {
-            var mode = display.Mode == ScreenMode.Fullscreen
-                ? FullScreenMode.FullScreenWindow
-                : FullScreenMode.Windowed;
-            Screen.SetResolution(display.Width, display.Height, mode);
+            if (!ScreenLayout.FixedScreen)
+            {
+                var mode = display.Mode == ScreenMode.Fullscreen
+                    ? FullScreenMode.FullScreenWindow
+                    : FullScreenMode.Windowed;
+                Screen.SetResolution(display.Width, display.Height, mode);
+            }
+
             QualitySettings.vSyncCount = display.VSync ? 1 : 0;
             Application.targetFrameRate = display.VSync || display.FrameCap <= 0 ? -1 : display.FrameCap;
         }
@@ -747,7 +764,7 @@ namespace NonaRoyale.Unity.Composition
             View.UiTween.ReducedMotion = reducedMotion;
 
             // Space hurries a CPU turn's animation as well as its thinking.
-            _motion.Hurry = _match != null && CpuTurn && Input.GetKey(KeyCode.Space) ? HurrySpeed : 1f;
+            _motion.Hurry = _match != null && CpuTurn && Hurrying ? HurrySpeed : 1f;
 
             if (_queue != null) _queue.Speed = _motion.Rate;
             if (_dice != null)
@@ -865,6 +882,13 @@ namespace NonaRoyale.Unity.Composition
         private BoardCamera _framedCamera;
 
         /// <summary>
+        /// The screen shape the framing was solved for (MOBILE.md, M1). A turn
+        /// of the phone changes what every panel reserves, so the solve has to
+        /// run again.
+        /// </summary>
+        private int _framedLayout = -1;
+
+        /// <summary>
         /// Sizes the camera and centres the board in the part of the screen the
         /// HUD leaves free.
         /// </summary>
@@ -925,13 +949,31 @@ namespace NonaRoyale.Unity.Composition
             // and the menu row rather than under them (V3b). The other menus
             // reserve nothing: their cards are centred over a room, and the
             // room is the picture.
-            float topUnits = hud ? TurnStrip.ReservedHeight : title ? TitleScreen.ReservedTop : 0f;
-            float bottomUnits = hud ? ActionTray.ReservedHeight : title ? TitleScreen.ReservedBottom : 0f;
+            //
+            // Upright, the rail and the history are bands rather than columns
+            // (MOBILE.md, M3), so they reserve height instead of width. Both
+            // arrangements are added unconditionally: whichever one is not in
+            // force reports zero.
+            float topUnits = hud ? TurnStrip.ReservedHeight + SquadRail.ReservedHeight
+                : title ? TitleScreen.ReservedTop : 0f;
+            float bottomUnits = hud ? ActionTray.ReservedHeight + HistoryStrip.ReservedHeight
+                : title ? TitleScreen.ReservedBottom : 0f;
 
-            float left = Mathf.Clamp(leftUnits * scale / width, 0f, 0.45f);
-            float right = Mathf.Clamp(rightUnits * scale / width, 0f, 0.45f);
-            float top = Mathf.Clamp(topUnits * scale / height, 0f, 0.3f);
-            float bottom = Mathf.Clamp(bottomUnits * scale / height, 0f, 0.35f);
+            // The safe area comes off the same edges as the panels do
+            // (MOBILE.md, M2). The player settings render outside it so the
+            // room runs under the cut-out; the board must not, or a cell ends
+            // up behind a camera hole. HudRoot insets the chrome by the same
+            // amounts, so the two agree on where the screen ends.
+            var safe = ScreenLayout.SafePixels;
+            float safeLeft = Mathf.Max(0f, safe.xMin);
+            float safeRight = Mathf.Max(0f, width - safe.xMax);
+            float safeTop = Mathf.Max(0f, height - safe.yMax);
+            float safeBottom = Mathf.Max(0f, safe.yMin);
+
+            float left = Mathf.Clamp((leftUnits * scale + safeLeft) / width, 0f, 0.45f);
+            float right = Mathf.Clamp((rightUnits * scale + safeRight) / width, 0f, 0.45f);
+            float top = Mathf.Clamp((topUnits * scale + safeTop) / height, 0f, ScreenLayout.Pick(0.3f, 0.32f));
+            float bottom = Mathf.Clamp((bottomUnits * scale + safeBottom) / height, 0f, ScreenLayout.Pick(0.35f, 0.42f));
 
             // Never let the panels claim so much of a tiny window that the board
             // is sized into nothing.
@@ -965,11 +1007,17 @@ namespace NonaRoyale.Unity.Composition
             // A nudge in progress continues around the new resting place.
             if (_nudge != null) _nudge.SetBase(camera.transform.position);
 
+            // The chrome's own insets, in canvas units. The safe area is not
+            // added: every layer below is parented inside HudRoot's safe-area
+            // rect already, so adding it here would inset it twice.
+            float chromeTop = TurnStrip.ReservedHeight + SquadRail.ReservedHeight;
+            float chromeBottom = ActionTray.ReservedHeight + HistoryStrip.ReservedHeight;
+
             if (_tray != null) _tray.SetInsets(leftUnits, rightUnits);
-            if (_toasts != null) _toasts.SetArea(leftUnits, rightUnits, TurnStrip.ReservedHeight);
-            if (_banner != null) _banner.SetArea(leftUnits, rightUnits, TurnStrip.ReservedHeight);
-            if (_turnButton != null) _turnButton.SetArea(leftUnits, rightUnits, TurnStrip.ReservedHeight, ActionTray.ReservedHeight);
-            if (_pieceHud != null) _pieceHud.SetCeiling(hud ? TurnStrip.ReservedHeight + TurnBanner.ReservedHeight : 0f);
+            if (_toasts != null) _toasts.SetArea(leftUnits, rightUnits, chromeTop);
+            if (_banner != null) _banner.SetArea(leftUnits, rightUnits, chromeTop);
+            if (_turnButton != null) _turnButton.SetArea(leftUnits, rightUnits, chromeTop, chromeBottom);
+            if (_pieceHud != null) _pieceHud.SetCeiling(hud ? chromeTop + TurnBanner.ReservedHeight : 0f);
 
             _framedWidth = Screen.width;
             _framedHeight = Screen.height;
@@ -979,6 +1027,7 @@ namespace NonaRoyale.Unity.Composition
             _framedWithHud = hud;
             _framedOnTitle = title;
             _framedCamera = tilted ? BoardCamera.Tilted : BoardCamera.TopDown;
+            _framedLayout = ScreenLayout.Version;
         }
 
         /// <summary>The flat camera: an orthographic size, and a shift away from the panels.</summary>
@@ -1055,6 +1104,11 @@ namespace NonaRoyale.Unity.Composition
         /// </summary>
         private float LeftReservedUnits(float scale)
         {
+            // Upright there is no width to give either panel: the rail lies
+            // down under the top bar (M3) and the dev panel, which is a
+            // debugging tool and not skinned, simply draws over the board.
+            if (ScreenLayout.IsPortrait) return 0f;
+
             if (!showDevPanel) return SquadRail.ReservedWidth;
             if (useLegacyPanel) return PanelWidth / Mathf.Max(0.01f, scale);
             return ControlPanel.ReservedWidth;
@@ -1140,6 +1194,7 @@ namespace NonaRoyale.Unity.Composition
                 (_match != null) != _framedWithHud ||
                 (_title != null && _title.IsShowing) != _framedOnTitle ||
                 _display.Camera != _framedCamera ||
+                ScreenLayout.Version != _framedLayout ||
                 (_hudRoot != null && !Mathf.Approximately(_hudRoot.ScaleFactor, _framedScale)))
             {
                 FrameCamera();
@@ -1215,6 +1270,19 @@ namespace NonaRoyale.Unity.Composition
         private bool CpuTurn => _bots != null && _match != null && _bots.IsCpuTurn(_match.Engine);
 
         /// <summary>
+        /// Whether the player is asking the CPU to get on with it: Space held,
+        /// or — with no keyboard to hold it on — a finger held anywhere
+        /// (MOBILE.md, M4).
+        /// </summary>
+        /// <remarks>
+        /// Held, not tapped, and only while a CPU is playing, so it cannot be
+        /// confused with a tap on the board: nothing on the board is
+        /// commandable on a CPU's turn anyway.
+        /// </remarks>
+        private static bool Hurrying =>
+            Input.GetKey(KeyCode.Space) || (ScreenLayout.Touch && Input.touchCount > 0);
+
+        /// <summary>
         /// Lets the CPU seat act, one command at a time, through the same
         /// handling a human command gets. Called only while no card is open,
         /// on scaled time, so pause freezes it. Space held hurries it.
@@ -1227,7 +1295,7 @@ namespace NonaRoyale.Unity.Composition
             bool busy = Busy || AnyPieceMoving();
 
             var command = _bots.Tick(_match, Time.deltaTime, mayAct: true, presentationBusy: busy,
-                cpuSpeed, hurry: Input.GetKey(KeyCode.Space));
+                cpuSpeed, hurry: Hurrying);
             if (command == null) return;
 
             var seat = _match.Engine.CurrentPlayer.Color;
@@ -1399,6 +1467,15 @@ namespace NonaRoyale.Unity.Composition
         {
             OperatorPiece hovered = null;
 
+            // A finger that has left the glass is nowhere, but Input.mousePosition
+            // still reports where it last was, which left a piece lifted and a
+            // rail row washed for the rest of the turn (MOBILE.md, M4).
+            if (ScreenLayout.Touch && Input.touchCount == 0)
+            {
+                SetHovered(null);
+                return;
+            }
+
             if (!_match.Engine.MatchOver && !PointerOverPanel() && BoardPointer.TryWorldPoint(out var world))
             {
                 var piece = BoardPointer.PieceAt(world, Input.mousePosition, _pieces, PieceClickRadius * cellSpacing);
@@ -1429,8 +1506,13 @@ namespace NonaRoyale.Unity.Composition
         }
 
         /// <summary>Hands a look to the cursor skin, if it exists.</summary>
+        /// <remarks>
+        /// There is no cursor on a touch screen, and dressing one that is not
+        /// drawn costs a texture swap per frame for nothing (M4).
+        /// </remarks>
         private void ShowCursor(CursorLook look)
         {
+            if (ScreenLayout.Touch) return;
             if (_cursor != null) _cursor.Show(look);
         }
 
@@ -1673,6 +1755,7 @@ namespace NonaRoyale.Unity.Composition
                     case DamageDealt damaged when damaged.Amount > 0: hits = true; break;
                     case DamageEvaded _:
                     case DamageAbsorbed _:
+                    case DamageSheltered _:
                     case HealApplied _:
                     case OperatorRegenerated _:
                         hits = true;
@@ -2240,6 +2323,18 @@ namespace NonaRoyale.Unity.Composition
                     {
                         _feedback.Evaded(piece.transform.position);
                         Sound(SoundCue.Miss, piece.transform.position);
+                    }
+                    continue;
+                }
+
+                var sheltered = e as DamageSheltered;
+                if (sheltered != null)
+                {
+                    var piece = PieceFor(sheltered.Target);
+                    if (piece != null)
+                    {
+                        _feedback.Sheltered(piece.transform.position);
+                        Sound(SoundCue.Block, piece.transform.position);
                     }
                     continue;
                 }

@@ -38,6 +38,7 @@ namespace NonaRoyale.Unity.View
         private bool _dirty;
         private int _shownCount = -1;
         private string _shownLast;
+        private int _placedLayout = -1;
 
         public void Bind(RectTransform canvasRect, IControlPanelHost host)
         {
@@ -56,8 +57,7 @@ namespace NonaRoyale.Unity.View
             _panel.anchorMin = new Vector2(1f, 0f);
             _panel.anchorMax = new Vector2(1f, 1f);
             _panel.pivot = new Vector2(1f, 0.5f);
-            _panel.offsetMin = new Vector2(-HistoryStrip.Width - Width, ActionTray.Height);
-            _panel.offsetMax = new Vector2(-HistoryStrip.Width, -TurnStrip.ReservedHeight);
+            Place();
             UiKit.Panel(_panel, blocksPointer: true, fill: UiTheme.WithAlpha(UiTheme.Charcoal, 0.98f));
 
             var body = UiKit.Rect("body", _panel);
@@ -68,7 +68,8 @@ namespace NonaRoyale.Unity.View
             UiKit.Row(header, 8f);
             UiKit.Size(header, height: 30f);
             UiKit.Size(UiKit.Heading(header, "Event log"), flexibleWidth: 1f);
-            UiKit.Fixed(UiKit.Button(header, "Close  <size=70%>L</size>", () => CloseRequested?.Invoke(), size: UiTheme.FontSmall), 100f, 28f);
+            UiKit.Fixed(UiKit.Button(header, $"Close{ScreenLayout.KeyMarkup("  <size=70%>L</size>")}",
+                () => CloseRequested?.Invoke(), size: UiTheme.FontSmall), 100f, ScreenLayout.Pick(28f, 40f));
 
             var scrollRect = UiKit.Rect("scroll", body);
             UiKit.Size(scrollRect, flexibleHeight: 1f);
@@ -95,9 +96,34 @@ namespace NonaRoyale.Unity.View
             _panel.gameObject.SetActive(false);
         }
 
+        /// <summary>
+        /// Where the overlay opens. Upright there is no column beside the
+        /// history to open into, so the log takes the whole board area
+        /// instead (MOBILE.md, M5) — it is a reading overlay, and nothing
+        /// under it is being played while it is up.
+        /// </summary>
+        private void Place()
+        {
+            if (_panel == null) return;
+
+            float side = HistoryStrip.ReservedWidth;
+
+            _panel.offsetMin = new Vector2(
+                ScreenLayout.Pick(-side - Width, -ScreenLayout.Reference.x + 12f),
+                ActionTray.ReservedHeight + HistoryStrip.ReservedHeight);
+            _panel.offsetMax = new Vector2(ScreenLayout.Pick(-side, -12f),
+                -TurnStrip.ReservedHeight - SquadRail.ReservedHeight);
+        }
+
         private void LateUpdate()
         {
             if (_panel == null) return;
+
+            if (_placedLayout != ScreenLayout.Version)
+            {
+                _placedLayout = ScreenLayout.Version;
+                Place();
+            }
 
             if (_panel.gameObject.activeSelf != Expanded)
             {

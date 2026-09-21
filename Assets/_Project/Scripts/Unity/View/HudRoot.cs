@@ -13,24 +13,46 @@ namespace NonaRoyale.Unity.View
     /// Built from code because MatchBootstrap's contract is one component on an
     /// empty GameObject — no prefabs, no scene wiring — and ADR-0008 keeps it.
     ///
-    /// <b>Reference resolution 1920×1080, match 0.5</b> (ADR-0008). Pixel sizes
-    /// in HUD code mean "at 1080p" and scale with the window, which is what
-    /// closes PRESENTATION §7's "OnGUI does not scale with resolution" item —
-    /// for everything drawn here. The OnGUI panel keeps its fixed pixels until
-    /// it is deleted; two scaling models coexist during the side-by-side
-    /// period, and that is expected, not a bug.
+    /// <b>Reference resolution 1920×1080, match 0.5</b> (ADR-0008) while the
+    /// window is wide. Pixel sizes in HUD code mean "at 1080p" and scale with
+    /// the window, which is what closes PRESENTATION §7's "OnGUI does not scale
+    /// with resolution" item — for everything drawn here. The OnGUI panel keeps
+    /// its fixed pixels until it is deleted; two scaling models coexist during
+    /// the side-by-side period, and that is expected, not a bug.
+    ///
+    /// <b>Upright, the reference becomes 480×1040 and the scaler expands</b>
+    /// (MOBILE.md, M1). A phone held upright has a tenth of the width a 1080p
+    /// window has once the reference is applied, and the same numbers cannot
+    /// mean both. Expand — rather than matching an axis — takes the smaller of
+    /// the two ratios, so the canvas is never smaller than the reference on
+    /// either axis and no widget is ever cut off by a screen that is the wrong
+    /// shape; a short, wide portrait window simply gets more canvas width.
+    /// <see cref="ScreenLayout"/> holds both sets of numbers and decides which
+    /// is in force.
+    ///
+    /// <b>Everything mounts inside the safe area</b> (MOBILE.md, M2). The
+    /// canvas fills the screen, but <see cref="Root"/> is a child rect pinned
+    /// to <c>Screen.safeArea</c>, so a punch-hole camera, a status bar or a
+    /// gesture bar eats into the margin rather than into a control. The player
+    /// settings render outside the safe area on purpose — that is what lets the
+    /// room and the felt run edge to edge behind the cut-out — and this rect is
+    /// what keeps the chrome out of it.
     ///
     /// The EventSystem gets a <see cref="StandaloneInputModule"/> because the
     /// project is on the legacy Input Manager (ADR-0008 §7), as is every
-    /// <c>Input.*</c> call in MatchBootstrap. Nothing raycasts against the HUD
-    /// yet — increment A is labels only — but the scaffold is built once so
-    /// the interactive increments mount without rework.
+    /// <c>Input.*</c> call in MatchBootstrap. That module raises touches as
+    /// pointer events, so the whole HUD is tappable without a second input
+    /// path.
     /// </remarks>
     public sealed class HudRoot : MonoBehaviour
     {
+        private RectTransform _canvasRect;
         private RectTransform _root;
         private RectTransform _matchLayer;
         private Canvas _canvas;
+        private CanvasScaler _scaler;
+
+        private int _appliedVersion = -1;
 
         /// <summary>
         /// A full-canvas layer holding the in-match HUD: top bar, rail, tray,
@@ -54,7 +76,10 @@ namespace NonaRoyale.Unity.View
             set { if (MatchLayer.gameObject.activeSelf != value) MatchLayer.gameObject.SetActive(value); }
         }
 
-        /// <summary>The canvas rect every HUD element parents under. Built on first use.</summary>
+        /// <summary>
+        /// The rect every HUD element parents under: the canvas, inset to the
+        /// safe area. Built on first use.
+        /// </summary>
         public RectTransform Root
         {
             get
@@ -94,8 +119,10 @@ namespace NonaRoyale.Unity.View
 
             var scaler = go.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.referenceResolution = new Vector2(
+                ScreenLayout.LandscapeReferenceWidth, ScreenLayout.LandscapeReferenceHeight);
             scaler.matchWidthOrHeight = 0.5f;
+            _scaler = scaler;
 
             go.AddComponent<GraphicRaycaster>();
 
@@ -111,7 +138,15 @@ namespace NonaRoyale.Unity.View
                 events.AddComponent<StandaloneInputModule>();
             }
 
-            _root = (RectTransform)go.transform;
+            _canvasRect = (RectTransform)go.transform;
+
+            var safe = new GameObject("safe_area", typeof(RectTransform));
+            _root = (RectTransform)safe.transform;
+            _root.SetParent(_canvasRect, false);
+            _root.anchorMin = Vector2.zero;
+            _root.anchorMax = Vector2.one;
+            _root.offsetMin = Vector2.zero;
+            _root.offsetMax = Vector2.zero;
 
             var layer = new GameObject("match_hud", typeof(RectTransform));
             _matchLayer = (RectTransform)layer.transform;
@@ -121,6 +156,61 @@ namespace NonaRoyale.Unity.View
             _matchLayer.offsetMin = Vector2.zero;
             _matchLayer.offsetMax = Vector2.zero;
             _matchLayer.SetAsFirstSibling();
+
+            // Sampled before anything is built on it, so the first layout pass
+            // already knows which arrangement it is in.
+            Sample();
+            Apply();
+        }
+
+        /// <summary>
+        /// Re-reads the screen before anything lays out this frame, and applies
+        /// a new shape to the scaler and the safe-area rect when it changed.
+        /// </summary>
+        /// <remarks>
+        /// Update rather than LateUpdate: every layer's own LateUpdate rebuild
+        /// has to see this frame's answers, and the composition root's
+        /// <c>FrameCamera</c> check reads <see cref="ScreenLayout.Version"/>
+        /// in the same pass.
+        /// </remarks>
+        private void Update()
+        {
+            if (_root == null) return;
+
+            Sample();
+            if (ScreenLayout.Version != _appliedVersion) Apply();
+        }
+
+        private void Sample() => ScreenLayout.Sample(_canvas != null ? _canvas.scaleFactor : 1f);
+
+        private void Apply()
+        {
+            _appliedVersion = ScreenLayout.Version;
+
+            _scaler.referenceResolution = ScreenLayout.Reference;
+
+            // Expand in portrait (never cut a control off a narrow screen),
+            // the long-standing half-and-half match in landscape.
+            if (ScreenLayout.IsPortrait)
+            {
+                _scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
+            }
+            else
+            {
+                _scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+                _scaler.matchWidthOrHeight = 0.5f;
+            }
+
+            // The safe area, as fractions of the canvas. Written as anchors so
+            // it follows a resize without arithmetic of its own.
+            var safe = ScreenLayout.SafePixels;
+            float width = Mathf.Max(1f, Screen.width);
+            float height = Mathf.Max(1f, Screen.height);
+
+            _root.anchorMin = new Vector2(safe.xMin / width, safe.yMin / height);
+            _root.anchorMax = new Vector2(safe.xMax / width, safe.yMax / height);
+            _root.offsetMin = Vector2.zero;
+            _root.offsetMax = Vector2.zero;
         }
     }
 }

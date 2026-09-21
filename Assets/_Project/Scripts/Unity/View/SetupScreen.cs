@@ -271,7 +271,7 @@ namespace NonaRoyale.Unity.View
 
             var name = UiKit.Label(button.transform, seat.ToString().ToUpperInvariant(), UiTheme.FontBody,
                 on ? UiTheme.Readable(colour) : UiTheme.TextOff, TextAlignmentOptions.Center, bold: true);
-            UiKit.Size(name, 120f, 24f);
+            UiKit.Size(name, ScreenLayout.Pick(120f, 84f), 24f);
 
             // At a crossed table a tile says which side it is on rather than
             // just who plays it: two tiles reading "HUMAN" and two reading
@@ -287,11 +287,11 @@ namespace NonaRoyale.Unity.View
             var state = UiKit.Label(button.transform, kind, 11f,
                 on ? UiTheme.Cyan : UiTheme.TextOff, TextAlignmentOptions.Center, bold: cpu);
             state.characterSpacing = UiTheme.HeadingSpacing * 0.5f;
-            UiKit.Size(state, 120f, 16f);
+            UiKit.Size(state, ScreenLayout.Pick(120f, 84f), 16f);
 
             if (!cpu)
             {
-                UiKit.Space(button.transform, 120f, 26f);
+                UiKit.Space(button.transform, ScreenLayout.Pick(120f, 84f), 26f);
                 return;
             }
 
@@ -300,7 +300,7 @@ namespace NonaRoyale.Unity.View
             var chip = UiKit.Button(button.transform, personality.Label(), () =>
                 _edit.SetPersonality(seat, NextPersonality(personality)), Rebuild,
                 size: 12f, tint: UiTheme.GoldDeep, edge: UiTheme.Line);
-            UiKit.Size(chip, 120f, 26f);
+            UiKit.Size(chip, ScreenLayout.Pick(120f, 84f), 26f);
         }
 
         /// <summary>EMPTY → HUMAN → CPU → EMPTY. The last two seats skip EMPTY and say why.</summary>

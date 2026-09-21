@@ -19,9 +19,17 @@ namespace NonaRoyale.Unity.View
     /// when pressing it is the next step. While movement is owed, it says so
     /// and shows the dice left.
     ///
+    /// <b>Upright it takes the screen's bottom-right corner instead of the
+    /// board's</b> (MOBILE.md, M3). A phone's board is framed edge to edge, so
+    /// a button floating over its corner would sit on playable cells; down in
+    /// the corner of the screen it lands in the slot
+    /// <see cref="ActionTray"/> leaves beside Cast, which is also where a
+    /// thumb already is.
+    ///
     /// <b>Every state is an engine answer</b> (PRESENTATION §1): the phase,
     /// <c>MustSpendRoll</c>, <c>CanRollAgain</c> and the unspent dice. Space
-    /// and E still work, and the button shows its key.
+    /// and E still work, and the button shows its key — unless there is no
+    /// keyboard to press it on (M4).
     ///
     /// Only the button catches the pointer.
     /// </remarks>
@@ -31,10 +39,17 @@ namespace NonaRoyale.Unity.View
         private const float ButtonHeight = 62f;
         private const float Gap = 14f;
 
+        /// <summary>The slot the tray keeps open for it upright (M3).</summary>
+        public const float UprightWidth = 168f;
+
+        private const float UprightHeight = 60f;
+        private const float UprightGap = 12f;
+
         private IControlPanelHost _host;
         private RectTransform _area;
         private RectTransform _slot;
         private string _shown;
+        private bool _placedPortrait;
 
         public void Bind(RectTransform canvasRect, IControlPanelHost host)
         {
@@ -50,20 +65,60 @@ namespace NonaRoyale.Unity.View
                 _slot.anchorMin = new Vector2(1f, 0f);
                 _slot.anchorMax = new Vector2(1f, 0f);
                 _slot.pivot = new Vector2(1f, 0f);
-                _slot.anchoredPosition = new Vector2(-Gap, Gap);
-                _slot.sizeDelta = new Vector2(ButtonWidth, ButtonHeight);
             }
 
+            Place();
             _shown = null;
         }
 
-        /// <summary>Keeps the button in the free board area's bottom-right corner.</summary>
+        /// <summary>
+        /// Keeps the button in the free board area's bottom-right corner, or,
+        /// upright, in the screen's own.
+        /// </summary>
         public void SetArea(float left, float right, float top, float bottom)
         {
             if (_area == null) return;
 
-            _area.offsetMin = new Vector2(left, bottom);
-            _area.offsetMax = new Vector2(-right, -top);
+            // Upright the button belongs to the tray's bottom row, not to the
+            // board, so the board's insets do not move it.
+            if (ScreenLayout.IsPortrait)
+            {
+                _area.offsetMin = Vector2.zero;
+                _area.offsetMax = Vector2.zero;
+            }
+            else
+            {
+                _area.offsetMin = new Vector2(left, bottom);
+                _area.offsetMax = new Vector2(-right, -top);
+            }
+
+            Place();
+        }
+
+        /// <summary>Sizes and seats the slot for the arrangement in force.</summary>
+        private void Place()
+        {
+            if (_slot == null) return;
+
+            bool portrait = ScreenLayout.IsPortrait;
+
+            _slot.anchoredPosition = portrait
+                ? new Vector2(-UprightGap, UprightGap)
+                : new Vector2(-Gap, Gap);
+            _slot.sizeDelta = portrait
+                ? new Vector2(UprightWidth, UprightHeight)
+                : new Vector2(ButtonWidth, ButtonHeight);
+
+            if (_placedPortrait != portrait)
+            {
+                _placedPortrait = portrait;
+                _shown = null; // the label sizes differ, so it is rebuilt
+            }
+        }
+
+        private void LateUpdate()
+        {
+            if (_placedPortrait != ScreenLayout.IsPortrait) Place();
         }
 
         /// <summary>Redraws from the engine. Cheap when nothing changed.</summary>
@@ -73,7 +128,8 @@ namespace NonaRoyale.Unity.View
 
             var dice = engine.UnspentDice;
             bool cpu = _host != null && _host.CpuTurn;
-            string key = $"{engine.Phase}|{engine.MatchOver}|{engine.MustSpendRoll}|{engine.CanRollAgain}|{string.Join(",", dice)}|{cpu}|{(cpu ? engine.CurrentPlayer.Color.ToString() : "")}";
+            bool portrait = ScreenLayout.IsPortrait;
+            string key = $"{engine.Phase}|{engine.MatchOver}|{engine.MustSpendRoll}|{engine.CanRollAgain}|{string.Join(",", dice)}|{cpu}|{(cpu ? engine.CurrentPlayer.Color.ToString() : "")}|{portrait}|{ScreenLayout.Touch}";
             if (key == _shown) return;
             _shown = key;
 
@@ -103,8 +159,10 @@ namespace NonaRoyale.Unity.View
             {
                 // A CPU seat is playing: the button names it and does nothing (BOT2).
                 var seat = engine.CurrentPlayer.Color;
-                label = $"{seat.ToString().ToUpperInvariant()} IS THINKING";
-                hint = "hold Space to hurry";
+                label = portrait
+                    ? $"{seat.ToString().ToUpperInvariant()} THINKING"
+                    : $"{seat.ToString().ToUpperInvariant()} IS THINKING";
+                hint = ScreenLayout.Key("hold Space to hurry");
                 enabled = false;
                 pulse = false;
                 tint = UiTheme.ButtonFill;
@@ -113,7 +171,7 @@ namespace NonaRoyale.Unity.View
             else if (engine.Phase == TurnPhase.AwaitingRoll || (engine.CanRollAgain && dice.Count == 0))
             {
                 label = engine.Phase == TurnPhase.AwaitingRoll ? "ROLL" : "ROLL AGAIN";
-                hint = "Space";
+                hint = ScreenLayout.Key("Space");
                 enabled = true;
                 pulse = true;
 
@@ -133,7 +191,7 @@ namespace NonaRoyale.Unity.View
             else
             {
                 label = "END TURN";
-                hint = "E";
+                hint = ScreenLayout.Key("E");
                 enabled = true;
                 pulse = true;
 
@@ -151,10 +209,14 @@ namespace NonaRoyale.Unity.View
             var column = UiKit.Column(rect, 0f, 6);
             column.childAlignment = TextAnchor.MiddleCenter;
 
-            var title = UiKit.Label(rect, label, cpu ? 17f : 22f,
+            float titleSize = portrait ? (cpu ? 14f : 19f) : (cpu ? 17f : 22f);
+
+            var title = UiKit.Label(rect, label, titleSize,
                 enabled ? UiTheme.Text : cpu ? accent : UiTheme.TextDim, TextAlignmentOptions.Center, bold: true);
             title.characterSpacing = UiTheme.HeadingSpacing * 0.5f;
-            UiKit.Label(rect, hint, 13f, enabled ? accent : UiTheme.TextOff, TextAlignmentOptions.Center);
+
+            if (!string.IsNullOrEmpty(hint))
+                UiKit.Label(rect, hint, 13f, enabled ? accent : UiTheme.TextOff, TextAlignmentOptions.Center);
 
             // The showpiece control floats over the board, so it gets a floating
             // card's fans: small and dim (G3), and none while it waits.

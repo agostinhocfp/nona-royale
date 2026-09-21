@@ -34,6 +34,11 @@ namespace NonaRoyale.Unity.View
     public sealed class PauseMenu : MonoBehaviour
     {
         private const float CardWidth = 440f;
+
+        /// <summary>What the card keeps clear of the screen's edges (M5).</summary>
+        private const float Margin = 16f;
+
+        private int _fittedLayout = -1;
         private const float ButtonHeight = 54f;
 
         private enum Page { Main, Settings, Sound, Display }
@@ -41,6 +46,9 @@ namespace NonaRoyale.Unity.View
         private IPauseHost _host;
         private RectTransform _root;
         private RectTransform _card;
+        private RectTransform _viewport;
+        private RectTransform _body;
+        private ScrollRect _scroll;
         private CanvasGroup _fader;
         private CanvasGroup _cardFader;
         private Page _page;
@@ -76,7 +84,7 @@ namespace NonaRoyale.Unity.View
 
             UiTween.FadeIn(_fader, 0.28f);
             UiTween.SlideIn(_card, new Vector2(0f, -28f), 0.3f);
-            UiTween.StaggerIn(_card);
+            UiTween.StaggerIn(_body);
         }
 
         public void Close()
@@ -113,6 +121,20 @@ namespace NonaRoyale.Unity.View
             // last; the menu takes the top back.
             if (IsOpen && _root.GetSiblingIndex() != _root.parent.childCount - 1)
                 _root.SetAsLastSibling();
+
+            // A turn of the phone changes both the width the card may take and
+            // the height it has to fit into (M5).
+            if (_fittedLayout == ScreenLayout.Version || !IsOpen) return;
+
+            _fittedLayout = ScreenLayout.Version;
+            var column = _body.GetComponent<VerticalLayoutGroup>();
+            if (column != null)
+            {
+                int pad = (int)ScreenLayout.Pick(34f, 18f);
+                column.padding.left = column.padding.right = pad;
+            }
+
+            Rebuild();
         }
 
         private void OnDisable()
@@ -133,18 +155,63 @@ namespace NonaRoyale.Unity.View
             _card.anchorMin = new Vector2(0.5f, 0.5f);
             _card.anchorMax = new Vector2(0.5f, 0.5f);
             _card.pivot = new Vector2(0.5f, 0.5f);
-            _card.sizeDelta = new Vector2(CardWidth, 0f);
+            _card.sizeDelta = new Vector2(FittedWidth, 0f);
             UiKit.Panel(_card, blocksPointer: true);
 
-            var column = UiKit.Column(_card, 10f, 34);
+            // Same window-onto-its-content shape as ModalCard's (MOBILE.md,
+            // M5): the settings page is taller than a phone screen, and a card
+            // that simply grew put its last rows past the bottom edge with no
+            // way to reach them.
+            _viewport = UiKit.Rect("viewport", _card);
+            UiKit.Stretch(_viewport);
+            _viewport.gameObject.AddComponent<RectMask2D>();
+
+            _body = UiKit.Rect("body", _viewport);
+            _body.anchorMin = new Vector2(0f, 1f);
+            _body.anchorMax = new Vector2(1f, 1f);
+            _body.pivot = new Vector2(0.5f, 1f);
+            _body.sizeDelta = Vector2.zero;
+
+            var column = UiKit.Column(_body, 10f, (int)ScreenLayout.Pick(34f, 18f));
             column.padding.top = 30;
             column.padding.bottom = 28;
-            _card.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            _body.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            _scroll = _card.gameObject.AddComponent<ScrollRect>();
+            _scroll.horizontal = false;
+            _scroll.vertical = true;
+            _scroll.movementType = ScrollRect.MovementType.Clamped;
+            _scroll.scrollSensitivity = 30f;
+            _scroll.viewport = _viewport;
+            _scroll.content = _body;
 
             _fader = _root.gameObject.AddComponent<CanvasGroup>();
             _cardFader = _card.gameObject.AddComponent<CanvasGroup>();
 
             _root.gameObject.SetActive(false);
+        }
+
+        /// <summary>
+        /// The card's width, never wider than the screen it has to sit on
+        /// (M5), and its height, never taller.
+        /// </summary>
+        private float FittedWidth => Mathf.Min(CardWidth, ScreenLayout.Reference.x - 2f * Margin);
+
+        private void Fit()
+        {
+            if (_card == null) return;
+
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_body);
+
+            // The first fit can run before the canvas has laid out (see ModalCard).
+            float screen = _root.rect.height > 1f ? _root.rect.height : ScreenLayout.Reference.y;
+            float available = Mathf.Max(120f, screen - 2f * Margin);
+            float wanted = LayoutUtility.GetPreferredHeight(_body);
+
+            _card.sizeDelta = new Vector2(FittedWidth, Mathf.Min(wanted, available));
+
+            _scroll.vertical = wanted > available + 1f;
+            if (!_scroll.vertical) _body.anchoredPosition = Vector2.zero;
         }
 
         /// <summary>A quick fade and settle for a page swap inside the card (U1).</summary>
@@ -157,9 +224,9 @@ namespace NonaRoyale.Unity.View
         private void Rebuild()
         {
             // Children after the card's frame and fans are content.
-            for (int i = _card.childCount - 1; i >= 0; i--)
+            for (int i = _body.childCount - 1; i >= 0; i--)
             {
-                var child = _card.GetChild(i);
+                var child = _body.GetChild(i);
                 if (!child.name.StartsWith("content_")) continue;
 
                 child.gameObject.SetActive(false);
@@ -171,7 +238,7 @@ namespace NonaRoyale.Unity.View
             else if (_page == Page.Display) DisplayPage();
             else SettingsPage();
 
-            LayoutRebuilder.ForceRebuildLayoutImmediate(_card);
+            Fit();
         }
 
         // ── Pages ────────────────────────────────────────────────────────
@@ -292,7 +359,7 @@ namespace NonaRoyale.Unity.View
         /// <summary>A laid-out slot on the card, named so a rebuild can find it.</summary>
         private RectTransform Content(string name)
         {
-            var slot = UiKit.Rect("content_" + name, _card);
+            var slot = UiKit.Rect("content_" + name, _body);
             var column = UiKit.Column(slot, 0f);
             column.childForceExpandHeight = true;
             return slot;

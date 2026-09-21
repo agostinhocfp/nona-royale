@@ -30,6 +30,15 @@ namespace NonaRoyale.Unity.View
     /// board's corner (<see cref="TurnButton"/>). The board does the same things by clicking
     /// (PRESENTATION §4.1), and everything here calls the same intents.
     ///
+    /// <b>Upright, that order runs top to bottom</b> (MOBILE.md, M3). Four
+    /// sections side by side need about a thousand units of width and a phone
+    /// has under five hundred, so the bar becomes a block: the aim line, then
+    /// dice and operator, then the three abilities across, then Cast beside the
+    /// turn button along the bottom edge. The two live controls end up in the
+    /// thumb's reach, which is where a phone wants them; the turn button keeps
+    /// the screen's bottom-right corner and the bar leaves it a slot to land
+    /// in, so the two never overlap.
+    ///
     /// <b>Readiness shows when, not only whether.</b> A cooling-down ability
     /// shows "ready in N" from <c>GameEngine.TurnsUntilReady</c>, and a
     /// too-expensive one shows its cost against the pool. Both are engine
@@ -50,10 +59,10 @@ namespace NonaRoyale.Unity.View
     public sealed class ActionTray : MonoBehaviour
     {
         /// <summary>
-        /// What the bar claims from the bottom edge (H1; it was 196). Sized to
-        /// the fullest state - an operator, three ability cards, and a chosen
-        /// ability's description over its aim and Cast - because the band
-        /// cannot change while a turn is being played.
+        /// What the bar claims from the bottom edge when it is wide (H1; it was
+        /// 196). Sized to the fullest state - an operator, three ability cards,
+        /// and a chosen ability's description over its aim and Cast - because
+        /// the band cannot change while a turn is being played.
         /// </summary>
         /// <remarks>
         /// 122 of usable height inside the row's padding. The three slots that
@@ -61,6 +70,13 @@ namespace NonaRoyale.Unity.View
         /// this number.
         /// </remarks>
         public const float Height = 150f;
+
+        /// <summary>
+        /// What the block claims upright: the aim line, the dice-and-operator
+        /// row, the three ability cards and the Cast row, plus the padding
+        /// between them.
+        /// </summary>
+        public const float UprightHeight = 292f;
 
         private const float AbilityNameSize = 15f;
         private const float AbilityMetaSize = 13f;
@@ -72,8 +88,17 @@ namespace NonaRoyale.Unity.View
 
         private const float DieSize = 52f;
 
+        /// <summary>Upright row heights.</summary>
+        private const float UprightAimHeight = 18f;
+        private const float UprightTopHeight = 78f;
+        private const float UprightCardsHeight = 92f;
+        private const float UprightCastHeight = 60f;
+
+        /// <summary>The padding the block keeps, and the slot it leaves the turn button (M3).</summary>
+        private const float UprightPadding = 12f;
+
         /// <summary>Canvas units the tray claims from the bottom edge.</summary>
-        public static float ReservedHeight => Height;
+        public static float ReservedHeight => ScreenLayout.Pick(Height, UprightHeight);
 
         public bool Visible { get; set; } = true;
 
@@ -84,9 +109,13 @@ namespace NonaRoyale.Unity.View
         public RectTransform DiceFaces { get; private set; }
 
         private IControlPanelHost _host;
+        private RectTransform _canvas;
         private RectTransform _tray;
         private RectTransform _content;
         private bool _dirty;
+        private bool _builtPortrait;
+        private float _insetLeft;
+        private float _insetRight;
 
         /// <summary>The faces last shown, so a new roll pops in once rather than on every rebuild.</summary>
         private string _shownDice = "";
@@ -100,9 +129,10 @@ namespace NonaRoyale.Unity.View
         public void Bind(RectTransform canvasRect, IControlPanelHost host)
         {
             _host = host;
+            _canvas = canvasRect;
             _barOperator = null;
             _barFraction = -1f;
-            if (_tray == null) Build(canvasRect);
+            if (_tray == null) Build();
             _dirty = true;
         }
 
@@ -111,33 +141,61 @@ namespace NonaRoyale.Unity.View
         /// <summary>Canvas units kept clear on the left and right.</summary>
         public void SetInsets(float left, float right)
         {
+            _insetLeft = left;
+            _insetRight = right;
+
             if (_tray == null) return;
 
             _tray.offsetMin = new Vector2(left, 0f);
-            _tray.offsetMax = new Vector2(-right, Height);
+            _tray.offsetMax = new Vector2(-right, ReservedHeight);
         }
 
-        private void Build(RectTransform canvasRect)
+        private void Build()
         {
-            _tray = UiKit.Rect("action_tray", canvasRect);
+            _builtPortrait = ScreenLayout.IsPortrait;
+
+            _tray = UiKit.Rect("action_tray", _canvas);
             _tray.anchorMin = new Vector2(0f, 0f);
             _tray.anchorMax = new Vector2(1f, 0f);
             _tray.pivot = new Vector2(0.5f, 0f);
-            _tray.offsetMin = Vector2.zero;
-            _tray.offsetMax = new Vector2(0f, Height);
+            _tray.offsetMin = new Vector2(_insetLeft, 0f);
+            _tray.offsetMax = new Vector2(-_insetRight, ReservedHeight);
             UiKit.Dock(_tray, true, RectTransform.Edge.Top);
 
             _content = UiKit.Rect("content", _tray);
             UiKit.Stretch(_content);
-            var row = UiKit.Row(_content, 14f, 12);
-            row.padding.top = 16; // clear of the double rule
-            row.childForceExpandHeight = true;
-            row.childAlignment = TextAnchor.UpperLeft;
+
+            if (_builtPortrait)
+            {
+                var column = UiKit.Column(_content, 6f, (int)UprightPadding);
+                column.padding.top = 14; // clear of the rule
+                column.childForceExpandHeight = false;
+                column.childAlignment = TextAnchor.UpperLeft;
+            }
+            else
+            {
+                var row = UiKit.Row(_content, 14f, 12);
+                row.padding.top = 16; // clear of the rule
+                row.childForceExpandHeight = true;
+                row.childAlignment = TextAnchor.UpperLeft;
+            }
         }
 
         private void LateUpdate()
         {
             if (_tray == null) return;
+
+            if (_builtPortrait != ScreenLayout.IsPortrait)
+            {
+                var old = _tray.gameObject;
+                _tray = null;
+                DiceFaces = null;
+                old.SetActive(false);
+                Destroy(old);
+
+                Build();
+                _dirty = true;
+            }
 
             if (_tray.gameObject.activeSelf != Visible)
             {
@@ -163,35 +221,92 @@ namespace NonaRoyale.Unity.View
             var match = _host?.Match;
             if (match == null) return;
 
-            DiceSection();
-            Divider();
-            OperatorCard();
-            Divider();
-            AbilitySection();
-            CastSection();
+            if (_builtPortrait) RebuildUpright();
+            else RebuildWide();
         }
 
-        private void Divider() => UiKit.Divider(_content, vertical: true);
+        private void RebuildWide()
+        {
+            DiceSection(_content, DiceWidth);
+            Divider(_content);
+            OperatorCard(_content, OperatorWidth, compact: false);
+            Divider(_content);
+            AbilitySection(_content);
+            CastSection(_content, CastWidth, compact: false);
+        }
+
+        /// <summary>
+        /// The same four sections, stacked (M3). The aim line moves to the top
+        /// of the block, where the eye is already reading the top bar's
+        /// instruction, and Cast keeps the bottom row with the turn button.
+        /// </summary>
+        private void RebuildUpright()
+        {
+            AimLine(_content);
+
+            var top = UiKit.Rect("top", _content);
+            UiKit.Row(top, 10f).childForceExpandHeight = true;
+            UiKit.Size(top, height: UprightTopHeight, flexibleHeight: 0f);
+
+            DiceSection(top, 124f);
+            Divider(top);
+            OperatorCard(top, -1f, compact: true);
+
+            var cards = UiKit.Rect("abilities", _content);
+            UiKit.Size(cards, height: UprightCardsHeight, flexibleHeight: 0f);
+            AbilityRow(cards);
+
+            var bottom = UiKit.Rect("bottom", _content);
+            UiKit.Row(bottom, 8f).childForceExpandHeight = true;
+            UiKit.Size(bottom, height: UprightCastHeight, flexibleHeight: 0f);
+
+            CastSection(bottom, -1f, compact: true);
+
+            // The turn button floats in the screen's bottom-right corner; this
+            // holds its place open so Cast never grows under it.
+            var slot = UiKit.Rect("turn_slot", bottom);
+            UiKit.Fixed(slot, TurnButton.UprightWidth);
+        }
+
+        private void Divider(Transform parent) => UiKit.Divider(parent, vertical: true);
 
         /// <summary>
         /// Holds a slot's width open while it has nothing to show, so the bar
         /// fills in rather than reflowing under the pointer.
         /// </summary>
-        private void Empty(float width)
+        private void Empty(Transform parent, float width)
         {
-            var box = UiKit.Rect("empty", _content);
-            UiKit.Fixed(box, width);
+            var box = UiKit.Rect("empty", parent);
+            if (width >= 0f) UiKit.Fixed(box, width);
+            else UiKit.Size(box, flexibleWidth: 1f);
+        }
+
+        // ── The aim line (upright only) ──────────────────────────────────
+
+        /// <summary>
+        /// What the armed ability does and where it is going, on one line
+        /// above the block (M3). Blank, but the same height, with nothing
+        /// armed.
+        /// </summary>
+        private void AimLine(Transform parent)
+        {
+            var ability = _host.SelectedAbility;
+
+            var line = UiKit.Label(parent,
+                ability == null ? "" : $"<b>{ability.Name}</b> — {AimText(ability)}",
+                13f, UiTheme.TextDim, TextAlignmentOptions.Midline);
+            UiKit.Size(line, height: UprightAimHeight, flexibleHeight: 0f);
         }
 
         // ── Dice ─────────────────────────────────────────────────────────
 
-        private void DiceSection()
+        private void DiceSection(Transform parent, float width)
         {
             var engine = _host.Match.Engine;
 
-            var box = UiKit.Rect("dice", _content);
+            var box = UiKit.Rect("dice", parent);
             UiKit.Column(box, 8f);
-            UiKit.Fixed(box, DiceWidth);
+            UiKit.Fixed(box, width);
 
             var faces = UiKit.Rect("faces", box);
             UiKit.Row(faces, 8f);
@@ -237,7 +352,7 @@ namespace NonaRoyale.Unity.View
             string hintText = held ? "Rolling…" : DiceHint(engine, dice.Count, canRoll, canEnd);
             var hint = UiKit.Label(box, hintText, UiTheme.FontSmall,
                 canEnd && !canRoll ? UiTheme.Cyan : UiTheme.TextDim, wrap: true);
-            UiKit.Size(hint, height: 34f);
+            UiKit.Size(hint, height: ScreenLayout.Pick(34f, 16f));
         }
 
         /// <summary>One line on what the dice need, from the engine's answers only.</summary>
@@ -269,7 +384,12 @@ namespace NonaRoyale.Unity.View
 
         // ── Operator ─────────────────────────────────────────────────────
 
-        private void OperatorCard()
+        /// <summary>
+        /// The selected operator. <paramref name="compact"/> drops the health
+        /// bar's own row and the status tags onto one line, which is what fits
+        /// beside the dice upright.
+        /// </summary>
+        private void OperatorCard(Transform parent, float width, bool compact)
         {
             var engine = _host.Match.Engine;
             var op = _host.SelectedOperator;
@@ -278,32 +398,34 @@ namespace NonaRoyale.Unity.View
             // them to pick a piece (H1).
             if (op == null)
             {
-                Empty(OperatorWidth);
+                Empty(parent, width);
                 return;
             }
 
-            var card = UiKit.Rect("operator", _content);
-            UiKit.Column(card, 6f);
-            UiKit.Fixed(card, OperatorWidth);
+            var card = UiKit.Rect("operator", parent);
+            UiKit.Column(card, compact ? 3f : 6f);
+            if (width >= 0f) UiKit.Fixed(card, width);
+            else UiKit.Size(card, flexibleWidth: 1f);
 
             var seatColour = BoardLayout.ColourOf(op.Owner);
 
             var top = UiKit.Rect("top", card);
             UiKit.Row(top, 10f);
-            UiKit.Size(top, height: 48f);
+            UiKit.Size(top, height: compact ? 34f : 48f);
 
-            UiKit.Icon(top, PieceShape.For(op), seatColour, 44f);
+            UiKit.Icon(top, PieceShape.For(op), seatColour, compact ? 30f : 44f);
 
             var name = UiKit.Rect("name", top);
             UiKit.Column(name, 2f);
             UiKit.Size(name, flexibleWidth: 1f);
-            UiKit.Label(name, op.Name, UiTheme.FontLarge, bold: true);
+            UiKit.Label(name, op.Name, compact ? UiTheme.FontBody : UiTheme.FontLarge, bold: true);
 
             string where = engine.IsHome(op) ? "home"
-                : engine.CanDeploy(op) ? "ready to deploy — click it"
+                : engine.CanDeploy(op)
+                    ? (ScreenLayout.Touch ? "ready to deploy — tap it" : "ready to deploy — click it")
                 : op.IsInYard ? "waiting in the yard"
                 : "on the board";
-            UiKit.Label(name, where, UiTheme.FontSmall, UiTheme.TextDim);
+            UiKit.Label(name, where, compact ? 12f : UiTheme.FontSmall, UiTheme.TextDim);
 
             var health = UiKit.Rect("health", card);
             UiKit.Row(health, 8f);
@@ -314,21 +436,25 @@ namespace NonaRoyale.Unity.View
             // one; a first sight starts at the truth (UI_MOTION.md U2).
             bool seen = ReferenceEquals(_barOperator, op) && _barFraction >= 0f;
             var fill = UiKit.Bar(health, seen ? _barFraction : fraction,
-                Color.Lerp(UiTheme.Danger, seatColour, fraction), 200f, 10f);
+                Color.Lerp(UiTheme.Danger, seatColour, fraction), compact ? 120f : 200f, 10f);
             if (seen && !Mathf.Approximately(_barFraction, fraction))
                 UiKit.TweenBar(fill, _barFraction, fraction, 0.35f, seatColour);
             _barOperator = op;
             _barFraction = fraction;
 
-            UiKit.Label(health, $"<b>{op.Health}</b>/{op.MaxHealth}", UiTheme.FontBody);
-
-            var tags = UiKit.Rect("statuses", card);
-            UiKit.Row(tags, 4f);
-            UiKit.Size(tags, height: 18f);
+            UiKit.Label(health, $"<b>{op.Health}</b>/{op.MaxHealth}", compact ? UiTheme.FontSmall : UiTheme.FontBody);
 
             // No "no statuses" line: an empty row says the same thing without
             // spending a line on it (H1).
             if (op.IsInYard) return;
+
+            var tags = compact ? health : UiKit.Rect("statuses", card);
+
+            if (!compact)
+            {
+                UiKit.Row(tags, 4f);
+                UiKit.Size(tags, height: 18f);
+            }
 
             foreach (var kind in engine.ActiveStatusesOn(op))
                 UiKit.Tag(tags, StatusPalette.Label(kind), StatusPalette.For(kind), 12f);
@@ -336,12 +462,9 @@ namespace NonaRoyale.Unity.View
 
         // ── Abilities ────────────────────────────────────────────────────
 
-        private void AbilitySection()
+        private void AbilitySection(Transform parent)
         {
-            var engine = _host.Match.Engine;
-            var op = _host.SelectedOperator;
-
-            var box = UiKit.Rect("abilities", _content);
+            var box = UiKit.Rect("abilities", parent);
             UiKit.Column(box, 6f);
             UiKit.Size(box, flexibleWidth: 1f);
 
@@ -349,13 +472,22 @@ namespace NonaRoyale.Unity.View
             // and draws nothing rather than explaining itself (H1): the cards
             // carry their own 1-3 keys, and the chosen ability's description
             // belongs beside Cast, where the player is looking by then.
-            if (op == null || !_host.Match.AbilitiesByOperator.TryGetValue(op.Id, out var abilities)) return;
-
             var cards = UiKit.Rect("cards", box);
+            UiKit.Size(cards, height: 92f);
+            AbilityRow(cards);
+        }
+
+        /// <summary>The three cards across a row, or nothing at all when there is no operator.</summary>
+        private void AbilityRow(RectTransform cards)
+        {
+            var engine = _host.Match.Engine;
+            var op = _host.SelectedOperator;
+
             var row = UiKit.Row(cards, 8f);
             row.childForceExpandWidth = true;
             row.childForceExpandHeight = true;
-            UiKit.Size(cards, height: 92f);
+
+            if (op == null || !_host.Match.AbilitiesByOperator.TryGetValue(op.Id, out var abilities)) return;
 
             for (int i = 0; i < abilities.Count; i++)
                 AbilityCard(cards, op, abilities[i], i, engine);
@@ -401,9 +533,10 @@ namespace NonaRoyale.Unity.View
             var textColour = usable || chosen ? UiTheme.Text : UiTheme.TextOff;
 
             // Smaller than body text (feedback 2026-09-15): three names side by
-            // side read as a row of buttons, not a row of headlines.
+            // side read as a row of buttons, not a row of headlines. The number
+            // is a keyboard shortcut, so it goes when there is no keyboard.
             UiKit.Label(card,
-                $"<color=#{UiTheme.Hex(UiTheme.GoldBright)}>{index + 1}</color>  <b>{ability.Name}</b>",
+                $"{ScreenLayout.KeyMarkup($"<color=#{UiTheme.Hex(UiTheme.GoldBright)}>{index + 1}</color>  ")}<b>{ability.Name}</b>",
                 AbilityNameSize, textColour);
             UiKit.Label(card,
                 $"<color=#{UiTheme.Hex(UiTheme.Cyan)}>{ability.EnergyCost}e</color> · {reach} · cd {ability.CooldownTurns}",
@@ -413,7 +546,39 @@ namespace NonaRoyale.Unity.View
 
         // ── Cast ─────────────────────────────────────────────────────────
 
-        private void CastSection()
+        /// <summary>
+        /// Where the armed ability is going, in one line. Shared by the wide
+        /// bar's Cast slot and the upright block's aim line.
+        /// </summary>
+        private string AimText(AbilityDefinition ability)
+        {
+            bool touch = ScreenLayout.Touch;
+
+            if (ability.RequiresTarget)
+            {
+                var target = _host.SelectedTarget;
+                if (target != null)
+                    return $"Target: <b>{target.Owner} {target.Name}</b> {target.Health}/{target.MaxHealth}";
+
+                return _host.CastTargets().Count == 0
+                    ? "Nothing in reach."
+                    : touch ? "Tap an amber-ringed piece." : "Click an amber-ringed piece.";
+            }
+
+            if (ability.RequiresCell)
+            {
+                if (_host.SelectedCell != null)
+                    return touch
+                        ? $"Cell <b>{_host.SelectedCell.Value}</b> — tap another to change."
+                        : $"Cell <b>{_host.SelectedCell.Value}</b> — click another to change.";
+
+                return touch ? "Tap a highlighted cell." : "Click a highlighted cell.";
+            }
+
+            return "No aim needed — it fires from the caster.";
+        }
+
+        private void CastSection(Transform parent, float width, bool compact)
         {
             var ability = _host.SelectedAbility;
 
@@ -421,32 +586,29 @@ namespace NonaRoyale.Unity.View
             // is the kind of furniture H1 is clearing out.
             if (ability == null)
             {
-                Empty(CastWidth);
+                Empty(parent, width);
                 return;
             }
 
-            var box = UiKit.Rect("cast", _content);
+            bool ready = _host.CastReady;
+
+            if (compact)
+            {
+                // The description and the aim are already on the block's aim
+                // line, so the row is the button alone.
+                var only = UiKit.Button(parent, $"<b>Cast</b>{ScreenLayout.KeyMarkup("  <size=70%>Enter</size>")}",
+                    _host.Cast, MarkDirty, interactable: ready,
+                    tint: ready ? UiTheme.CyanDeep : (Color?)null,
+                    edge: ready ? UiTheme.Cyan : (Color?)null,
+                    size: UiTheme.FontLarge);
+                UiKit.Size(only, flexibleWidth: 1f);
+                if (ready) UiKit.Pulse(only, UiTheme.Cyan);
+                return;
+            }
+
+            var box = UiKit.Rect("cast", parent);
             UiKit.Column(box, 8f);
-            UiKit.Fixed(box, CastWidth);
-
-            string aim;
-
-            if (ability.RequiresTarget)
-            {
-                var target = _host.SelectedTarget;
-                aim = target != null
-                    ? $"Target: <b>{target.Owner} {target.Name}</b> {target.Health}/{target.MaxHealth}"
-                    : _host.CastTargets().Count == 0
-                        ? "Nothing in reach."
-                        : "Click an amber-ringed piece.";
-            }
-            else if (ability.RequiresCell)
-            {
-                aim = _host.SelectedCell != null
-                    ? $"Cell <b>{_host.SelectedCell.Value}</b> — click another to change."
-                    : "Click a highlighted cell.";
-            }
-            else aim = "No aim needed — it fires from the caster.";
+            UiKit.Fixed(box, width);
 
             // What it does, then where it goes. The ability card carries the
             // name, cost, reach and readiness; the prose was homeless once the
@@ -454,12 +616,10 @@ namespace NonaRoyale.Unity.View
             var what = UiKit.Label(box, ability.Description, UiTheme.FontSmall, UiTheme.TextDim, wrap: true);
             UiKit.Size(what, height: 40f);
 
-            var aimLabel = UiKit.Label(box, aim, UiTheme.FontSmall, wrap: true);
+            var aimLabel = UiKit.Label(box, AimText(ability), UiTheme.FontSmall, wrap: true);
             UiKit.Size(aimLabel, height: 18f);
 
-            bool ready = _host.CastReady;
-
-            var cast = UiKit.Button(box, "<b>Cast</b>  <size=70%>Enter</size>",
+            var cast = UiKit.Button(box, $"<b>Cast</b>{ScreenLayout.KeyMarkup("  <size=70%>Enter</size>")}",
                 _host.Cast, MarkDirty, interactable: ready,
                 tint: ready ? UiTheme.CyanDeep : (Color?)null,
                 edge: ready ? UiTheme.Cyan : (Color?)null);

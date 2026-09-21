@@ -9,8 +9,9 @@ using UnityEngine.UI;
 namespace NonaRoyale.Unity.View
 {
     /// <summary>
-    /// The left rail: every seat's squad, each operator shown as waiting, on
-    /// the board or home, with health and statuses (GUI increment F).
+    /// Every seat's squad, each operator shown as waiting, on the board or
+    /// home, with health (GUI increment F). A rail down the left edge on a wide
+    /// screen; a ribbon under the top bar on an upright one.
     /// </summary>
     /// <remarks>
     /// <b>It answers "which of my pieces are waiting"</b>, PRESENTATION §2's
@@ -19,19 +20,20 @@ namespace NonaRoyale.Unity.View
     ///
     /// <b>Your seat is expanded; the CPUs are folded</b> (HUD_PASS.md, H2).
     /// Four seats of three full rows made twelve entries of equal weight, only
-    /// three of which the player commands, in 290 units of permanent width - and
+    /// three of which the player commands, in 220 units of permanent width - and
     /// at that width the personality, the energy and the state line were all
     /// being truncated. A folded seat keeps one line: its colour, its name, its
     /// home count, and its three operators in the silhouettes
     /// <see cref="PieceShape"/> teaches, tinted by health. It opens on hover and
     /// stays open for its whole turn.
     ///
-    /// <b>Folded is not deleted.</b> Identity, position and rough health are
-    /// readable off the board already - the silhouette is keyed on the
-    /// operator's name, not the seat, and piece size carries health - so the
-    /// fold drops what the board repeats and keeps what it cannot say. What it
-    /// genuinely costs is reading all four seats in detail at once; hover and
-    /// the playing seat's auto-open are what buy that back.
+    /// <b>Upright it lies down</b> (MOBILE.md, M3). There is no 220-unit column
+    /// to spare on a phone — that is nearly half the screen — so the rail
+    /// becomes a 62-unit band under the top bar, scrolled sideways, with your
+    /// own seat first: its three operators as tappable chips, then each CPU as
+    /// one folded group. Your pieces are what the band is for, so they are what
+    /// is on screen before anything is scrolled; the CPUs' folded form already
+    /// says everything the fold keeps, so it does not open there.
     ///
     /// <b>Folding never rebuilds.</b> Both forms are built and one is switched
     /// off, the same reasoning as the hover wash below: the pointer moves at
@@ -39,8 +41,8 @@ namespace NonaRoyale.Unity.View
     /// event is owed. The relay sits on a wrapper that holds both, so swapping
     /// them cannot pull the hover target out from under the pointer.
     ///
-    /// <b>The current seat's rows are buttons.</b> A click does what a click on
-    /// the piece does: it deploys a piece that can deploy, and otherwise
+    /// <b>The current seat's rows are buttons.</b> A click, or a tap, does what
+    /// one on the piece does: it deploys a piece that can deploy, and otherwise
     /// selects it. Both go through the host's intents, so the rail, the board
     /// and the dev panel cannot disagree.
     ///
@@ -56,24 +58,35 @@ namespace NonaRoyale.Unity.View
         public const float Width = 220f;
         private const float RowHeight = 52f;
 
+        /// <summary>The band's height when the rail is lying down (M3).</summary>
+        public const float BandHeight = 62f;
+
         /// <summary>A folded seat's single line, and the size of the operator silhouettes on it.</summary>
         private const float SpineHeight = 30f;
         private const float SpinePip = 14f;
+
+        /// <summary>One of your own operators, as a chip in the upright band.</summary>
+        private const float ChipWidth = 86f;
 
         // Warm and faint: the wash echoes where the pointer is, it is not a
         // live control, so it stays clear of the cyan register (ART_DIRECTION
         // §2.1) and of the selected row's cyan fill and edge.
         private const float HoverGlowAlpha = 0.10f;
 
-        /// <summary>Canvas units the rail claims from the left edge.</summary>
-        public static float ReservedWidth => Width;
+        /// <summary>Canvas units the rail claims from the left edge. Nothing, lying down.</summary>
+        public static float ReservedWidth => ScreenLayout.Pick(Width, 0f);
+
+        /// <summary>Canvas units the band claims under the top bar. Nothing, standing up.</summary>
+        public static float ReservedHeight => ScreenLayout.Pick(0f, BandHeight);
 
         public bool Visible { get; set; } = true;
 
         private IControlPanelHost _host;
+        private RectTransform _canvas;
         private RectTransform _rail;
         private RectTransform _content;
         private bool _dirty;
+        private bool _builtPortrait;
 
         // The board-hover echo: the row of the piece under the pointer gets a
         // soft wash, so the eye can tie the 3D piece to its rail entry. Kept
@@ -113,8 +126,9 @@ namespace NonaRoyale.Unity.View
         public void Bind(RectTransform canvasRect, IControlPanelHost host)
         {
             _host = host;
+            _canvas = canvasRect;
             _lastFractions.Clear();
-            if (_rail == null) Build(canvasRect);
+            if (_rail == null) Build();
             _dirty = true;
         }
 
@@ -137,21 +151,16 @@ namespace NonaRoyale.Unity.View
         private void ApplyHover()
         {
             foreach (var row in _rowGlows)
-                row.Glow.enabled = ReferenceEquals(row.Operator, _hovered) && !row.Selected;
+                if (row.Glow != null) row.Glow.enabled = ReferenceEquals(row.Operator, _hovered) && !row.Selected;
         }
 
-        private void Build(RectTransform canvasRect)
+        private void Build()
         {
-            _rail = UiKit.Rect("squad_rail", canvasRect);
-            _rail.anchorMin = new Vector2(0f, 0f);
-            _rail.anchorMax = new Vector2(0f, 1f);
-            _rail.pivot = new Vector2(0f, 0.5f);
-            _rail.offsetMin = new Vector2(0f, 0f);
-            _rail.offsetMax = new Vector2(Width, -TurnStrip.ReservedHeight);
-            UiKit.Dock(_rail, true, RectTransform.Edge.Right);
+            _builtPortrait = ScreenLayout.IsPortrait;
+
+            _rail = UiKit.Rect("squad_rail", _canvas);
 
             var scroll = _rail.gameObject.AddComponent<ScrollRect>();
-            scroll.horizontal = false;
             scroll.movementType = ScrollRect.MovementType.Clamped;
             scroll.scrollSensitivity = 30f;
 
@@ -160,13 +169,50 @@ namespace NonaRoyale.Unity.View
             viewport.gameObject.AddComponent<RectMask2D>();
 
             _content = UiKit.Rect("content", viewport);
-            _content.anchorMin = new Vector2(0f, 1f);
-            _content.anchorMax = new Vector2(1f, 1f);
-            _content.pivot = new Vector2(0.5f, 1f);
-            _content.sizeDelta = Vector2.zero;
 
-            UiKit.Column(_content, 4f, 10).padding.right = 16; // clear of the double rule
-            _content.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            if (_builtPortrait)
+            {
+                _rail.anchorMin = new Vector2(0f, 1f);
+                _rail.anchorMax = new Vector2(1f, 1f);
+                _rail.pivot = new Vector2(0.5f, 1f);
+                _rail.sizeDelta = new Vector2(0f, BandHeight);
+                _rail.anchoredPosition = new Vector2(0f, -TurnStrip.ReservedHeight);
+                UiKit.Dock(_rail, true, RectTransform.Edge.Bottom);
+
+                scroll.horizontal = true;
+                scroll.vertical = false;
+
+                _content.anchorMin = new Vector2(0f, 0f);
+                _content.anchorMax = new Vector2(0f, 1f);
+                _content.pivot = new Vector2(0f, 0.5f);
+                _content.sizeDelta = Vector2.zero;
+
+                var band = UiKit.Row(_content, 6f, 6);
+                band.padding.bottom = 10; // clear of the rule
+                band.childAlignment = TextAnchor.MiddleLeft;
+                band.childForceExpandHeight = true;
+                _content.gameObject.AddComponent<ContentSizeFitter>().horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            }
+            else
+            {
+                _rail.anchorMin = new Vector2(0f, 0f);
+                _rail.anchorMax = new Vector2(0f, 1f);
+                _rail.pivot = new Vector2(0f, 0.5f);
+                _rail.offsetMin = new Vector2(0f, 0f);
+                _rail.offsetMax = new Vector2(Width, -TurnStrip.ReservedHeight);
+                UiKit.Dock(_rail, true, RectTransform.Edge.Right);
+
+                scroll.horizontal = false;
+                scroll.vertical = true;
+
+                _content.anchorMin = new Vector2(0f, 1f);
+                _content.anchorMax = new Vector2(1f, 1f);
+                _content.pivot = new Vector2(0.5f, 1f);
+                _content.sizeDelta = Vector2.zero;
+
+                UiKit.Column(_content, 4f, 10).padding.right = 16; // clear of the rule
+                _content.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            }
 
             scroll.viewport = viewport;
             scroll.content = _content;
@@ -175,6 +221,21 @@ namespace NonaRoyale.Unity.View
         private void LateUpdate()
         {
             if (_rail == null) return;
+
+            // The screen turned: both forms are built from scratch, so the old
+            // one goes and the rebuild below fills the new one.
+            if (_builtPortrait != ScreenLayout.IsPortrait)
+            {
+                var old = _rail.gameObject;
+                _rail = null;
+                _rowGlows.Clear();
+                _folds.Clear();
+                old.SetActive(false);
+                Destroy(old);
+
+                Build();
+                _dirty = true;
+            }
 
             if (_rail.gameObject.activeSelf != Visible)
             {
@@ -203,6 +264,18 @@ namespace NonaRoyale.Unity.View
             var match = _host?.Match;
             if (match == null) return;
 
+            if (_builtPortrait) RebuildBand(match);
+            else RebuildRail(match);
+
+            // Rows were recreated disabled; the hover may outlive a rebuild.
+            ApplyHover();
+            ApplyFold();
+        }
+
+        // ── The standing rail ────────────────────────────────────────────
+
+        private void RebuildRail(Core.MatchFactory.Match match)
+        {
             var engine = match.Engine;
 
             foreach (var seat in match.Players)
@@ -233,11 +306,176 @@ namespace NonaRoyale.Unity.View
 
                 UiKit.Space(_content, height: 8f);
             }
-
-            // Rows were recreated disabled; the hover may outlive a rebuild.
-            ApplyHover();
-            ApplyFold();
         }
+
+        // ── The lying band ───────────────────────────────────────────────
+
+        /// <summary>
+        /// Your seat's three operators as chips, then each CPU folded into one
+        /// group (M3). Your own seat leads, so it is what is on screen before
+        /// the band is scrolled.
+        /// </summary>
+        private void RebuildBand(Core.MatchFactory.Match match)
+        {
+            var engine = match.Engine;
+
+            foreach (var seat in match.Players)
+            {
+                if (_host.SeatTag(seat.Color) != null) continue;
+
+                bool playing = !engine.MatchOver && seat.Color == engine.CurrentPlayer.Color;
+                SeatTab(seat, playing, engine);
+
+                foreach (var op in seat.Operators)
+                    OperatorChip(op, playing && !_host.CpuTurn, engine);
+
+                UiKit.Divider(_content, vertical: true);
+            }
+
+            foreach (var seat in match.Players)
+            {
+                if (_host.SeatTag(seat.Color) == null) continue;
+
+                bool playing = !engine.MatchOver && seat.Color == engine.CurrentPlayer.Color;
+                CpuGroup(seat, playing, engine);
+            }
+        }
+
+        /// <summary>Your seat's marker at the head of the band: colour, name, pool.</summary>
+        private void SeatTab(PlayerState seat, bool playing, Core.GameEngine engine)
+        {
+            var colour = BoardLayout.ColourOf(seat.Color);
+
+            var tab = UiKit.Rect($"seat_{seat.Color}", _content);
+            UiKit.Fixed(tab, 74f);
+
+            if (playing)
+            {
+                UiKit.Sliced(tab, DecoSprites.ButtonFill, UiTheme.PanelRaised);
+                UiKit.Overlay(tab, DecoSprites.ButtonEdge, UiTheme.Gold);
+            }
+
+            var column = UiKit.Column(tab, 1f, 4);
+            column.childAlignment = TextAnchor.MiddleCenter;
+
+            var name = UiKit.Label(tab,
+                $"<color=#{UiTheme.Hex(UiTheme.Readable(colour))}>{seat.Color.ToString().ToUpperInvariant()}</color>",
+                12f, bold: true, align: TextAlignmentOptions.Center);
+            name.overflowMode = TextOverflowModes.Overflow;
+
+            UiKit.Label(tab,
+                $"<color=#{UiTheme.Hex(UiTheme.Cyan)}>{seat.Energy}</color><color=#{UiTheme.Hex(UiTheme.TextDim)}>/{engine.EnergyCap}e</color>",
+                12f, align: TextAlignmentOptions.Center);
+        }
+
+        /// <summary>
+        /// One of your operators, as a tappable chip: its silhouette, its name,
+        /// its health, and what it is doing in one word.
+        /// </summary>
+        private void OperatorChip(OperatorState op, bool commandable, Core.GameEngine engine)
+        {
+            bool home = engine.IsHome(op);
+            bool deployable = commandable && engine.CanDeploy(op);
+            bool selected = ReferenceEquals(op, _host.SelectedOperator);
+
+            RectTransform chip;
+
+            if (commandable)
+            {
+                var button = UiKit.Button(_content, "", () =>
+                    {
+                        if (deployable) _host.Deploy(op);
+                        else _host.ToggleOperator(op);
+                    },
+                    MarkDirty, selected: selected);
+                chip = (RectTransform)button.transform;
+            }
+            else
+            {
+                chip = UiKit.Rect($"op_{op.Name}", _content);
+                UiKit.Sliced(chip, DecoSprites.ChipFill, UiTheme.PanelInset);
+            }
+
+            UiKit.Fixed(chip, ChipWidth);
+
+            var glowRect = UiKit.Rect("hover_glow", chip);
+            UiKit.Stretch(glowRect);
+            glowRect.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            var glow = UiKit.Fill(glowRect, UiTheme.WithAlpha(UiTheme.Gold, HoverGlowAlpha));
+            glow.enabled = false;
+            _rowGlows.Add(new RowGlow { Operator = op, Glow = glow, Selected = selected });
+
+            var column = UiKit.Column(chip, 1f, 4);
+            column.childAlignment = TextAnchor.MiddleCenter;
+
+            var top = UiKit.Rect("top", chip);
+            UiKit.Row(top, 4f).childAlignment = TextAnchor.MiddleLeft;
+            UiKit.Size(top, height: 20f);
+
+            var seatColour = BoardLayout.ColourOf(op.Owner);
+            var iconColour = op.IsInYard ? Color.Lerp(seatColour, UiTheme.PieceWaiting, 0.55f) : seatColour;
+            UiKit.Icon(top, PieceShape.For(op), iconColour, 18f);
+
+            var name = UiKit.Label(top, op.Name, 13f, commandable || !op.IsInYard ? UiTheme.Text : UiTheme.TextDim);
+            UiKit.Size(name, flexibleWidth: 1f);
+
+            // "ready" is the one word that asks for a tap, so it takes the live
+            // colour; the rest are states, so they stay dim.
+            string where = home ? "home"
+                : deployable ? $"<color=#{UiTheme.Hex(UiTheme.Cyan)}>ready</color>"
+                : op.IsInYard ? "waiting"
+                : "on board";
+
+            UiKit.Label(chip, where, 12f, UiTheme.TextDim);
+
+            float fraction = (float)op.Health / Mathf.Max(1, op.MaxHealth);
+            bool seen = _lastFractions.TryGetValue(op, out float previous);
+            var fill = UiKit.Bar(chip, seen ? previous : fraction,
+                Color.Lerp(UiTheme.Danger, seatColour, fraction), ChipWidth - 12f, 4f);
+            if (seen && !Mathf.Approximately(previous, fraction))
+                UiKit.TweenBar(fill, previous, fraction, 0.35f, seatColour);
+            _lastFractions[op] = fraction;
+        }
+
+        /// <summary>A CPU seat folded into one group in the band: colour, name, its three silhouettes, home count.</summary>
+        private void CpuGroup(PlayerState seat, bool playing, Core.GameEngine engine)
+        {
+            var colour = BoardLayout.ColourOf(seat.Color);
+
+            var group = UiKit.Rect($"seat_{seat.Color}", _content);
+            UiKit.Fixed(group, 104f);
+            UiKit.Sliced(group, DecoSprites.ChipFill, playing ? UiTheme.PanelRaised : UiTheme.PanelInset);
+            if (playing) UiKit.Overlay(group, DecoSprites.ButtonEdge, UiTheme.Gold);
+
+            var column = UiKit.Column(group, 1f, 5);
+            column.childAlignment = TextAnchor.MiddleCenter;
+
+            int home = 0;
+            foreach (var op in seat.Operators) if (engine.IsHome(op)) home++;
+
+            var head = UiKit.Rect("head", group);
+            UiKit.Row(head, 4f).childAlignment = TextAnchor.MiddleLeft;
+            UiKit.Size(head, height: 18f);
+
+            UiKit.Diamond(head, colour, 6f, 9f);
+
+            var name = UiKit.Label(head,
+                $"<color=#{UiTheme.Hex(UiTheme.Readable(colour))}>{seat.Color.ToString().ToUpperInvariant()}</color>",
+                12f, bold: true);
+            UiKit.Size(name, flexibleWidth: 1f);
+
+            UiKit.Label(head, $"{home}/{seat.Operators.Count}", 12f, UiTheme.TextDim,
+                align: TextAlignmentOptions.MidlineRight);
+
+            var pips = UiKit.Rect("pips", group);
+            UiKit.Row(pips, 5f).childAlignment = TextAnchor.MiddleCenter;
+            UiKit.Size(pips, height: 18f);
+
+            foreach (var op in seat.Operators)
+                UiKit.Icon(pips, PieceShape.For(op), PipTint(op, colour, engine), SpinePip);
+        }
+
+        // ── Seat forms shared by both arrangements ───────────────────────
 
         /// <summary>A seat's full form: its header and one row per operator.</summary>
         private GameObject Block(RectTransform parent, PlayerState seat, bool playing, Core.GameEngine engine)
@@ -285,24 +523,28 @@ namespace NonaRoyale.Unity.View
 
             foreach (var op in seat.Operators)
             {
-                bool atHome = engine.IsHome(op);
-                if (atHome) home++;
-
-                // The same three states the full row draws, in one mark: home
-                // fades out, a yard piece takes the waiting tint, and a piece on
-                // the board runs from the seat colour toward danger as it is hurt.
-                float fraction = (float)op.Health / Mathf.Max(1, op.MaxHealth);
-                var tint = atHome ? UiTheme.WithAlpha(colour, 0.3f)
-                    : op.IsInYard ? Color.Lerp(colour, UiTheme.PieceWaiting, 0.55f)
-                    : Color.Lerp(UiTheme.Danger, colour, fraction);
-
-                UiKit.Icon(pips, PieceShape.For(op), tint, SpinePip);
+                if (engine.IsHome(op)) home++;
+                UiKit.Icon(pips, PieceShape.For(op), PipTint(op, colour, engine), SpinePip);
             }
 
             UiKit.Label(spine, $"{home}/{seat.Operators.Count}", 13f, UiTheme.TextDim,
                 align: TextAlignmentOptions.MidlineRight);
 
             return spine.gameObject;
+        }
+
+        /// <summary>
+        /// The three states a folded operator can be in, in one mark: home
+        /// fades out, a yard piece takes the waiting tint, and a piece on the
+        /// board runs from the seat colour toward danger as it is hurt.
+        /// </summary>
+        private static Color PipTint(OperatorState op, Color colour, Core.GameEngine engine)
+        {
+            if (engine.IsHome(op)) return UiTheme.WithAlpha(colour, 0.3f);
+            if (op.IsInYard) return Color.Lerp(colour, UiTheme.PieceWaiting, 0.55f);
+
+            float fraction = (float)op.Health / Mathf.Max(1, op.MaxHealth);
+            return Color.Lerp(UiTheme.Danger, colour, fraction);
         }
 
         private void HoverSeat(PlayerColor? seat)
@@ -315,7 +557,8 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>
         /// Which form each seat shows. A CPU folds unless it is playing or the
-        /// pointer is on it; the player's own seat never folds.
+        /// pointer is on it; the player's own seat never folds. The lying band
+        /// builds one form per seat and has nothing to switch.
         /// </summary>
         private void ApplyFold()
         {

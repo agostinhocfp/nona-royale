@@ -55,25 +55,56 @@ namespace NonaRoyale.Unity.View
     /// </remarks>
     public sealed class DraftScreen : MonoBehaviour
     {
-        private const float FrameWidth = 1840f;
-        private const float FrameHeight = 1020f;
+        /// <summary>
+        /// The frame the whole screen composes into (MOBILE.md, M5). Wide, it
+        /// is a fixed 1840×1020 that <see cref="FitFrame"/> scales down to
+        /// whatever window it is in. Upright, scaling that frame to a phone
+        /// would land at about a quarter size and nothing on it would be
+        /// readable, so the upright frame is the screen itself and the layout
+        /// inside it changes instead: the pool above, the seats and the detail
+        /// below, rather than side by side.
+        /// </summary>
+        private static float FrameWidth => ScreenLayout.Pick(1840f, ScreenLayout.Reference.x - 24f);
+
+        private static float FrameHeight => ScreenLayout.Pick(1020f, ScreenLayout.Reference.y - 28f);
         private const float FrameMargin = 40f;
 
         private const float CardWidth = 358f;
-        private const float CardHeight = 236f;
-        private const float CardGap = 14f;
+
+        /// <summary>
+        /// A card's height. Upright a card is a portrait tile — shape, name,
+        /// role, numbers — and its three ability lines move to the detail
+        /// panel, which is where a tap sends them anyway (M5).
+        /// </summary>
+        private static float CardHeight => ScreenLayout.Pick(236f, 124f);
+
+        private static float CardGap => ScreenLayout.Pick(14f, 10f);
 
         /// <summary>Rows of cards. The body is sized for exactly this many.</summary>
-        private const int CardRows = 3;
+        private static int CardRows => ScreenLayout.IsPortrait ? 4 : 3;
+
+        /// <summary>Columns upright: three tiles across a phone.</summary>
+        private const int UprightColumns = 3;
 
         /// <summary>The grid's fixed width: three full-width cards and their gaps.</summary>
-        private const float GridWidth = 3f * CardWidth + 2f * CardGap;
-        private const float SlotWidth = 150f;
+        private static float GridWidth => ScreenLayout.IsPortrait
+            ? FrameWidth
+            : 3f * CardWidth + 2f * 14f;
+
+        private static float SlotWidth => 150f;
+
+        /// <summary>Upright band heights: the header, the seat strip and the two-row footer.</summary>
+        private const float UprightHeaderHeight = 100f;
+        private const float UprightSeatsHeight = 76f;
+        private const float UprightFooterHeight = 104f;
+
+        /// <summary>One seat's three slot pips in the upright strip.</summary>
+        private const float UprightPipSize = 26f;
 
         /// <summary>Seconds the filled table stays up after the ALL PICK clock runs out.</summary>
         private const float TimeUpHold = 1.2f;
 
-        private const float ClockDigitSize = 64f;
+        private static float ClockDigitSize => ScreenLayout.Pick(64f, 40f);
 
         /// <summary>
         /// Mono-spacing for the clock's digits (G5). Cinzel's figures are not
@@ -85,7 +116,7 @@ namespace NonaRoyale.Unity.View
         /// TIME and READY are words.
         /// </summary>
         private const string ClockMono = "<mspace=0.62em>";
-        private const float ClockWordSize = 40f;
+        private static float ClockWordSize => ScreenLayout.Pick(40f, 26f);
 
         /// <summary>ALL PICK: seconds between CPU picks, across all CPU seats.</summary>
         private const float CpuPickInterval = 1.5f;
@@ -112,6 +143,10 @@ namespace NonaRoyale.Unity.View
         private GridLayoutGroup _gridLayout;
         private RectTransform _seatPanel;
         private RectTransform _detail;
+
+        /// <summary>Upright only: the sheet the detail rides on, and its button row (M6).</summary>
+        private RectTransform _sheet;
+        private RectTransform _sheetActions;
         private RectTransform _footer;
         private TMP_Text _clock;
         private TMP_Text _clockCaption;
@@ -124,6 +159,7 @@ namespace NonaRoyale.Unity.View
         private float _hold = -1f;
         private bool _dirty;
         private bool _detailDirty;
+        private bool _builtPortrait;
 
         private readonly Dictionary<PlayerColor, BotBrain> _cpu = new Dictionary<PlayerColor, BotBrain>();
         private float _cpuClock;
@@ -196,7 +232,9 @@ namespace NonaRoyale.Unity.View
 
             if (Input.GetKeyDown(KeyCode.Escape))
             {
-                if (_leaveArmed) Stay();
+                // The sheet is the innermost thing open, so it goes first (M6).
+                if (_sheet != null && _sheet.gameObject.activeSelf) ClearFocus();
+                else if (_leaveArmed) Stay();
                 else RequestLeave();
                 return;
             }
@@ -232,6 +270,17 @@ namespace NonaRoyale.Unity.View
 
         private void PickCard(OperatorDefinition op)
         {
+            // Upright, a tap on a card opens the sheet and nothing else; the
+            // sheet's own button makes the pick (M6). That holds for a mouse
+            // too, so the editor at phone size behaves exactly as the phone
+            // does rather than quietly taking a different path.
+            if (ScreenLayout.IsPortrait)
+            {
+                Focus(op);
+                MarkDirty();
+                return;
+            }
+
             _focus = op;
             if (Locked) { MarkDirty(); return; }
 
@@ -447,6 +496,19 @@ namespace NonaRoyale.Unity.View
             if (!IsOpen) return;
 
             if (_root.GetSiblingIndex() != _root.parent.childCount - 1) _root.SetAsLastSibling();
+
+            // The screen turned: the body is a row one way and a column the
+            // other, so the frame is made again rather than re-anchored (M5).
+            if (_builtPortrait != ScreenLayout.IsPortrait)
+            {
+                var old = _frame.gameObject;
+                old.SetActive(false);
+                Destroy(old);
+
+                BuildFrame();
+                Rebuild();
+            }
+
             FitFrame();
 
             if (_hold >= 0f)
@@ -482,6 +544,19 @@ namespace NonaRoyale.Unity.View
         private void FitFrame()
         {
             var area = _root.rect;
+
+            // Upright the frame is the screen, minus a margin, at full size:
+            // scaling a 1840-unit layout onto a phone lands near a quarter and
+            // nothing on it can be read (M5).
+            if (ScreenLayout.IsPortrait)
+            {
+                _frame.localScale = Vector3.one;
+                _frame.sizeDelta = new Vector2(
+                    Mathf.Max(200f, area.width - 24f), Mathf.Max(320f, area.height - 28f));
+                PlaceSheet();
+                return;
+            }
+
             float scale = Mathf.Min(1f,
                 area.width / (FrameWidth + FrameMargin),
                 area.height / (FrameHeight + FrameMargin));
@@ -532,13 +607,69 @@ namespace NonaRoyale.Unity.View
             UiKit.Fill(_root, UiTheme.WithAlpha(UiTheme.Obsidian, 0.94f), blocksPointer: true);
             _fader = _root.gameObject.AddComponent<CanvasGroup>();
 
+            BuildFrame();
+
+            _root.gameObject.SetActive(false);
+        }
+
+        /// <summary>
+        /// Everything inside the scrim, in the arrangement the screen shape
+        /// asks for. Built again from scratch when the phone is turned: the
+        /// body is a row one way and a column the other, and a layout group
+        /// cannot be swapped in place.
+        /// </summary>
+        private void BuildFrame()
+        {
+            _builtPortrait = ScreenLayout.IsPortrait;
+
             _frame = UiKit.Rect("frame", _root);
             _frame.anchorMin = _frame.anchorMax = new Vector2(0.5f, 0.5f);
             _frame.pivot = new Vector2(0.5f, 0.5f);
             _frame.sizeDelta = new Vector2(FrameWidth, FrameHeight);
+            _frame.localScale = Vector3.one;
 
-            var column = UiKit.Column(_frame, 16f);
+            var column = UiKit.Column(_frame, ScreenLayout.Pick(16f, 10f));
             column.childForceExpandHeight = false;
+
+            if (_builtPortrait) BuildUprightFrame();
+            else BuildWideFrame();
+        }
+
+        /// <summary>The clock, in its own framed box. The same in both arrangements, at two sizes.</summary>
+        private void ClockBox(RectTransform parent, float width)
+        {
+            var clockBox = UiKit.Rect("clock", parent);
+            UiKit.Fixed(clockBox, width);
+            UiKit.Panel(clockBox, blocksPointer: false, fans: false);
+            UiKit.Column(clockBox, 0f, ScreenLayout.IsPortrait ? 6 : 10).childAlignment = TextAnchor.MiddleCenter;
+
+            _clock = UiKit.Label(clockBox, "", ScreenLayout.Pick(64f, 40f), UiTheme.GoldBright,
+                TextAlignmentOptions.Center, bold: true);
+            _clock.overflowMode = TextOverflowModes.Overflow;
+            UiFonts.ApplyDisplay(_clock);
+            UiKit.Size(_clock, height: ScreenLayout.Pick(76f, 46f));
+
+            _clockCaption = UiKit.Label(clockBox, "", ScreenLayout.Pick(12f, 10f), UiTheme.Heading,
+                TextAlignmentOptions.Center, bold: true);
+            _clockCaption.characterSpacing = UiTheme.HeadingSpacing;
+            UiKit.Size(_clockCaption, height: 16f);
+        }
+
+        /// <summary>The grid, made once; its cells are sized per draft in <see cref="FitGrid"/>.</summary>
+        private void BuildGrid(RectTransform parent, bool fixedWidth)
+        {
+            _grid = UiKit.Rect("roster", parent);
+            if (fixedWidth) UiKit.Fixed(_grid, GridWidth);
+            _gridLayout = _grid.gameObject.AddComponent<GridLayoutGroup>();
+            _gridLayout.spacing = new Vector2(CardGap, CardGap);
+            _gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            FitGrid(Roster.All.Count);
+        }
+
+        private void BuildWideFrame()
+        {
+            _sheet = null;
+            _sheetActions = null;
 
             // ── Header: title and strip on the left, clock on the right ──
             var top = UiKit.Rect("top", _frame);
@@ -550,18 +681,7 @@ namespace NonaRoyale.Unity.View
             UiKit.Size(_header, flexibleWidth: 1f);
             UiKit.Column(_header, 6f).padding.top = 8;
 
-            var clockBox = UiKit.Rect("clock", top);
-            UiKit.Fixed(clockBox, 240f);
-            UiKit.Panel(clockBox, blocksPointer: false, fans: false);
-            UiKit.Column(clockBox, 0f, 10).childAlignment = TextAnchor.MiddleCenter;
-
-            _clock = UiKit.Label(clockBox, "", 64f, UiTheme.GoldBright, TextAlignmentOptions.Center, bold: true);
-            _clock.overflowMode = TextOverflowModes.Overflow;
-            UiFonts.ApplyDisplay(_clock);
-            UiKit.Size(_clock, height: 76f);
-            _clockCaption = UiKit.Label(clockBox, "", 12f, UiTheme.Heading, TextAlignmentOptions.Center, bold: true);
-            _clockCaption.characterSpacing = UiTheme.HeadingSpacing;
-            UiKit.Size(_clockCaption, height: 18f);
+            ClockBox(top, 240f);
 
             // ── Body: cards on the left, seats and details on the right ──
             var body = UiKit.Rect("body", _frame);
@@ -570,19 +690,11 @@ namespace NonaRoyale.Unity.View
             bodyRow.childForceExpandHeight = true;
             bodyRow.childAlignment = TextAnchor.UpperLeft;
 
-            // Cell size and column count are set per draft, in RebuildGrid:
-            // the pool is not known until a draft opens.
-            _grid = UiKit.Rect("roster", body);
-            UiKit.Fixed(_grid, GridWidth);
-            _gridLayout = _grid.gameObject.AddComponent<GridLayoutGroup>();
-            _gridLayout.spacing = new Vector2(CardGap, CardGap);
-            _gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-            FitGrid(Roster.All.Count);
+            BuildGrid(body, fixedWidth: true);
 
             var side = UiKit.Rect("side", body);
             UiKit.Size(side, flexibleWidth: 1f);
-            var sideColumn = UiKit.Column(side, 14f);
-            sideColumn.childForceExpandHeight = false;
+            UiKit.Column(side, 14f).childForceExpandHeight = false;
 
             _seatPanel = UiKit.Rect("seats", side);
             UiKit.Panel(_seatPanel, blocksPointer: true, fans: false);
@@ -593,16 +705,122 @@ namespace NonaRoyale.Unity.View
             UiKit.Panel(_detail, blocksPointer: true);
             UiKit.Size(_detail, flexibleHeight: 1f);
             _detail.gameObject.AddComponent<RectMask2D>();
-            var detailColumn = UiKit.Column(_detail, 6f, 22);
-            detailColumn.childForceExpandHeight = false;
+            UiKit.Column(_detail, 6f, 22).childForceExpandHeight = false;
 
             // ── Footer: controls ──
             _footer = UiKit.Rect("footer", _frame);
             UiKit.Size(_footer, height: 62f);
-            var footerRow = UiKit.Row(_footer, 12f);
-            footerRow.childForceExpandHeight = true;
+            UiKit.Row(_footer, 12f).childForceExpandHeight = true;
+        }
 
-            _root.gameObject.SetActive(false);
+        /// <summary>
+        /// Upright (MOBILE.md, M6): header, seat strip, pool, footer — and the
+        /// detail as a sheet that rises over the pool when a card is tapped.
+        /// </summary>
+        /// <remarks>
+        /// <b>The side column could not survive the turn.</b> Beside the pool it
+        /// held four seat rows and the detail panel; stacked under it, those
+        /// wanted about 510 units of height in the 250 that were left, so the
+        /// detail — which is where an upright card's ability lines went — was
+        /// squeezed to nothing. Each of its two halves needed its own answer.
+        ///
+        /// <b>The seats become a strip of four tiles</b> rather than four rows.
+        /// A row wanted 510 units of width for a gem, a name and three
+        /// 150-unit slots; a tile carries the same seat in 106, because the
+        /// three slots become three pips and the operator's name in a pick slot
+        /// is something the pool already shows.
+        ///
+        /// <b>The detail becomes a bottom sheet with the PICK button on it.</b>
+        /// That is what pays for the ability lines the tile cannot hold: one tap
+        /// opens the operator in full, and the pick is made from the sheet
+        /// rather than by tapping the tile a second time — an explicit button
+        /// beats a second tap that looks exactly like the first.
+        /// </remarks>
+        private void BuildUprightFrame()
+        {
+            // ── Header ──
+            var top = UiKit.Rect("top", _frame);
+            UiKit.Size(top, height: UprightHeaderHeight);
+            var topRow = UiKit.Row(top, 10f);
+            topRow.childForceExpandHeight = true;
+
+            _header = UiKit.Rect("header", top);
+            UiKit.Size(_header, flexibleWidth: 1f);
+            UiKit.Column(_header, 4f).padding.top = 6;
+
+            ClockBox(top, 116f);
+
+            // ── Seat strip ──
+            _seatPanel = UiKit.Rect("seats", _frame);
+            UiKit.Size(_seatPanel, height: UprightSeatsHeight, flexibleHeight: 0f);
+            var seatRow = UiKit.Row(_seatPanel, 8f);
+            seatRow.childForceExpandHeight = true;
+            seatRow.childForceExpandWidth = true;
+
+            // ── Pool ──
+            var body = UiKit.Rect("body", _frame);
+            UiKit.Size(body, flexibleHeight: 1f);
+            var bodyColumn = UiKit.Column(body, 10f);
+            bodyColumn.childForceExpandHeight = false;
+
+            BuildGrid(body, fixedWidth: false);
+
+            // ── Footer: two rows of controls ──
+            _footer = UiKit.Rect("footer", _frame);
+            UiKit.Size(_footer, height: UprightFooterHeight, flexibleHeight: 0f);
+            UiKit.Column(_footer, 8f).childForceExpandHeight = true;
+
+            // ── The detail sheet, over everything but the footer ──
+            _sheet = UiKit.Rect("detail_sheet", _frame);
+            _sheet.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            _sheet.anchorMin = new Vector2(0f, 0f);
+            _sheet.anchorMax = new Vector2(1f, 0f);
+            _sheet.pivot = new Vector2(0.5f, 0f);
+            UiKit.Panel(_sheet, blocksPointer: true);
+
+            var sheetColumn = UiKit.Column(_sheet, 8f, 16);
+            sheetColumn.childForceExpandHeight = false;
+
+            // The text scrolls. An operator with three abilities and their
+            // descriptions runs past the sheet's height, and a mask on its own
+            // would silently cut the last one off (M6).
+            var viewport = UiKit.Rect("detail_viewport", _sheet);
+            UiKit.Size(viewport, flexibleHeight: 1f);
+            viewport.gameObject.AddComponent<RectMask2D>();
+
+            var scroll = viewport.gameObject.AddComponent<ScrollRect>();
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = 30f;
+
+            _detail = UiKit.Rect("detail", viewport);
+            _detail.anchorMin = new Vector2(0f, 1f);
+            _detail.anchorMax = new Vector2(1f, 1f);
+            _detail.pivot = new Vector2(0.5f, 1f);
+            _detail.sizeDelta = Vector2.zero;
+            UiKit.Column(_detail, 6f, 0).childForceExpandHeight = false;
+            _detail.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            scroll.viewport = viewport;
+            scroll.content = _detail;
+
+            _sheetActions = UiKit.Rect("actions", _sheet);
+            UiKit.Size(_sheetActions, height: 50f, flexibleHeight: 0f);
+            UiKit.Row(_sheetActions, 8f).childForceExpandHeight = true;
+
+            PlaceSheet();
+            _sheet.gameObject.SetActive(false);
+        }
+
+        /// <summary>Sizes and seats the detail sheet above the footer.</summary>
+        private void PlaceSheet()
+        {
+            if (_sheet == null) return;
+
+            float height = Mathf.Clamp(_frame.rect.height * 0.46f, 220f, 380f);
+            _sheet.sizeDelta = new Vector2(0f, height);
+            _sheet.anchoredPosition = new Vector2(0f, UprightFooterHeight + 10f);
         }
 
         private void Rebuild()
@@ -647,17 +865,26 @@ namespace NonaRoyale.Unity.View
 
             bool allPick = _draft.Mode == DraftMode.AllPick;
 
-            var title = UiKit.Caption(Content(_header, "title", 44f),
-                allPick ? "ALL PICK" : "SNAKE DRAFT", 36f, UiTheme.GoldBright, TextAlignmentOptions.MidlineLeft);
+            bool upright = ScreenLayout.IsPortrait;
+
+            var title = UiKit.Caption(Content(_header, "title", upright ? 30f : 44f),
+                allPick ? "ALL PICK" : "SNAKE DRAFT", upright ? 24f : 36f, UiTheme.GoldBright,
+                TextAlignmentOptions.MidlineLeft);
             title.fontStyle = FontStyles.Bold;
-            title.characterSpacing = UiTheme.HeadingSpacing * 1.5f;
+            title.characterSpacing = UiTheme.HeadingSpacing * (upright ? 0.8f : 1.5f);
             UiFonts.ApplyDisplay(title);
 
-            UiKit.Caption(Content(_header, "subtitle", 24f), Subtitle(), UiTheme.FontBody, UiTheme.TextDim,
+            var subtitle = UiKit.Caption(Content(_header, "subtitle", upright ? 32f : 24f), Subtitle(),
+                upright ? UiTheme.FontSmall : UiTheme.FontBody, UiTheme.TextDim,
                 TextAlignmentOptions.MidlineLeft);
+            if (upright) subtitle.textWrappingMode = TextWrappingModes.Normal;
 
             if (allPick)
             {
+                // The upright header has no room for prose, and the subtitle
+                // above already names the seat that is picking (M6).
+                if (upright) return;
+
                 string cpus = _cpu.Count > 0 ? " CPU seats pick on their own." : "";
                 UiKit.Caption(Content(_header, "hint", 22f),
                     $"Choose a seat (click it or press 1–{_draft.Seats.Count}), then click operators. " +
@@ -667,8 +894,8 @@ namespace NonaRoyale.Unity.View
             }
 
             // The pick order, one diamond per pick: done ones dim, the current one large.
-            var strip = Content(_header, "strip", 28f);
-            var row = UiKit.Row(strip, 6f);
+            var strip = Content(_header, "strip", upright ? 22f : 28f);
+            var row = UiKit.Row(strip, upright ? 3f : 6f);
             row.childAlignment = TextAnchor.MiddleLeft;
 
             for (int i = 0; i < _draft.TotalPicks; i++)
@@ -677,11 +904,13 @@ namespace NonaRoyale.Unity.View
                 bool current = i == _draft.PickCount;
                 bool done = i < _draft.PickCount;
 
-                if (i > 0 && i % _draft.Seats.Count == 0) UiKit.Space(strip, 10f);
+                if (i > 0 && i % _draft.Seats.Count == 0) UiKit.Space(strip, upright ? 6f : 10f);
+
+                float wide = upright ? 11f : 16f, narrow = upright ? 8f : 11f;
 
                 UiKit.Diamond(strip,
                     done ? UiTheme.WithAlpha(colour, 0.3f) : colour,
-                    current ? 16f : 11f, current ? 24f : 16f, outline: done);
+                    current ? wide : narrow, current ? wide * 1.5f : narrow * 1.45f, outline: done);
             }
         }
 
@@ -723,11 +952,21 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         private void FitGrid(int cards)
         {
-            int columns = Mathf.Max(3, Mathf.CeilToInt(cards / (float)CardRows));
+            int columns = ScreenLayout.IsPortrait
+                ? UprightColumns
+                : Mathf.Max(3, Mathf.CeilToInt(cards / (float)CardRows));
+
             float cardWidth = (GridWidth - (columns - 1) * CardGap) / columns;
 
             _gridLayout.cellSize = new Vector2(cardWidth, CardHeight);
             _gridLayout.constraintCount = columns;
+
+            // Upright the grid is in a column, so nothing else can tell it how
+            // tall the pool makes it.
+            if (!ScreenLayout.IsPortrait) return;
+
+            int rows = Mathf.Max(1, Mathf.CeilToInt(cards / (float)columns));
+            UiKit.Size(_grid, height: rows * CardHeight + (rows - 1) * CardGap, flexibleHeight: 0f);
         }
 
         private void Card(OperatorDefinition op, PlayerColor picker)
@@ -743,13 +982,25 @@ namespace NonaRoyale.Unity.View
             var button = UiKit.Button(_grid, "", () => PickCard(op),
                 edge: open ? UiTheme.WithAlpha(seatColour, 0.9f) : UiTheme.Line);
             button.name = "content_card";
-            HoverRelay.On(button, () => Focus(op));
+
+            // Upright, focus is a tap and only a tap (M6): a sheet that opened
+            // under a passing mouse would be unusable, and on a touch screen
+            // the enter event arrives with the press anyway, which would open
+            // the sheet a frame before the tap meant to open it.
+            if (!ScreenLayout.Touch && !ScreenLayout.IsPortrait)
+                HoverRelay.On(button, () => Focus(op));
 
             var card = (RectTransform)button.transform;
 
             // Refused cards stay hoverable, so their abilities can still be read.
             var group = card.gameObject.AddComponent<CanvasGroup>();
             group.alpha = open ? 1f : 0.5f;
+
+            if (ScreenLayout.IsPortrait)
+            {
+                UprightCard(card, op, open, seatColour);
+                return;
+            }
 
             var column = UiKit.Column(card, 4f, 14);
             column.childForceExpandHeight = false;
@@ -860,7 +1111,55 @@ namespace NonaRoyale.Unity.View
             }
         }
 
-        /// <summary>What an aura does and to whom, in the detail panel's words.</summary>
+        /// <summary>
+        /// A card as a tile: the shape, the name and the two numbers, and
+        /// nothing else (MOBILE.md, M5). At a third of a phone's width there
+        /// is no room for three ability lines; they live on the sheet a tap
+        /// opens (M6), along with the button that takes the operator.
+        /// </summary>
+        private void UprightCard(RectTransform card, OperatorDefinition op, bool open, Color seatColour)
+        {
+            bool focused = _focus == op;
+
+            var column = UiKit.Column(card, 2f, 8);
+            column.childForceExpandHeight = false;
+            column.childAlignment = TextAnchor.UpperCenter;
+
+            var iconBox = UiKit.Rect("shape", card);
+            UiKit.Size(iconBox, height: 42f);
+            var portrait = OperatorArtLibrary.Portrait(op.Name);
+            if (portrait != null) PortraitIcon(iconBox, portrait, op, open, seatColour);
+            else ShapeIcon(iconBox, op, open, seatColour);
+
+            var name = UiKit.Label(card, op.Name.ToUpperInvariant(), 14f,
+                open ? UiTheme.Text : UiTheme.TextDim, TextAlignmentOptions.Center, bold: true);
+            name.characterSpacing = 2f;
+            name.overflowMode = TextOverflowModes.Ellipsis;
+            UiKit.Size(name, height: 18f);
+
+            UiKit.Size(UiKit.Label(card,
+                $"<color=#{UiTheme.Hex(UiTheme.TextDim)}>HP</color> <b>{op.MaxHealth}</b>  " +
+                $"<color=#{UiTheme.Hex(UiTheme.TextDim)}>SPD</color> <b>×{op.BaseSpeed:0.0}</b>",
+                11f, UiTheme.Text, TextAlignmentOptions.Center), height: 14f);
+
+            // Who already holds it, as seat diamonds along the bottom, and —
+            // when this is the card a tap has focused — the word that says a
+            // second tap takes it.
+            var foot = UiKit.Rect("foot", card);
+            UiKit.Size(foot, height: 14f);
+            var footRow = UiKit.Row(foot, 3f);
+            footRow.childAlignment = TextAnchor.MiddleCenter;
+
+            foreach (var seat in _draft.SeatsHolding(op))
+                UiKit.Diamond(foot, UiTheme.Seat(seat), 8f, 12f);
+
+            // The sheet carries the pick, so the tile only has to say which
+            // card the sheet is showing (M6).
+            if (focused)
+                UiKit.Label(foot, open ? "OPEN" : "LOOKING", 10f, UiTheme.Cyan,
+                    TextAlignmentOptions.Center, bold: true);
+        }
+
         /// <summary>The operator's shape, sized by health and tinted for the picking seat.</summary>
         private static void ShapeIcon(RectTransform box, OperatorDefinition op, bool open, Color seatColour)
         {
@@ -895,6 +1194,7 @@ namespace NonaRoyale.Unity.View
             rect.sizeDelta = new Vector2(size, size);
         }
 
+        /// <summary>What an aura does and to whom, in the detail panel's words.</summary>
         private static string AuraReach(AuraDefinition aura)
         {
             string who = aura.Side == AuraSide.Allies ? "allies" : "enemies";
@@ -932,11 +1232,102 @@ namespace NonaRoyale.Unity.View
         {
             Clear(_seatPanel);
 
+            if (ScreenLayout.IsPortrait)
+            {
+                for (int i = 0; i < _draft.Seats.Count; i++) SeatTile(_draft.Seats[i], i);
+                return;
+            }
+
             var heading = Content(_seatPanel, "heading", 22f);
             UiKit.Column(heading, 0f).childForceExpandHeight = true;
             UiKit.Heading(heading, $"Squads · {_draft.Seats.Count} seats");
 
             for (int i = 0; i < _draft.Seats.Count; i++) SeatRow(_draft.Seats[i], i);
+        }
+
+        /// <summary>
+        /// One seat as a tile in the upright strip (M6): its colour and name,
+        /// what it is doing, and its three slots as pips.
+        /// </summary>
+        /// <remarks>
+        /// The wide row's three 150-unit slots each carry an operator's name.
+        /// Here they are pips carrying its silhouette instead — the pool above
+        /// is already showing every name, and four seats have to share 456
+        /// units. A filled pip still clears on a tap in ALL PICK, which is the
+        /// one thing a slot has to be able to do.
+        /// </remarks>
+        private void SeatTile(PlayerColor seat, int index)
+        {
+            bool allPick = _draft.Mode == DraftMode.AllPick;
+            bool cpu = IsCpu(seat);
+            bool picking = allPick ? seat == _active && !_draft.IsComplete : seat == _draft.CurrentSeat;
+            var colour = UiTheme.Seat(seat);
+
+            var slot = Content(_seatPanel, "seat");
+            UiKit.Size(slot, flexibleWidth: 1f);
+            UiKit.Column(slot, 0f).childForceExpandHeight = true;
+
+            var button = UiKit.Button(slot, "", () => SetActive(seat), selected: picking,
+                interactable: allPick && !cpu && !Locked);
+            var tile = (RectTransform)button.transform;
+
+            var column = UiKit.Column(tile, 2f, 5);
+            column.childAlignment = TextAnchor.UpperCenter;
+            column.childForceExpandHeight = false;
+
+            var head = UiKit.Rect("head", tile);
+            UiKit.Size(head, height: 18f);
+            var headRow = UiKit.Row(head, 4f);
+            headRow.childAlignment = TextAnchor.MiddleCenter;
+
+            UiKit.Diamond(head, colour, 8f, 12f);
+
+            var name = UiKit.Label(head, seat.ToString().ToUpperInvariant(), 12f,
+                UiTheme.Readable(colour), bold: true);
+            name.overflowMode = TextOverflowModes.Overflow;
+
+            string state = _draft.NextEmptySlot(seat) < 0 ? "READY"
+                : picking ? "PICKING"
+                : $"{_draft.FilledCount(seat)}/{_draft.SquadSize}";
+            if (cpu) state = $"CPU {state}";
+
+            var stateLabel = UiKit.Label(tile, state, 10f, picking ? UiTheme.Cyan : UiTheme.TextDim,
+                TextAlignmentOptions.Center, bold: true);
+            UiKit.Size(stateLabel, height: 13f);
+
+            var pips = UiKit.Rect("pips", tile);
+            UiKit.Size(pips, height: UprightPipSize);
+            var pipRow = UiKit.Row(pips, 4f);
+            pipRow.childAlignment = TextAnchor.MiddleCenter;
+
+            for (int i = 0; i < _draft.SquadSize; i++) SlotPip(pips, seat, i, colour);
+        }
+
+        /// <summary>One slot in the upright strip: the operator's shape, or an empty mark.</summary>
+        private void SlotPip(Transform parent, PlayerColor seat, int slot, Color colour)
+        {
+            var op = _draft.SlotOf(seat, slot);
+
+            if (op == null)
+            {
+                var empty = UiKit.Rect($"pip_{slot}", parent);
+                UiKit.Sliced(empty, DecoSprites.ChipFill, UiTheme.PanelInset);
+                UiKit.Fixed(empty, UprightPipSize, UprightPipSize);
+                UiKit.Caption(empty, "·", 14f, UiTheme.TextOff, TextAlignmentOptions.Center);
+                return;
+            }
+
+            bool clearable = _draft.CanClear(seat, slot) == DraftRefusal.None && !IsCpu(seat) && !Locked;
+
+            var button = UiKit.Button(parent, "", () => ClearSlot(seat, slot), MarkDirty,
+                interactable: clearable, tint: UiTheme.PanelInset);
+            UiKit.Fixed(button, UprightPipSize, UprightPipSize);
+
+            var rect = (RectTransform)button.transform;
+            var icon = UiKit.Icon(rect, PieceShape.For(op.Name), colour, UprightPipSize - 10f);
+            var iconRect = (RectTransform)icon.transform;
+            iconRect.anchorMin = iconRect.anchorMax = new Vector2(0.5f, 0.5f);
+            iconRect.sizeDelta = new Vector2(UprightPipSize - 10f, UprightPipSize - 10f);
         }
 
         private void SeatRow(PlayerColor seat, int index)
@@ -1020,13 +1411,93 @@ namespace NonaRoyale.Unity.View
 
         // ── Detail ───────────────────────────────────────────────────────
 
+        /// <summary>
+        /// The sheet's two buttons: close it, or take the operator it is
+        /// showing (M6).
+        /// </summary>
+        /// <remarks>
+        /// <b>The pick is a button, not a second tap.</b> A phone has no hover,
+        /// so the first tap on a card has to be the look; making the second tap
+        /// the pick meant two identical gestures with very different
+        /// consequences, on a choice that cannot be undone in ALL PICK. A
+        /// labelled button says which one takes the operator.
+        ///
+        /// It is refused for the same reasons a card is, and says which:
+        /// <c>CanPick</c> is the engine's answer, and the wide screen's greyed
+        /// card is the same refusal drawn differently.
+        /// </remarks>
+        private void RebuildSheetActions(OperatorDefinition op)
+        {
+            if (_sheetActions == null) return;
+
+            for (int i = _sheetActions.childCount - 1; i >= 0; i--)
+            {
+                var child = _sheetActions.GetChild(i).gameObject;
+                child.SetActive(false);
+                Destroy(child);
+            }
+
+            if (op == null) return;
+
+            var close = UiKit.Button(_sheetActions, "CLOSE", ClearFocus, MarkDirty, size: UiTheme.FontSmall);
+            UiKit.Fixed(close, 110f);
+
+            var picker = Picker;
+            bool noSeat = picker == PlayerColor.None;
+            var refusal = noSeat || Locked ? DraftRefusal.Complete : _draft.CanPick(picker, op);
+            bool open = refusal == DraftRefusal.None;
+
+            // A seat that was never chosen is not a closed draft: in ALL PICK
+            // the tile above is what the player has to press first.
+            string label = open ? $"PICK FOR {picker.ToString().ToUpperInvariant()}"
+                : noSeat && !Locked && _draft.Mode == DraftMode.AllPick ? "CHOOSE A SEAT"
+                : noSeat && !Locked ? "CPU IS PICKING"
+                : RefusalWord(refusal);
+
+            var pick = UiKit.Button(_sheetActions, label, () => TakeFocused(op), MarkDirty,
+                interactable: open,
+                tint: open ? UiTheme.CyanDeep : (Color?)null,
+                edge: open ? UiTheme.Cyan : (Color?)null,
+                size: UiTheme.FontBody);
+            UiKit.Size(pick, flexibleWidth: 1f);
+        }
+
+        /// <summary>Takes the operator the sheet is showing, then closes it.</summary>
+        private void TakeFocused(OperatorDefinition op)
+        {
+            var picker = Picker;
+            if (Locked || picker == PlayerColor.None) return;
+
+            if (_draft.Pick(picker, op) == DraftRefusal.None) AfterPick(picker);
+
+            ClearFocus();
+        }
+
+        /// <summary>Closes the sheet.</summary>
+        private void ClearFocus()
+        {
+            _focus = null;
+            _detailDirty = true;
+            MarkDirty();
+        }
+
         private void RebuildDetail()
         {
             _detailDirty = false;
             Clear(_detail);
 
             var op = _focus;
-            if (op == null)
+            bool upright = ScreenLayout.IsPortrait;
+
+            // Upright the detail is a sheet: it is not there at all until a
+            // card is tapped, so it has no empty state to draw (M6).
+            if (upright)
+            {
+                RebuildSheetActions(op);
+                if (_sheet != null) _sheet.gameObject.SetActive(op != null);
+                if (op == null) return;
+            }
+            else if (op == null)
             {
                 var hint = Content(_detail, "hint", 60f);
                 UiKit.Caption(hint, "Hover a card to read its abilities.", UiTheme.FontBody, UiTheme.TextOff,
@@ -1096,6 +1567,12 @@ namespace NonaRoyale.Unity.View
         {
             Clear(_footer);
 
+            if (ScreenLayout.IsPortrait)
+            {
+                RebuildUprightFooter();
+                return;
+            }
+
             if (_leaveArmed)
             {
                 FooterButton("LEAVE DRAFT", "", Leave, 240f, UiTheme.GoldDeep, UiTheme.Threat);
@@ -1129,6 +1606,59 @@ namespace NonaRoyale.Unity.View
             var start = FooterButton("START", "Enter", StartMatch, 220f,
                 ready ? UiTheme.CyanDeep : (Color?)null, ready ? UiTheme.Cyan : (Color?)null, ready);
             if (ready) UiKit.Pulse(start, UiTheme.Cyan);
+        }
+
+        /// <summary>
+        /// The controls, on two rows (M6). Five buttons need about 950 units
+        /// side by side and the upright frame has 456, so they wrap — and the
+        /// prose note goes, because the header's subtitle already carries the
+        /// state and the rules belong on the setup screen, not under a clock.
+        /// </summary>
+        private void RebuildUprightFooter()
+        {
+            var top = Content(_footer, "row_top");
+            UiKit.Row(top, 8f).childForceExpandHeight = true;
+            var bottom = Content(_footer, "row_bottom");
+            UiKit.Row(bottom, 8f).childForceExpandHeight = true;
+
+            if (_leaveArmed)
+            {
+                UprightButton(top, "LEAVE DRAFT", Leave, UiTheme.GoldDeep, UiTheme.Threat);
+                UprightButton(bottom, "STAY", Stay);
+                return;
+            }
+
+            bool open = _hold < 0f;
+            bool allPick = _draft.Mode == DraftMode.AllPick;
+
+            UprightButton(top, "BACK", RequestLeave, interactable: open);
+            UprightButton(top, "RANDOM", RandomOne,
+                interactable: open && Picker != PlayerColor.None && _draft.CanPickAny(Picker) == DraftRefusal.None);
+
+            if (allPick)
+            {
+                UprightButton(top, "FILL ALL", FillAndStart, interactable: open);
+            }
+            else
+            {
+                UprightButton(top, "UNDO", Undo, interactable: open && UndoAllowed);
+                UprightButton(bottom, "RANDOM REST", RandomRest, interactable: open && !_draft.IsComplete);
+            }
+
+            bool ready = open && _draft.IsComplete;
+            var start = UprightButton(bottom, "START", StartMatch,
+                ready ? UiTheme.CyanDeep : (Color?)null, ready ? UiTheme.Cyan : (Color?)null, ready);
+            if (ready) UiKit.Pulse(start, UiTheme.Cyan);
+        }
+
+        /// <summary>A footer button that shares its row's width rather than claiming a fixed slice.</summary>
+        private Button UprightButton(Transform row, string label, System.Action press,
+            Color? fill = null, Color? edge = null, bool interactable = true)
+        {
+            var button = UiKit.Button(row, label, press, MarkDirty, interactable, size: UiTheme.FontSmall,
+                tint: fill, edge: edge);
+            UiKit.Size(button, flexibleWidth: 1f);
+            return button;
         }
 
         private Button FooterButton(string label, string key, System.Action press, float width,

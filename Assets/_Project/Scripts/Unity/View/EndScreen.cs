@@ -174,13 +174,19 @@ namespace NonaRoyale.Unity.View
                 : seat.HasValue ? UiTheme.Readable(UiTheme.Seat(seat.Value)) : UiTheme.Text;
 
             Cell(row, label, size, nameColour, TextAlignmentOptions.MidlineLeft, 0f, 1f, header || winner);
-            Squad(row, seat, squad, header);
+
+            // The squad column is the widest thing in the row and the only one
+            // the board has already shown; upright it is what goes (MOBILE.md,
+            // M5), and the three tallies are what the screen is for.
+            if (!ScreenLayout.IsPortrait) Squad(row, seat, squad, header);
+
             var homeCell = Cell(row, header ? "HOME" : $"{home}/{homeOf}", size, dim,
-                TextAlignmentOptions.Center, 110f, 0f, header);
-            var kosCell = Cell(row, header ? "KNOCKOUTS" : kos.ToString(), size, header ? dim : UiTheme.Threat,
-                TextAlignmentOptions.Center, 130f, 0f, true);
+                TextAlignmentOptions.Center, ScreenLayout.Pick(110f, 72f), 0f, header);
+            var kosCell = Cell(row, header ? ScreenLayout.Pick("KNOCKOUTS", "KO") : kos.ToString(),
+                size, header ? dim : UiTheme.Threat,
+                TextAlignmentOptions.Center, ScreenLayout.Pick(130f, 62f), 0f, true);
             var lostCell = Cell(row, header ? "LOST" : lost.ToString(), size, header ? dim : UiTheme.TextDim,
-                TextAlignmentOptions.Center, 90f, 0f, header);
+                TextAlignmentOptions.Center, ScreenLayout.Pick(90f, 56f), 0f, header);
 
             // The tally counts up, row after row (UI_MOTION.md increment U2).
             if (!header)

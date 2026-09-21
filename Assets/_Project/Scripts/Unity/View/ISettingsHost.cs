@@ -129,13 +129,20 @@ namespace NonaRoyale.Unity.View
         {
             var display = host.Display;
 
-            var mode = UiKit.ChoiceRow(slot("cycle"), "Screen mode", "", display.Summary(),
-                display.Mode == ScreenMode.Fullscreen, () => { display.CycleMode(); rebuild(); });
-            UiKit.Size(mode, height: RowHeight);
+            // A phone has no window to size and no windowed mode to leave, so
+            // these two rows are not shown there (M7). They are also not
+            // applied there, which is what stops a stored 1920×1080 from being
+            // handed to the compositor as the shape of an upright screen.
+            if (!ScreenLayout.FixedScreen)
+            {
+                var mode = UiKit.ChoiceRow(slot("cycle"), "Screen mode", "", display.Summary(),
+                    display.Mode == ScreenMode.Fullscreen, () => { display.CycleMode(); rebuild(); });
+                UiKit.Size(mode, height: RowHeight);
 
-            var resolution = UiKit.ChoiceRow(slot("cycle"), "Resolution", "windowed", display.ResolutionLabel(),
-                display.Mode == ScreenMode.Windowed, () => { display.CycleResolution(); rebuild(); });
-            UiKit.Size(resolution, height: RowHeight);
+                var resolution = UiKit.ChoiceRow(slot("cycle"), "Resolution", "windowed", display.ResolutionLabel(),
+                    display.Mode == ScreenMode.Windowed, () => { display.CycleResolution(); rebuild(); });
+                UiKit.Size(resolution, height: RowHeight);
+            }
 
             Row(slot, "VSync", "", display.VSync, v => display.VSync = v, rebuild);
 

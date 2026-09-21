@@ -24,8 +24,31 @@ namespace NonaRoyale.Unity.View
         /// see the OnGUI panel; the caller guards that one separately
         /// (ADR-0008 consequence 4).
         /// </summary>
-        public static bool IsOverHud =>
-            EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+        /// <remarks>
+        /// <b>A touch has to be asked about by name</b> (MOBILE.md, M4). The
+        /// argument-less overload asks about pointer -1, the mouse, which no
+        /// touch ever is — so on a phone it answered "no" for every tap and
+        /// every press on the tray fell through to the board underneath as
+        /// well. The finger's own id is what the module raycast under.
+        /// </remarks>
+        public static bool IsOverHud
+        {
+            get
+            {
+                var events = EventSystem.current;
+                if (events == null) return false;
+
+                if (Input.touchCount > 0)
+                {
+                    for (int i = 0; i < Input.touchCount; i++)
+                        if (events.IsPointerOverGameObject(Input.GetTouch(i).fingerId)) return true;
+
+                    return false;
+                }
+
+                return events.IsPointerOverGameObject();
+            }
+        }
 
         /// <summary>The world point under the mouse, on the board plane.</summary>
         /// <remarks>

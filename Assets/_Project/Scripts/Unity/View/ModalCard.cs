@@ -28,11 +28,21 @@ namespace NonaRoyale.Unity.View
     {
         protected const float ButtonHeight = 54f;
 
+        /// <summary>What the card keeps clear of the screen's edges (M5).</summary>
+        private const float Margin = 16f;
+
+        /// <summary>The card's own side padding. Narrower upright, where 36 a side is a seventh of the screen.</summary>
+        private static int Padding => (int)ScreenLayout.Pick(36f, 20f);
+
         private RectTransform _root;
         private RectTransform _card;
+        private RectTransform _viewport;
+        private RectTransform _body;
+        private ScrollRect _scroll;
         private CanvasGroup _fader;
         private CanvasGroup _cardFader;
         private bool _closing;
+        private int _fittedLayout = -1;
 
         public bool IsOpen => _root != null && _root.gameObject.activeSelf;
 
@@ -51,6 +61,9 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>The full-screen scrim the card sits on.</summary>
         protected RectTransform Root => _root;
+
+        /// <summary>The scrolling column the slots are built in.</summary>
+        protected RectTransform Body => _body;
 
         /// <summary>Card width in canvas units.</summary>
         protected abstract float CardWidth { get; }
@@ -74,18 +87,75 @@ namespace NonaRoyale.Unity.View
             _card.anchorMin = new Vector2(0.5f, 0.5f);
             _card.anchorMax = new Vector2(0.5f, 0.5f);
             _card.pivot = new Vector2(0.5f, 0.5f);
-            _card.sizeDelta = new Vector2(CardWidth, 0f);
+            _card.sizeDelta = new Vector2(FittedWidth, 0f);
             if (Framed) UiKit.Panel(_card, blocksPointer: true);
 
-            var column = UiKit.Column(_card, 10f, 36);
+            // The card is a window onto its own content (MOBILE.md, M5). It
+            // used to be a column that grew to whatever it held, which is fine
+            // on a 1080-unit screen and wrong on a phone, where the settings
+            // page is taller than the screen and the rows past the fold could
+            // not be reached at all. Now the column lives inside a viewport and
+            // the card takes the smaller of what it wants and what there is.
+            _viewport = UiKit.Rect("viewport", _card);
+            UiKit.Stretch(_viewport);
+            _viewport.gameObject.AddComponent<RectMask2D>();
+
+            _body = UiKit.Rect("body", _viewport);
+            _body.anchorMin = new Vector2(0f, 1f);
+            _body.anchorMax = new Vector2(1f, 1f);
+            _body.pivot = new Vector2(0.5f, 1f);
+            _body.sizeDelta = Vector2.zero;
+
+            var column = UiKit.Column(_body, 10f, Padding);
             column.padding.top = 30;
             column.padding.bottom = 30;
-            _card.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            _body.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            _scroll = _card.gameObject.AddComponent<ScrollRect>();
+            _scroll.horizontal = false;
+            _scroll.vertical = true;
+            _scroll.movementType = ScrollRect.MovementType.Clamped;
+            _scroll.scrollSensitivity = 30f;
+            _scroll.viewport = _viewport;
+            _scroll.content = _body;
 
             _fader = _root.gameObject.AddComponent<CanvasGroup>();
             _cardFader = _card.gameObject.AddComponent<CanvasGroup>();
 
             _root.gameObject.SetActive(false);
+        }
+
+        /// <summary>
+        /// The card's width, never wider than the screen it has to sit on
+        /// (M5). The scaler expands rather than matching an axis, so the canvas
+        /// is at least the reference wide and this is a floor, not a guess.
+        /// </summary>
+        private float FittedWidth =>
+            Mathf.Min(CardWidth, ScreenLayout.Reference.x - 2f * Margin);
+
+        /// <summary>
+        /// Sizes the card to its content, up to what the screen allows, and
+        /// lets the rest scroll.
+        /// </summary>
+        private void Fit()
+        {
+            if (_card == null) return;
+
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_body);
+
+            // The first fit can run before the canvas has laid out, when the
+            // scrim's rect is still zero; the reference height is the floor
+            // the scaler guarantees, so it is the right fallback.
+            float screen = _root.rect.height > 1f ? _root.rect.height : ScreenLayout.Reference.y;
+            float available = Mathf.Max(120f, screen - 2f * Margin);
+            float wanted = LayoutUtility.GetPreferredHeight(_body);
+
+            _card.sizeDelta = new Vector2(FittedWidth, Mathf.Min(wanted, available));
+
+            // Nothing to scroll is the common case, and a card that can be
+            // dragged an inch when it all fits reads as broken.
+            _scroll.vertical = wanted > available + 1f;
+            if (!_scroll.vertical) _body.anchoredPosition = Vector2.zero;
         }
 
         protected void Show()
@@ -100,7 +170,7 @@ namespace NonaRoyale.Unity.View
 
             UiTween.FadeIn(_fader, 0.28f);
             UiTween.SlideIn(_card, new Vector2(0f, -28f), 0.3f);
-            UiTween.StaggerIn(_card);
+            UiTween.StaggerIn(_body);
         }
 
         public virtual void Close()
@@ -126,15 +196,25 @@ namespace NonaRoyale.Unity.View
         {
             if (IsOpen && _root.GetSiblingIndex() != _root.parent.childCount - 1)
                 _root.SetAsLastSibling();
+
+            // A turn of the phone changes both the width the card may take and
+            // the height it has to fit into, and the composed rows themselves
+            // read the arrangement, so the page is composed again (M5).
+            if (_fittedLayout == ScreenLayout.Version || !IsOpen) return;
+
+            _fittedLayout = ScreenLayout.Version;
+            var column = _body.GetComponent<VerticalLayoutGroup>();
+            if (column != null) column.padding.left = column.padding.right = Padding;
+            Rebuild();
         }
 
         protected void Rebuild()
         {
             if (!IsOpen) return;
 
-            for (int i = _card.childCount - 1; i >= 0; i--)
+            for (int i = _body.childCount - 1; i >= 0; i--)
             {
-                var child = _card.GetChild(i);
+                var child = _body.GetChild(i);
                 if (!child.name.StartsWith("content_")) continue;
 
                 child.gameObject.SetActive(false);
@@ -142,7 +222,7 @@ namespace NonaRoyale.Unity.View
             }
 
             Compose();
-            LayoutRebuilder.ForceRebuildLayoutImmediate(_card);
+            Fit();
         }
 
         /// <summary>Fills the card. Called on every rebuild.</summary>
@@ -153,7 +233,7 @@ namespace NonaRoyale.Unity.View
         /// <summary>A laid-out slot on the card, named so a rebuild can find it.</summary>
         protected RectTransform Slot(string name, float height = -1f)
         {
-            var slot = UiKit.Rect("content_" + name, _card);
+            var slot = UiKit.Rect("content_" + name, _body);
             if (height >= 0f) UiKit.Size(slot, height: height);
             return slot;
         }
@@ -218,8 +298,9 @@ namespace NonaRoyale.Unity.View
             return row;
         }
 
+        /// <summary>A label with its key in gold — and without it when there is no keyboard (M4).</summary>
         protected static string WithKey(string label, string key) =>
-            string.IsNullOrEmpty(key)
+            string.IsNullOrEmpty(key) || ScreenLayout.Touch
                 ? label
                 : $"{label}  <size=60%><color=#{UiTheme.Hex(UiTheme.Gold)}>{key}</color></size>";
     }

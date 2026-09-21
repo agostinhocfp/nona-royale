@@ -65,7 +65,8 @@ namespace NonaRoyale.Unity.View
             _dot.color = colour;
             _text.text =
                 $"<color=#{UiTheme.Hex(UiTheme.Readable(colour))}><b>{seat.ToString().ToUpperInvariant()}</b></color>'s turn" +
-                $"   <color=#{UiTheme.Hex(UiTheme.TextDim)}>round {round}  ·  <b>Space</b> to roll</color>";
+                $"   <color=#{UiTheme.Hex(UiTheme.TextDim)}>round {round}" +
+                ScreenLayout.KeyMarkup("  ·  <b>Space</b> to roll") + "</color>";
 
             _fading = false;
             _root.gameObject.SetActive(true);

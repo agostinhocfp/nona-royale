@@ -49,16 +49,23 @@ namespace NonaRoyale.Unity.View
     public sealed class TitleScreen : ModalCard
     {
         /// <summary>Top of the screen to the top of the wordmark, canvas units.</summary>
-        private const float LockupTop = 68f;
+        private static float LockupTop => ScreenLayout.Pick(68f, 44f);
 
         /// <summary>Bottom of the screen to the bottom of the menu row.</summary>
-        private const float MenuBottom = 56f;
+        private static float MenuBottom => ScreenLayout.Pick(56f, 36f);
 
-        private const float NonaHeight = 112f;
-        private const float RoyaleHeight = 40f;
+        private static float NonaHeight => ScreenLayout.Pick(112f, 88f);
+        private static float NonaSize => ScreenLayout.Pick(108f, 78f);
+        private static float RoyaleHeight => ScreenLayout.Pick(40f, 34f);
         private const float NoteHeight = 20f;
         private const float LockupSpacing = 8f;
         private const float BandSpacing = 12f;
+
+        /// <summary>What the menu row itself takes: three across, or three stacked (MOBILE.md, M5).</summary>
+        private static float MenuHeight =>
+            ScreenLayout.Pick(ButtonHeight, 3f * ButtonHeight + 2f * MenuStackGap);
+
+        private const float MenuStackGap = 10f;
 
         /// <summary>
         /// What the bands take off the top and the bottom of the screen, for
@@ -72,13 +79,16 @@ namespace NonaRoyale.Unity.View
         /// counted whether or not it is showing: the board must not resize when
         /// QUIT is pressed.
         /// </remarks>
-        public const float ReservedTop = LockupTop + NonaHeight + LockupSpacing + RoyaleHeight + 22f;
+        public static float ReservedTop => LockupTop + NonaHeight + LockupSpacing + RoyaleHeight + 22f;
 
         /// <summary>What the menu row takes off the bottom. See <see cref="ReservedTop"/>.</summary>
-        public const float ReservedBottom = MenuBottom + ButtonHeight + NoteHeight + BandSpacing + 18f;
+        public static float ReservedBottom => MenuBottom + MenuHeight + NoteHeight + BandSpacing + 18f;
 
-        /// <summary>How wide the bands are. Wide enough for the rules either side of ROYALE.</summary>
-        private const float BandWidth = 900f;
+        /// <summary>
+        /// How wide the bands are. Wide enough for the rules either side of
+        /// ROYALE, and never wider than the screen (M5).
+        /// </summary>
+        private static float BandWidth => Mathf.Min(900f, ScreenLayout.Reference.x - 32f);
 
         /// <summary>The build stamp's box, and how far its corner sits off the screen's.</summary>
         private const float StampWidth = 360f, StampHeight = 18f, StampInset = 22f;
@@ -88,7 +98,7 @@ namespace NonaRoyale.Unity.View
         /// reads as one set of three rather than three sizes of thing. Sized
         /// for CONFIRM QUIT, the longest label that ever lands here.
         /// </summary>
-        private const float MenuButtonWidth = 210f;
+        private static float MenuButtonWidth => ScreenLayout.Pick(210f, 250f);
 
         private enum Page { Main, Settings, Sound, Display }
 
@@ -99,6 +109,8 @@ namespace NonaRoyale.Unity.View
         private RectTransform _lockup;
         private RectTransform _menu;
         private RectTransform _row;
+        private RectTransform _glow;
+        private RectTransform _stamp;
 
         protected override float CardWidth => 520f;
 
@@ -120,6 +132,7 @@ namespace NonaRoyale.Unity.View
                 BuildOnce(canvasRect, "title_screen");
                 AddGlow();
                 AddBands();
+                PlaceFurniture();
             }
 
             if (IsOpen) Close();
@@ -173,15 +186,43 @@ namespace NonaRoyale.Unity.View
         /// <summary>A warm light behind the wordmark, under everything else.</summary>
         private void AddGlow()
         {
-            var glow = UiKit.Rect("title_glow", Root);
-            glow.SetSiblingIndex(0);
-            glow.anchorMin = glow.anchorMax = new Vector2(0.5f, 1f);
-            glow.pivot = new Vector2(0.5f, 0.5f);
-            glow.sizeDelta = new Vector2(1200f, 720f);
-            glow.anchoredPosition = new Vector2(0f, -(LockupTop + 56f));
+            _glow = UiKit.Rect("title_glow", Root);
+            _glow.SetSiblingIndex(0);
+            _glow.anchorMin = _glow.anchorMax = new Vector2(0.5f, 1f);
+            _glow.pivot = new Vector2(0.5f, 0.5f);
 
-            var image = UiKit.Fill(glow, UiTheme.WithAlpha(UiTheme.GoldBright, 0.16f));
+            var image = UiKit.Fill(_glow, UiTheme.WithAlpha(UiTheme.GoldBright, 0.16f));
             image.sprite = DecoSprites.Glow;
+        }
+
+        /// <summary>
+        /// Puts the glow, the bands and the stamp where this screen shape wants
+        /// them (MOBILE.md, M5). Everything outside the card is built once and
+        /// outlives every rebuild, so the numbers it was built with have to be
+        /// written again when the screen turns.
+        /// </summary>
+        private void PlaceFurniture()
+        {
+            if (_glow != null)
+            {
+                _glow.sizeDelta = ScreenLayout.IsPortrait ? new Vector2(640f, 430f) : new Vector2(1200f, 720f);
+                _glow.anchoredPosition = new Vector2(0f, -(LockupTop + ScreenLayout.Pick(56f, 40f)));
+            }
+
+            if (_lockup != null)
+            {
+                _lockup.sizeDelta = new Vector2(BandWidth, 0f);
+                _lockup.anchoredPosition = new Vector2(0f, -LockupTop);
+            }
+
+            if (_menu != null)
+            {
+                _menu.sizeDelta = new Vector2(BandWidth, 0f);
+                _menu.anchoredPosition = new Vector2(0f, MenuBottom);
+            }
+
+            // Upright the bottom corner is the menu stack's, not spare space.
+            if (_stamp != null) _stamp.gameObject.SetActive(!ScreenLayout.IsPortrait);
         }
 
         /// <summary>
@@ -208,12 +249,12 @@ namespace NonaRoyale.Unity.View
         /// </remarks>
         private void AddStamp()
         {
-            var stamp = UiKit.Rect("title_stamp", Root);
-            stamp.anchorMin = stamp.anchorMax = stamp.pivot = new Vector2(1f, 0f);
-            stamp.sizeDelta = new Vector2(StampWidth, StampHeight);
-            stamp.anchoredPosition = new Vector2(-StampInset, StampInset);
+            _stamp = UiKit.Rect("title_stamp", Root);
+            _stamp.anchorMin = _stamp.anchorMax = _stamp.pivot = new Vector2(1f, 0f);
+            _stamp.sizeDelta = new Vector2(StampWidth, StampHeight);
+            _stamp.anchoredPosition = new Vector2(-StampInset, StampInset);
 
-            UiKit.Caption(stamp, "Prototype build · pieces and board drawn in code", 12f, UiTheme.TextDim,
+            UiKit.Caption(_stamp, "Prototype build · pieces and board drawn in code", 12f, UiTheme.TextDim,
                 TextAlignmentOptions.MidlineRight);
         }
 
@@ -238,6 +279,7 @@ namespace NonaRoyale.Unity.View
         {
             Clear(_lockup);
             Clear(_menu);
+            PlaceFurniture();
 
             Wordmark();
 
@@ -283,7 +325,7 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         private void Wordmark()
         {
-            var nona = UiKit.Caption(Row(_lockup, "lockup_nona", NonaHeight), "NONA", 108f, UiTheme.GoldBright,
+            var nona = UiKit.Caption(Row(_lockup, "lockup_nona", NonaHeight), "NONA", NonaSize, UiTheme.GoldBright,
                 TextAlignmentOptions.Center);
             UiFonts.ApplyDisplay(nona);
             nona.fontStyle = FontStyles.Bold;
@@ -301,7 +343,7 @@ namespace NonaRoyale.Unity.View
             UiFonts.ApplyDisplay(royale);
             royale.characterSpacing = 42f;
             royale.overflowMode = TextOverflowModes.Overflow;
-            UiKit.Fixed(royale, 250f, 40f);
+            UiKit.Fixed(royale, ScreenLayout.Pick(250f, 186f), RoyaleHeight);
             Rule(line);
         }
 
@@ -309,7 +351,7 @@ namespace NonaRoyale.Unity.View
         private static void Rule(Transform parent)
         {
             var box = UiKit.Rect("rule", parent);
-            UiKit.Fixed(box, 70f, 16f);
+            UiKit.Fixed(box, ScreenLayout.Pick(70f, 46f), 16f);
 
             var line = UiKit.Rect("line", box);
             UiKit.Fill(line, UiTheme.Gold);
@@ -338,10 +380,26 @@ namespace NonaRoyale.Unity.View
                 UiKit.Caption(Row(_menu, "menu_note", NoteHeight), "Leaves the game.", 13f, UiTheme.Threat,
                     TextAlignmentOptions.Center);
 
-            _row = Row(_menu, "menu_row", ButtonHeight);
-            var row = UiKit.Row(_row, 14f);
-            row.childAlignment = TextAnchor.MiddleCenter;
-            row.childForceExpandHeight = true;
+            _row = Row(_menu, "menu_row", MenuHeight);
+
+            // Three 210-unit buttons need 658 units of width and a phone has
+            // under 480, so upright they stack (M5). PLAY stays first, which
+            // upright also puts it furthest from the thumb's resting place —
+            // the one button here that should not be pressed by accident is
+            // QUIT, and it ends up at the bottom either way.
+            if (ScreenLayout.IsPortrait)
+            {
+                var stack = UiKit.Column(_row, MenuStackGap);
+                stack.childAlignment = TextAnchor.MiddleCenter;
+                stack.childForceExpandWidth = false;
+                stack.childForceExpandHeight = false;
+            }
+            else
+            {
+                var row = UiKit.Row(_row, 14f);
+                row.childAlignment = TextAnchor.MiddleCenter;
+                row.childForceExpandHeight = true;
+            }
 
             MenuButton("PLAY", "Enter", Play, UiTheme.CyanDeep, UiTheme.Cyan);
             MenuButton("SETTINGS", "", () => { _page = Page.Settings; _quitArmed = false; PlayPageTransition(); });
