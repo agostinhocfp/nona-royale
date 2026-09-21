@@ -87,6 +87,18 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
+        /// A hit that arrived on safe ground and was voided (§4.4, third
+        /// amendment). "SAFE", not "BLOCK": a block is the target's shield and
+        /// is spent; this is the cell, and costs nothing — the player needs to
+        /// read that stepping off is what exposes the piece.
+        /// </summary>
+        public void Sheltered(Vector3 at)
+        {
+            FloatingText.Spawn(transform, at, "SAFE", UiTheme.Sheltered, _scale);
+            Pulse(at, UiTheme.WithAlpha(UiTheme.Sheltered, 0.85f), 2.2f);
+        }
+
+        /// <summary>
         /// The burst where an operator fell, labelled with what finished it.
         /// </summary>
         /// <remarks>

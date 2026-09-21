@@ -18,6 +18,19 @@ namespace NonaRoyale.Core.Services
         Dealt = 2,
 
         /// <summary>Landed and took the target to zero.</summary>
-        Neutralized = 3
+        Neutralized = 3,
+
+        /// <summary>
+        /// Void: the target stands on ground that takes no damage (§4.4, third
+        /// amendment). Nothing was spent — no evasion charge, no shield pool —
+        /// because nothing arrived to spend it on.
+        /// </summary>
+        /// <remarks>
+        /// Its own outcome rather than another <see cref="Absorbed"/>, because
+        /// the player needs to learn a different thing: <c>BLOCK</c> says the
+        /// target had something up, <c>SAFE</c> says where it was standing,
+        /// and only the second tells them what to do about it.
+        /// </remarks>
+        Sheltered = 4
     }
 }

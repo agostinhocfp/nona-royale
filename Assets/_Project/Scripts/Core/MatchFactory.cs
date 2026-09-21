@@ -182,9 +182,13 @@ namespace NonaRoyale.Core
             }
 
             var clock = new MatchClock(players);
-            var statuses = new StatusRegistry(clock, combatConfig, teams);
+            // Which ground takes no damage and where a slow or stun is refused
+            // (§4.4, third amendment). One instance, shared by everything that
+            // writes health or statuses, so there is one answer to ask.
+            var sanctuary = new SanctuaryRules(map);
+            var statuses = new StatusRegistry(clock, combatConfig, teams, sanctuary);
             var energy = new EnergyLedger(energyConfig);
-            var damage = new DamagePipeline(statuses, random, combatConfig);
+            var damage = new DamagePipeline(statuses, random, combatConfig, sanctuary);
             var targeting = new TargetingRules(map, statuses, teams);
             var movement = new MovementResolver(map, gameConfig);
             var collisions = new CollisionResolver(map, combatConfig, damage, movement, teams);
@@ -202,7 +206,7 @@ namespace NonaRoyale.Core
             // exactly the dice it rolled before he existed.
             var abilities = new AbilityResolver(
                 map, clock, energy, statuses, targeting, damage, cellEffects, operatorEffects, random, players);
-            var auraRules = new AuraRules(targeting, auras);
+            var auraRules = new AuraRules(targeting, auras, sanctuary);
 
 
             // NeutralizeRules needs the full roster to pay out Tagged From
@@ -239,7 +243,8 @@ namespace NonaRoyale.Core
     abilities, statuses, auraRules, neutralize, win, combatConfig, cellEffects, random,
     // The move path trips watches on watched movers (§6.7); without the
     // registry the engine could not tell one.
-    operatorEffects);
+    operatorEffects,
+    sanctuary);
 
 
             return new Match(engine, players, operators, map, abilitiesByOperator, statuses, energy, teams);

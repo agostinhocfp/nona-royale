@@ -298,6 +298,18 @@ namespace NonaRoyale.Core.Events
         public override string ToString() => $"{Target.Name}'s shield absorbs it";
     }
 
+    /// <summary>
+    /// A hit that arrived on safe ground and did nothing (§4.4, third
+    /// amendment). Separate from <see cref="DamageAbsorbed"/> because the
+    /// player has to learn where the target was standing, not what it had up.
+    /// </summary>
+    public sealed class DamageSheltered : IGameEvent
+    {
+        public DamageSheltered(OperatorState target) { Target = target; }
+        public OperatorState Target { get; }
+        public override string ToString() => $"{Target.Name} is on safe ground";
+    }
+
     public sealed class HealApplied : IGameEvent
     {
         public HealApplied(OperatorState target, int amount) { Target = target; Amount = amount; }

@@ -284,6 +284,20 @@ namespace NonaRoyale.Core.Bots
         /// </param>
         public double ExpectedHit(OperatorState target, int amount, DamageType type, int? castCost = null)
         {
+            // Safe ground voids every hit, Atomic included (§4.4, third
+            // amendment) — asked of the engine, never restated here.
+            if (Engine.IsSheltered(target)) return 0.0;
+
+            return ExpectedHitOnceExposed(target, amount, type, castCost);
+        }
+
+        /// <summary>
+        /// <see cref="ExpectedHit"/> for a hit that lands after the target has
+        /// left the cell it stands on now — a landing after a push. Mitigation
+        /// only: where it will be standing is the caller's question.
+        /// </summary>
+        public double ExpectedHitOnceExposed(OperatorState target, int amount, DamageType type, int? castCost = null)
+        {
             if (castCost.HasValue && Has(target, StatusKind.Equilibrium))
                 amount = Combat.EquilibriumScale(castCost.Value, amount);
 

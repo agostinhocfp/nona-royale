@@ -254,7 +254,7 @@ namespace NonaRoyale.Unity.View
                 if (e is DamageDealt || e is HealApplied || e is OperatorRegenerated ||
                     e is OperatorNeutralized || e is BeaconFired || e is ZoneTicked ||
                     e is ZeroDayDetonated || e is FollowUpResolved || e is OperatorPityDeployed ||
-                    e is DamageEvaded || e is DamageAbsorbed)
+                    e is DamageEvaded || e is DamageAbsorbed || e is DamageSheltered)
                 {
                     notable = true;
                     break;
@@ -318,6 +318,7 @@ namespace NonaRoyale.Unity.View
                     case OperatorPityDeployed p: return p.Operator;
                     case DamageEvaded v: return v.Target;
                     case DamageAbsorbed a: return a.Target;
+                    case DamageSheltered h: return h.Target;
                 }
             }
 

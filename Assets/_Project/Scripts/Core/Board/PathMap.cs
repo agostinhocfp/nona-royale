@@ -85,8 +85,10 @@ namespace NonaRoyale.Core.Board
 
         /// <summary>
         /// True for the four start cells and for each home column's mouth
-        /// (ADR-0003). Safe means <b>safe from collision only</b> — abilities
-        /// still reach an operator standing here (COMBAT_SYSTEMS §4.4).
+        /// (ADR-0003). No collision resolves here, enemy single-targets are
+        /// refused, and an occupant takes no damage (COMBAT_SYSTEMS §4.4 as
+        /// amended; the damage rule lives in <c>SanctuaryRules</c>). Areas
+        /// still reach the cell.
         /// </summary>
         public bool IsSafe(CellRef cell)
         {

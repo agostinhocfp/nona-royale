@@ -28,6 +28,10 @@ namespace NonaRoyale.Core.Services
     /// may not shoot backwards out of it. Effects that merely radiate from
     /// where the caster stands (self-origin areas, lines) still reach in every
     /// direction they always did.
+    ///
+    /// The third amendment (2026-09-21) is not here: safe ground voiding
+    /// damage is a question of what arrives, not what may be aimed, and lives
+    /// in <see cref="SanctuaryRules"/>.
     /// </remarks>
     public sealed class TargetingRules
     {
@@ -138,8 +142,9 @@ namespace NonaRoyale.Core.Services
             //
             // Single-target only, and that is the whole of it: EnemiesInArea does
             // not consult safety, so Ace Shards and Dargin Pulse still sweep a
-            // start cell — the same asymmetry stealth already has (§5.4). A safe
-            // cell stops somebody picking you out; it does not stop a blast.
+            // start cell — the same asymmetry stealth already has (§5.4). The
+            // blast reaches; since the third amendment its damage is voided on
+            // arrival by the pipeline (SanctuaryRules), not refused here.
             //
             // Checked before stealth because a player can see the cell and cannot
             // see the status, so it is the more useful of the two to be told.

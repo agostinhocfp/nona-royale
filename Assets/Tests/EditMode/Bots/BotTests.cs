@@ -352,7 +352,7 @@ namespace NonaRoyale.Core.Tests.Bots
 
             kian.MoveTo(ProgressAt(match, PlayerColor.Red, safe));
             enemy.MoveTo(ProgressAt(match, PlayerColor.Blue, safe));
-            enemy.SetHealth(4);
+            enemy.SetHealth(3);
 
             var board = new BotBoard(match);
             var w = BotWeights.For(BotPersonality.Brawler);
@@ -364,9 +364,12 @@ namespace NonaRoyale.Core.Tests.Bots
             Assert.That(match.Map.IsSafe(board.CellOf(enemy)), Is.True);
             Assert.That(match.Map.IsSafe(landed), Is.False);
 
-            // Sonic Disrupter's 2 damage first, then a landing's 3 finishes 4 health.
-            double setup = CastPlanner.PushValue(board, w, kian, enemy, 2, 2.0, new HashSet<int> { safe - 2 });
-            double noDice = CastPlanner.PushValue(board, w, kian, enemy, 2, 2.0, new HashSet<int>());
+            // Sonic Disrupter's own hit lands on safe ground and is voided
+            // (§4.4, third amendment), so the push is the whole setup: once off
+            // the start cell, a landing's 3 finishes 3 health.
+            Assert.That(board.ExpectedHit(enemy, 2, DamageType.Normal), Is.EqualTo(0.0), "sheltered before the push");
+            double setup = CastPlanner.PushValue(board, w, kian, enemy, 2, 0.0, new HashSet<int> { safe - 2 });
+            double noDice = CastPlanner.PushValue(board, w, kian, enemy, 2, 0.0, new HashSet<int>());
 
             Assert.That(noDice, Is.GreaterThanOrEqualTo(w.PushExposure + 2 * w.PushProgress), "moved back and exposed");
             Assert.That(setup, Is.GreaterThan(noDice + w.Kill * w.PushSetup * 0.9), "the landing makes it a kill");

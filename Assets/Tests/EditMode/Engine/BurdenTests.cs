@@ -166,7 +166,12 @@ namespace NonaRoyale.Core.Tests.Engine
             // the burden, then the one-cell clamp.
             var match = RolledSquad(r => !r.IsDouble && r.Total >= 7, out var roll);
             var sanity = Named(match, "Sanity");
-            match.Statuses.Apply(sanity, StatusKind.Slow, 1);
+
+            // Off her own start cell first: an opening deployment lands there,
+            // and a spawn cell refuses a slow (§4.4, third amendment). This test
+            // is about the slow and the burden, not about where she stands.
+            sanity.MoveTo(1);
+            Assert.That(match.Statuses.Apply(sanity, StatusKind.Slow, 1), Is.True, "fixture: the slow must land");
 
             int slowed = (int)Math.Round(roll.Total * 0.5, MidpointRounding.AwayFromZero);
 

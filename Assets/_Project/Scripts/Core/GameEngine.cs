@@ -58,6 +58,7 @@ namespace NonaRoyale.Core
         private readonly CombatConfig _config;
         private readonly DeferredCellEffects _cellEffects;
         private readonly DeferredOperatorEffects _operatorEffects;
+        private readonly SanctuaryRules _sanctuary;
 
         /// <summary>
         /// The match's one shared random stream. Only the pity deploy's yard
@@ -153,7 +154,8 @@ namespace NonaRoyale.Core
             CombatConfig config,
             DeferredCellEffects cellEffects,
             IRandom random,
-            DeferredOperatorEffects operatorEffects = null)
+            DeferredOperatorEffects operatorEffects = null,
+            SanctuaryRules sanctuary = null)
         {
 
             _operators = operators ?? throw new ArgumentNullException(nameof(operators));
@@ -176,6 +178,12 @@ namespace NonaRoyale.Core
             // and only a dice move by a watched operator can tell the
             // difference (§6.7).
             _operatorEffects = operatorEffects;
+
+            // Optional for the same reason, but never absent: a fixture that
+            // builds the engine without one still answers the two queries
+            // below from the same map, and the rule is a pure function of it,
+            // so the answer cannot differ from the match's own instance.
+            _sanctuary = sanctuary ?? new SanctuaryRules(_map);
 
             _unspentView = new ReadOnlyCollection<int>(_unspentDice);
 
@@ -288,11 +296,12 @@ namespace NonaRoyale.Core
             var upkeep = _turns.BeginTurn();
             events.Add(new TurnBegan(_turns.CurrentPlayer.Color, _turns.CurrentPlayer.TurnIndex));
 
+            // Through EmitDamage for the one outcome an Atomic tick can still
+            // have besides landing: resolving on safe ground, where it is spent
+            // and voided (§4.4, third amendment) and must read as SAFE, not as
+            // a zero-damage hit.
             foreach (var tick in upkeep.BleedTicks)
-            {
-                var bleeding = FindOperator(tick.TargetOperatorId);
-                events.Add(new DamageDealt(bleeding, tick.AmountApplied, tick.RemainingHealth, tick.Cause));
-            }
+                EmitDamage(FindOperator(tick.TargetOperatorId), tick, events);
 
             // Beacons fire at upkeep and can kill, so they are reported before
             // the neutralize loop below — the beam has to land on screen before
@@ -1192,6 +1201,7 @@ namespace NonaRoyale.Core
             {
                 case DamageOutcome.Evaded: events.Add(new DamageEvaded(target)); break;
                 case DamageOutcome.Absorbed: events.Add(new DamageAbsorbed(target)); break;
+                case DamageOutcome.Sheltered: events.Add(new DamageSheltered(target)); break;
                 default:
                     events.Add(new DamageDealt(
                         target, result.AmountApplied, result.RemainingHealth, result.Cause));
@@ -1333,6 +1343,33 @@ namespace NonaRoyale.Core
         {
             if (op == null) throw new ArgumentNullException(nameof(op));
             return _win.HasFinished(op);
+        }
+
+        /// <summary>
+        /// Whether damage aimed at <paramref name="op"/> where it stands would
+        /// be void (§4.4, third amendment): it is on a safe cell or its own
+        /// spawn cell.
+        /// </summary>
+        /// <remarks>
+        /// For the view, which draws the shelter, and for the bots, which must
+        /// not spend a cast blasting a start cell. Neither may restate the rule;
+        /// both ask here.
+        /// </remarks>
+        public bool IsSheltered(OperatorState op)
+        {
+            if (op == null) throw new ArgumentNullException(nameof(op));
+            return _sanctuary.Shelters(op);
+        }
+
+        /// <summary>
+        /// Whether <paramref name="kind"/> would be refused on
+        /// <paramref name="op"/> where it stands (§4.4, third amendment): a
+        /// slow or a stun, on its own spawn cell.
+        /// </summary>
+        public bool Resists(OperatorState op, StatusKind kind)
+        {
+            if (op == null) throw new ArgumentNullException(nameof(op));
+            return _sanctuary.Resists(op, kind);
         }
 
         /// <summary>

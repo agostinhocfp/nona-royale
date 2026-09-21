@@ -137,6 +137,9 @@ namespace NonaRoyale.Unity.View
         public static readonly Color Heal = Hex("80F28C");
         public static readonly Color Evade = Cyan;
         public static readonly Color Block = Hex("D9DEF2");
+
+        /// <summary>A hit safe ground voided: not the target's defence, the cell's.</summary>
+        public static readonly Color Sheltered = Hex("E8C877");
         public static readonly Color Move = Hex("D9D6D0");
 
         public static readonly Color DieFace = Hex("EDE3CC");

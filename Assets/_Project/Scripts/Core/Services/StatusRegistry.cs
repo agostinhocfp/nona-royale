@@ -65,17 +65,25 @@ namespace NonaRoyale.Core.Services
         private readonly ITurnClock _clock;
         private readonly TeamMap _teams;
         private readonly CombatConfig _config;
+        private readonly SanctuaryRules _sanctuary;
 
         /// <param name="teams">
         /// Who is on whose side (ADR-0012). Only stealth reads it — see
         /// <see cref="CanBeSingleTargetedBy"/>. Null is
         /// <see cref="TeamMap.FreeForAll"/>.
         /// </param>
-        public StatusRegistry(ITurnClock clock, CombatConfig config, TeamMap teams = null)
+        /// <param name="sanctuary">
+        /// Where a slow or a stun is refused (§4.4, third amendment). Null
+        /// refuses nothing, which is how the registry behaved before the
+        /// amendment and how a test that is not about positions builds one.
+        /// </param>
+        public StatusRegistry(ITurnClock clock, CombatConfig config, TeamMap teams = null,
+            SanctuaryRules sanctuary = null)
         {
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _teams = teams ?? TeamMap.FreeForAll;
+            _sanctuary = sanctuary;
         }
 
         // ── Applying ─────────────────────────────────────────────────────
@@ -106,8 +114,17 @@ namespace NonaRoyale.Core.Services
         /// Slow and Shield get their size without <c>AlphaRoster</c>
         /// needing a dependency on config. An ability that wants a different
         /// size states one and it is honoured.
+        ///
+        /// <b>A slow or a stun is refused on the target's own spawn cell</b>
+        /// (§4.4, third amendment), and the answer is returned rather than
+        /// swallowed. Every caller reports what it applied as an event, and an
+        /// event saying "slowed" for a slow that never took hold would be the
+        /// view lying about the rules. Refused here, at the one place a status
+        /// is written, so no source — a cast, a beacon, a zone, a charge —
+        /// can forget to ask.
         /// </remarks>
-        public void Apply(
+        /// <returns>True if the status took hold (or was refreshed); false if the target's position refused it.</returns>
+        public bool Apply(
             OperatorState target,
             StatusKind kind,
             int duration = 1,
@@ -118,6 +135,8 @@ namespace NonaRoyale.Core.Services
             if (target == null) throw new ArgumentNullException(nameof(target));
             if (duration < 1) throw new ArgumentOutOfRangeException(nameof(duration));
             if (stacks < 1) throw new ArgumentOutOfRangeException(nameof(stacks));
+
+            if (_sanctuary != null && _sanctuary.Resists(target, kind)) return false;
 
             if (magnitude == 0.0) magnitude = DefaultMagnitudeFor(kind);
 
@@ -140,7 +159,7 @@ namespace NonaRoyale.Core.Services
                     existing.Magnitude = magnitude;
 
                 if (kind == StatusKind.Bleed) existing.Stacks += stacks;
-                return;
+                return true;
             }
 
             entries[kind] = new Entry
@@ -151,6 +170,7 @@ namespace NonaRoyale.Core.Services
                 LastActiveTurn = firstActive + duration - 1,
                 SourceOperatorId = sourceOperatorId
             };
+            return true;
         }
 
         /// <summary>

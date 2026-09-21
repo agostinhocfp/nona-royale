@@ -676,12 +676,13 @@ namespace NonaRoyale.Core.Services
                 // The status lands before the damage, the beacon's precedent: a
                 // victim the blast kills is slowed first and then cleared by the
                 // neutralize, rather than being slowed in its yard afterwards.
-                if (entry.HasStatus)
-                {
-                    _statuses.Apply(
+                // Only a status that took hold is reported: a slow or stun on
+                // a victim standing on its own spawn cell is refused (§4.4,
+                // third amendment).
+                if (entry.HasStatus && _statuses.Apply(
                         victim, entry.Status, entry.StatusDuration,
-                        sourceOperatorId: entry.SourceOperatorId);
-
+                        sourceOperatorId: entry.SourceOperatorId))
+                {
                     if (statused == null) statused = new List<OperatorState>(caught.Count);
                     statused.Add(victim);
                 }

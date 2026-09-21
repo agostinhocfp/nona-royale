@@ -48,13 +48,33 @@ namespace NonaRoyale.Core.Services
         private readonly IDamageMitigation _mitigation;
         private readonly IRandom _random;
         private readonly CombatConfig _config;
+        private readonly SanctuaryRules _sanctuary;
 
-        public DamagePipeline(IDamageMitigation mitigation, IRandom random, CombatConfig config = null)
+        /// <param name="sanctuary">
+        /// Which ground takes no damage (§4.4, third amendment). Null means none
+        /// does, which is how the pipeline behaved before the amendment and how
+        /// a test that is not about positions still builds one.
+        /// </param>
+        public DamagePipeline(IDamageMitigation mitigation, IRandom random, CombatConfig config = null,
+            SanctuaryRules sanctuary = null)
         {
             _mitigation = mitigation ?? throw new ArgumentNullException(nameof(mitigation));
             _random = random ?? throw new ArgumentNullException(nameof(random));
             _config = config ?? CombatConfig.Default;
+            _sanctuary = sanctuary;
         }
+
+        /// <summary>
+        /// Whether damage aimed at <paramref name="target"/> where it stands
+        /// would be void (§4.4, third amendment).
+        /// </summary>
+        /// <remarks>
+        /// Exposed for the one caller that reduces health without coming
+        /// through <see cref="Apply"/>: an execute below its threshold sets
+        /// health to zero directly, and must not do so on safe ground.
+        /// </remarks>
+        public bool Shelters(OperatorState target) =>
+            _sanctuary != null && _sanctuary.Shelters(target);
 
         /// <summary>
         /// Applies one damage instance. Targeting legality is settled before
@@ -63,6 +83,21 @@ namespace NonaRoyale.Core.Services
         public DamageResult Apply(OperatorState target, DamageInstance damage)
         {
             if (target == null) throw new ArgumentNullException(nameof(target));
+
+            // −1. Sanctuary (§4.4, third amendment, 2026-09-21). A target on
+            // safe ground takes nothing, and this is asked before anything else
+            // looks at the instance: before Equilibrium rescales it, before the
+            // Atomic gate below, before a ward, an evasion charge or a shield
+            // could be consulted. It is not a mitigation layer — Atomic pierces
+            // those, and bleed is Atomic — and it is not a targeting rule,
+            // because a blast is aimed at nobody and still arrives. Nothing is
+            // consumed, since nothing arrived to consume it.
+            if (Shelters(target))
+            {
+                return new DamageResult(
+                    DamageOutcome.Sheltered, 0, target.Health, target.Id,
+                    damage.SourceName, damage.Amount);
+            }
 
             // 0. Equilibrium (§5.17, 2026-09-17). Rescales a cast's hit by the
             // ability's cost before anything else looks at it, every damage
@@ -150,6 +185,11 @@ namespace NonaRoyale.Core.Services
         /// health</b>, bypassing the pipeline entirely (COMBAT_SYSTEMS §2.3).
         /// </summary>
         /// <remarks>
+        /// <b>Safe ground does not waive it</b> (§4.4, third amendment). The
+        /// shelter is from damage received; this is a price the caster chose to
+        /// pay, and a start cell that made it free would make All-In Mauling a
+        /// free cast from the one cell nobody can punish him on.
+        ///
         /// It cannot be evaded or shielded, and it can neutralize its own
         /// caster. Exposed as its own method rather than as a flag on
         /// <see cref="Apply"/> so the bypass is visible at every call site

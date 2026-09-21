@@ -27,11 +27,18 @@ namespace NonaRoyale.Core.Services
     {
         private readonly TargetingRules _targeting;
         private readonly IReadOnlyDictionary<int, AuraDefinition> _auras;
+        private readonly SanctuaryRules _sanctuary;
 
-        public AuraRules(TargetingRules targeting, IReadOnlyDictionary<int, AuraDefinition> auras)
+        /// <param name="sanctuary">
+        /// Where a slow is refused (§4.4, third amendment). Null refuses none,
+        /// as before the amendment.
+        /// </param>
+        public AuraRules(TargetingRules targeting, IReadOnlyDictionary<int, AuraDefinition> auras,
+            SanctuaryRules sanctuary = null)
         {
             _targeting = targeting ?? throw new ArgumentNullException(nameof(targeting));
             _auras = auras ?? throw new ArgumentNullException(nameof(auras));
+            _sanctuary = sanctuary;
         }
 
         /// <summary>
@@ -71,6 +78,14 @@ namespace NonaRoyale.Core.Services
                 if (aura.SpeedModifier > strongestBonus) strongestBonus = aura.SpeedModifier;
                 if (aura.SpeedModifier < strongestPenalty) strongestPenalty = aura.SpeedModifier;
             }
+
+            // A drag is a slow in every sense a player means, applied by
+            // standing close rather than by a cast, and an operator on its own
+            // spawn cell cannot be slowed (§4.4, third amendment). Without this
+            // a Bouncer parked beside a start cell would still take the first
+            // move off everything that deploys there — the camp the rule
+            // exists to stop. Only the penalty goes; a bonus is not a slow.
+            if (_sanctuary != null && _sanctuary.Resists(op, StatusKind.Slow)) strongestPenalty = 0.0;
 
             return strongestBonus + strongestPenalty;
         }

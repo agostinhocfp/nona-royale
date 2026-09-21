@@ -665,13 +665,14 @@ namespace NonaRoyale.Core.Services
 
             foreach (var victim in caught)
             {
-                if (detonating && entry.DetonationStatus != null)
-                {
-                    _statuses.Apply(
+                // Only a stun that took hold is reported: one on a victim
+                // standing on its own spawn cell is refused (§4.4, third
+                // amendment).
+                if (detonating && entry.DetonationStatus != null && _statuses.Apply(
                         victim, entry.DetonationStatus.Value,
                         entry.DetonationStatusDuration,
-                        sourceOperatorId: entry.SourceOperatorId);
-
+                        sourceOperatorId: entry.SourceOperatorId))
+                {
                     if (stunned == null) stunned = new List<OperatorState>(caught.Count);
                     stunned.Add(victim);
                 }
