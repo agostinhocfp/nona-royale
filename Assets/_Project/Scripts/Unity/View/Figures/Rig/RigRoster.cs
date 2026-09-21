@@ -15,6 +15,9 @@ namespace NonaRoyale.Unity.View
         public static IReadOnlyList<OperatorRig> All { get; } = new[]
         {
             BouncerRig.Rig,
+            NuetuRig.Rig,
+            SanityRig.Rig,
+            SylaRig.Rig,
         };
 
         public static OperatorRig Find(string operatorName)

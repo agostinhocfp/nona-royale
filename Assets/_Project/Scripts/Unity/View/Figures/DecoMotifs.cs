@@ -78,5 +78,28 @@ namespace NonaRoyale.Unity.View
                 halfWidth, y - thickness,
                 0f, y - drop - thickness,
                 -halfWidth, y - thickness);
+
+        /// <summary>
+        /// A tapered limb from (<paramref name="x0"/>, <paramref name="y0"/>)
+        /// to (<paramref name="x1"/>, <paramref name="y1"/>), round at both
+        /// ends: the rigs' joint caps (LB5d), so a turn never opens a seam and
+        /// no limb reads as a box.
+        /// </summary>
+        public static FigureShape Limb(float x0, float y0, float r0, float x1, float y1, float r1)
+        {
+            float dx = x1 - x0, dy = y1 - y0;
+            float length = (float)System.Math.Sqrt(dx * dx + dy * dy);
+            if (length < 1e-5f) return FigureShape.Circle(x0, y0, System.Math.Max(r0, r1));
+
+            float nx = -dy / length, ny = dx / length;
+            return FigureShape.Union(
+                FigureShape.Circle(x0, y0, r0),
+                FigureShape.Circle(x1, y1, r1),
+                FigureShape.Polygon(
+                    x0 + nx * r0, y0 + ny * r0,
+                    x1 + nx * r1, y1 + ny * r1,
+                    x1 - nx * r1, y1 - ny * r1,
+                    x0 - nx * r0, y0 - ny * r0));
+        }
     }
 }
