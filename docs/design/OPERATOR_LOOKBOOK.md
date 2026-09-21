@@ -1,7 +1,7 @@
 # Nona Royale — Operator Look Book (procedural Dark Deco figures)
 
 > Location in repo: `docs/design/OPERATOR_LOOKBOOK.md` · Project copy: `claude/OPERATOR_LOOKBOOK.md`
-> Status: **LB0 delivered 2026-09-21, awaiting Play Mode.** Written 2026-09-21. **v2 — ambition raised: these are meant to be good, not merely distinct.**
+> Status: **LB0 done. LB2 (3 of 12 recipes) and LB3 (judging window and rule tests) delivered 2026-09-21, awaiting Play Mode.** Written 2026-09-21. **v2 — ambition raised: these are meant to be good, not merely distinct.**
 > Related: `ART_DIRECTION.md` §2.2 (Dark Deco cel — the spec), §3 (palette), §5.1 (the value ledger — the source of the recipes), §6.1; `ART_HOOKUP.md` (ART1 — the real-art path this must not break); `STAGE4_HANDOFF.md`; ADR-0009; ADR-0010 (URP 2D lights).
 
 ## Goal
@@ -82,10 +82,10 @@ This is where a procedural approach beats hand-drawn placeholders, and it's what
 
 | # | Increment | What it delivers |
 | --- | --- | --- |
-| LB0 | Rasteriser | Polygon fill with analytic AA, 4× supersampling, dilation for the ink line, hard-edged shadow and rim cuts, the layer compositor, caching. Two throwaway figures to prove it. **Delivered 2026-09-21.** |
-| LB1 | Seat identity | Seat colour moves to the base disc and ring; the figure is untinted so its own value solution survives; optional name labels. **Mostly free — see below.** |
-| LB2 | The twelve | `OperatorLook`, `OperatorLookBook`, the twelve recipes, the Deco motif library. |
-| LB3 | Judging tools | Contact sheet, squint sheet, distinctness and palette tests. |
+| LB0 | Rasteriser | Polygon fill with analytic AA, 4× supersampling, dilation for the ink line, hard-edged shadow and rim cuts, the layer compositor, caching. Two throwaway figures to prove it. **Done 2026-09-21.** |
+| LB1 | Seat identity | Seat colour moves to the base disc and ring; the figure is untinted so its own value solution survives; optional name labels. **Done through ART1; labels skipped (designer, 2026-09-21).** |
+| LB2 | The twelve | `OperatorLook`, `OperatorLookBook`, the twelve recipes, the Deco motif library. **In progress: Bouncer, Mimi, Nuetu.** |
+| LB3 | Judging tools | Contact sheet, squint sheet, distinctness and palette tests. **Delivered 2026-09-21.** |
 | LB4 | Portraits and tells | Draft-card portraits at a larger canvas with a Deco frame, plus the powered cyan overlay on cast. |
 
 LB3 is tempting to skip and should not be. Build it right after LB2's first two or three recipes, then author the rest with it open.
@@ -117,20 +117,30 @@ LB3 is tempting to skip and should not be. Build it right after LB2's first two 
 
 **LB0's own checks** (two figures, not twelve): Bouncer and Nuetu seated at the table and standing on the floor, in both cameras; the hit flash on both; the `[LookBook]` build times in the Console, and whether starting a match hitches; Luka unchanged; `OperatorLookBook.Enabled = false` brings back the pawn.
 
-## Architecture as built (LB0)
+## Architecture as built (LB0–LB3)
 
-All under `Assets/_Project/Scripts/Unity/View/Figures/`. Everything but the last two files is plain C# with no `UnityEngine`, so it runs in tests, on a worker thread, and outside the editor (LB0 was previewed as PNGs before Unity ever opened).
+All under `Assets/_Project/Scripts/Unity/View/Figures/`. Everything but `FigureSprites` and `OperatorLookBook` is plain C# with no `UnityEngine`, so it runs in tests, on a worker thread, and outside the editor (every increment so far was previewed as PNGs before Unity opened).
 
 | File | What it is |
 | --- | --- |
 | `FigureShape.cs` | A signed-distance tree in figure space (x across from the centre line, y up from the feet). Primitives: `Polygon`, `Circle`, `Ellipse`, `Rect`, `HalfPlane`, `Polyline` (unsigned: strokes only). Combinators: `Union`, `Intersect`, `Subtract`, `Offset`, `Mirrored`, `Symmetric`, `Translate`, `Scale`, `Rotate`. Every node carries bounds; a union skips children whose box is farther than the nearest hit, which is exact. |
 | `FigureDrawing.cs` | The layer stack with its order fixed (see the note under the stack), plus `Cropped(waist)` for the seated pose. `FigureColour`, `FigureBlend`, `FigureLayer`. |
 | `FigureRasterizer.cs` | Renders a drawing onto a `FigureCanvas` into a `FigureImage` (straight RGBA, bottom row first, opaque rows measured). Samples each texel once at its centre and supersamples only texels an edge crosses (about one in eight); the rim reads a texel-resolution grid of the silhouette distance. |
-| `LookBookSketches.cs` | `LookBookPalette` and LB0's two throwaway drawings, Bouncer and Nuetu. **LB2 replaces the sketches with the twelve recipes.** |
+| `LookBookPalette.cs` | The colours a recipe may use: the shared drawn light and §3 swatches, then one block per operator. Filled from `UiTheme` by `OperatorLookBook.Palette`. |
+| `OperatorLook.cs` | One recipe: the roster name, the waist the table cuts at, and a pure `Draw(palette)`. |
+| `Looks/<Name>Look.cs` | One file per operator. **Bouncer, Mimi, Nuetu** so far. |
+| `LookRoster.cs` | Every recipe; adding one is a file under `Looks/` and one line here. |
+| `DecoMotifs.cs` | The shared vocabulary: line weight, rim widths (wider on dark figures), `ShadowSide`, `Crescent` (the cel sphere), `Ray`, `Fan`, `Chevron`. |
+| `SilhouetteMetrics.cs` | The squint silhouette at 64 px, intersection-over-union between two, and the palette rules `IsCyan` and `IsGilt`. |
+| `LookSheet.cs` | Composes the contact and squint sheets at real screen height with an area filter, the way mipmaps shrink a figure in play. |
 | `FigureSprites.cs` | The only Unity conversion: `FigureImage` → mipmapped sprite, white silhouette, `FigureArt`. |
-| `OperatorLookBook.cs` | Cache per operator and pose (shared across seats), `Enabled`, `Prewarm` on the thread pool, the build-time log, the palette from `UiTheme`. |
+| `OperatorLookBook.cs` | Cache per operator and pose (shared across seats), `Enabled`, `Prewarm` on the thread pool, the build-time log, the palette from `UiTheme`. Knows no operator by name. |
 
-`OperatorArtLibrary.Figure` now asks the look book after a render and before giving up; `Rendered` answers for renders alone. `MatchBootstrap` calls `OperatorLookBook.Prewarm` just before the pieces bind. The look book's colours live in `UiTheme` under "Look book".
+`OperatorArtLibrary.Figure` asks the look book after a render and before giving up; `Rendered` answers for renders alone. `MatchBootstrap` calls `OperatorLookBook.Prewarm` just before the pieces bind. The look book's colours live in `UiTheme` under "Look book".
+
+**The judging window** is `Editor/LookBookWindow.cs`: **Window → Nona Royale → Look Book**. It shows the contact sheet (every recipe, standing and seated, on the floor, carpet, lit gold and two felts, at phone ≈90 px, desktop ≈64 px or 200 px), the 64 px squint sheet, the overlap matrix (amber from 0.75, red above 0.85) and the ledger rules, and exports PNGs to `Logs/LookBook/`. The `NonaRoyale.EditorTools` assembly now references `NonaRoyale.Unity` for it.
+
+**The rule tests** are `LookBookRulesTests`, run over every recipe in `LookRoster` with the shipping palette: no cyan at rest in either pose, a cast tell that does bring cyan, gilt only on Fortuna, nothing clipped by the canvas, a seated cut that keeps the head and drops the legs, and no two silhouettes overlapping more than 0.85 at 64 px.
 
 ## Log
 
@@ -144,6 +154,13 @@ All under `Assets/_Project/Scripts/Unity/View/Figures/`. Everything but the last
 - **2026-09-21 — LB0 Play Mode and tests.** Play Mode passed ("an improvement over the previous status quo"). The Test Runner showed 940/943: all 23 new tests passed, and 3 in `OperatorArtTests` failed, predating the look book.
   - `Measure_…Silhouette` has failed since ART1: the mask is uploaded with `makeNoLongerReadable`, and the test read it with `GetPixel`. The test now reads it back through a render texture.
   - `NoArt_…` and `StandingArt_…` compared against `BoardArt.Pawn`/`Bust` after the editor had destroyed them. Every lazy sprite cache in `BoardArt`, `DecoSprites`, `Primitives` and `RoomArt` used `??`, which cannot see a destroyed Unity object, so a static kept handing out a dead sprite. They now use Unity's `!=`, the dictionary caches check for dead entries, and `FigureArt.IsAlive` lets `OperatorArtLibrary` and the look book rebuild a destroyed figure. A regression test destroys `BoardArt.Pawn` and asks for it again.
+
+- **2026-09-21 — LB2 begins, LB3 delivered.** Designer decisions: the first recipes are Bouncer and Nuetu (promoted from the sketches) and Mimi, the hardest value case; the judging tools are an editor window; LB1's name labels are skipped, since at phone scale a label is wider than the figure and the squad rail already names everyone.
+  - **What the LB0 screenshots set.** A standing figure is about 90 px tall on a phone held upright and about 64 px at 1440p, so §2.2's 64 px squint scale is the real scale, not a stress test. On the near-black floor a dark figure's rim does most of the separating, so dark recipes now use a wider rim (`DecoMotifs.RimOnDark`, 0.045) than light ones (0.032). The seated Nuetu bust read well at the table; `ArtSeatedHeightScale` stays.
+  - **Recipes.** Bouncer as sketched, with the wider rim. Nuetu gains his shaved head in place of the visor, a brass bio-link collar, the two belt discs that are his piece shape, and shorter legs set inside the disc so his outline stays apart from Bouncer's slab (overlap 0.79 → 0.76). Mimi is new: one narrow black shape, a pale frost-white rig with two emitters that break her outline upward like the fins of a dart, harness straps that run straight down (never a white V, which is Bouncer's), and no rim below the hem, because on legs that thin the rim was all there was.
+  - **Overlap at 64 px:** Bouncer/Nuetu 0.76, Bouncer/Mimi 0.41, Mimi/Nuetu 0.49. Wide figures sit near 0.75 legitimately; the test fails above 0.85, and the window flags 0.75 and up in amber so it is looked at early.
+  - `LookBookSketches.cs` is gone, and so are the sketch tests in `FigureRasterizerTests`: the rules now run over the roster in `LookBookRulesTests`. `UiTheme`'s `Sketch*` colours became `Look*` per-operator blocks.
+  - All three assemblies (Unity, the edit-mode tests, the editor tools) compile against the editor's DLLs with no errors and no warnings. Rendered outside Unity: no cyan at rest, no gilt, nothing clipped, each figure 110–200 ms under an unwarmed JIT.
 
 ## Read before writing anything
 
@@ -165,6 +182,6 @@ feat(tools): operator contact sheet, squint sheet and distinctness tests
 feat(ui): Deco portraits and the powered cast overlay
 ```
 
-## Start prompt for the implementing session (LB1 → LB2)
+## Start prompt for the implementing session (LB2, the next recipes)
 
-> Read `docs/design/OPERATOR_LOOKBOOK.md` including its log, then `ART_DIRECTION.md` §2.2, §3, §5 and §5.1 in full, then everything under `View/Figures/`, `View/OperatorPiece.cs`, `View/OperatorArtLibrary.cs` and `Core/Abilities/Roster.cs`. Ask me for the LB0 Play Mode results and screenshots first. Then build LB3's contact and squint sheets alongside the first two or three LB2 recipes, as whole files, and stop for Play Mode.
+> Read `docs/design/OPERATOR_LOOKBOOK.md` including its log, then `ART_DIRECTION.md` §2.2, §3, §5 and §5.1 in full, `ART_PROMPTS.md`'s character blocks for the operators in hand, then everything under `View/Figures/`. Ask me for the Look Book window's exported sheets and a Play Mode screenshot first. Then write the next three recipes, render them outside Unity against the sheets and the overlap matrix before handing them over, and stop for Play Mode.

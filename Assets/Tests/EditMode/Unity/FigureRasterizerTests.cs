@@ -5,7 +5,7 @@ using NUnit.Framework;
 namespace NonaRoyale.Unity.Tests.View
 {
     /// <summary>
-    /// The look book's shape maths and rasteriser (OPERATOR_LOOKBOOK.md, LB0).
+    /// The look book's shape maths and rasteriser (OPERATOR_LOOKBOOK.md, LB0). The recipes' own rules are in <c>LookBookRulesTests</c>.
     /// Plain C# on both sides, so none of this touches a texture.
     /// </summary>
     [TestFixture]
@@ -172,38 +172,6 @@ namespace NonaRoyale.Unity.Tests.View
             Assert.AreEqual(255, image.Alpha(16, 16));   // y ≈ 0.78
         }
 
-        // ── The LB0 sketches ────────────────────────────────────────────
-
-        [Test]
-        public void Sketches_CarryNoCyanAtRest()
-        {
-            var palette = SketchPalette();
-
-            foreach (var drawing in new[] { LookBookSketches.Bouncer(palette), LookBookSketches.Nuetu(palette) })
-                Assert.IsFalse(HasCyan(FigureRasterizer.Render(drawing, OperatorLookBook.Canvas)));
-        }
-
-        [Test]
-        public void Sketches_StandOnTheFeet_AndFitTheCanvas()
-        {
-            var palette = SketchPalette();
-
-            foreach (var drawing in new[] { LookBookSketches.Bouncer(palette), LookBookSketches.Nuetu(palette) })
-            {
-                var image = FigureRasterizer.Render(drawing, OperatorLookBook.Canvas);
-
-                Assert.IsFalse(image.IsEmpty);
-                Assert.LessOrEqual(image.OpaqueBottomRow, 3, "the feet sit at the canvas's figure origin");
-                Assert.Less(image.OpaqueTopRow, image.Height - 1, "nothing is clipped at the top");
-
-                for (int y = 0; y < image.Height; y++)
-                {
-                    Assert.AreEqual(0, image.Alpha(0, y), "nothing is clipped at the left");
-                    Assert.AreEqual(0, image.Alpha(image.Width - 1, y), "nothing is clipped at the right");
-                }
-            }
-        }
-
         // ── Helpers ─────────────────────────────────────────────────────
 
         /// <summary>x −1..1, y −0.25..1.75 at 16 texels per unit: 32×32.</summary>
@@ -211,33 +179,6 @@ namespace NonaRoyale.Unity.Tests.View
 
         private static FigureImage Render(FigureDrawing drawing) => FigureRasterizer.Render(drawing, SmallCanvas);
 
-        /// <summary>Any texel close to holo cyan: green and blue high, red low.</summary>
-        private static bool HasCyan(FigureImage image)
-        {
-            var p = image.Pixels;
-            for (int i = 0; i < p.Length; i += 4)
-                if (p[i + 3] > 128 && p[i] < 140 && p[i + 1] > 180 && p[i + 2] > 180) return true;
-
-            return false;
-        }
-
-        private static LookBookPalette SketchPalette() => new LookBookPalette
-        {
-            Ink = Ink,
-            Rim = FigureColour.Hex("8C9DB0"),
-            RimOnLight = FigureColour.Hex("E6EEF5"),
-            Shade = FigureColour.Hex("7E7A94"),
-            Key = FigureColour.Hex("4A3A22"),
-            Brass = FigureColour.Hex("7C5A1E"),
-            Powered = Cyan,
-            Bone = FigureColour.Hex("E8E1D3"),
-            Obsidian = FigureColour.Hex("0A0709"),
-            BouncerSheen = FigureColour.Hex("3A3548"),
-            PlateSheen = FigureColour.Hex("3E3C48"),
-            BouncerSuit = FigureColour.Hex("221D26"),
-            BouncerSkin = FigureColour.Hex("7A5140"),
-            NuetuGrey = FigureColour.Hex("B3B7C1"),
-            NuetuPlate = FigureColour.Hex("17141A"),
-        };
+        private static bool HasCyan(FigureImage image) => SilhouetteMetrics.Count(image, SilhouetteMetrics.IsCyan) > 0;
     }
 }

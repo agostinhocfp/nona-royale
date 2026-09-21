@@ -28,9 +28,9 @@ namespace NonaRoyale.Unity.View
     /// finishes waits for it; one never prewarmed renders on the spot. Every
     /// build logs its time, which is the number the frame-time check reads.
     ///
-    /// <b>LB0 carries two throwaway sketches</b> (Bouncer and Nuetu, designer
-    /// 2026-09-21). LB2 replaces <see cref="LookBookSketches"/> with the twelve
-    /// recipes; this class does not change shape when it does.
+    /// <b>The recipes live in <see cref="LookRoster"/></b> (LB2), one file per
+    /// operator under <c>Looks/</c>. This class only caches, prewarms and
+    /// uploads; it does not know any operator by name.
     /// </remarks>
     public static class OperatorLookBook
     {
@@ -49,7 +49,7 @@ namespace NonaRoyale.Unity.View
         private static LookBookPalette _palette;
 
         /// <summary>Whether the operator has a look-book figure at all.</summary>
-        public static bool Has(string operatorName) => Sketch(OperatorArtNames.Key(operatorName)) != null;
+        public static bool Has(string operatorName) => LookRoster.Find(operatorName) != null;
 
         /// <summary>The figure for a pose, built on first use; null for an operator with no recipe.</summary>
         public static FigureArt Figure(string operatorName, FigurePose pose)
@@ -139,59 +139,42 @@ namespace NonaRoyale.Unity.View
         /// <summary>The drawing for an operator's pose, or null. The seated pose is the standing one cut at the waist.</summary>
         internal static FigureDrawing Drawing(string key, FigurePose pose)
         {
-            var sketch = Sketch(key);
-            if (sketch == null) return null;
-
-            var drawing = sketch.Value.Draw(Palette);
-            return pose == FigurePose.Seated ? drawing.Cropped(sketch.Value.Waist) : drawing;
+            var look = LookRoster.Find(key);
+            return look?.Draw(Palette, pose == FigurePose.Seated);
         }
 
-        private readonly struct SketchEntry
-        {
-            public readonly Func<LookBookPalette, FigureDrawing> Draw;
-            public readonly float Waist;
-
-            public SketchEntry(Func<LookBookPalette, FigureDrawing> draw, float waist)
-            {
-                Draw = draw;
-                Waist = waist;
-            }
-        }
-
-        private static SketchEntry? Sketch(string key)
-        {
-            switch (key)
-            {
-                case "bouncer": return new SketchEntry(LookBookSketches.Bouncer, LookBookSketches.BouncerWaist);
-                case "nuetu": return new SketchEntry(LookBookSketches.Nuetu, LookBookSketches.NuetuWaist);
-                default: return null;
-            }
-        }
+        /// <summary>The look book's colours, all from <see cref="UiTheme"/>. Public for the judging tools.</summary>
+        public static LookBookPalette Palette => _palette ?? (_palette = BuildPalette());
 
         private static string Id(string key, FigurePose pose) =>
             key + (pose == FigurePose.Seated ? "_seated" : "_standing");
 
-        /// <summary>The look book's colours, all from <see cref="UiTheme"/>.</summary>
-        private static LookBookPalette Palette => _palette ?? (_palette = new LookBookPalette
+        private static LookBookPalette BuildPalette() => new LookBookPalette
         {
             Ink = F(UiTheme.Ink),
             Rim = F(UiTheme.LookRim),
             RimOnLight = F(UiTheme.LookRimOnLight),
             Shade = F(UiTheme.LookShade),
             Key = F(UiTheme.LookKey),
+            SuitSheen = F(UiTheme.LookSuitSheen),
+            PlateSheen = F(UiTheme.LookPlateSheen),
             Brass = F(UiTheme.Brass),
             Powered = F(UiTheme.Cyan),
             Bone = F(UiTheme.LookBone),
             Obsidian = F(UiTheme.Obsidian),
-            BouncerSheen = F(UiTheme.LookSuitSheen),
-            PlateSheen = F(UiTheme.LookPlateSheen),
-            BouncerSuit = F(UiTheme.SketchBouncerSuit),
-            BouncerSkin = F(UiTheme.SketchBouncerSkin),
-            NuetuGrey = F(UiTheme.SketchNuetuGrey),
-            NuetuPlate = F(UiTheme.SketchNuetuPlate),
-        });
+            BouncerSuit = F(UiTheme.LookBouncerSuit),
+            BouncerSkin = F(UiTheme.LookBouncerSkin),
+            MimiCoat = F(UiTheme.LookMimiCoat),
+            MimiRig = F(UiTheme.LookMimiRig),
+            MimiSteel = F(UiTheme.LookMimiSteel),
+            MimiSkin = F(UiTheme.LookMimiSkin),
+            NuetuGrey = F(UiTheme.LookNuetuGrey),
+            NuetuPlate = F(UiTheme.LookNuetuPlate),
+            NuetuSkin = F(UiTheme.LookNuetuSkin),
+        };
 
-        private static FigureColour F(Color colour) => new FigureColour(colour.r, colour.g, colour.b, colour.a);
+        /// <summary>A UiTheme colour as the rasteriser's colour.</summary>
+        public static FigureColour F(Color colour) => new FigureColour(colour.r, colour.g, colour.b, colour.a);
 
         private static void Destroy(Sprite sprite)
         {

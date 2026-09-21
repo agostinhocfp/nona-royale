@@ -1,7 +1,9 @@
 {
   "name": "NonaRoyale.EditorTools",
   "rootNamespace": "NonaRoyale.EditorTools",
-  "references": [],
+  "references": [
+    "NonaRoyale.Unity"
+  ],
   "includePlatforms": [
     "Editor"
   ],

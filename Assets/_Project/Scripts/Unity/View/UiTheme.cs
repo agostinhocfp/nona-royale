@@ -302,11 +302,22 @@ namespace NonaRoyale.Unity.View
         /// <summary>Shirts and collars: bone, not white.</summary>
         public static readonly Color LookBone = Hex("E8E1D3");
 
-        // LB0's two throwaway sketches. LB2 replaces these with the §5.1 recipes.
-        public static readonly Color SketchBouncerSuit = Hex("221D26");
-        public static readonly Color SketchBouncerSkin = Hex("7A5140");
-        public static readonly Color SketchNuetuGrey = Hex("B3B7C1");
-        public static readonly Color SketchNuetuPlate = Hex("17141A");
+        // One block per operator, per the §5.1 value ledger (LB2).
+
+        // Bouncer: black mass split by a hard white V.
+        public static readonly Color LookBouncerSuit = Hex("221D26");
+        public static readonly Color LookBouncerSkin = Hex("7A5140");
+
+        // Mimi: near-black and small, bright pale hardware.
+        public static readonly Color LookMimiCoat = Hex("141117");
+        public static readonly Color LookMimiRig = Hex("DCE3E6");
+        public static readonly Color LookMimiSteel = Hex("8E9AA3");
+        public static readonly Color LookMimiSkin = Hex("CDBBAA");
+
+        // Nuetu: the only all-light mass, cool dove-grey, black plates on grey.
+        public static readonly Color LookNuetuGrey = Hex("B3B7C1");
+        public static readonly Color LookNuetuPlate = Hex("17141A");
+        public static readonly Color LookNuetuSkin = Hex("A5836B");
 
         // ── Seats ───────────────────────────────────────────────────────
 
