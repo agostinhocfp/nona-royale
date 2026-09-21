@@ -25,7 +25,11 @@ Every Lyria output carries a SynthID watermark.
 
 | File in the game | Source take (`Claude outputs/lyria/`) | Generated | Model / surface | Prompt | Edits (Claude, 2026-09-16) |
 | --- | --- | --- | --- | --- | --- |
-| `Audio/Resources/Audio/Music/Match.wav` | `Big Band Version.wav` | 2026-09-16 | _TBD_ | `MUSIC_PROMPTS.md` §1, Variant B (to confirm) | Loop 36.97–79.63 s, 15 ms crossfade, 48→44.1 kHz, −16 LUFS |
+| `Audio/Resources/Audio/Music/Match.wav` | `Match.wav` (formerly `Big Band Version.wav`) | 2026-09-16 | _TBD_ | `MUSIC_PROMPTS.md` §1, Variant B (to confirm) | **AU4 (2026-09-21): the full take**, 0.02–157.97 s, 10 ms fade-in, 0.5 s fade-out, 48→44.1 kHz, −16 LUFS, peaks ≤ −1.5 dBFS (limiter, 0.4 dB). Was the loop 36.97–79.63 s (AU1c) |
+| `Audio/Resources/Audio/Music/Match_2.wav` | `Match_2.wav` | 2026-09-16 | _TBD_ | _to confirm_ | AU4: full take 0.00–177.15 s, same chain; limiter 2.6 dB on peaks |
+| `Audio/Resources/Audio/Music/Match_3.wav` | `Match_3.wav` (same file as `Sicilian Noir (4_4 Meter).wav`) | 2026-09-16 | _TBD_ | _to confirm_ | AU4: full take 0.02–158.01 s, same chain; limiter 0.3 dB |
+| `Audio/Resources/Audio/Music/Match_5.wav` | `Match_5.wav` (same file as `Title.wav`, the title's source take) | 2026-09-16 | _TBD_ | _to confirm_ | AU4: full take 0.34–151.91 s, same chain; −3.2 dB of gain, no limiting |
+| `Audio/Resources/Audio/Music/Match_6.wav` | `Match_6.wav` (same file as `Sicilian Waltz.wav`) | 2026-09-16 | _TBD_ | _to confirm_ | AU4: full take 0.07–176.74 s, same chain; limiter 1.4 dB |
 | `Audio/Resources/Audio/Music/Title.wav` | `Title.wav` | 2026-09-16 | _TBD_ | _to confirm_ | Loop 52.93–128.35 s, 15 ms crossfade, 48→44.1 kHz, −16 LUFS |
 | `Audio/Resources/Audio/Music/Showdown.wav` | `Showdown.wav` | 2026-09-16 | _TBD_ | `MUSIC_PROMPTS.md` §4 (to confirm) | Loop 50.67–146.66 s, 15 ms crossfade, 48→44.1 kHz, −16 LUFS |
 | `Audio/Resources/Audio/Music/Win.wav` | `Win.wav` | 2026-09-16 | _TBD_ | `MUSIC_PROMPTS.md` §3 (to confirm) | Cut 50.24–59.66 s, 30 ms fade-in, 300 ms tail, 48→44.1 kHz, −14 LUFS |

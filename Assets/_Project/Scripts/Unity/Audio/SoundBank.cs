@@ -15,7 +15,9 @@ namespace NonaRoyale.Unity.Audio
     /// <b>Real clips win, cue by cue.</b> A clip named <c>HitBig</c> in
     /// <c>Assets/_Project/Audio/Resources/Audio/SFX/</c> (and <c>HitBig_2</c>,
     /// <c>HitBig_3</c>… for variants) replaces the synthesized big hit and
-    /// nothing else. Music looks in <c>…/Resources/Audio/Music/&lt;Cue&gt;</c>.
+    /// nothing else. Music looks in <c>…/Resources/Audio/Music/&lt;Cue&gt;</c>,
+    /// and a cue with several files (<c>Match</c>, <c>Match_2</c>…) is a
+    /// playlist the director shuffles through (AU4).
     /// Any file type Unity imports works (.wav, .ogg, .mp3); only the name
     /// counts. Nothing needs wiring: dropping a file in is the whole hookup.
     ///
@@ -78,7 +80,8 @@ namespace NonaRoyale.Unity.Audio
         private const int ClipsPerPump = 4;
 
         private readonly Dictionary<SoundCue, List<AudioClip>> _sfx = new Dictionary<SoundCue, List<AudioClip>>();
-        private readonly Dictionary<MusicCue, AudioClip> _music = new Dictionary<MusicCue, AudioClip>();
+        private readonly Dictionary<MusicCue, List<AudioClip>> _music = new Dictionary<MusicCue, List<AudioClip>>();
+        private static readonly List<AudioClip> NoTracks = new List<AudioClip>();
         private readonly Dictionary<string, VoiceSet> _voices = new Dictionary<string, VoiceSet>();
         private readonly Dictionary<string, List<AudioClip>> _signatures = new Dictionary<string, List<AudioClip>>();
         private readonly HashSet<string> _warmedSlugs = new HashSet<string>();
@@ -158,17 +161,16 @@ namespace NonaRoyale.Unity.Audio
 
             foreach (MusicCue cue in Enum.GetValues(typeof(MusicCue)))
             {
-                var file = Resources.Load<AudioClip>(MusicFolder + cue);
-                if (file != null)
-                {
-                    _music[cue] = file;
-                    continue;
-                }
+                // Every file for the cue, variants included (AU4); the
+                // synthesized loop only when there are none.
+                var list = new List<AudioClip>();
+                _music[cue] = list;
 
+                if (LoadFiles(MusicFolder + cue, list)) continue;
                 if (!MusicRecipes.CanSynthesize(cue)) continue;
 
                 var c = cue;
-                Start($"music_{cue}", () => MusicRecipes.Build(c), clip => _music[c] = clip);
+                Start($"music_{cue}", () => MusicRecipes.Build(c), clip => list.Add(clip));
             }
         }
 
@@ -206,7 +208,15 @@ namespace NonaRoyale.Unity.Audio
         }
 
         /// <summary>The music clip, or null while it is still being built.</summary>
-        public AudioClip Music(MusicCue cue) => _music.TryGetValue(cue, out var clip) ? clip : null;
+        public AudioClip Music(MusicCue cue) =>
+            _music.TryGetValue(cue, out var list) && list.Count > 0 ? list[0] : null;
+
+        /// <summary>
+        /// Every track for the cue: the file and its <c>_2</c> … <c>_8</c>
+        /// variants, or the synthesized loop. Empty while none is ready.
+        /// </summary>
+        public IReadOnlyList<AudioClip> MusicTracks(MusicCue cue) =>
+            _music.TryGetValue(cue, out var list) ? list : NoTracks;
 
         /// <summary>
         /// Loads an operator's voice, or starts synthesizing its placeholder

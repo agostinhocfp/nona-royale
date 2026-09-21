@@ -41,6 +41,12 @@ namespace NonaRoyale.Unity.Audio
     /// the generic cue. <see cref="Hush"/> drops the whole mix for a moment,
     /// before an execute lands: effects and the voice stop, the music dips
     /// and comes back slowly, and whatever plays after the hush plays at full.
+    ///
+    /// <b>Playlists (AU4).</b> A cue with several tracks (the match has five)
+    /// plays each take through to its own ending, then, after a breath of
+    /// <see cref="TrackGapSeconds"/>, the next one from a shuffle bag
+    /// (<see cref="MusicPlaylist"/>), never the same twice in a row. A cue
+    /// with one track loops it, as before.
     /// </remarks>
     public sealed class AudioDirector : MonoBehaviour
     {
@@ -54,6 +60,15 @@ namespace NonaRoyale.Unity.Audio
         private const float StingReturnSeconds = 1.5f;
         private const float DuckSeconds = 0.12f;
         private const float UnduckSeconds = 0.5f;
+
+        /// <summary>The silence between one track of a playlist ending and the next starting, in real seconds.</summary>
+        private const float TrackGapSeconds = 1.5f;
+
+        /// <summary>
+        /// The fade-in on a playlist's next track: short, since the takes
+        /// open on their own intros and follow silence.
+        /// </summary>
+        private const float TrackFadeSeconds = 0.25f;
 
         /// <summary>How fast the music glides to its pause level and back.</summary>
         private const float PauseDipSeconds = 0.4f;
@@ -95,6 +110,8 @@ namespace NonaRoyale.Unity.Audio
         private AudioClip _heldClip;
         private Vector3? _heldAt;
         private MusicCue? _playing;
+        private readonly MusicPlaylist _playlist = new MusicPlaylist();
+        private float _nextTrackAt = -1f;
         private float _fadeIn = 1f;
         private float _fadeInSeconds = OpeningFadeSeconds;
         private float _fadeOut;
@@ -362,27 +379,16 @@ namespace NonaRoyale.Unity.Audio
 
         private void UpdateMusic(float dt)
         {
-            // A new track, once its clip exists: the old one fades out on B.
+            // A new cue, once a clip for it exists: the old one fades out on B.
             if (_playing != Music)
             {
-                var clip = _bank.Music(Music);
-                if (clip != null)
-                {
-                    // From silence the track opens slowly; under a playing
-                    // track it crossfades.
-                    _fadeInSeconds = _musicA.isPlaying ? CrossfadeSeconds : OpeningFadeSeconds;
-                    if (_musicA.isPlaying)
-                    {
-                        (_musicA, _musicB) = (_musicB, _musicA);
-                        _fadeOut = _fadeIn;
-                    }
-
-                    _musicA.clip = clip;
-                    _musicA.loop = MusicRecipes.Loops(Music);
-                    _musicA.Play();
-                    _playing = Music;
-                    _fadeIn = 0f;
-                }
+                StartTrack(Music, afterGap: false);
+            }
+            else if (!_musicA.loop && !_musicA.isPlaying && _bank.MusicTracks(Music).Count > 1)
+            {
+                // A playlist track has ended on its own: a breath, then the next.
+                if (_nextTrackAt < 0f) _nextTrackAt = Time.unscaledTime + TrackGapSeconds;
+                else if (Time.unscaledTime >= _nextTrackAt) StartTrack(Music, afterGap: true);
             }
 
             _fadeIn = Mathf.MoveTowards(_fadeIn, 1f, dt / _fadeInSeconds);
@@ -398,6 +404,36 @@ namespace NonaRoyale.Unity.Audio
             _stingLevel = stinging
                 ? Mathf.MoveTowards(_stingLevel, 0f, dt / StingFadeSeconds)
                 : Mathf.MoveTowards(_stingLevel, 1f, dt / StingReturnSeconds);
+        }
+
+        /// <summary>
+        /// Starts a track of <paramref name="cue"/> on source A: the only one,
+        /// or the playlist's next. Does nothing while the cue has no clip yet.
+        /// </summary>
+        /// <param name="afterGap">True for a playlist's next track, which follows silence.</param>
+        private void StartTrack(MusicCue cue, bool afterGap)
+        {
+            var tracks = _bank.MusicTracks(cue);
+            if (tracks.Count == 0) return;
+
+            var clip = tracks.Count == 1 ? tracks[0] : tracks[_playlist.Next(tracks.Count, _random)];
+
+            // From silence a cue opens slowly; under a playing track it
+            // crossfades; after a playlist's gap the take's own intro leads.
+            bool under = _musicA.isPlaying;
+            _fadeInSeconds = afterGap ? TrackFadeSeconds : under ? CrossfadeSeconds : OpeningFadeSeconds;
+            if (under)
+            {
+                (_musicA, _musicB) = (_musicB, _musicA);
+                _fadeOut = _fadeIn;
+            }
+
+            _musicA.clip = clip;
+            _musicA.loop = MusicRecipes.Loops(cue) && tracks.Count == 1;
+            _musicA.Play();
+            _playing = cue;
+            _fadeIn = 0f;
+            _nextTrackAt = -1f;
         }
 
         private void UpdateVolumes()

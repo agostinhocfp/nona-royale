@@ -1,7 +1,7 @@
 # Nona Royale — Audio (Stage 5)
 
 > Location in repo: `docs/design/AUDIO.md` · Project copy: `claude/AUDIO.md`
-> Status: **Reopened 2026-09-21 for AU3** (ability signatures), in the repo, Play Mode pending. AU1 to AU1f and AU2 closed 2026-09-16 after Play Mode.
+> Status: **Reopened 2026-09-21 for AU3** (ability signatures, committed) **and AU4** (the match playlist), in the repo, Play Mode pending. AU1 to AU1f and AU2 closed 2026-09-16 after Play Mode.
 > Related: `NEXT_PHASES.md` (Stage 5), `MOTION.md` (Stage 3, whose presentation steps the sounds follow), `PRESENTATION.md` §3.1, `ART_PIPELINE.md` §8 (licensing)
 
 ## Goal
@@ -39,6 +39,7 @@ Stage 4 (art hookup) was skipped for now: no finished Meshy renders are in hand.
    - Win: a short brass sting.
    - Files named `Title`, `Match` and `Win` in `Assets/_Project/Audio/Resources/Audio/Music/` replace them.
    - **Amended again (AU1c):** the designer's Lyria tracks now replace the placeholders (`Title`, `Match`, `Win`), and a fourth cue, `Showdown`, plays in a match's final stretch. The synthesized loops remain as fallbacks for any missing file.
+   - **Amended again (AU4, 2026-09-21): the match is a playlist** of five full Lyria takes, shuffled, each played to its ending. See the AU4 log entry.
    - **Amended the same day (AU1b):** the match music is now the designer's own song "Deborah" (artist name Stutt-), arranged as a Sicilian tarantella. The jazz loop moved to the title, and the first title loop was retired.
 5. **Taken from the plan's recommendations** (the designer can still change these):
    - **Voice slots:** `deploy`, `move`, `cast`, `hit_taken`, `kill`, `death`, `victory`, `quit`. In code and file names: `Deploy`, `Move`, `Cast`, `HitTaken`, `Kill`, `Death`, `Victory`, `Quit`.
@@ -77,6 +78,7 @@ Stage 4 (art hookup) was skipped for now: no finished Meshy renders are in hand.
 | AU1f | **Mixer** | `Audio/Resources/Audio/Mixer.mixer` (Master, Music, Effects › Interface, Voice; four exposed faders); `SoundMixer` routes every source and sets the faders, with the AU1 levels as fallback; Music default 42% (was 60%) with a one-time move for untouched saves; Restore defaults on the Sound page; `AudioLevelsTests`, `SoundMixerAssetTests`. |
 | AU2 | **Voices** | `VoiceRules` (priority, cooldown, chance), `VoiceBlips` (per-operator signatures), `VoiceSet` (real clips by operator name), music ducking. Voice hooks on deploy, move, cast, hit, kill, death, victory and quit. Luka's line list. |
 | AU3 | **Ability signatures** | `AbilitySounds` (id → slug for all 32 abilities, Kurbyn's dodge, the damage-type layer rule), `SignatureRecipes` (13 stand-ins for Bouncer, Syla and Kurbyn), `SoundCue.LayerTech` / `LayerAtomic`, `SoundBank` signature loading, `AudioDirector.PlaySignature` / `Hush`, `PresentationBeat.Hush`. Core: `DamageDealt.Type`, `DamageResult.Type`, public `GameEngine.ExecuteCause`. `SFX_PROMPTS.md`. |
+| AU4 | **Match playlist** | Five full Lyria takes as `Match`, `Match_2`, `_3`, `_5`, `_6`, streamed; `MusicPlaylist` (shuffle bag, no repeats back to back); `SoundBank.MusicTracks`; `AudioDirector.StartTrack` plays each take through, then the next after a breath. |
 
 ## Rules for this stage
 
@@ -326,3 +328,14 @@ Stage 4 (art hookup) was skipped for now: no finished Meshy renders are in hand.
     - A Miracle Pull execute: silence, then the blow. Try it with Fast animations and with the hurry key: the blow must never be swallowed by the hush.
     - The first cast of a match is not silent (signatures are warmed at the deal).
   - **Open (later increments):** a quieter lock click on Tagged From Above's upkeep ticks; From the Hip's darker tail against a bleeding target; stand-ins for the other nine operators; priority-based voice stealing; looped zone ambience (ADR-0007); energy, capture and dice-settle cues; haptics.
+- 2026-09-21 — **AU4: the match music is a playlist.** The designer found one track repetitive over a match and added `Match_*` takes to `Claude outputs/lyria/`.
+  - **Flagged before building:** `Match_4` is byte-identical to `Showdown.wav` and `Match_5` to `Title.wav` (the title's source take); `Match_3` is `Sicilian Noir (4_4 Meter).wav` and `Match_6` is `Sicilian Waltz.wav`. The designer dropped `Match_4`, so Showdown still marks the final stretch, and kept `Match_5`. `Match.wav` is the former `Big Band Version.wav` (checked against the in-game loop: its section sits at 36.97 s, where AU1c cut it).
+  - **Decision 4 amended:** the match plays **full takes, shuffled**. Each take plays to its own ending, then after 1.5 s of silence the next starts with a 0.25 s fade-in. A shuffle bag plays every track once before any repeats, and never the same track twice in a row, across bags and across matches. A cue with one track still loops. Title, Showdown and the sting are unchanged.
+  - **Files** in `Assets/_Project/Audio/Resources/Audio/Music/`: `Match.wav` (replaced: the full take instead of the 42.7 s loop, whose file stays in git history), `Match_2.wav`, `Match_3.wav`, `Match_5.wav`, `Match_6.wav`. The gap at `_4` is harmless; the loader tries `_2` to `_8`. Processing: resampled from 48 to 44.1 kHz, leading silence trimmed to 10 ms, the tail cut 0.3 s after it falls below −60 dBFS with a 0.5 s fade, −16 LUFS integrated, and a 2 ms-lookahead limiter holding peaks at −1.5 dBFS (at most 2.6 dB of reduction, on `Match_2`). Rows in `PROVENANCE.md`.
+  - **Import settings:** all five match tracks load as **Streaming** (`loadType: 2` in their `.meta`). About 13 minutes of stereo music decompressed on load would hold roughly 140 MB of memory, too much for a phone; streamed, each track costs a small buffer while it plays. `Match.wav` keeps its GUID. Title (75 s) and Showdown (96 s) still decompress on load; they could stream too if memory gets tight on the S26.
+  - **Code:**
+    - New `MusicPlaylist` (plain C#): the shuffle bag.
+    - `SoundBank`: every music cue loads its file and its `_2` … `_8` variants (`MusicTracks`); the synthesized loop only when there are none. `Music(cue)` still returns the first, for the sting.
+    - `AudioDirector`: `StartTrack` starts the only track or the playlist's next. A cue change crossfades as before. A playlist track that ends on its own is followed, after `TrackGapSeconds`, by the next. Only a single-track cue loops.
+  - **Tests:** `MusicPlaylistTests` (6: never the same twice in a row over 2000 picks; every track once per bag; two tracks alternate; one track; a changed count starts a fresh bag in range; bad arguments). **825 passing** (819 before). `NonaRoyale.Core` and `NonaRoyale.Unity` compile against the editor's references with no errors or warnings.
+  - **Play Mode watch-list:** a match opens on a random take and moves to a different one when it ends, with a short breath between; pause keeps the music going at 35% and the playlist carries on; the final stretch still crossfades to Showdown; leaving and starting a new match opens on a track the last match did not just play; the Unity import shows the five match tracks as Streaming.
