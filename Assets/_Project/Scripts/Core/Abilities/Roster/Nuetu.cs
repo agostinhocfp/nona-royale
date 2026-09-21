@@ -72,6 +72,34 @@ namespace NonaRoyale.Core.Abilities
         public const double Speed = 1.0;
 
         /// <summary>
+        /// Turns of Burdened (§5.16) that Bio-Link Rage leaves on its target
+        /// (2026-09-21, designer).
+        /// </summary>
+        /// <remarks>
+        /// <b>He is the answer to mobility, and this is the whole of it.</b>
+        /// Burdened is haste's mirror and cancels against it cell for cell, so a
+        /// hasted operator that he has hold of is moving at its base speed and
+        /// nothing more — Kurbyn's entire passive, Syla's payout and anyone
+        /// standing in Lethe's Catalyst. It is never a stun: the floor is one
+        /// cell (§5.16), so a Burdened operator always moves.
+        ///
+        /// <b>Two turns against a two-turn cooldown</b>, so keeping one target
+        /// slowed down is a choice he re-makes every turn at 3 energy rather
+        /// than a state he sets once. Spreading it over two targets means
+        /// neither is held.
+        ///
+        /// <b>Why here and not on Killzone.</b> The zone already carries the
+        /// stun, and one detonation every four turns is a moment, not pressure.
+        /// The counter to something that arrives whenever it likes has to be
+        /// repeatable, and Bio-Link Rage is the repeatable half of his kit.
+        ///
+        /// <b>It is Sanity's identity, shared</b> (§5.16, §10.8), exactly as
+        /// Slow is shared. His is permanent and his own; Nuetu's is a timed
+        /// status he puts on somebody else.
+        /// </remarks>
+        public const int BioLinkBurdenTurns = 2;
+
+        /// <summary>
         /// Nanofilament blades unpick the target's tissue faster than it can
         /// register the wound, and what comes off is fed straight back into him.
         /// </summary>
@@ -114,6 +142,8 @@ namespace NonaRoyale.Core.Abilities
             {
                 AbilityEffect.Damage(EffectScope.PrimaryTarget, 3, DamageType.Normal,
                     EffectAudience.EnemyOnly),
+                AbilityEffect.Status_(EffectScope.PrimaryTarget, StatusKind.Burdened,
+                    duration: BioLinkBurdenTurns, audience: EffectAudience.EnemyOnly),
                 AbilityEffect.Heal(EffectScope.Caster, 1, EffectAudience.EnemyOnly,
                     bonusInOwnZone: 1)
             });
@@ -212,7 +242,10 @@ namespace NonaRoyale.Core.Abilities
             id: 703, name: "Killzone",
             description:
                 "Blankets a stretch of track. It goes off a round later and crushes whatever is standing there, and the ground stays hostile afterwards.",
-            energyCost: 9, cooldownTurns: 6, range: 2,
+            // Cooldown 4 since 2026-09-21 (designer), from 6. At once every
+            // seven turns the trap was almost never on the board at the moment a
+            // fast operator chose to close, which is the only moment it answers.
+            energyCost: 9, cooldownTurns: 4, range: 2,
             targeting: AbilityTargeting.Cell,
             effects: new[]
             {

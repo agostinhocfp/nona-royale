@@ -683,6 +683,11 @@ namespace NonaRoyale.Core.Bots
                 case StatusKind.Bleed: return 1.2;
                 case StatusKind.Mark: return 3.0;
                 case StatusKind.Hunted: return 1.0;
+
+                // Cells taken off a roll, like Slow, and worth the same. Without
+                // this the planner scored Bio-Link Rage's rider at nothing
+                // (2026-09-21).
+                case StatusKind.Burdened: return 1.0;
                 default: return 0.0;
             }
         }
