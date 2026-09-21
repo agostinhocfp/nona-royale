@@ -574,7 +574,10 @@ namespace NonaRoyale.Unity.View
             colours.selectedColor = tint;
             colours.disabledColor = ButtonDisabled;
             colours.colorMultiplier = 1f;
-            button.colors = colours;
+
+            // Not a plain assignment: that fades the new button in from white
+            // on every rebuild (UiKit.SetColoursWithoutFade).
+            UiKit.SetColoursWithoutFade(button, colours);
 
             button.onClick.AddListener(() =>
             {

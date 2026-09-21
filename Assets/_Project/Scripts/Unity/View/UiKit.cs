@@ -630,6 +630,38 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
+        /// Gives a freshly built <see cref="Selectable"/> its colours without
+        /// the fade from white that assigning them would otherwise start.
+        /// </summary>
+        /// <remarks>
+        /// <b>This was the white flicker.</b> A Selectable added in code takes
+        /// the default <see cref="ColorBlock"/> on enable, whose normal colour
+        /// is white, and paints its target graphic that colour at once. Setting
+        /// <see cref="Selectable.colors"/> afterwards is a property change, and
+        /// in play mode a property change transitions <i>with</i> the fade — so
+        /// every button spent its first ~80 ms fading from white to its real
+        /// tint. The panels rebuild wholesale on a dirty flag, which means a
+        /// single click redrew every button in the tray, the rail or the draft
+        /// at once, all of them flashing white together. On the noir palette
+        /// that reads as the screen blinking.
+        ///
+        /// Assigning once with no fade snaps the graphic to whatever state the
+        /// control is actually in (disabled included); assigning again with the
+        /// real duration finds the colour already there and starts nothing, so
+        /// hover and press keep their fade.
+        /// </remarks>
+        public static void SetColoursWithoutFade(Selectable selectable, ColorBlock colours)
+        {
+            float fade = colours.fadeDuration;
+
+            colours.fadeDuration = 0f;
+            selectable.colors = colours;
+
+            colours.fadeDuration = fade;
+            selectable.colors = colours;
+        }
+
+        /// <summary>
         /// A chamfered button with a brass edge. The click runs
         /// <paramref name="onClick"/> and then <paramref name="afterClick"/>,
         /// usually the owner's MarkDirty.
@@ -665,7 +697,7 @@ namespace NonaRoyale.Unity.View
             colours.disabledColor = UiTheme.ButtonOff;
             colours.colorMultiplier = 1f;
             colours.fadeDuration = 0.08f;
-            button.colors = colours;
+            SetColoursWithoutFade(button, colours);
 
             if (selected)
             {
