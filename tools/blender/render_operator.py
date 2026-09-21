@@ -14,6 +14,14 @@ What it does, in order:
        <name>_portrait.png  512x512, head and shoulders
   4. Optionally saves the posed scene as a .blend, to tweak by hand.
 
+With --reference it renders a Meshy multi-view sheet instead: the corrected
+body in an A-pose, flat-lit (texture only), no outline, on plain grey, at eye
+level, 1024x1024, into <out>/reference/:
+       <name>_ref_front.png  <name>_ref_side.png  <name>_ref_back.png
+       <name>_ref_threequarter.png
+Upload those to Meshy (multi-view image to 3D) to regenerate the model at
+6 heads natively, instead of stretching bones on every render.
+
 Run it from the repo root (Windows):
   "C:\\Program Files\\Blender Foundation\\Blender 4.5\\blender.exe" --background ^
       --python tools\\blender\\render_operator.py -- ^
@@ -32,6 +40,7 @@ Options (after the lone "--"):
   --only standing    render one image: standing, seated or portrait
   --save-blend PATH  also save the posed scene
   --preview          quarter-size renders, few samples (for checking)
+  --reference        render the Meshy multi-view sheet instead of the sprites
 
 Written for Blender 4.0 and later. The engine is EEVEE (toon shading needs
 Shader to RGB, which Cycles does not support).
@@ -44,12 +53,14 @@ import sys
 
 import bpy
 from mathutils import Matrix, Vector
-from bpy_extras.object_utils import world_to_camera_view
 
 OUTLINE = (0x1C / 255, 0x0E / 255, 0x12 / 255)
 KEY_COLOUR = (1.0, 0.86, 0.70)
 RIM_COLOUR = (0.55, 0.75, 1.0)
 AMBIENT = (0.10, 0.09, 0.11)
+
+# Plain grey behind the reference sheet: 115/255 in sRGB, as the concept crops.
+REFERENCE_GREY = (0.171, 0.171, 0.171)
 
 # Mixamo bone names, as Meshy exports them.
 B = "mixamorig:"
@@ -78,6 +89,7 @@ def parse_args():
     p.add_argument("--only", choices=("standing", "seated", "portrait"), default=None)
     p.add_argument("--save-blend", default=None)
     p.add_argument("--preview", action="store_true")
+    p.add_argument("--reference", action="store_true")
     args = p.parse_args(argv)
     if args.out is None:
         args.out = os.path.join("art", "renders", args.name)
@@ -255,6 +267,18 @@ def pose_standing(arm):
         aim(arm, B + side + "Hand", down + out * 0.05 + forward * 0.18)
 
 
+def pose_a(arm):
+    """The neutral A-pose Meshy expects: arms down and out, head level."""
+    rest_pose(arm)
+    forward, left, up = body_frame(arm)
+    down = -up
+    aim(arm, NECK, up)
+    aim(arm, HEAD, up - forward * 0.10)
+    for side, out in (("Left", left), ("Right", -left)):
+        for bone in ("Arm", "ForeArm", "Hand"):
+            aim(arm, B + side + bone, down + out * 0.75)
+
+
 def pose_seated(arm):
     """Waist up, leaning in, forearms forward on an unseen table."""
     rest_pose(arm)
@@ -282,8 +306,8 @@ def set_engine(scene):
     raise SystemExit("EEVEE is not available in this Blender.")
 
 
-def toon_materials(meshes):
-    """Base colour texture × a two-step light ramp, as emission."""
+def toon_materials(meshes, flat=False):
+    """Base colour texture × a three-step light ramp, as emission. Flat: the texture alone."""
     done = set()
     for mesh in meshes:
         for slot in mesh.material_slots:
@@ -325,7 +349,10 @@ def toon_materials(meshes):
                 links.new(base, multiply.inputs["Color1"])
             else:
                 multiply.inputs["Color1"].default_value = colour
-            links.new(ramp.outputs["Color"], multiply.inputs["Color2"])
+            if flat:
+                multiply.inputs["Color2"].default_value = (1.0, 1.0, 1.0, 1.0)
+            else:
+                links.new(ramp.outputs["Color"], multiply.inputs["Color2"])
             links.new(multiply.outputs["Color"], emission.inputs["Color"])
             links.new(emission.outputs["Emission"], out.inputs["Surface"])
 
@@ -452,6 +479,39 @@ def render(path):
     print("[render_operator] wrote", path)
 
 
+def render_reference(cam, arm, meshes, name, out):
+    """Front, side, back and three-quarter views on one scale, at eye level."""
+    scene = bpy.context.scene
+    scene.render.film_transparent = False
+    scene.render.resolution_x = 1024
+    scene.render.resolution_y = 1024
+
+    world = bpy.data.worlds.new("Reference")
+    world.use_nodes = True
+    world.node_tree.nodes["Background"].inputs["Color"].default_value = (*REFERENCE_GREY, 1)
+    scene.world = world
+
+    pose_a(arm)
+    points = posed_points(meshes)
+    low = Vector((min(p.x for p in points), min(p.y for p in points), min(p.z for p in points)))
+    high = Vector((max(p.x for p in points), max(p.y for p in points), max(p.z for p in points)))
+    centre = (low + high) / 2
+    size = high - low
+    # One scale for every view, so Meshy sees the same body size in each.
+    cam.data.ortho_scale = max(size.z, math.hypot(size.x, size.y)) * 1.1
+
+    forward, left, up = body_frame(arm)
+    folder = os.path.join(out, "reference")
+    os.makedirs(folder, exist_ok=True)
+    for view, yaw in (("front", 0.0), ("side", 90.0), ("back", 180.0), ("threequarter", 35.0)):
+        r = math.radians(yaw)
+        toward_camera = (forward * math.cos(r) + left * math.sin(r)).normalized()
+        cam.location = centre + toward_camera * 10.0
+        cam.rotation_euler = (-toward_camera).to_track_quat("-Z", "Y").to_euler()
+        update()
+        render(os.path.join(folder, "%s_ref_%s.png" % (name, view)))
+
+
 # ── Main ─────────────────────────────────────────────────────────────────
 
 def main():
@@ -462,10 +522,18 @@ def main():
 
     scene = bpy.context.scene
     render_settings(scene, args.preview)
+    cam = camera(scene)
+
+    if args.reference:
+        toon_materials(meshes, flat=True)
+        render_reference(cam, arm, meshes, args.name, args.out)
+        if args.save_blend:
+            bpy.ops.wm.save_as_mainfile(filepath=os.path.abspath(args.save_blend))
+        return
+
     toon_materials(meshes)
     lights(arm, scene)
     outline(scene, args.line)
-    cam = camera(scene)
     os.makedirs(args.out, exist_ok=True)
 
     wanted = [args.only] if args.only else ["standing", "seated", "portrait"]
