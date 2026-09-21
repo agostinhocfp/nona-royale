@@ -662,8 +662,10 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(Luka.HermesRing.CooldownTurns, Is.EqualTo(4));
             Assert.That(Luka.HermesRing.RequiresTarget, Is.False);
 
-            Assert.That(Luka.Vendetta.EnergyCost, Is.EqualTo(6));
-            Assert.That(Luka.Vendetta.CooldownTurns, Is.EqualTo(3));
+            // Designer, 2026-09-20/21: 6 → 5 energy, which also takes it out of
+            // Equilibrium's dear band (§5.17), and cooldown 3 → 2.
+            Assert.That(Luka.Vendetta.EnergyCost, Is.EqualTo(5));
+            Assert.That(Luka.Vendetta.CooldownTurns, Is.EqualTo(2));
             Assert.That(Luka.Vendetta.Range, Is.EqualTo(3));
             Assert.That(Luka.Vendetta.Effects.Count, Is.EqualTo(3));
         }
