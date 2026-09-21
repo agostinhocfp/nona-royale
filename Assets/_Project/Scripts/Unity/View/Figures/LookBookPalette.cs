@@ -91,6 +91,11 @@ namespace NonaRoyale.Unity.View
         public FigureColour KianShirt;
         public FigureColour KianSkin;
 
+        // ── Luka: the warm light torso, camel (LB5d) ────────────────────
+        public FigureColour LukaBlazer;
+        public FigureColour LukaShirt;
+        public FigureColour LukaSkin;
+
         // ── Nuetu: the only all-light mass, cool dove-grey ──────────────
         public FigureColour NuetuGrey;
         public FigureColour NuetuPlate;

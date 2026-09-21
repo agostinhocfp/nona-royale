@@ -21,6 +21,9 @@ namespace NonaRoyale.Unity.View
             KurbynRig.Rig,
             JaviRig.Rig,
             MimiRig.Rig,
+            RevuRig.Rig,
+            KianRig.Rig,
+            LukaRig.Rig,
         };
 
         public static OperatorRig Find(string operatorName)

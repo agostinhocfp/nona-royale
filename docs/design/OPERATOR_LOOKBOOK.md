@@ -1,7 +1,7 @@
 # Nona Royale — Operator Look Book (procedural Dark Deco figures)
 
 > Location in repo: `docs/design/OPERATOR_LOOKBOOK.md` · Project copy: `claude/OPERATOR_LOOKBOOK.md`
-> Status: **LB0 and LB3 done. LB2 closed at 9 of 12 front-view recipes. LB5a–c done and committed (Bouncer rigged on the board with his event poses). LB5d under way: batch 1 (Nuetu, Sanity, Syla) passed review; batch 2 (Kurbyn, Javi, Mimi) delivered 2026-09-21, awaiting review in the window.** Written 2026-09-21. **v2 — ambition raised: these are meant to be good, not merely distinct.**
+> Status: **LB0 and LB3 done. LB2 closed at 9 of 12 front-view recipes. LB5a–c done and committed (Bouncer rigged on the board with his event poses). LB5d under way: batches 1 and 2 (Nuetu, Sanity, Syla, Kurbyn, Javi, Mimi) passed review; batch 3 (Revú, Kian, Luka) delivered 2026-09-21, awaiting review in the window.** Written 2026-09-21. **v2 — ambition raised: these are meant to be good, not merely distinct.**
 > Related: `ART_DIRECTION.md` §2.2 (Dark Deco cel — the spec), §3 (palette), §5.1 (the value ledger — the source of the recipes), §6.1; `ART_HOOKUP.md` (ART1 — the real-art path this must not break); `STAGE4_HANDOFF.md`; ADR-0009; ADR-0010 (URP 2D lights).
 
 ## Goal
@@ -138,7 +138,7 @@ Plain C# for everything but the Unity view, as before.
 | LB5a | Rig core **(delivered)** | `FigureRig`, `RigPart`, `RigPose`, `OperatorRig`, the build templates, composition of a posed rig into one image for judging, and tests. **Bouncer** redrawn in three-quarter view with rest, idle, cast and seated poses, previewed animated in the Look Book window. No game changes yet. |
 | LB5b | On the board **(delivered)** | `RigView` and `RigAnimator` on `OperatorPiece`: idle, the step, the rise, facing, the hit flash per part, screen bounds, sorting. Bouncer only. |
 | LB5c | Event poses **(delivered)** | Cast aimed at the target, hit recoil, knockout before the shatter, the seated activity, and the cast's cyan tell on the device. |
-| LB5d | The cast **(batch 2 of 4 delivered)** | The eight other recipes redrawn in three-quarter view with a head pass each (hair masses, one face shadow, a signature head shape), and **Luka, Fortuna and Lethe** drawn rigged. Normal maps. |
+| LB5d | The cast **(batch 3 of 4 delivered)** | The eight other recipes redrawn in three-quarter view with a head pass each (hair masses, one face shadow, a signature head shape), and **Luka, Fortuna and Lethe** drawn rigged. Normal maps. |
 
 Stop for Play Mode after each.
 
@@ -289,6 +289,17 @@ All under `Assets/_Project/Scripts/Unity/View/Figures/`. Everything but `FigureS
   - **Checks:** every rig test runs over the seven rigs. Outside Unity all 254 plain C# tests pass; all three assemblies compile against the editor's DLLs with no errors or warnings.
   - **For the designer to judge in the window:** Kurbyn's guard (fists up) as his rest pose on the board; Javi's hands-up rest, which could read as surrender rather than ready; Mimi's legs, which nearly vanish on the dark floor by design; the heads with hair, which the all-round rim makes a little helmet-like at full size.
 
+- **2026-09-21 — LB5d batch 2 passed review** ("Awesome").
+
+- **2026-09-21 — LB5d, batch 3: Revú and Kian redrawn, Luka rigged from the start,** all on the Light build.
+  - **Revú, the barbed hook.** Tall, thin, a slight forward lean on a long neck. The three points are the peaked near shoulder, the head carried forward, and the ledger case hanging low from the far hand on its brass chain; the line between them is concave. Oxblood double-breasted jacket with brass buttons and collar stud, a sliver of bone shirt, black tie, brass cuffs, black gloves; the near hand rests at the lapel. Head pass: silver hair combed flat with a carved highlight, a long hollow face with a cheek shadow, heavy lids, a thin smile. Cast: the ledger lifted toward the target, its spine lighting. Seated: the only one with the ledger open on the table (a prop); his activity is turning a page.
+  - **`OperatorRig.AimBone`**, new: the bone an aimed cast turns, the near upper arm unless a recipe says otherwise. Revú casts with his far hand, so his rig aims with the far upper arm; mirroring keeps it. `RigAnimator.Aimed` and the tests read it.
+  - **Kian, the spiked crown.** Tall, round-shouldered, hunched, the head low and forward. The rack on his back carries four splayed emitter rods, the two on the back side taller, with his head the fifth point; the tips are the tell. Emerald smoking jacket lit with the warm key only (§3), shawl collar, three bars of tarnished frogging, the black shirt to the throat, the disrupter disc and the drone holster. Head pass: cropped dark hair, a long face, round tinted spectacles in brass. Cast: the near arm raised high, directing fire. Seated: turned half away with a rod across his knees (a prop drawn upright so it lies level once the forearm turns); his activity is lifting it to his eye.
+  - **Luka, the four-point X, drawn rigged from the start.** His renders win in both poses, so on the board this rig only draws if they are removed; its colours come from the render (new `UiTheme.LookLuka*`: camel blazer, dark shirt and trousers, skin). A fighter's ready stance: the rear (near) leg back, the lead (far) leg forward, shoulders angled, the far hand half-raised and open, the ringed near fist loose at his side. Lean and wiry, never broad. The worn camel blazer hangs open with the sleeves pushed up; the knuckles are taped. Head pass: the buzzcut as one dark shape, stubble as a flat tone on the jaw, the brow split by the scar, the head lowered. Cast: the ringed fist brought up at the target, the ring lighting. Seated: taping his hands at the table; his activity is winding the tape.
+  - **Squint at 64 px, rest poses:** the new three are under the amber line against every rig; the closest are Syla/Kian 0.70, Javi/Revú 0.67 and Syla/Revú 0.66.
+  - **Checks:** every rig test runs over the ten rigs, including the palette-completeness rule for the new Luka colours. Outside Unity all 332 plain C# tests pass; all three assemblies compile against the editor's DLLs with no errors or warnings.
+  - **For the designer to judge in the window:** Revú's silver hair, which reads close to a bald grey head at full size; Kian's frogging, which comes up bright on the emerald; Luka's rig against his render (only a fallback on the board, but the window shows it); how far Revú's seated arm reaches for the ledger.
+
 ## Read before writing anything
 
 `ART_DIRECTION.md` §2.2, §3, §5 and §5.1 in full — they are the spec, and this document is a summary of them. Then `View/BoardArt.cs`, `View/OperatorPiece.cs`, `View/FigureLayout.cs`, `View/OperatorArtLibrary.cs`, `View/UiTheme.cs`, `View/FigureTilt.cs`, the draft card, and `Core/Abilities/Roster.cs` for the authoritative names. For LB2 onward, also everything under `View/Figures/`. File names come from the design logs and need verifying against the tree.
@@ -309,6 +320,6 @@ feat(tools): operator contact sheet, squint sheet and distinctness tests
 feat(ui): Deco portraits and the powered cast overlay
 ```
 
-## Start prompt for the implementing session (LB5d, batch 3)
+## Start prompt for the implementing session (LB5d, batch 4)
 
-> Read `docs/design/OPERATOR_LOOKBOOK.md` in full, especially the LB5 section and the log, then `ART_DIRECTION.md` §2.2, §3, §5 and §5.1, and the Revú, Kian and Luka blocks in `ART_PROMPTS.md` (and `ART_HOOKUP.md` for Luka's render, which still wins over any rig). Then everything under `View/Figures/`, with `Rig/Rigs/` as the pattern and `DecoMotifs.Limb` for limbs. Ask me for the batch 2 review first and fix what it raises. Then build batch 3: Revú and Kian, redrawn as three-quarter rigs, and Luka rigged from the start, each with a head pass, its own cast and its own seated activity, squint-checked against every rig already drawn. Stop for the judging window.
+> Read `docs/design/OPERATOR_LOOKBOOK.md` in full, especially the LB5 section and the log, then `ART_DIRECTION.md` §2.2, §3, §5 and §5.1, and the Fortuna and Lethe blocks in `ART_PROMPTS.md`. Then everything under `View/Figures/`, with `Rig/Rigs/` as the pattern. Ask me for the batch 3 review first and fix what it raises. Then build batch 4: Fortuna (the only gilt figure; the diamond silhouette is under review, so test it against the eight-pointed chip notch at piece size) and Lethe (the six-point spark, the only true mid-grey), rigged from the start with new `UiTheme.LookFortuna*` and `LookLethe*` colours, each with a head pass, its own cast and its own seated activity, squint-checked against all ten rigs. Normal maps follow once all twelve stand. Stop for the judging window.

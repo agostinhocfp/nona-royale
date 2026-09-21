@@ -74,6 +74,19 @@ namespace NonaRoyale.Unity.View
         /// <summary>True for the left-facing copy.</summary>
         public bool FacesLeft { get; }
 
+        /// <summary>
+        /// The bone a cast is aimed with (LB5c): the near upper arm unless a
+        /// recipe casts with the other (Revú lifts the ledger in his far hand).
+        /// </summary>
+        public string AimBone { get; private set; } = RigBones.UpperArmNear;
+
+        /// <summary>Sets <see cref="AimBone"/>; for use while building a rig.</summary>
+        public OperatorRig AimWith(string bone)
+        {
+            AimBone = bone ?? RigBones.UpperArmNear;
+            return this;
+        }
+
         public OperatorRig(string name, RigSkeleton skeleton, IReadOnlyList<RigAnchor> feet,
             Func<LookBookPalette, IReadOnlyList<RigPart>> parts, IDictionary<string, RigPose> poses)
             : this(name, skeleton, feet, parts, new Dictionary<string, RigPose>(poses), false)
@@ -123,7 +136,7 @@ namespace NonaRoyale.Unity.View
                 var mirrored = new List<RigPart>();
                 foreach (var part in parts(palette)) mirrored.Add(part.Mirrored());
                 return mirrored;
-            }, poses, !FacesLeft);
+            }, poses, !FacesLeft).AimWith(AimBone);
         }
 
         public override string ToString() => Name;

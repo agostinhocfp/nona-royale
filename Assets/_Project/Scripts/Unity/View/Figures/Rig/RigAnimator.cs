@@ -190,7 +190,7 @@ namespace NonaRoyale.Unity.View
             RigPose.Lerp(rig.Pose(RigPoseNames.Rest), rig.Pose(RigPoseNames.Knockout), CrouchDepth);
 
         /// <summary>
-        /// The rig's cast with the casting arm (the near upper arm) turned
+        /// The rig's cast with the casting arm (<see cref="OperatorRig.AimBone"/>) turned
         /// <paramref name="elevation"/> degrees further up toward a target
         /// above, or down toward one below, clamped to <see cref="MaxAim"/>.
         /// A left-facing rig's poses are mirrored, so its turn is too.
@@ -201,10 +201,10 @@ namespace NonaRoyale.Unity.View
             float aim = Math.Max(-MaxAim, Math.Min(MaxAim, elevation));
             if (Math.Abs(aim) < 0.01f) return cast;
 
-            var arm = cast.Get(RigBones.UpperArmNear);
+            var arm = cast.Get(rig.AimBone);
             float turn = rig.FacesLeft ? -aim : aim;
             return cast.Copy(RigPoseNames.Cast + ".aimed")
-                .Turn(RigBones.UpperArmNear, arm.Degrees + turn, arm.Dx, arm.Dy, arm.Scale);
+                .Turn(rig.AimBone, arm.Degrees + turn, arm.Dx, arm.Dy, arm.Scale);
         }
 
         /// <summary>

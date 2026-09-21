@@ -315,9 +315,10 @@ namespace NonaRoyale.Unity.Tests.View
         {
             foreach (var rig in new[] { Rig(name), Rig(name).Mirrored() })
             {
-                float level = rig.Pose(RigPoseNames.Cast).Get(RigBones.UpperArmNear).Degrees;
-                float up = RigAnimator.Aimed(rig, 20f).Get(RigBones.UpperArmNear).Degrees;
-                float steep = RigAnimator.Aimed(rig, 80f).Get(RigBones.UpperArmNear).Degrees;
+                Assert.AreEqual(Rig(name).AimBone, rig.AimBone, "facing keeps the casting arm");
+                float level = rig.Pose(RigPoseNames.Cast).Get(rig.AimBone).Degrees;
+                float up = RigAnimator.Aimed(rig, 20f).Get(rig.AimBone).Degrees;
+                float steep = RigAnimator.Aimed(rig, 80f).Get(rig.AimBone).Degrees;
                 float sign = rig.FacesLeft ? -1f : 1f;
 
                 Assert.AreEqual(20f, (up - level) * sign, 1e-3f, rig.FacesLeft ? "left" : "right");

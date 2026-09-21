@@ -162,8 +162,8 @@ namespace NonaRoyale.Unity.Tests.View
             var start = RigClips.Sample(rig, RigClips.Cast, 0f);
             var peak = RigClips.Sample(rig, RigClips.Cast, RigClips.Length(RigClips.Cast) * 0.4f);
 
-            Assert.AreEqual(0f, start.Get(RigBones.UpperArmNear).Degrees, 1e-4f);
-            Assert.AreEqual(rig.Pose(RigPoseNames.Cast).Get(RigBones.UpperArmNear).Degrees, peak.Get(RigBones.UpperArmNear).Degrees, 1e-4f);
+            Assert.AreEqual(0f, start.Get(rig.AimBone).Degrees, 1e-4f);
+            Assert.AreEqual(rig.Pose(RigPoseNames.Cast).Get(rig.AimBone).Degrees, peak.Get(rig.AimBone).Degrees, 1e-4f);
         }
     }
 }

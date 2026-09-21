@@ -348,6 +348,12 @@ namespace NonaRoyale.Unity.View
         public static readonly Color LookKianShirt = Hex("141117");
         public static readonly Color LookKianSkin = Hex("BFA088");
 
+        // Luka: the warm light torso, camel, which only he may carry (§5.1).
+        // Matched to his render; the rig draws only if the render is missing.
+        public static readonly Color LookLukaBlazer = Hex("B7A083");
+        public static readonly Color LookLukaShirt = Hex("1C181B");
+        public static readonly Color LookLukaSkin = Hex("C28B6B");
+
         // Nuetu: the only all-light mass, cool dove-grey, black plates on grey.
         public static readonly Color LookNuetuGrey = Hex("B3B7C1");
         public static readonly Color LookNuetuPlate = Hex("17141A");
