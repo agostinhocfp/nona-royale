@@ -238,7 +238,9 @@ namespace NonaRoyale.Core.Bots
                 case EffectKind.Execute:
                     if (target == null || !board.IsEnemy(target, own)) break;
                     bool below = target.Health * effect.ExecuteDenominator < target.MaxHealth * effect.ExecuteNumerator;
-                    offence += below
+                    // Below the threshold on safe ground it is only the
+                    // fallback hit, which the shelter voids as well.
+                    offence += below && !board.Engine.IsSheltered(target)
                         ? Kill(board, w, target)
                         : Hit(board, w, target, board.ExpectedHit(target, effect.Amount, effect.DamageType, ability.EnergyCost));
                     break;
@@ -348,7 +350,8 @@ namespace NonaRoyale.Core.Bots
                     // enemies around it (§3.3).
                     if (target == null || !board.IsEnemy(target, own) || !board.OnLoop(target)) break;
                     int pool = board.SeatOf(target.Owner)?.Energy ?? 0;
-                    int primary = Math.Max(0, board.Engine.EnergyCap - pool) / effect.Amount;
+                    int primary = Math.Max(effect.MinimumDamage,
+                        Math.Max(0, board.Engine.EnergyCap - pool) / effect.Amount);
                     int splash = primary / Math.Max(1, effect.Stacks);
 
                     offence += Hit(board, w, target,
@@ -521,7 +524,9 @@ namespace NonaRoyale.Core.Bots
             if (exposed && reachable != null && reachable.Contains(toCell.Index))
             {
                 double remaining = enemy.Health - damageFirst;
-                double hit = board.ExpectedHit(enemy, board.Combat.CollisionDamage, DamageType.Normal);
+                // Off the cell it stands on now: the landing happens where the
+                // push leaves it, which is exposed, so today's shelter is moot.
+                double hit = board.ExpectedHitOnceExposed(enemy, board.Combat.CollisionDamage, DamageType.Normal);
 
                 value += w.PushSetup * (hit >= remaining
                     ? w.Kill + remaining * w.CollisionDamage + Math.Max(0, to) * w.KillProgress
@@ -635,6 +640,9 @@ namespace NonaRoyale.Core.Bots
 
         private static double Debuff(BotBoard board, OperatorState enemy, AbilityEffect effect)
         {
+            // A spawn cell refuses slow and stun outright (§4.4, third amendment).
+            if (board.Engine.Resists(enemy, effect.Status)) return 0.0;
+
             // A second stun or slow adds nothing; bleed stacks.
             if (effect.Status != StatusKind.Bleed && board.Has(enemy, effect.Status)) return 0.0;
             return StatusWorth(effect.Status) * (effect.Status == StatusKind.Bleed ? Math.Max(1, effect.Stacks) : 1);

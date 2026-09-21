@@ -440,9 +440,13 @@ namespace NonaRoyale.Core.Services
                         break;
 
                     case EffectKind.ApplyStatus:
-                        _statuses.Apply(recipient, effect.Status, effect.Duration,
-                            effect.Magnitude, effect.Stacks, caster.Id);
-                        outcomes.Add(EffectOutcome.StatusApplied(recipient, effect.Status, effect.Duration));
+                        // Reported only if it took hold: a slow or stun aimed
+                        // at an operator on its own spawn cell is refused
+                        // (§4.4, third amendment), and the view must not be
+                        // told it landed.
+                        if (_statuses.Apply(recipient, effect.Status, effect.Duration,
+                                effect.Magnitude, effect.Stacks, caster.Id))
+                            outcomes.Add(EffectOutcome.StatusApplied(recipient, effect.Status, effect.Duration));
                         break;
 
                     case EffectKind.PullToCaster:
@@ -659,11 +663,9 @@ namespace NonaRoyale.Core.Services
             {
                 if (IsAlreadyDown(victim)) continue;
 
-                if (effect.CarriesStatus)
-                {
-                    _statuses.Apply(victim, effect.Status, effect.Duration, sourceOperatorId: caster.Id);
+                if (effect.CarriesStatus &&
+                    _statuses.Apply(victim, effect.Status, effect.Duration, sourceOperatorId: caster.Id))
                     outcomes.Add(EffectOutcome.StatusApplied(victim, effect.Status, effect.Duration));
-                }
 
                 outcomes.Add(ApplyDamage(hit, caster, victim));
             }
@@ -987,7 +989,10 @@ namespace NonaRoyale.Core.Services
         {
             var seat = SeatOf(target);
             int missing = Math.Max(0, _energy.Cap - seat.Energy);
-            int primary = missing / effect.Amount;
+            // The floor is on the primary figure, and the splash divides the
+            // floored one — a full seat's neighbours pay the minimum's share,
+            // not nothing, and never more than the debtor (§10.11).
+            int primary = Math.Max(effect.MinimumDamage, missing / effect.Amount);
             int splash = primary / Math.Max(1, effect.Stacks);
 
             var splashed = effect.Radius > 0 && splash > 0
@@ -1077,7 +1082,12 @@ namespace NonaRoyale.Core.Services
             bool belowThreshold =
                 recipient.Health * effect.ExecuteDenominator < recipient.MaxHealth * effect.ExecuteNumerator;
 
-            if (!belowThreshold)
+            // An execution is damage in every sense a player means, even though
+            // it writes health directly rather than coming through the
+            // pipeline. On safe ground it falls back to the plain hit, which
+            // the pipeline then voids (§4.4, third amendment) — one rule, asked
+            // in one place, rather than a second copy of it here.
+            if (!belowThreshold || _damage.Shelters(recipient))
             {
                 var dealt = _damage.Apply(recipient,
                     new DamageInstance(effect.Amount, effect.DamageType, caster.Id, AbilityCause, _castCost));

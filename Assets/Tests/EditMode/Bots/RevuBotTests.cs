@@ -108,13 +108,18 @@ namespace NonaRoyale.Core.Tests.Bots
         }
 
         [Test]
-        public void Sadist_IsWorthNothing_AgainstAFullPool()
+        public void Sadist_IsWorthLess_AgainstAFullPool()
         {
+            // It was worth nothing until the floor landed (2026-09-21); now the
+            // bot still reads a full pool as the weakest case, not a blank.
             SetPool(_blue, 12);
-            Assert.That(Score(_revu, Revu.Sadist, _enemyRevu).Offence, Is.EqualTo(0.0));
+            double full = Score(_revu, Revu.Sadist, _enemyRevu).Offence;
 
             SetPool(_blue, 0);
-            Assert.That(Score(_revu, Revu.Sadist, _enemyRevu).Offence, Is.GreaterThan(0.0));
+            double dry = Score(_revu, Revu.Sadist, _enemyRevu).Offence;
+
+            Assert.That(full, Is.GreaterThan(0.0), "the floor is worth something");
+            Assert.That(dry, Is.GreaterThan(full), "an empty pool is still the play");
         }
     }
 }

@@ -46,6 +46,19 @@ namespace NonaRoyale.Core.Abilities
         public const int SadistSplashDivisor = 2;
 
         /// <summary>
+        /// The least Sadist computes against the primary target, however full
+        /// the target's pool is (2026-09-21, designer).
+        /// </summary>
+        /// <remarks>
+        /// Before this the cast could compute zero: a seat at cap paid nothing
+        /// for the roster's most expensive read, which made Sadist a bet on the
+        /// enemy's pool rather than a play. The floor stops the blank without
+        /// touching what a real debt is worth — at 3 energy per point it is
+        /// what 6 missing energy already bought.
+        /// </remarks>
+        public const int SadistMinimumDamage = 2;
+
+        /// <summary>
         /// A round that bleeds the target's side dry of more than blood: 2
         /// damage, and 2 energy gone from the enemy pool.
         /// </summary>
@@ -100,11 +113,12 @@ namespace NonaRoyale.Core.Abilities
             id: 1102, name: "Sadist",
             description:
                 "Collection day. The emptier the enemy's reserves, the harder it lands, and whoever stands near the debtor pays a share.",
-            energyCost: 9, cooldownTurns: 4, range: 3,
+            energyCost: 7, cooldownTurns: 3, range: 3,
             effects: new[]
             {
                 AbilityEffect.MissingEnergyDamage(
-                    SadistEnergyPerDamage, SadistSplashRadius, SadistSplashDivisor, DamageType.Normal)
+                    SadistEnergyPerDamage, SadistSplashRadius, SadistSplashDivisor, DamageType.Normal,
+                    minimumDamage: SadistMinimumDamage)
             });
 
         public static IReadOnlyList<AbilityDefinition> All { get; } =

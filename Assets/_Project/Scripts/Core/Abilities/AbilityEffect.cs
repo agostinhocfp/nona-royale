@@ -27,7 +27,8 @@ namespace NonaRoyale.Core.Abilities
             int heavyAboveMaxHealth = 0, int heavyBonus = 0,
             bool scalesWithCrowd = false,
             bool lifesteal = false,
-            bool strikesOnCast = false)
+            bool strikesOnCast = false,
+            int minimumDamage = 0)
         {
             Kind = kind;
             Scope = scope;
@@ -51,6 +52,7 @@ namespace NonaRoyale.Core.Abilities
             ScalesWithCrowd = scalesWithCrowd;
             Lifesteal = lifesteal;
             StrikesOnCast = strikesOnCast;
+            MinimumDamage = minimumDamage;
         }
 
         public EffectKind Kind { get; }
@@ -167,6 +169,22 @@ namespace NonaRoyale.Core.Abilities
         /// read.
         /// </remarks>
         public bool StrikesOnCast { get; }
+
+        /// <summary>
+        /// A floor under a computed damage figure, for effects whose amount is
+        /// read off the board rather than declared (today only
+        /// <see cref="EffectKind.MissingEnergyDamage"/>). Zero means no floor.
+        /// </summary>
+        /// <remarks>
+        /// It floors the <b>primary</b> figure only, and the splash is still
+        /// divided from that floored figure, so a topped-up seat's neighbours
+        /// are billed the minimum's share rather than nothing — the ability
+        /// stays a punishment for an empty pool and merely stops being a blank.
+        /// Applied before mitigation, so a shield or Equilibrium still reduces
+        /// it: this is a floor on what the cast <i>computes</i>, never a
+        /// guarantee of what lands.
+        /// </remarks>
+        public int MinimumDamage { get; }
 
         /// <summary>Whether an operator with this maximum health counts as heavy for this effect.</summary>
         public bool CountsAsHeavy(int maxHealth) =>
@@ -453,14 +471,16 @@ namespace NonaRoyale.Core.Abilities
         /// </remarks>
         public static AbilityEffect MissingEnergyDamage(
             int energyPerDamage, int splashRadius, int splashDivisor, DamageType damageType,
-            EffectAudience audience = EffectAudience.EnemyOnly)
+            EffectAudience audience = EffectAudience.EnemyOnly, int minimumDamage = 0)
         {
             if (energyPerDamage < 1) throw new ArgumentOutOfRangeException(nameof(energyPerDamage));
             if (splashRadius < 0) throw new ArgumentOutOfRangeException(nameof(splashRadius));
             if (splashDivisor < 1) throw new ArgumentOutOfRangeException(nameof(splashDivisor));
+            if (minimumDamage < 0) throw new ArgumentOutOfRangeException(nameof(minimumDamage));
 
             return new AbilityEffect(EffectKind.MissingEnergyDamage, EffectScope.PrimaryTarget, audience,
-                energyPerDamage, damageType, splashRadius, default, 0, splashDivisor, 0, 0, 0, 0);
+                energyPerDamage, damageType, splashRadius, default, 0, splashDivisor, 0, 0, 0, 0,
+                minimumDamage: minimumDamage);
         }
 
         /// <summary>

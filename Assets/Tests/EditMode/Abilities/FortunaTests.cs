@@ -93,11 +93,14 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(fortuna.Passive, Is.EqualTo(StatusKind.HouseEdge));
             Assert.That(fortuna.PassiveName, Is.EqualTo("The House Edge"));
 
+            // Designer, 2026-09-21: The Table 6 → 5 and its lifetime 2 → 3
+            // turns, Boxcars 9 → 7.
             Assert.That(Fortuna.DealAgain.EnergyCost, Is.EqualTo(3));
-            Assert.That(Fortuna.TheTable.EnergyCost, Is.EqualTo(6));
-            Assert.That(Fortuna.Boxcars.EnergyCost, Is.EqualTo(9));
+            Assert.That(Fortuna.TheTable.EnergyCost, Is.EqualTo(5));
+            Assert.That(Fortuna.Boxcars.EnergyCost, Is.EqualTo(7));
             Assert.That(Fortuna.TheTable.Range, Is.EqualTo(4));
             Assert.That(Fortuna.TableDamage, Is.EqualTo(2));
+            Assert.That(Fortuna.TableLifetimeTurns, Is.EqualTo(3));
         }
 
         [Test]
@@ -143,7 +146,12 @@ namespace NonaRoyale.Core.Tests.Abilities
         public void Cash_RefusedWhileStunned()
         {
             var match = PlainRoll(out var roll);
-            match.Statuses.Apply(Named(match, "Fortuna"), StatusKind.Stun, 2);
+            var fortuna = Named(match, "Fortuna");
+
+            // Off her own start cell first: a spawn cell refuses a stun (§4.4,
+            // third amendment), and this test is about the stun, not the cell.
+            fortuna.MoveTo(1);
+            Assert.That(match.Statuses.Apply(fortuna, StatusKind.Stun, 2), Is.True, "fixture: the stun must land");
 
             Assert.That(Rejected(match.Engine.Execute(Cash(match, roll.First))), Is.True);
         }

@@ -166,8 +166,16 @@ namespace NonaRoyale.Core.Tests.Abilities
             var cell = Lethe.NanoCell;
             Assert.That((cell.EnergyCost, cell.CooldownTurns, cell.Range), Is.EqualTo((4, 4, 4)));
 
+            // Designer, 2026-09-21: the bubble heals 2 on the way in, so the
+            // stun buys something even on an ally that is not about to be hit.
+            var heal = cell.Effects[0];
+            Assert.That(heal.Kind, Is.EqualTo(EffectKind.Heal));
+            Assert.That(heal.Amount, Is.EqualTo(2));
+            Assert.That(heal.Audience, Is.EqualTo(EffectAudience.AllyOnly));
+
+            // Designer, 2026-09-20: Eris' Exploit 6 → 4 energy, cooldown 4 → 3.
             var eris = Lethe.ErisExploit;
-            Assert.That((eris.EnergyCost, eris.CooldownTurns, eris.Range), Is.EqualTo((6, 4, 3)));
+            Assert.That((eris.EnergyCost, eris.CooldownTurns, eris.Range), Is.EqualTo((4, 3, 3)));
             Assert.That(eris.Targeting, Is.EqualTo(AbilityTargeting.Cell));
             Assert.That(eris.Effects[0].Radius, Is.EqualTo(2));
         }

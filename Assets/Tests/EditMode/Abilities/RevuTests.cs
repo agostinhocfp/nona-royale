@@ -144,8 +144,11 @@ namespace NonaRoyale.Core.Tests.Abilities
 
             Assert.That((Revu.LeechRound.EnergyCost, Revu.LeechRound.CooldownTurns, Revu.LeechRound.Range),
                 Is.EqualTo((3, 1, 3)));
+            // Designer, 2026-09-21: Sadist 9 → 7 energy, cooldown 4 → 3, and a
+            // floor of 2 on the primary figure.
             Assert.That((Revu.Sadist.EnergyCost, Revu.Sadist.CooldownTurns, Revu.Sadist.Range),
-                Is.EqualTo((9, 4, 3)));
+                Is.EqualTo((7, 3, 3)));
+            Assert.That(Revu.SadistMinimumDamage, Is.EqualTo(2));
         }
 
         // ── Leech Round ──────────────────────────────────────────────────
@@ -231,19 +234,23 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(SadistOn(0), Is.EqualTo(4), "an empty pool");
             Assert.That(SadistOn(5), Is.EqualTo(2), "7 missing rounds down to 2");
             Assert.That(SadistOn(6), Is.EqualTo(2));
-            Assert.That(SadistOn(10), Is.EqualTo(0), "2 missing is not a point");
+            Assert.That(SadistOn(10), Is.EqualTo(2), "2 missing is not a point, but the floor is (2026-09-21)");
         }
 
         [Test]
-        public void Sadist_AgainstAFullPool_StrikesNobody()
+        public void Sadist_AgainstAFullPool_StillDealsItsFloor()
         {
+            // Designer, 2026-09-21. It used to strike nobody: a seat at cap paid
+            // nothing for the roster's dearest read. The floor is the primary
+            // figure's, and the splash still divides it.
             SetPool(_blue, 12);
 
             var result = Use(Revu.Sadist, _target);
 
-            Assert.That(result.Approved, Is.True, "legal, and wasted");
-            Assert.That(result.Outcomes.Any(o => o.Kind == EffectOutcomeKind.Damaged), Is.False,
-                "no zero hits: they would spend evasion charges");
+            Assert.That(result.Approved, Is.True, result.ToString());
+            Assert.That(_target.Health, Is.EqualTo(5), "the floor of 2");
+            Assert.That(_near.Health, Is.EqualTo(6), "half the floor, rounded down");
+            Assert.That(_far.Health, Is.EqualTo(7), "four away");
         }
 
         [Test]
@@ -265,9 +272,22 @@ namespace NonaRoyale.Core.Tests.Abilities
         [Test]
         public void Sadist_ASplashOfZero_IsNotDealt()
         {
+            // Unreachable through Sadist since the floor (a primary of 2 always
+            // splashes 1), so the rule is pinned on a floorless double. Zero
+            // hits are not dealt at all: they would spend evasion charges.
+            var floorless = new AbilityDefinition(
+                id: 99961, name: "Test Collection", description: "Test double: Sadist without its floor.",
+                energyCost: 7, cooldownTurns: 0, range: 3,
+                effects: new[]
+                {
+                    AbilityEffect.MissingEnergyDamage(
+                        Revu.SadistEnergyPerDamage, Revu.SadistSplashRadius, Revu.SadistSplashDivisor,
+                        DamageType.Normal)
+                });
+
             SetPool(_blue, 9);   // 3 missing: 1 to the target, 0 splash
 
-            var result = Use(Revu.Sadist, _target);
+            var result = Use(floorless, _target);
 
             Assert.That(_target.Health, Is.EqualTo(6));
             Assert.That(result.Outcomes.Count(o => o.Kind == EffectOutcomeKind.Damaged), Is.EqualTo(1));
@@ -304,7 +324,9 @@ namespace NonaRoyale.Core.Tests.Abilities
         [Test]
         public void Equilibrium_VendettaStillHurts_OnePerBlow()
         {
-            // Cost 6 halves each 1 to... 1, not 0.
+            // Cost 5 since 2026-09-20, so it is neither cheap nor dear and each
+            // blow lands its plain 1. At cost 6 the halving floored each 1 at 1
+            // and the total was the same, which is why this number did not move.
             BringEnemyRevuTo(12);
             var luka = AtTrack(20, "Luka", PlayerColor.Red, Luka.MaxHealth, 11);
             _board.Add(luka);
@@ -315,9 +337,11 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
-        public void Equilibrium_AVendettaCritIsHalvedAfterItDoubles()
+        public void ACritAgainstRevu_IsWholeNow_AndDrains()
         {
-            // Crit 1 × 2 = 2, then halved to 1; and Luka drains the 1 each blow removed.
+            // Vendetta left the dear band at 5 (2026-09-20), so nothing halves
+            // it any more: Revú is heavy at 8, so each crit is 1 × 3, and three
+            // blows finish him from full. Luka drains what each blow removed.
             BringEnemyRevuTo(12);
             var luka = AtTrack(20, "Luka", PlayerColor.Red, Luka.MaxHealth, 11);
             luka.SetHealth(1);
@@ -325,8 +349,32 @@ namespace NonaRoyale.Core.Tests.Abilities
 
             Resolver(new FixedRoll(0.0)).Use(luka, Luka.Vendetta, _enemyRevu, _red, _board);
 
-            Assert.That(_enemyRevu.Health, Is.EqualTo(Revu.MaxHealth - 3));
-            Assert.That(luka.Health, Is.EqualTo(4), "lifesteal reads the halved hit");
+            Assert.That(_enemyRevu.Health, Is.EqualTo(0), "three heavy crits against 8");
+            Assert.That(luka.Health, Is.EqualTo(Luka.MaxHealth), "lifesteal, capped");
+        }
+
+        [Test]
+        public void ACritOnADearCast_IsHalvedAfterItDoubles()
+        {
+            // The ordering rule (§2.4, §5.17) with no roster ability left to
+            // show it: Vendetta and Eris' Exploit both left the dear band in the
+            // 2026-09-20 pass, so it is pinned on a double at cost 6.
+            var dearCrit = new AbilityDefinition(
+                id: 99962, name: "Test Grudge", description: "Test double: a dear cast that can crit.",
+                energyCost: 6, cooldownTurns: 0, range: 3,
+                effects: new[]
+                {
+                    AbilityEffect.Damage(EffectScope.PrimaryTarget, 2, DamageType.Atomic, EffectAudience.EnemyOnly)
+                        .WithCritical(chance: 1.0, multiplier: 2, heavyMultiplier: 2, heavyAboveMaxHealth: 0)
+                });
+
+            BringEnemyRevuTo(12);
+            var luka = AtTrack(20, "Luka", PlayerColor.Red, Luka.MaxHealth, 11);
+            _board.Add(luka);
+
+            Resolver(new FixedRoll(0.0)).Use(luka, dearCrit, _enemyRevu, _red, _board);
+
+            Assert.That(_enemyRevu.Health, Is.EqualTo(Revu.MaxHealth - 2), "2 × 2 crit, then halved");
         }
 
         [Test]
@@ -356,12 +404,14 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
-        public void Equilibrium_HalvesTheZonesInstantHit_ButNotItsLaterTick()
+        public void Equilibrium_ScalesTheZonesInstantHit_ButNotItsLaterTick()
         {
-            // Eris' Exploit costs 6 and strikes on the cast since 2026-09-18
-            // (ADR-0007 Amendment 2), so its first hit is a cast hit and Equilibrium halves it.
-            // Its later tick resolves at an upkeep and carries no cost at all.
-            // Three caught: 2 each, so Revú takes 1 now and 2 at the tick.
+            // Eris' Exploit strikes on the cast since 2026-09-18 (ADR-0007
+            // Amendment 2), so its first hit is a cast hit and Equilibrium reads
+            // its cost; its later tick resolves at an upkeep and carries no cost
+            // at all. Since the 2026-09-20 reprice the cost is 4 — neither cheap
+            // nor dear — so the instant hit is clean too, and the two are equal.
+            // Three caught: 2 each, so Revú takes 2 now and 2 at the tick.
             BringEnemyRevuTo(12);
             Place(_target, 13);
             Place(_near, 11);
@@ -372,14 +422,14 @@ namespace NonaRoyale.Core.Tests.Abilities
             _abilities.Use(lethe, Lethe.ErisExploit, null, _red, _board,
                 _map.CellAt(PlayerColor.Red, (12 - _map.StartTrackIndex(PlayerColor.Red) + 52) % 52));
 
-            Assert.That(_enemyRevu.Health, Is.EqualTo(Revu.MaxHealth - 1), "the instant hit, halved");
-            Assert.That(_target.Health, Is.EqualTo(5), "everyone else takes the full 2");
+            Assert.That(_enemyRevu.Health, Is.EqualTo(Revu.MaxHealth - 2), "the instant hit, unscaled at cost 4");
+            Assert.That(_target.Health, Is.EqualTo(5), "everyone else takes the same 2");
 
             _clock.BeginTurnFor(PlayerColor.Blue);
             _clock.BeginTurnFor(PlayerColor.Red);
             _cellEffects.Fire(PlayerColor.Red, _board);
 
-            Assert.That(_enemyRevu.Health, Is.EqualTo(Revu.MaxHealth - 3), "the tick is not a cast: a clean 2");
+            Assert.That(_enemyRevu.Health, Is.EqualTo(Revu.MaxHealth - 4), "the tick is not a cast: a clean 2");
         }
 
         [Test]

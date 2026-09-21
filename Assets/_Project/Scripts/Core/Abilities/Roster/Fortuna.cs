@@ -52,10 +52,18 @@ namespace NonaRoyale.Core.Abilities
         public const int TableDamage = 2;
 
         /// <summary>
-        /// Turns of hers the table stands for, counting the turn it is dealt. Two,
-        /// so it is on the board for a full round of everyone else's movement.
+        /// Turns of hers the table stands for, counting the turn it is dealt.
         /// </summary>
-        public const int TableLifetimeTurns = 2;
+        /// <remarks>
+        /// <b>Three since 2026-09-21 (designer), from two.</b> At two it covered
+        /// one full round of everyone else's movement and then went, which meant
+        /// the table only ever caught the dice that happened to be thrown at it
+        /// in that round — a table placed well and avoided cost her six energy
+        /// for nothing. At three the avoidance has to be paid for twice, which
+        /// is where the routing cost the ability is built around actually
+        /// lands. The cooldown is 3, so it still cannot be permanent.
+        /// </remarks>
+        public const int TableLifetimeTurns = 3;
 
         /// <summary>
         /// The worst die on the table, re-dealt.
@@ -118,7 +126,9 @@ namespace NonaRoyale.Core.Abilities
             id: 1202, name: "The Table",
             description:
                 "She sets a game down on the board. Nobody walks past a game in progress, and nobody sits down for free.",
-            energyCost: 6, cooldownTurns: 3, range: 4,
+            // 5 energy since 2026-09-21 (designer): at 6 it was priced beside
+            // the ultimates that kill, and it kills nobody.
+            energyCost: 5, cooldownTurns: 3, range: 4,
             effects: new[]
             {
                 AbilityEffect.SetTable(TableDamage, TableLifetimeTurns)
@@ -150,7 +160,10 @@ namespace NonaRoyale.Core.Abilities
             id: 1203, name: "Boxcars",
             description:
                 "She takes the dice out of your hand, looks at them, and puts them back the way the house likes them.",
-            energyCost: 9, cooldownTurns: 4, range: 0,
+            // 7 energy since 2026-09-21 (designer), from 9. At 9 it was three
+            // quarters of the cap for an ultimate that cannot kill anybody, so
+            // it was reachable only after a hoard that cost her the race.
+            energyCost: 7, cooldownTurns: 4, range: 0,
             effects: new[]
             {
                 AbilityEffect.DealDice(BoxcarsDice, BoxcarsFace)
