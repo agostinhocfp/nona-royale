@@ -1042,6 +1042,48 @@ namespace NonaRoyale.Core.Tests.Engine
             Assert.That(moved.To - moved.From, Is.EqualTo((int)(total * Bouncer.Speed)));
         }
 
+        [Test]
+        public void AHitCarriesItsDamageType()
+        {
+            // AUDIO.md AU3: the view layers Normal, Tech and Atomic differently
+            // under an impact, so the event has to say which it was.
+            var match = Armed();
+            var bouncer = Of(match, PlayerColor.Red, "Bouncer");
+            var enemy = Of(match, PlayerColor.Blue, "Bouncer");
 
+            enemy.MoveTo(6);                        // track 18, clear of Blue's start
+            bouncer.MoveTo(20);                     // track 20, two cells on; pulled beside him, still off safe ground
+
+            var events = match.Engine.Execute(
+                new UseAbilityCommand(bouncer.Id, Bouncer.VelvetRope.Id, enemy.Id));
+
+            var hit = events.OfType<DamageDealt>().FirstOrDefault(d => ReferenceEquals(d.Target, enemy));
+
+            Assert.That(hit, Is.Not.Null, string.Join(" | ", events.Select(e => e.ToString())));
+            Assert.That(hit.Type, Is.EqualTo(DamageType.Atomic), "Velvet Rope's hit is Atomic");
+        }
+
+        [Test]
+        public void AllInMaulingsPrice_HasNoType_AndItsBlowIsNormal()
+        {
+            var match = Armed();
+            var bouncer = Of(match, PlayerColor.Red, "Bouncer");
+            var enemy = Of(match, PlayerColor.Blue, "Bouncer");
+
+            enemy.MoveTo(1);
+            bouncer.MoveTo(12);
+
+            var events = match.Engine.Execute(
+                new UseAbilityCommand(bouncer.Id, Bouncer.AllInMauling.Id, enemy.Id));
+
+            var damage = events.OfType<DamageDealt>().ToList();
+            var blow = damage.FirstOrDefault(d => ReferenceEquals(d.Target, enemy));
+            var price = damage.FirstOrDefault(d => ReferenceEquals(d.Target, bouncer));
+
+            Assert.That(blow, Is.Not.Null, string.Join(" | ", events.Select(e => e.ToString())));
+            Assert.That(blow.Type, Is.EqualTo(DamageType.Normal));
+            Assert.That(price, Is.Not.Null);
+            Assert.That(price.Type, Is.Null, "the self-inflicted price was never an instance");
+        }
     }
 }

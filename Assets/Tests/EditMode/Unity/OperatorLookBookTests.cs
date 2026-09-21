@@ -23,6 +23,9 @@ namespace NonaRoyale.Unity.Tests.View
             OperatorArtLibrary.ClearCache();
             OperatorLookBook.ClearCache();
             OperatorLookBook.Enabled = true;
+
+            // Bouncer has a rig since LB5b; these tests are about the look book under it.
+            OperatorRigArt.Enabled = false;
         }
 
         [TearDown]
@@ -32,6 +35,7 @@ namespace NonaRoyale.Unity.Tests.View
             OperatorArtLibrary.ClearCache();
             OperatorLookBook.ClearCache();
             OperatorLookBook.Enabled = true;
+            OperatorRigArt.Enabled = true;
         }
 
         [Test]

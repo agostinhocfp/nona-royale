@@ -67,6 +67,26 @@ namespace NonaRoyale.Unity.View
     /// Since ART1 the squash and the breathing keep the feet on the floor
     /// (<see cref="FigureLayout.FootAnchorOffset"/>); the transform's origin is
     /// still the figure's centre, which the floaters and sounds read.
+    ///
+    /// <b>Rigged figures (OPERATOR_LOOKBOOK.md, LB5b).</b> An operator with a
+    /// rig and no render is drawn as parts that move at the joints
+    /// (<see cref="RigView"/>, <see cref="RigAnimator"/>). The fallback order
+    /// is a render, then the rig, then the look book, then the pawn. A rigged
+    /// figure takes the render's place in everything above - fitted by
+    /// <see cref="FigureLayout.Fit"/>, untinted over the seat disc, flashed
+    /// white - and its own motion replaces the whole-sprite tricks: the step
+    /// replaces the hop and its squash, the idle and the seated loop replace
+    /// the breathing and the sway, and a rise stands up out of a crouch
+    /// inside the same pop. It faces toward the next cell as it walks and
+    /// toward the board centre at rest (<see cref="BoardCentre"/>). The pin
+    /// rides the chest.
+    ///
+    /// <b>Event poses (LB5c).</b> A cast turns the figure to its target and
+    /// raises the device toward it, lit cyan for the hold (<see cref="Cast"/>).
+    /// A hit turns it to the striker and rocks it back (<see cref="Recoil"/>).
+    /// A knockout folds the figure before the shatter, so the shards leave a
+    /// body that has gone down rather than one standing at rest
+    /// (<see cref="Shatter"/>, <see cref="IsKnockingOut"/>).
     /// </remarks>
     public sealed class OperatorPiece : MonoBehaviour
     {
@@ -121,6 +141,28 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>Peak opacity of the white silhouette on a rendered figure's hit flash.</summary>
         private const float ArtFlashStrength = 0.75f;
+
+        /// <summary>
+        /// Everything drawn over the figure - the pin, the bar, the halo - sits
+        /// at or above this order inside the piece's group, clear of a rig's
+        /// parts, which take two orders each from <see cref="RigBaseOrder"/>.
+        /// </summary>
+        private const int OverlayOrder = 40;
+
+        /// <summary>A rig's first part; with two orders a part, room for 18 parts under the overlay.</summary>
+        private const int RigBaseOrder = 4;
+
+        /// <summary>How long a rigged figure takes to stand out of its crouch on a deploy.</summary>
+        private const float RigRiseSeconds = 0.4f;
+
+        /// <summary>A rigged figure's recoil on a hit: the hit's hold in MOTION.md.</summary>
+        private const float RigHitSeconds = 0.3f;
+
+        /// <summary>A rigged figure's fold before the shatter.</summary>
+        private const float RigFoldSeconds = 0.25f;
+
+        /// <summary>How far across, in cells, a target must be before a rigged figure turns to it.</summary>
+        private const float FacingDeadZone = 0.05f;
 
         /// <summary>The seat disc under a rendered figure: width and depth, in figure units.</summary>
         private const float SeatBaseWidth = 0.9f;
@@ -192,6 +234,25 @@ namespace NonaRoyale.Unity.View
 
         private MotionSettings _motion;
 
+        // ── The rig (LB5b) ──────────────────────────────────────
+        private RigView _rig;
+        private RigAnimator _animator;
+        private bool _facesLeft;
+
+        /// <summary>Cells finished in the current walk, and the length of the one under way.</summary>
+        private float _walkCells;
+        private float _segmentCells = 1f;
+
+        /// <summary>The pin's point on the chest bone, in the chest's rest space; recomputed on a pose or facing change.</summary>
+        private Vector2 _pinOnChest;
+        private bool _pinPlaced;
+
+        /// <summary>Folding before the shatter (LB5c); the shards follow when the fold ends.</summary>
+        private bool _collapsing;
+
+        /// <summary>Scaled seconds the shards are still flying, so the queue can wait for them.</summary>
+        private float _shardClock;
+
         /// <summary>Where the piece stands, before hop, squash and idle are drawn on top.</summary>
         private Vector3 _ground;
         private bool _hopping;
@@ -225,11 +286,33 @@ namespace NonaRoyale.Unity.View
         /// <summary>True between a knockout's shatter and the piece reappearing in its yard.</summary>
         public bool IsHidden => _hidden;
 
+        /// <summary>True while a rigged figure folds, before its shatter (LB5c).</summary>
+        public bool IsCollapsing => _collapsing;
+
+        /// <summary>
+        /// True from a knockout until its shards have landed: the fold, then
+        /// the shatter. The presentation queue waits on it, so the piece is
+        /// not brought back to its yard mid-fall.
+        /// </summary>
+        public bool IsKnockingOut => _collapsing || _shardClock > 0f;
+
+        /// <summary>Where the piece stands on the board, before the hop, the squash and the idle are drawn on top.</summary>
+        public Vector3 Ground => _ground;
+
         /// <summary>Whether the piece is drawn seated. Follows the presentation, not the engine.</summary>
         public bool Seated => _seated ?? true;
 
-        /// <summary>Whether the current pose is a rendered figure rather than the procedural one.</summary>
+        /// <summary>Whether the current pose is a rendered figure rather than the procedural one. True for a rig too.</summary>
         public bool ShowsRenderedArt => _rendered;
+
+        /// <summary>Whether the figure is drawn as a rig (LB5b).</summary>
+        public bool ShowsRig => RigActive;
+
+        /// <summary>Whether a rigged figure faces the left of the screen.</summary>
+        public bool FacesLeft => _facesLeft;
+
+        /// <summary>Where a rigged figure looks at rest. The board's centre, set by whoever places the pieces.</summary>
+        public Vector3 BoardCentre { get; set; }
 
         /// <summary>The health the piece last showed. The HUD label reads this, so it never runs ahead of the hit.</summary>
         public int ShownHealth { get; private set; }
@@ -253,9 +336,20 @@ namespace NonaRoyale.Unity.View
         public bool TryScreenBounds(Camera camera, out Rect rect)
         {
             rect = default;
-            if (camera == null || _body == null || !_body.enabled || _hidden) return false;
+            if (camera == null || _body == null || _hidden) return false;
 
-            var bounds = _body.bounds;
+            // A rig is the union of its parts; the body child draws nothing then.
+            Bounds bounds;
+            if (RigActive)
+            {
+                if (!_rig.TryBounds(out bounds)) return false;
+            }
+            else
+            {
+                if (!_body.enabled) return false;
+                bounds = _body.bounds;
+            }
+
             float minX = float.MaxValue, minY = float.MaxValue;
             float maxX = float.MinValue, maxY = float.MinValue;
 
@@ -282,6 +376,7 @@ namespace NonaRoyale.Unity.View
         public PieceMark Marks => _marks;
 
         private bool Reduced => _motion != null && _motion.ReducedMotion;
+        private bool RigActive => _rig != null && _rig.Active;
         private float Rate => _motion != null ? _motion.Rate : 1f;
 
         /// <summary>A procedural figure takes the seat colour; a rendered one is drawn as painted.</summary>
@@ -301,6 +396,9 @@ namespace NonaRoyale.Unity.View
 
             // Pieces breathe out of step with each other.
             _idlePhase = (op.Id * 0.618f) % 1f * Mathf.PI * 2f;
+
+            // A rig breathes on the same clock, from the same phase.
+            _animator = new RigAnimator(_idlePhase / 1.8f);
 
             // Everything that stands up hangs off one child, so the lean is
             // applied once (V1b). The ground markings stay on the root, where
@@ -332,7 +430,7 @@ namespace NonaRoyale.Unity.View
             _pin = Child("pin", PinSize, Vector3.zero, _figure);
             _pin.sprite = PieceShape.For(op);
             _pin.color = UiTheme.PieceEmblem;
-            _pin.sortingOrder = 5;
+            _pin.sortingOrder = OverlayOrder;
 
             BuildSeatBase();
             BuildHealthBar();
@@ -356,10 +454,29 @@ namespace NonaRoyale.Unity.View
             _seated = seated;
 
             var frame = seated ? FigureLayout.Bust : FigureLayout.Pawn;
-            var art = OperatorArtLibrary.Figure(Operator.Name, seated ? FigurePose.Seated : FigurePose.Standing);
-            _rendered = art != null;
+            var pose = seated ? FigurePose.Seated : FigurePose.Standing;
 
-            if (_rendered)
+            // A render, then a rig, then the look book, then the pawn.
+            var rig = OperatorArtLibrary.Rendered(Operator.Name, pose) == null ? OperatorRigArt.For(Operator.Name) : null;
+            var art = rig == null ? OperatorArtLibrary.Figure(Operator.Name, pose) : null;
+            _rendered = art != null || rig != null;
+
+            if (rig != null)
+            {
+                _layout = FigureLayout.Fit(
+                    seated ? rig.SeatedBottom : rig.RestBottom,
+                    seated ? rig.SeatedTop : rig.RestTop,
+                    frame,
+                    seated ? ArtSeatedHeightScale : ArtStandingHeightScale,
+                    seated ? FigureLayout.SeatedChest : FigureLayout.StandingChest);
+
+                _body.sprite = null;
+                _flashOverlay.sprite = null;
+                _outline.enabled = false;
+                _pin.transform.localPosition = new Vector3(0f, _layout.PinY, 0f);
+                _pin.transform.localScale = Vector3.one * ArtPinSize;
+            }
+            else if (art != null)
             {
                 _layout = FigureLayout.Fit(art.OpaqueBottom, art.OpaqueTop, frame,
                     seated ? ArtSeatedHeightScale : ArtStandingHeightScale,
@@ -386,6 +503,8 @@ namespace NonaRoyale.Unity.View
             _flashOverlay.enabled = false;
             _body.transform.localPosition = new Vector3(0f, _layout.ArtY, 0f);
             _body.transform.localScale = Vector3.one * _layout.ArtScale;
+
+            ShowRig(rig, seated);
 
             // The halo sits over the head; a seated figure's head is lower.
             _halo.transform.localPosition = new Vector3(0f, _layout.HeadY, 0f);
@@ -458,6 +577,8 @@ namespace NonaRoyale.Unity.View
         {
             _path.Clear();
             _hopping = false;
+            _walkCells = 0f;
+            _animator?.StopCast();
 
             foreach (var point in waypoints) _path.Enqueue(point);
 
@@ -491,6 +612,9 @@ namespace NonaRoyale.Unity.View
             DrawHealth(Operator.Health);
             StartPop(0.45f, rise: true);
 
+            // A rigged figure stands up out of a crouch inside the pop.
+            if (RigActive) _animator.Rise(_motion != null ? _motion.Tween(RigRiseSeconds) : RigRiseSeconds);
+
             var ring = UiTheme.WithAlpha(BoardLayout.ColourOf(Operator.Owner), 0.9f);
             FxSprite.Spawn(transform.parent, Primitives.Ring, ring, 2,
                 new FxPose(position, Vector3.one * (_baseScale * 0.5f)),
@@ -500,11 +624,31 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>
         /// A knockout: the figure breaks into shards in its seat colour and is
-        /// hidden until <see cref="Reappear"/>.
+        /// hidden until <see cref="Reappear"/>. A standing rigged figure folds
+        /// first and shatters as the fold ends (LB5c).
         /// </summary>
         public void Shatter()
         {
+            if (_hidden || _collapsing) return;
+
+            if (RigActive && !Seated)
+            {
+                _collapsing = true;
+                _path.Clear();
+                _hopping = false;
+                _hold = 0f;
+                _animator.Knockout(_motion != null ? _motion.Tween(RigFoldSeconds) : RigFoldSeconds);
+                return;
+            }
+
+            ShatterNow();
+        }
+
+        /// <summary>The shards, and the piece hidden.</summary>
+        private void ShatterNow()
+        {
             if (_hidden) return;
+            _collapsing = false;
 
             var at = transform.position;
             var colour = BoardLayout.ColourOf(Operator.Owner);
@@ -525,9 +669,11 @@ namespace NonaRoyale.Unity.View
             }
 
             _hidden = true;
+            _shardClock = seconds;
             _path.Clear();
             _hopping = false;
             _hold = 0f;
+            _animator?.Stop();
             Draw();
         }
 
@@ -535,6 +681,9 @@ namespace NonaRoyale.Unity.View
         public void Reappear(Vector3 position)
         {
             _hidden = false;
+            _collapsing = false;
+            _shardClock = 0f;
+            _animator?.Clear();
             Place(position);
             StartPop(0.4f, rise: false);
         }
@@ -551,6 +700,40 @@ namespace NonaRoyale.Unity.View
         /// says <i>who</i>, which a number rising off a crowded cell does not.
         /// </summary>
         public void Flash() => _flash = 1f;
+
+        /// <summary>
+        /// A rigged figure's recoil (LB5c): it turns to face
+        /// <paramref name="from"/>, when the striker is known, and rocks back
+        /// away from it. No-op for any other figure, whose hit is the flash alone.
+        /// </summary>
+        public void Recoil(Vector3? from)
+        {
+            if (!RigActive || Seated || _hidden || _collapsing) return;
+
+            if (from.HasValue) TurnToward(from.Value.x);
+            _animator.Hit(_motion != null ? _motion.Tween(RigHitSeconds) : RigHitSeconds);
+        }
+
+        /// <summary>
+        /// A rigged figure's cast (LB5c): it turns to <paramref name="aim"/>
+        /// and raises its device toward it, lit cyan for the hold, which ends
+        /// with a cast tell of <paramref name="tellSeconds"/>. With no aim it
+        /// casts where it faces. No-op for any other figure.
+        /// </summary>
+        public void Cast(Vector3? aim, float tellSeconds)
+        {
+            if (!RigActive || Seated || _hidden || _collapsing) return;
+
+            float elevation = 0f;
+            if (aim.HasValue)
+            {
+                TurnToward(aim.Value.x);
+                elevation = RigAnimator.Elevation(_ground.x, _ground.y, aim.Value.x, aim.Value.y);
+            }
+
+            var pose = RigAnimator.Aimed(_rig.Current.Rig, elevation);
+            _animator.Cast(pose, RigClips.CastLengthFor(tellSeconds));
+        }
 
         /// <summary>
         /// Shows <paramref name="health"/> on the bar and the label at the
@@ -579,6 +762,7 @@ namespace NonaRoyale.Unity.View
             SetPose(Operator.IsInYard);
 
             _body.color = _rendered ? WithAlpha(BodyColour) : WithAlpha(Color.Lerp(BodyColour, Color.white, _flash));
+            if (_rig != null) _rig.SetAlpha(_alpha);
             _outline.color = WithAlpha(_outline.color);
             _pin.color = WithAlpha(_pin.color);
             TintSeatBase();
@@ -651,12 +835,12 @@ namespace NonaRoyale.Unity.View
             _healthBack = Child("health_back", 1f, new Vector3(0f, FigureLayout.Pawn.BarY, 0f), _figure);
             _healthBack.sprite = Primitives.Square;
             _healthBack.color = UiTheme.PieceBarBack;
-            _healthBack.sortingOrder = 5;
+            _healthBack.sortingOrder = OverlayOrder;
             _healthBack.transform.localScale = new Vector3(0.74f, 0.13f, 1f);
 
             _healthFill = Child("health_fill", 1f, new Vector3(0f, FigureLayout.Pawn.BarY, 0f), _figure);
             _healthFill.sprite = Primitives.Square;
-            _healthFill.sortingOrder = 6;
+            _healthFill.sortingOrder = OverlayOrder + 1;
         }
 
         private void BuildMarks()
@@ -672,7 +856,7 @@ namespace NonaRoyale.Unity.View
             _halo = Child("halo", 0.5f, Vector3.zero, _figure);
             _halo.sprite = BoardArt.Halo;
             _halo.color = SelectColour;
-            _halo.sortingOrder = 6;
+            _halo.sortingOrder = OverlayOrder + 1;
             _halo.enabled = false;
 
             _targetRing = Child("target_ring", 1f, Vector3.zero);
@@ -709,11 +893,21 @@ namespace NonaRoyale.Unity.View
                 if (_pop >= length) _pop = -1f;
             }
 
+            if (_shardClock > 0f) _shardClock = Mathf.Max(0f, _shardClock - rated);
+
             if (_path.Count > 0) Hop(rated);
             else if (_hold > 0f) _hold -= rated;   // a bounced piece rests on the contested cell
             else _ground = Vector3.Lerp(_ground, _target, Mathf.Clamp01(rated * SettleSpeed));
 
-            if (!_hopping && _path.Count == 0 && _hold <= 0f) _idleTime += delta;
+            bool idle = !_hopping && _path.Count == 0 && _hold <= 0f;
+            if (idle) _idleTime += delta;
+
+            if (RigActive)
+            {
+                _animator.Advance(idle ? delta : 0f, rated);
+                if (_collapsing && _animator.Folded) ShatterNow();
+                Face();
+            }
 
             Draw();
         }
@@ -721,6 +915,14 @@ namespace NonaRoyale.Unity.View
         private void AnimateFlash(float delta)
         {
             if (_body == null) return;
+
+            if (RigActive)
+            {
+                // Every part carries its own white silhouette.
+                if (_flash > 0f) _flash = Mathf.Max(0f, _flash - delta * 4f);
+                _rig.Flash(_flash * ArtFlashStrength * _alpha);
+                return;
+            }
 
             if (_flash <= 0f)
             {
@@ -760,11 +962,15 @@ namespace NonaRoyale.Unity.View
             float cells = Mathf.Max(0.25f, Vector3.Distance(_hopFrom, next) / Mathf.Max(0.01f, _stepDistance));
             float speed = Reduced ? GlidePerSecond : HopsPerSecond;
             _hopT += rated * speed / cells;
+            _segmentCells = cells;
+
+            // A rigged figure steps rather than hops: no lift, no landing squash.
+            bool hops = !Reduced && !RigActive;
 
             if (_hopT < 1f)
             {
                 _ground = Vector3.Lerp(_hopFrom, next, _hopT);
-                _lift = Reduced ? 0f : Mathf.Sin(_hopT * Mathf.PI) * HopHeight * _stepDistance;
+                _lift = hops ? Mathf.Sin(_hopT * Mathf.PI) * HopHeight * _stepDistance : 0f;
                 return;
             }
 
@@ -772,7 +978,8 @@ namespace NonaRoyale.Unity.View
             _lift = 0f;
             _path.Dequeue();
             _hopping = false;
-            if (!Reduced) _land = 1f;
+            _walkCells += cells;
+            if (hops) _land = 1f;
 
             Stepped?.Invoke(this);
         }
@@ -781,8 +988,10 @@ namespace NonaRoyale.Unity.View
         private void Draw()
         {
             float sx = 1f, sy = 1f, roll = 0f;
+            bool rig = RigActive;
 
-            if (!Reduced)
+            // A rig moves its own joints; the whole-sprite squash, breath and sway are for flat figures.
+            if (!Reduced && !rig)
             {
                 // Stretch in the air, squash on landing.
                 float air = _hopping ? Mathf.Sin(_hopT * Mathf.PI) : 0f;
@@ -814,7 +1023,7 @@ namespace NonaRoyale.Unity.View
                     : Mathf.Lerp(1.15f, 1f, (t - 0.55f) / 0.45f);
 
                 // A rise stands up: taller before it is wider.
-                if (_popRise) sy *= 1f + 0.18f * Mathf.Sin(t * Mathf.PI);
+                if (_popRise && !rig) sy *= 1f + 0.18f * Mathf.Sin(t * Mathf.PI);
             }
 
             float scale = _hidden ? 0f : _baseScale * _hover * pop;
@@ -841,6 +1050,104 @@ namespace NonaRoyale.Unity.View
             GroundMarks(scale);
             Stand();
             Depth();
+            PoseRig();
+        }
+
+        // ── The rig (LB5b) ───────────────────────────────────────────────
+
+        /// <summary>
+        /// Shows the rig for a pose, building its view on first use, or hides
+        /// it when the pose draws something else.
+        /// </summary>
+        private void ShowRig(RigArt art, bool seated)
+        {
+            if (art == null)
+            {
+                if (_rig != null) _rig.Active = false;
+                return;
+            }
+
+            if (_rig == null || _rig.Art != art)
+            {
+                _rig?.Destroy();
+                _rig = new RigView(_body.transform, art, RigBaseOrder);
+            }
+
+            _rig.Active = true;
+            _rig.Seated = seated;
+            _rig.FacesLeft = _facesLeft;
+            _rig.SetAlpha(_alpha);
+            _animator.Seated = seated;
+            _pinPlaced = false;
+            PoseRig();
+        }
+
+        /// <summary>Turns a rigged figure toward where it is going, or toward the board centre at rest.</summary>
+        private void Face()
+        {
+            // A cast, a recoil or a fold keeps the facing it was given.
+            if (_animator.Casting || _animator.Recoiling || _animator.KnockedOut) return;
+
+            float toX;
+            if (_path.Count > 0) toX = _path.Peek().x;
+            else if (_hold > 0f) return;   // resting on a contested cell: keep looking where it went
+            else toX = BoardCentre.x;
+
+            TurnToward(toX);
+        }
+
+        /// <summary>Faces a rigged figure toward a point across the board, outside the dead zone.</summary>
+        private void TurnToward(float toX)
+        {
+            bool left = RigAnimator.FaceLeft(_ground.x, toX, _facesLeft, FacingDeadZone * _stepDistance);
+            if (left == _facesLeft) return;
+
+            _facesLeft = left;
+            _rig.FacesLeft = left;
+            _pinPlaced = false;
+
+            // A cast built for the other facing would be mirrored wrong.
+            _animator.StopCast();
+        }
+
+        /// <summary>Places the rig's parts for this frame, and the pin on its chest.</summary>
+        private void PoseRig()
+        {
+            if (!RigActive) return;
+
+            _animator.Seated = Seated;
+            _animator.ReducedMotion = Reduced;
+            _animator.WalkCells = _path.Count > 0 ? _walkCells + (_hopping ? _hopT * _segmentCells : 0f) : (float?)null;
+
+            var facing = _rig.Current;
+            if (!_pinPlaced) PlacePin(facing);
+
+            _animator.Sample(facing.Rig, facing.Crouch, out var a, out var b, out float t);
+            _rig.Powered = _animator.Powered;
+            _rig.Apply(a, b, t);
+
+            // The pin rides the chest: wherever the chest carries the point it sits on in the pose's base.
+            var at = _rig.Place(RigBones.Chest, _pinOnChest.x, _pinOnChest.y);
+            float scale = _layout.ArtScale;
+            _pin.transform.localPosition = new Vector3(at.x * scale, _layout.ArtY + at.y * scale, 0f);
+        }
+
+        /// <summary>
+        /// Finds the point on the chest bone that the layout's pin height
+        /// lands on in the base pose (rest standing, the seated pose seated).
+        /// </summary>
+        private void PlacePin(RigFacingArt facing)
+        {
+            var rig = facing.Rig;
+            var basePose = rig.Pose(Seated ? RigPoseNames.Seated : RigPoseNames.Rest);
+            var world = rig.Skeleton.Evaluate(basePose);
+            var chest = rig.Skeleton[RigBones.Chest];
+
+            float y = (_layout.PinY - _layout.ArtY) / Mathf.Max(0.0001f, _layout.ArtScale);
+            RigSkeleton.Untransform(world[RigBones.Chest], chest.PivotX, chest.PivotY, 0f, y, out float rx, out float ry);
+
+            _pinOnChest = new Vector2(rx, ry);
+            _pinPlaced = true;
         }
 
         /// <summary>

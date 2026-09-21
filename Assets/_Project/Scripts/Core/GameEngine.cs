@@ -41,7 +41,12 @@ namespace NonaRoyale.Core
         /// zero outright — so there is no <c>DamageResult</c> to take a label
         /// from (§10.3).
         /// </summary>
-        private const string ExecuteCause = "execute";
+        /// <remarks>
+        /// Public so the view can recognise an execute without restating the
+        /// string (AUDIO.md AU3: the mix drops out before the blow), as
+        /// <see cref="Services.DeferredOperatorEffects.ChargeCause"/> already is.
+        /// </remarks>
+        public const string ExecuteCause = "execute";
 
         private readonly IReadOnlyList<OperatorState> _operators;
         private readonly IReadOnlyDictionary<int, AbilityDefinition> _abilityBook;
@@ -1204,7 +1209,7 @@ namespace NonaRoyale.Core
                 case DamageOutcome.Sheltered: events.Add(new DamageSheltered(target)); break;
                 default:
                     events.Add(new DamageDealt(
-                        target, result.AmountApplied, result.RemainingHealth, result.Cause));
+                        target, result.AmountApplied, result.RemainingHealth, result.Cause, result.Type));
                     break;
             }
         }

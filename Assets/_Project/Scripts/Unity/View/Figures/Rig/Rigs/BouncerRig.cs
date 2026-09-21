@@ -73,6 +73,15 @@ namespace NonaRoyale.Unity.View
                 .Show(BareForearm)
                 .Show(GauntletOnTable);
             poses[RigPoseNames.Seated] = seated;
+            // His activity (ART_PROMPTS, "Seated"): turned outward, watching the
+            // room rather than playing. He sits back and lifts his chin; the
+            // bare arm stays on the felt, so the upper arm gives back what
+            // the chest takes.
+            poses[RigPoseNames.SeatedLook] = seated.Copy(RigPoseNames.SeatedLook)
+                .Turn(RigBones.Chest, 2.5f)
+                .Turn(RigBones.Head, 11f)
+                .Turn(RigBones.UpperArmNear, 27.5f)
+                .Turn(RigBones.UpperArmFar, -3f);
             poses[RigPoseNames.SeatedB] = seated.Copy(RigPoseNames.SeatedB)
                 .Turn(RigBones.Chest, 1f, 0f, 0.012f, 1.01f)
                 .Turn(RigBones.Head, 1f);

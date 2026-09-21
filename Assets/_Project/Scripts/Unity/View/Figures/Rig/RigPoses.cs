@@ -17,8 +17,11 @@ namespace NonaRoyale.Unity.View
         public const string Seated = "seated";
         public const string SeatedB = "seated.b";
 
+        /// <summary>The seated activity's other beat: leaning back to take in the room (LB5c).</summary>
+        public const string SeatedLook = "seated.look";
+
         /// <summary>The order the judging window shows them in.</summary>
-        public static readonly string[] Strip = { Rest, IdleA, IdleB, StepA, StepB, Cast, Hit, Knockout, Seated, SeatedB };
+        public static readonly string[] Strip = { Rest, IdleA, IdleB, StepA, StepB, Cast, Hit, Knockout, Seated, SeatedB, SeatedLook };
 
         /// <summary>Poses the feet must not move in.</summary>
         public static readonly string[] Planted = { Rest, IdleA, IdleB, Cast };
@@ -89,13 +92,15 @@ namespace NonaRoyale.Unity.View
                 .Turn(RigBones.UpperArmNear, 10f * k)
                 .Turn(RigBones.UpperArmFar, -10f * k));
 
-            // The hit: rocked back, away from whoever struck.
+            // The hit: rocked back, away from whoever struck. Strong enough to
+            // read at board scale in the 60 ms it peaks for (LB5c: the first
+            // 9° barely showed).
             Add(new RigPose(RigPoseNames.Hit)
-                .Turn(RigBones.Root, 0f, -0.05f * k)
-                .Turn(RigBones.Chest, 9f * k)
-                .Turn(RigBones.Head, 7f * k)
-                .Turn(RigBones.UpperArmNear, -14f * k)
-                .Turn(RigBones.UpperArmFar, 12f * k));
+                .Turn(RigBones.Root, 0f, -0.08f * k)
+                .Turn(RigBones.Chest, 14f * k)
+                .Turn(RigBones.Head, 10f * k)
+                .Turn(RigBones.UpperArmNear, -18f * k)
+                .Turn(RigBones.UpperArmFar, 16f * k));
 
             // The knockout: down on the knees and folding, just before the shatter.
             Add(new RigPose(RigPoseNames.Knockout)
@@ -117,6 +122,14 @@ namespace NonaRoyale.Unity.View
 
             Add(Seated(RigPoseNames.Seated, 0.42f, 0.72f));
             Add(Seated(RigPoseNames.SeatedB, 0.42f, 0.72f).Turn(RigBones.Chest, 1f, 0f, 0.012f, 1.01f));
+
+            // The seated activity's default: a lean back, the chin up. A recipe
+            // replaces it with its own (ART_PROMPTS, each block's "Seated").
+            Add(Seated(RigPoseNames.SeatedLook, 0.42f, 0.72f)
+                .Turn(RigBones.Chest, 2f)
+                .Turn(RigBones.Head, 5f)
+                .Turn(RigBones.UpperArmNear, -2f)
+                .Turn(RigBones.UpperArmFar, -2f));
 
             return poses;
         }

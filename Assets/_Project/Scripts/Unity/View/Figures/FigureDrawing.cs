@@ -122,6 +122,9 @@ namespace NonaRoyale.Unity.View
 
         public FigureShape Silhouette { get; }
         public FigureColour Base { get; }
+
+        /// <summary>Whether the drawing has a powered (cyan tell) layer, drawn only when powered.</summary>
+        public bool HasPowered => _powered.Count > 0;
         public FigureColour Ink { get; }
 
         /// <summary>The one line weight, in figure units (§2.2 rule 2).</summary>
@@ -183,9 +186,19 @@ namespace NonaRoyale.Unity.View
         /// pose, where the table hides the legs. The cut gets the ink line
         /// like any other edge.
         /// </summary>
-        public FigureDrawing Cropped(float waist)
+        public FigureDrawing Cropped(float waist) => CroppedBy(0f, waist, 0f, -1f, waist);
+
+        /// <summary>
+        /// The figure cut along any line: everything on the side
+        /// (<paramref name="nx"/>, <paramref name="ny"/>) points to, from the
+        /// point (<paramref name="px"/>, <paramref name="py"/>), is removed.
+        /// A rig part cut at the table line in its own, turned, rest space
+        /// (OPERATOR_LOOKBOOK.md, LB5b). No rim is drawn below
+        /// <paramref name="rimFloor"/>, as for <see cref="Cropped"/>.
+        /// </summary>
+        public FigureDrawing CroppedBy(float px, float py, float nx, float ny, float rimFloor)
         {
-            var cut = FigureShape.Intersect(Silhouette, FigureShape.HalfPlane(0f, waist, 0f, -1f));
+            var cut = FigureShape.Intersect(Silhouette, FigureShape.HalfPlane(px, py, nx, ny));
             var copy = new FigureDrawing(cut, Base, Ink, LineWeight);
 
             copy._blocks.AddRange(_blocks);
@@ -195,7 +208,7 @@ namespace NonaRoyale.Unity.View
             copy._powered.AddRange(_powered);
             copy.RimWidth = RimWidth;
             copy.RimColour = RimColour;
-            copy.RimFloor = Math.Max(RimFloor, waist);
+            copy.RimFloor = Math.Max(RimFloor, rimFloor);
             copy.RimEdges = RimEdges;
             return copy;
         }

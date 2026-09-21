@@ -38,6 +38,13 @@ namespace NonaRoyale.Unity.Audio
     /// time with <see cref="WarmVoice"/> when a match is dealt, from
     /// <c>…/Resources/Audio/Voice/</c> (<see cref="VoiceSet"/>). An operator
     /// with no files gets synthesized <see cref="VoiceBlips"/>.
+    ///
+    /// <b>Ability signatures (AU3)</b> load per slug on first use, or ahead of
+    /// time with <see cref="WarmSignatures"/> when a match is dealt, from
+    /// <c>…/Resources/Audio/SFX/Abilities/&lt;Slug&gt;_&lt;Moment&gt;</c>
+    /// (<see cref="AbilitySounds"/>). A moment with no file falls back to its
+    /// <see cref="SignatureRecipes"/> stand-in if it has one, and otherwise has
+    /// no clip, so the director plays the generic cue.
     /// </remarks>
     public sealed class SoundBank
     {
@@ -73,6 +80,8 @@ namespace NonaRoyale.Unity.Audio
         private readonly Dictionary<SoundCue, List<AudioClip>> _sfx = new Dictionary<SoundCue, List<AudioClip>>();
         private readonly Dictionary<MusicCue, AudioClip> _music = new Dictionary<MusicCue, AudioClip>();
         private readonly Dictionary<string, VoiceSet> _voices = new Dictionary<string, VoiceSet>();
+        private readonly Dictionary<string, List<AudioClip>> _signatures = new Dictionary<string, List<AudioClip>>();
+        private readonly HashSet<string> _warmedSlugs = new HashSet<string>();
         private readonly List<Job> _jobs = new List<Job>();
 
         private sealed class Job
@@ -105,7 +114,24 @@ namespace NonaRoyale.Unity.Audio
                 case SoundCue.Knockout: return new CueSpec(1f, 0.03f, 0.1f);
                 case SoundCue.TurnStart: return new CueSpec(0.45f, 0.03f, 0.3f);
                 case SoundCue.UiClick: return new CueSpec(0.56f, 0.04f, 0.03f);
+                // AU3: the layers sit under the impact they belong to, never over it.
+                case SoundCue.LayerTech: return new CueSpec(0.6f, 0.05f, 0.04f);
+                case SoundCue.LayerAtomic: return new CueSpec(0.8f, 0.03f, 0.05f);
                 default: return new CueSpec(0.6f, 0f, 0.05f);
+            }
+        }
+
+        /// <summary>
+        /// How a signature moment is played (AU3). An impact sits at the big
+        /// hit's level, since it replaces it; a tell at the generic tell's.
+        /// </summary>
+        public static CueSpec SpecOf(SignatureMoment moment)
+        {
+            switch (moment)
+            {
+                case SignatureMoment.Impact: return new CueSpec(0.95f, 0.04f, 0.05f);
+                case SignatureMoment.Assist: return new CueSpec(0.8f, 0.03f, 0.1f);
+                default: return new CueSpec(0.8f, 0.03f, 0.1f);
             }
         }
 
@@ -120,7 +146,7 @@ namespace NonaRoyale.Unity.Audio
                 var list = new List<AudioClip>();
                 _sfx[cue] = list;
 
-                if (LoadFiles(cue, list)) continue;
+                if (LoadFiles(SfxFolder + cue, list)) continue;
 
                 for (int v = 0; v < SfxRecipes.VariantsOf(cue); v++)
                 {
@@ -215,17 +241,52 @@ namespace NonaRoyale.Unity.Audio
             return _voices[name].Pick(slot, random);
         }
 
+        /// <summary>
+        /// Loads an ability's signature files, or starts synthesizing its
+        /// stand-ins. Does nothing for a slug already loaded.
+        /// </summary>
+        public void WarmSignature(string slug)
+        {
+            if (string.IsNullOrEmpty(slug) || !_warmedSlugs.Add(slug)) return;
+
+            foreach (SignatureMoment moment in Enum.GetValues(typeof(SignatureMoment)))
+            {
+                string key = AbilitySounds.Key(slug, moment);
+                var list = new List<AudioClip>();
+                _signatures[key] = list;
+
+                if (LoadFiles(SfxFolder + AbilitySounds.Folder + key, list)) continue;
+
+                for (int v = 0; v < SignatureRecipes.VariantsOf(key); v++)
+                {
+                    int variant = v;
+                    Start($"sig_{key}_{v}", () => SignatureRecipes.Build(key, variant), clip => list.Add(clip));
+                }
+            }
+        }
+
+        /// <summary>A clip for the moment, or null while none is ready (or the ability has none).</summary>
+        public AudioClip Signature(string slug, SignatureMoment moment, System.Random random)
+        {
+            if (string.IsNullOrEmpty(slug)) return null;
+
+            WarmSignature(slug);
+            var list = _signatures[AbilitySounds.Key(slug, moment)];
+            return list.Count == 0 ? null : list[random.Next(list.Count)];
+        }
+
         private void Start(string name, Func<float[]> build, Action<AudioClip> done) =>
             _jobs.Add(new Job { Name = name, Work = Task.Run(build), Done = done });
 
-        private static bool LoadFiles(SoundCue cue, List<AudioClip> into)
+        /// <summary>Loads <paramref name="path"/> and its <c>_2</c> … <c>_8</c> variants.</summary>
+        private static bool LoadFiles(string path, List<AudioClip> into)
         {
-            var first = Resources.Load<AudioClip>(SfxFolder + cue);
+            var first = Resources.Load<AudioClip>(path);
             if (first != null) into.Add(first);
 
             for (int n = 2; n <= MaxFileVariants; n++)
             {
-                var more = Resources.Load<AudioClip>($"{SfxFolder}{cue}_{n}");
+                var more = Resources.Load<AudioClip>($"{path}_{n}");
                 if (more != null) into.Add(more);
             }
 

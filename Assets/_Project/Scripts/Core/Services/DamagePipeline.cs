@@ -96,7 +96,7 @@ namespace NonaRoyale.Core.Services
             {
                 return new DamageResult(
                     DamageOutcome.Sheltered, 0, target.Health, target.Id,
-                    damage.SourceName, damage.Amount);
+                    damage.SourceName, damage.Amount, damage.Type);
             }
 
             // 0. Equilibrium (§5.17, 2026-09-17). Rescales a cast's hit by the
@@ -129,7 +129,7 @@ namespace NonaRoyale.Core.Services
             {
                 return new DamageResult(
                     DamageOutcome.Absorbed, 0, target.Health, target.Id,
-                    damage.SourceName, damage.Amount);
+                    damage.SourceName, damage.Amount, damage.Type);
             }
 
             // 2. Evasion — Normal and Tech, one charge per round, terminal.
@@ -137,7 +137,7 @@ namespace NonaRoyale.Core.Services
             {
                 return new DamageResult(
                     DamageOutcome.Evaded, 0, target.Health, target.Id,
-                    damage.SourceName, damage.Amount);
+                    damage.SourceName, damage.Amount, damage.Type);
             }
 
             // 3. Shield — Normal and Tech. Subtracts rather than stops (§5.6).
@@ -162,7 +162,7 @@ namespace NonaRoyale.Core.Services
             {
                 return new DamageResult(
                     DamageOutcome.Absorbed, 0, target.Health, target.Id,
-                    damage.SourceName, mitigated);
+                    damage.SourceName, mitigated, damage.Type);
             }
 
             // 4. Apply.
@@ -177,7 +177,8 @@ namespace NonaRoyale.Core.Services
                 target.Health,
                 target.Id,
                 damage.SourceName,
-                mitigated);
+                mitigated,
+                damage.Type);
         }
 
         /// <summary>

@@ -267,9 +267,10 @@ namespace NonaRoyale.Core.Events
     /// </remarks>
     public sealed class DamageDealt : IGameEvent
     {
-        public DamageDealt(OperatorState target, int amount, int remainingHealth, string cause = null)
+        public DamageDealt(OperatorState target, int amount, int remainingHealth, string cause = null,
+            DamageType? type = null)
         {
-            Target = target; Amount = amount; RemainingHealth = remainingHealth; Cause = cause;
+            Target = target; Amount = amount; RemainingHealth = remainingHealth; Cause = cause; Type = type;
         }
         public OperatorState Target { get; }
         public int Amount { get; }
@@ -277,6 +278,16 @@ namespace NonaRoyale.Core.Events
 
         /// <summary>"bleed", "mark", "collision", "ability", "execute", "self", or null.</summary>
         public string Cause { get; }
+
+        /// <summary>
+        /// Normal, Tech or Atomic, as the instance arrived; null where no
+        /// instance existed (an execute, a self-inflicted price).
+        /// </summary>
+        /// <remarks>
+        /// Optional and appended, like <see cref="Cause"/>: for the view's
+        /// damage-type layer under an impact (AUDIO.md AU3), read by no rule.
+        /// </remarks>
+        public DamageType? Type { get; }
 
         public override string ToString() =>
             Cause == null

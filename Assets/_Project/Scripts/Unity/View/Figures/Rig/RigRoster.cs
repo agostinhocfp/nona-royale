@@ -5,8 +5,10 @@ namespace NonaRoyale.Unity.View
 {
     /// <summary>
     /// Every operator with a rig (OPERATOR_LOOKBOOK.md, LB5). Judged in the
-    /// Look Book window; not on the board until LB5b, so the front-view
-    /// <see cref="LookRoster"/> still draws in play.
+    /// Look Book window, and drawn on the board since LB5b
+    /// (<see cref="OperatorRigArt"/>): a rig replaces the operator's
+    /// front-view <see cref="LookRoster"/> figure, and a real render still
+    /// replaces both.
     /// </summary>
     public static class RigRoster
     {

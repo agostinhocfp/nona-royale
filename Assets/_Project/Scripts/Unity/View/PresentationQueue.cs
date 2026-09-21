@@ -22,6 +22,8 @@ namespace NonaRoyale.Unity.View
         Rise,
         /// <summary>Damage, healing, evasion or absorption shows on a piece.</summary>
         Hit,
+        /// <summary>The mix drops out before an execute lands (AUDIO.md AU3). Sound only.</summary>
+        Hush,
         /// <summary>An operator is knocked out.</summary>
         Knockout,
         /// <summary>The board and the HUD catch up with the engine.</summary>

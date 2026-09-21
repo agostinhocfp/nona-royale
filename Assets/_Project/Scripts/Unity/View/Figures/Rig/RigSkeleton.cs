@@ -75,6 +75,7 @@ namespace NonaRoyale.Unity.View
     {
         private readonly Dictionary<string, RigBone> _bones = new Dictionary<string, RigBone>();
         private readonly List<RigBone> _order = new List<RigBone>();
+        private readonly List<int> _parentIndex = new List<int>();
 
         /// <summary>Parents before children, in the order they were added.</summary>
         public IReadOnlyList<RigBone> Bones => _order;
@@ -88,6 +89,7 @@ namespace NonaRoyale.Unity.View
 
             var bone = new RigBone(name, parent, pivotX, pivotY);
             _bones[name] = bone;
+            _parentIndex.Add(parent == null ? -1 : _order.IndexOf(_bones[parent]));
             _order.Add(bone);
             return this;
         }
@@ -95,6 +97,41 @@ namespace NonaRoyale.Unity.View
         public bool Has(string name) => name != null && _bones.ContainsKey(name);
 
         public RigBone this[string name] => _bones[name];
+
+        /// <summary>A bone's place in <see cref="Bones"/>, or −1.</summary>
+        public int IndexOf(string name) => name != null && _bones.TryGetValue(name, out var bone) ? _order.IndexOf(bone) : -1;
+
+        /// <summary>
+        /// Every bone placed for the blend of two poses, into an array in
+        /// <see cref="Bones"/> order. The same answer as
+        /// <see cref="Evaluate(RigPose)"/> on <see cref="RigPose.Lerp"/>, with
+        /// nothing allocated, since a piece on the board asks every frame
+        /// (OPERATOR_LOOKBOOK.md, LB5b).
+        /// </summary>
+        public void Evaluate(RigPose a, RigPose b, float t, BoneWorld[] into)
+        {
+            if (into == null || into.Length < _order.Count)
+                throw new ArgumentException($"Needs room for {_order.Count} bones.", nameof(into));
+
+            for (int i = 0; i < _order.Count; i++)
+            {
+                var bone = _order[i];
+                var ta = a != null ? a.Get(bone.Name) : BoneTurn.Rest;
+                var own = b == null || ReferenceEquals(a, b) ? ta : BoneTurn.Lerp(ta, b.Get(bone.Name), t);
+
+                int parentIndex = _parentIndex[i];
+                if (parentIndex < 0)
+                {
+                    into[i] = new BoneWorld(bone.PivotX + own.Dx, bone.PivotY + own.Dy, own.Degrees, own.Scale);
+                    continue;
+                }
+
+                var parent = into[parentIndex];
+                var p = _order[parentIndex];
+                Transform(parent, p.PivotX, p.PivotY, bone.PivotX, bone.PivotY, out float px, out float py);
+                into[i] = new BoneWorld(px + own.Dx, py + own.Dy, parent.Degrees + own.Degrees, own.Scale);
+            }
+        }
 
         /// <summary>Every bone placed for a pose: parents turn their children with them.</summary>
         public Dictionary<string, BoneWorld> Evaluate(RigPose pose)

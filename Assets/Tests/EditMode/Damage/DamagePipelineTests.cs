@@ -472,6 +472,53 @@ namespace NonaRoyale.Core.Tests.Damage
             Assert.That(result.Outcome, Is.EqualTo(DamageOutcome.Neutralized));
         }
 
+        // ── Damage type on the result (AUDIO.md AU3) ─────────────────────
+
+        [Test]
+        public void ADealtHit_ReportsItsType()
+        {
+            // For the view's type layer under an impact; read by no rule.
+            Assert.That(_pipeline.Apply(Assassin(), Normal(1)).Type, Is.EqualTo(DamageType.Normal));
+            Assert.That(_pipeline.Apply(Assassin(), Tech(1)).Type, Is.EqualTo(DamageType.Tech));
+            Assert.That(_pipeline.Apply(Assassin(), Atomic(1)).Type, Is.EqualTo(DamageType.Atomic));
+        }
+
+        [Test]
+        public void AnAtomicHitThroughAShield_StillReportsAtomic()
+        {
+            _mitigation.ShieldPool = 5;
+
+            var result = _pipeline.Apply(Assassin(), Atomic(2));
+
+            Assert.That(result.Outcome, Is.EqualTo(DamageOutcome.Dealt));
+            Assert.That(result.Type, Is.EqualTo(DamageType.Atomic));
+        }
+
+        [Test]
+        public void AStoppedHit_ReportsTheTypeThatWasStopped()
+        {
+            _mitigation.EvadeNext = true;
+            Assert.That(_pipeline.Apply(Assassin(), Normal(2)).Type, Is.EqualTo(DamageType.Normal));
+
+            _mitigation.WardsTech = true;
+            Assert.That(_pipeline.Apply(Assassin(), Tech(2)).Type, Is.EqualTo(DamageType.Tech));
+
+            _mitigation.WardsTech = false;
+            _mitigation.ShieldPool = 5;
+            var absorbed = _pipeline.Apply(Assassin(), Normal(2));
+            Assert.That(absorbed.Outcome, Is.EqualTo(DamageOutcome.Absorbed));
+            Assert.That(absorbed.Type, Is.EqualTo(DamageType.Normal));
+        }
+
+        [Test]
+        public void SelfDamage_HasNoType()
+        {
+            // All-In Mauling's price is never an instance, so it has no type to report.
+            var bouncer = new OperatorState(1, "Bouncer", PlayerColor.Red, 12, 1.5);
+
+            Assert.That(_pipeline.ApplyToSelf(bouncer, 1).Type, Is.Null);
+        }
+
         [Test]
         public void NegativeDamage_IsRejected()
         {

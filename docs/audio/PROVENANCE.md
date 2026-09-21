@@ -9,6 +9,7 @@
 | Asset | Source | Notes |
 | --- | --- | --- |
 | Every `SoundCue` effect | `Unity/Audio/SfxRecipes.cs` | Synthesized at runtime by the game |
+| Ability signature stand-ins (Bouncer, Syla, Kurbyn) and the damage-type layers | `Unity/Audio/SignatureRecipes.cs`, `SfxRecipes.cs` | Synthesized at runtime (AU3) |
 | Placeholder voice lines for operators with no recordings | `Unity/Audio/VoiceBlips.cs` | Synthesized at runtime; no speech, no voice source |
 | Fallback `Title` and `Match` loops, `Win` sting | `Unity/Audio/MusicRecipes.cs`, `TarantellaScore.cs` | `Match` is arranged from "Deborah", written and produced by the designer (artist name Stutt-) |
 
@@ -48,3 +49,15 @@ For each pack added, record its name, vendor, URL, licence (for example the Unit
 | `Audio/Resources/Audio/SFX/DiceShake.wav`, `_2`, `_3` | Casino Audio `dice-shake-1/2/3.ogg` | Mono, 44.1 kHz; start at the first sound; cut to 0.68 s with a 160 ms fade-out; peak-limited to −1 dBFS |
 | `Audio/Resources/Audio/SFX/DiceLand.wav`, `_2`, `_3` | Casino Audio `dice-throw-1/2/3.ogg` | Mono, 44.1 kHz; start at the first sound; 80 ms fade-out; peak-limited to −1 dBFS |
 | `Audio/Resources/Audio/SFX/Step.wav`, `_2`, `_3` | Casino Audio `chip-lay-1/2/3.ogg` | Mono, 44.1 kHz; start 2 ms before the first sound; cut to 110 ms (`chip-lay-3`: 65 ms, before its bounce) with a squared fade-out of 40 ms (25 ms); 12 dB/octave low-pass at 6 kHz; matched to one A-weighted level, loudest peak −1 dBFS |
+
+## Generated sound effects (ElevenLabs, Adobe Firefly)
+
+None ship yet. Prompts: `docs/audio/SFX_PROMPTS.md`.
+
+**Before the first file ships, record:**
+- the tool, the plan and the account;
+- the commercial-use terms that applied on the generation date (checked at the source, not a third-party summary);
+- whether the tool asks for attribution or an AI-content disclosure.
+
+| File in the game | Source take | Generated | Tool / plan | Prompt (`SFX_PROMPTS.md` §) | Edits |
+| --- | --- | --- | --- | --- | --- |

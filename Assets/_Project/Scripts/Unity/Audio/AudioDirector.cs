@@ -35,6 +35,12 @@ namespace NonaRoyale.Unity.Audio
     /// routed to its group, and a source's own volume is only its cue level
     /// and the fades above. Without the mixer, <see cref="Level"/> folds the
     /// player's levels back into each source, as AU1 did.
+    ///
+    /// <b>Ability signatures (AU3)</b> play through <see cref="PlaySignature"/>,
+    /// which reports whether it found a clip so the caller can fall back to
+    /// the generic cue. <see cref="Hush"/> drops the whole mix for a moment,
+    /// before an execute lands: effects and the voice stop, the music dips
+    /// and comes back slowly, and whatever plays after the hush plays at full.
     /// </remarks>
     public sealed class AudioDirector : MonoBehaviour
     {
@@ -52,6 +58,12 @@ namespace NonaRoyale.Unity.Audio
         /// <summary>How fast the music glides to its pause level and back.</summary>
         private const float PauseDipSeconds = 0.4f;
 
+        /// <summary>How fast a hush takes the mix down: quick, but not a click.</summary>
+        private const float HushFadeSeconds = 0.03f;
+
+        /// <summary>How long the music takes to come back after a hush.</summary>
+        private const float HushReturnSeconds = 0.8f;
+
         /// <summary>Gain of a voice line on top of the Voice bus.</summary>
         private const float VoiceGain = 1f;
 
@@ -62,6 +74,8 @@ namespace NonaRoyale.Unity.Audio
         private readonly SoundMixer _mixer = new SoundMixer();
         private readonly System.Random _random = new System.Random();
         private readonly float[] _lastPlayed = new float[64];
+        private readonly System.Collections.Generic.Dictionary<string, float> _lastSignature =
+            new System.Collections.Generic.Dictionary<string, float>();
 
         private AudioLevels _levels = new AudioLevels();
         private AudioSource[] _sfx;
@@ -87,6 +101,9 @@ namespace NonaRoyale.Unity.Audio
         private float _pauseDip = 1f;
         private float _stingEnds = -1f;
         private float _stingLevel = 1f;
+        private float _hushEnds = -1f;
+        private float _hushFast = 1f;
+        private float _hushMusic = 1f;
         private bool _built;
 
         /// <summary>The track that should be playing. Changing it crossfades.</summary>
@@ -136,8 +153,74 @@ namespace NonaRoyale.Unity.Audio
             if (clip == null) return;
 
             _lastPlayed[index] = now;
+            Emit(clip, spec, volume, SoundBank.BusOf(cue) == AudioBus.Ui, at);
+        }
 
-            bool ui = SoundBank.BusOf(cue) == AudioBus.Ui;
+        /// <summary>
+        /// Plays an ability's signature for <paramref name="moment"/>, panned
+        /// by <paramref name="at"/> (AU3).
+        /// </summary>
+        /// <returns>
+        /// True if the ability has a sound for the moment, whether it played
+        /// now or was held back because it played a moment ago. False when it
+        /// has none (or its stand-in is not built yet): the caller plays the
+        /// generic cue instead.
+        /// </returns>
+        public bool PlaySignature(string slug, SignatureMoment moment, Vector3? at = null)
+        {
+            if (!_built || string.IsNullOrEmpty(slug)) return false;
+
+            var clip = _bank.Signature(slug, moment, _random);
+            if (clip == null) return false;
+
+            var spec = SoundBank.SpecOf(moment);
+            string key = AbilitySounds.Key(slug, moment);
+            float now = Time.unscaledTime;
+            if (_lastSignature.TryGetValue(key, out float last) && now - last < spec.MinGap) return true;
+
+            _lastSignature[key] = now;
+            Emit(clip, spec, 1f, ui: false, at);
+            return true;
+        }
+
+        /// <summary>Loads (or starts synthesizing) the signatures of the operators about to play.</summary>
+        public void WarmSignatures(System.Collections.Generic.IEnumerable<string> slugs)
+        {
+            if (!_built || slugs == null) return;
+            foreach (var slug in slugs) _bank.WarmSignature(slug);
+        }
+
+        /// <summary>
+        /// Drops the whole mix: the silence before an execute (AU3). Effects
+        /// and the voice line stop; the music dips. It lasts until
+        /// <see cref="ReleaseHush"/>, or at most <paramref name="maxSeconds"/>
+        /// of real time if nothing releases it.
+        /// </summary>
+        /// <remarks>
+        /// Released by the caller rather than timed here, because the step
+        /// that follows runs on the presentation queue's clock, which the
+        /// animation speed and the hurry key stretch: a timed hush could still
+        /// be silencing the blow it was meant to set up.
+        /// </remarks>
+        public void Hush(float maxSeconds)
+        {
+            if (!_built || maxSeconds <= 0f) return;
+            _hushEnds = Time.unscaledTime + maxSeconds;
+        }
+
+        /// <summary>
+        /// Lifts a hush at once: what plays next plays at full, and the music
+        /// returns over <see cref="HushReturnSeconds"/>. Harmless with no hush.
+        /// </summary>
+        public void ReleaseHush()
+        {
+            if (!_built) return;
+            _hushEnds = -1f;
+            _hushFast = 1f;
+        }
+
+        private void Emit(AudioClip clip, SoundBank.CueSpec spec, float volume, bool ui, Vector3? at)
+        {
             var pool = ui ? _ui : _sfx;
             var bases = ui ? _uiBase : _sfxBase;
             int slot = ui ? Next(ref _nextUi, pool) : Next(ref _nextSfx, pool);
@@ -220,9 +303,33 @@ namespace NonaRoyale.Unity.Audio
             if (AudioListener.pause != Paused) AudioListener.pause = Paused;
 
             float dt = Time.unscaledDeltaTime;
+            UpdateHush(dt);
             UpdateVoice(dt);
             UpdateMusic(dt);
             UpdateVolumes();
+        }
+
+        private void UpdateHush(float dt)
+        {
+            if (Time.unscaledTime < _hushEnds)
+            {
+                _hushFast = Mathf.MoveTowards(_hushFast, 0f, dt / HushFadeSeconds);
+                _hushMusic = Mathf.MoveTowards(_hushMusic, 0f, dt / HushFadeSeconds);
+
+                // Down: stop what was ringing, so nothing resumes when the hush lifts.
+                if (_hushFast <= 0f)
+                {
+                    foreach (var source in _sfx) if (source.isPlaying) source.Stop();
+                    if (_voice.isPlaying) StopVoice();
+                }
+
+                return;
+            }
+
+            // The blow after the hush plays at full at once: easing effects
+            // back in would soften its attack. Only the music takes its time.
+            _hushFast = 1f;
+            _hushMusic = Mathf.MoveTowards(_hushMusic, 1f, dt / HushReturnSeconds);
         }
 
         private void UpdateVoice(float dt)
@@ -297,19 +404,21 @@ namespace NonaRoyale.Unity.Audio
         {
             _mixer.Apply(_levels);
 
-            float music = Level(AudioBus.Music) * _stingLevel * _duck * _pauseDip;
+            float music = Level(AudioBus.Music) * _stingLevel * _duck * _pauseDip * Fade(_hushMusic);
             _musicA.volume = music * Fade(_fadeIn);
             _musicB.volume = music * Fade(_fadeOut);
             _sting.volume = Level(AudioBus.Music);
 
-            // Without the mixer, a slider moved while effects ring: follow it.
-            if (_mixer.Ready) return;
-
-            float sfx = Level(AudioBus.Sfx);
+            // Effects and the voice follow a hush, and without the mixer a
+            // slider moved while they ring. With the mixer and no hush, this
+            // writes the volumes they already have.
+            float sfx = Level(AudioBus.Sfx) * _hushFast;
             for (int i = 0; i < _sfx.Length; i++)
                 if (_sfx[i].isPlaying) _sfx[i].volume = _sfxBase[i] * sfx;
 
-            if (_voice.isPlaying) _voice.volume = VoiceGain * Level(AudioBus.Voice);
+            if (_voice.isPlaying) _voice.volume = VoiceGain * Level(AudioBus.Voice) * _hushFast;
+
+            if (_mixer.Ready) return;
 
             float ui = Level(AudioBus.Ui);
             for (int i = 0; i < _ui.Length; i++)

@@ -1,4 +1,6 @@
 // Assets/_Project/Scripts/Core/Services/DamageResult.cs
+using NonaRoyale.Core.Model;
+
 namespace NonaRoyale.Core.Services
 {
     /// <summary>What the pipeline did with one damage instance.</summary>
@@ -10,10 +12,12 @@ namespace NonaRoyale.Core.Services
         /// would renumber every positional argument at every call site, in a
         /// file other sessions are editing. Last-and-optional means existing
         /// callers compile untouched and only the pipeline passes it.
+        /// <paramref name="type"/> follows the same rule (AUDIO.md AU3).
         /// </remarks>
         public DamageResult(
             DamageOutcome outcome, int amountApplied, int remainingHealth,
-            int targetOperatorId, string cause = "unknown", int amountMitigated = 0)
+            int targetOperatorId, string cause = "unknown", int amountMitigated = 0,
+            DamageType? type = null)
         {
             Outcome = outcome;
             AmountApplied = amountApplied;
@@ -21,6 +25,7 @@ namespace NonaRoyale.Core.Services
             TargetOperatorId = targetOperatorId;
             Cause = cause;
             AmountMitigated = amountMitigated;
+            Type = type;
         }
 
         /// <summary>
@@ -58,6 +63,18 @@ namespace NonaRoyale.Core.Services
         public int TargetOperatorId { get; }
 
         /// <summary>
+        /// The damage type of the instance, or null for damage that was never
+        /// an instance: the self-inflicted price of All-In Mauling.
+        /// </summary>
+        /// <remarks>
+        /// <b>For presentation, like <see cref="Cause"/>, and read by no rule</b>
+        /// (AUDIO.md AU3). The view plays a layer per type under an impact, so
+        /// an Atomic hit sounds unstoppable. It is the instance's type as it
+        /// arrived, before any mitigation looked at it.
+        /// </remarks>
+        public DamageType? Type { get; }
+
+        /// <summary>
         /// True if the target is still on the board. The single question
         /// collision resolution asks: a surviving occupant holds its cell and
         /// bounces the mover back, however it survived (COMBAT_SYSTEMS §7.2).
@@ -69,4 +86,4 @@ namespace NonaRoyale.Core.Services
                 ? $"{Outcome} ({AmountApplied}, -{AmountMitigated} mitigated, hp {RemainingHealth})"
                 : $"{Outcome} ({AmountApplied}, hp {RemainingHealth})";
     }
-}
+}

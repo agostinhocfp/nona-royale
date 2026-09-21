@@ -224,6 +224,18 @@ namespace NonaRoyale.Unity.Composition
         /// <summary>How long a knockout burst shows before the piece returns to its yard, in scaled seconds.</summary>
         private const float KnockoutHoldSeconds = 0.45f;
 
+        /// <summary>
+        /// The silence before an execute lands (AUDIO.md AU3), in scaled
+        /// seconds like the other holds, so it shortens with the queue.
+        /// </summary>
+        private const float ExecuteHushSeconds = 0.2f;
+
+        /// <summary>
+        /// The longest a hush may last in real seconds if the knockout that
+        /// ends it never plays (a flush, a teardown).
+        /// </summary>
+        private const float HushCapSeconds = 1.5f;
+
         /// <summary>How long a Space or E press waits for a busy board, in real seconds.</summary>
         private const float InputBufferSeconds = 0.4f;
 
@@ -640,9 +652,12 @@ namespace NonaRoyale.Unity.Composition
             _feedback = GetComponent<FeedbackLayer>() ?? gameObject.AddComponent<FeedbackLayer>();
             _feedback.Bind(_layout.CellSize);
 
-            // Look-book figures render on the thread pool while the rest of
-            // the match builds; a piece that binds first waits for its own.
-            OperatorLookBook.Prewarm(_match.Operators.Select(o => o.Name).Distinct());
+            // Rigs and look-book figures render on the thread pool while the
+            // rest of the match builds; a piece that binds first waits for its
+            // own. An operator with a rig never draws its look-book figure.
+            var figureNames = _match.Operators.Select(o => o.Name).Distinct().ToList();
+            OperatorRigArt.Prewarm(figureNames);
+            OperatorLookBook.Prewarm(figureNames.Where(n => !OperatorRigArt.Has(n)));
 
             foreach (var op in _match.Operators)
             {
@@ -650,6 +665,7 @@ namespace NonaRoyale.Unity.Composition
                 go.transform.SetParent(transform, false);
 
                 var piece = go.AddComponent<OperatorPiece>();
+                piece.BoardCentre = _layout.HomeGoalPosition;
                 piece.Bind(op, _layout.CellSize, cellSpacing, _motion);
                 piece.Stepped += OnPieceStepped;
                 _pieces.Add(piece);
@@ -705,6 +721,7 @@ namespace NonaRoyale.Unity.Composition
             {
                 _audio.StopVoice();
                 _audio.WarmVoices(_match.Operators.Select(o => o.Name));
+                _audio.WarmSignatures(_match.Operators.Select(o => o.Name).Distinct().SelectMany(AbilitySounds.SlugsOf));
             }
 
             FrameCamera();
@@ -784,6 +801,49 @@ namespace NonaRoyale.Unity.Composition
         private void Sound(SoundCue cue, Vector3? at = null)
         {
             if (_audio != null) _audio.Play(cue, at);
+        }
+
+        /// <summary>
+        /// A batch's ability signature and which of its moments have been
+        /// heard (AUDIO.md AU3). One per batch, captured by its hit and
+        /// knockout steps, so a splash plays the impact once, not per piece.
+        /// </summary>
+        private sealed class CastImpact
+        {
+            public CastImpact(string slug) => Slug = slug;
+
+            public string Slug { get; }
+            public bool ImpactHeard;
+            public bool AssistHeard;
+        }
+
+        /// <summary>
+        /// Plays the batch's signature for <paramref name="moment"/> unless
+        /// it has been heard already.
+        /// </summary>
+        /// <returns>
+        /// True if the ability has a sound for the moment (heard now or
+        /// earlier in the batch), so the caller skips the generic cue.
+        /// </returns>
+        private bool Signature(CastImpact signature, SignatureMoment moment, Vector3 at)
+        {
+            if (signature == null || signature.Slug == null || _audio == null) return false;
+
+            if (moment == SignatureMoment.Assist)
+            {
+                if (!signature.AssistHeard) signature.AssistHeard = _audio.PlaySignature(signature.Slug, moment, at);
+                return signature.AssistHeard;
+            }
+
+            if (!signature.ImpactHeard) signature.ImpactHeard = _audio.PlaySignature(signature.Slug, moment, at);
+            return signature.ImpactHeard;
+        }
+
+        /// <summary>The damage-type layer under a hit, if its type has one (AU3).</summary>
+        private void Layer(DamageDealt damaged, Vector3 at)
+        {
+            var layer = AbilitySounds.LayerFor(damaged.Type, damaged.Cause);
+            if (layer.HasValue) Sound(layer.Value, at);
         }
 
         private void OnUiButton() => Sound(SoundCue.UiClick);
@@ -1254,6 +1314,14 @@ namespace NonaRoyale.Unity.Composition
 
             if (intent == BufferedIntent.Roll) Host.Roll();
             else Host.EndTurn();
+        }
+
+        private bool AnyPieceKnockingOut()
+        {
+            foreach (var piece in _pieces)
+                if (piece != null && piece.IsKnockingOut) return true;
+
+            return false;
         }
 
         private bool AnyPieceMoving()
@@ -1738,7 +1806,7 @@ namespace NonaRoyale.Unity.Composition
             ICommand command)
         {
             DiceRolled roll = null;
-            bool walks = false, hits = false, knockouts = false, refused = false, home = false;
+            bool walks = false, hits = false, knockouts = false, refused = false, home = false, executed = false;
             var rises = new List<KeyValuePair<OperatorState, CellRef>>();
 
             foreach (var e in events)
@@ -1753,6 +1821,7 @@ namespace NonaRoyale.Unity.Composition
                     case OperatorNeutralized _: knockouts = true; break;
                     case OperatorReachedHome _: home = true; break;
                     case DamageDealt damaged when damaged.Amount > 0: hits = true; break;
+                    case DamageDealt dealt when dealt.Cause == GameEngine.ExecuteCause: executed = true; break;
                     case DamageEvaded _:
                     case DamageAbsorbed _:
                     case DamageSheltered _:
@@ -1813,12 +1882,28 @@ namespace NonaRoyale.Unity.Composition
                 }, hold: _motion.Tween(RiseHoldSeconds));
             }
 
+            // The ability's signature, shared by the hit and knockout steps so
+            // its impact is heard once however many pieces it lands on (AU3).
+            var impact = new CastImpact(cast != null ? AbilitySounds.SlugOf(cast.Id) : null);
+
             if (hits)
-                _queue.Enqueue(PresentationBeat.Hit, () => PlayFeedback(events, castBy, knockouts: false),
+                _queue.Enqueue(PresentationBeat.Hit, () => PlayFeedback(events, castBy, impact, knockouts: false),
                     hold: _motion.Tween(HitHoldSeconds));
 
+            // An execute is preceded by silence: nothing reads as final like a
+            // gap (AU3). The knockout step lifts it as the blow lands.
+            if (executed && knockouts)
+                _queue.Enqueue(PresentationBeat.Hush, () =>
+                    {
+                        if (_audio != null) _audio.Hush(HushCapSeconds);
+                    },
+                    hold: ExecuteHushSeconds);
+
+            // A rigged figure folds before it shatters (LOOKBOOK LB5c), so the
+            // beat also waits for every fall to land, not only for its hold.
             if (knockouts)
-                _queue.Enqueue(PresentationBeat.Knockout, () => PlayFeedback(events, castBy, knockouts: true),
+                _queue.Enqueue(PresentationBeat.Knockout, () => PlayFeedback(events, castBy, impact, knockouts: true),
+                    () => !AnyPieceKnockingOut(),
                     hold: _motion.Tween(KnockoutHoldSeconds));
 
             _queue.Enqueue(PresentationBeat.Settle,
@@ -1854,11 +1939,20 @@ namespace NonaRoyale.Unity.Composition
 
             _queue.Enqueue(PresentationBeat.CastTell, () =>
                 {
+                    // A rigged caster turns to its aim and raises its device (LOOKBOOK LB5c).
+                    Vector3? aimAt = target != null ? target.Ground
+                        : cell.HasValue ? _layout.PositionOf(cell.Value) : (Vector3?)null;
+                    caster.Cast(aimAt, hold);
+
                     _tells.Play(
                         caster.transform.position,
                         target != null ? target.transform.position : (Vector3?)null,
                         cell.HasValue ? _layout.PositionOf(cell.Value) : (Vector3?)null);
-                    Sound(cell.HasValue ? SoundCue.CastCell : SoundCue.CastTell, caster.transform.position);
+                    // The ability's own tell if it has one, else the generic sweep or drop (AU3).
+                    if (_audio == null ||
+                        !_audio.PlaySignature(AbilitySounds.SlugOf(use.AbilityId), SignatureMoment.Tell,
+                            caster.transform.position))
+                        Sound(cell.HasValue ? SoundCue.CastCell : SoundCue.CastTell, caster.transform.position);
 
                     if (_eventLights != null)
                     {
@@ -1883,6 +1977,9 @@ namespace NonaRoyale.Unity.Composition
             if (_match == null) return;
 
             _diceHeld = false;
+
+            // A hush whose knockout was flushed away must not outlive its batch.
+            if (_audio != null) _audio.ReleaseHush();
 
             Reposition(immediate);
             RefreshHighlights();
@@ -2286,12 +2383,26 @@ namespace NonaRoyale.Unity.Composition
         /// <b>AU2:</b> a hit that leaves the target standing asks for its
         /// hit-taken line; a knockout asks for the victim's death line, then
         /// the kill line of whoever the batch credits (<see cref="VoiceCasting.Killer"/>).
+        ///
+        /// <b>AU3:</b> a cast's first hit on anyone but the caster plays the
+        /// ability's impact in place of the generic hit, once for the batch;
+        /// its self-inflicted price keeps the generic hit. Every hit adds its
+        /// damage-type layer (<see cref="AbilitySounds.LayerFor"/>). A heal from
+        /// a cast adds the ability's assist; Kurbyn's own dodge replaces the
+        /// miss; an execute's knockout carries the impact and lifts the hush.
         /// </remarks>
-        private void PlayFeedback(IReadOnlyList<IGameEvent> events, OperatorState castBy, bool knockouts)
+        private void PlayFeedback(
+            IReadOnlyList<IGameEvent> events, OperatorState castBy, CastImpact signature, bool knockouts)
         {
             if (_feedback == null) return;
 
+            if (knockouts && _audio != null) _audio.ReleaseHush();
+
             OperatorPiece impact = null;
+
+            // Who a hit came from, for a rigged figure's recoil (LOOKBOOK LB5c):
+            // the caster, or failing that the operator that walked into it.
+            var striker = PieceFor(castBy ?? VoiceCasting.Mover(events));
 
             foreach (var e in events)
             {
@@ -2305,12 +2416,17 @@ namespace NonaRoyale.Unity.Composition
 
                     _feedback.Damage(piece.transform.position, damaged.Amount, damaged.Cause);
                     piece.Flash();
+                    piece.Recoil(striker != null && striker != piece ? striker.Ground : (Vector3?)null);
                     piece.ShowHealth(damaged.RemainingHealth);
 
                     bool big = damaged.RemainingHealth <= 0 ||
                                damaged.Amount >= BigHitFraction * damaged.Target.MaxHealth;
                     if (big) impact = piece;
-                    Sound(big ? SoundCue.HitBig : SoundCue.Hit, piece.transform.position);
+
+                    bool self = castBy != null && ReferenceEquals(damaged.Target, castBy);
+                    if (self || !Signature(signature, SignatureMoment.Impact, piece.transform.position))
+                        Sound(big ? SoundCue.HitBig : SoundCue.Hit, piece.transform.position);
+                    Layer(damaged, piece.transform.position);
                     if (damaged.RemainingHealth > 0) Speak(VoiceSlot.HitTaken, damaged.Target);
                     continue;
                 }
@@ -2322,7 +2438,12 @@ namespace NonaRoyale.Unity.Composition
                     if (piece != null)
                     {
                         _feedback.Evaded(piece.transform.position);
-                        Sound(SoundCue.Miss, piece.transform.position);
+
+                        // An operator whose passive is evasion has a dodge of its own (AU3).
+                        if (_audio == null ||
+                            !_audio.PlaySignature(AbilitySounds.EvasionOf(evaded.Target.Name), SignatureMoment.Impact,
+                                piece.transform.position))
+                            Sound(SoundCue.Miss, piece.transform.position);
                     }
                     continue;
                 }
@@ -2360,6 +2481,7 @@ namespace NonaRoyale.Unity.Composition
                         _feedback.Heal(piece.transform.position, healed.Amount);
                         piece.ShowHealth(piece.ShownHealth + healed.Amount);
                         Sound(SoundCue.Heal, piece.transform.position);
+                        Signature(signature, SignatureMoment.Assist, piece.transform.position);
                     }
                     continue;
                 }
@@ -2388,6 +2510,8 @@ namespace NonaRoyale.Unity.Composition
                             BoardLayout.ColourOf(down.Operator.Owner),
                             down.Cause);
                         Sound(SoundCue.Knockout, piece.transform.position);
+                        if (down.Cause == GameEngine.ExecuteCause)
+                            Signature(signature, SignatureMoment.Impact, piece.transform.position);
                         if (_eventLights != null) _eventLights.Knockout(piece.transform.position);
                         piece.Shatter();
                         impact = piece;
@@ -2665,7 +2789,8 @@ namespace NonaRoyale.Unity.Composition
 
                     // A shattered piece comes back seated with a pop (MO2);
                     // everything else snaps or settles as before.
-                    if (piece.IsHidden) piece.Reappear(position);
+                    // A figure still folding (a flushed batch) comes back the same way.
+                    if (piece.IsHidden || piece.IsCollapsing) piece.Reappear(position);
                     else if (immediate) piece.Place(position);
                     else piece.Settle(position);
 

@@ -24,6 +24,12 @@ namespace NonaRoyale.Unity.Audio
         Knockout,
         TurnStart,
         UiClick,
+
+        /// <summary>Under a Tech hit: an electrical fizz (AU3). Normal has no layer; the hit is its family.</summary>
+        LayerTech,
+
+        /// <summary>Under an Atomic hit: a sub drop and a pressure crack, so it sounds like nothing stopped it (AU3).</summary>
+        LayerAtomic,
     }
 
     /// <summary>
@@ -84,11 +90,14 @@ namespace NonaRoyale.Unity.Audio
                 case SoundCue.Knockout: return Knockout(random);
                 case SoundCue.TurnStart: return TurnStart(random);
                 case SoundCue.UiClick: return UiClick(random, variant);
+                case SoundCue.LayerTech: return LayerTech(random);
+                case SoundCue.LayerAtomic: return LayerAtomic(random);
                 default: throw new ArgumentOutOfRangeException(nameof(cue), cue, null);
             }
         }
 
         // ── Building blocks ──────────────────────────────────────────────
+        // Internal so SignatureRecipes (AU3) builds on the same palette.
 
         /// <summary>
         /// Something with weight meeting a soft surface: a low body pressed
@@ -97,7 +106,7 @@ namespace NonaRoyale.Unity.Audio
         /// </summary>
         /// <param name="ring">Scales how long the body rings.</param>
         /// <param name="weight">Sub-bass under the body, for heavy things only (0 for none).</param>
-        private static void Thud(float[] b, float at, float gain, float bodyHz, SynthRandom r,
+        internal static void Thud(float[] b, float at, float gain, float bodyHz, SynthRandom r,
             float ring = 1f, float weight = 0f)
         {
             Synth.Resonate(b, at, 0.1f * ring, gain * 7f, 0.001f, 0.009f * ring, bodyHz, bodyHz * 0.9f, 5f, r);
@@ -116,7 +125,7 @@ namespace NonaRoyale.Unity.Audio
         /// A small, hard contact: two dull modes excited by a click. The pair
         /// never forms an interval, so it reads as material, not a note.
         /// </summary>
-        private static void Tick(float[] b, float at, float gain, float centerHz, SynthRandom r)
+        internal static void Tick(float[] b, float at, float gain, float centerHz, SynthRandom r)
         {
             Synth.Resonate(b, at, 0.03f, gain * 2.2f, 0.0003f, 0.0015f, centerHz, centerHz * 0.97f, 3.5f, r);
             Synth.Resonate(b, at, 0.025f, gain * 1.1f, 0.0003f, 0.0012f,
@@ -124,18 +133,37 @@ namespace NonaRoyale.Unity.Audio
         }
 
         /// <summary>A body moving through air, or cloth over cloth: a swelling, gliding band of noise.</summary>
-        private static void Swish(float[] b, float at, float duration, float gain, float fromHz, float toHz,
+        internal static void Swish(float[] b, float at, float duration, float gain, float fromHz, float toHz,
             float attack, float decay, SynthRandom r, float q = 0.9f)
         {
             Synth.Resonate(b, at, duration, gain, attack, decay, fromHz, toHz, q, r);
         }
 
         /// <summary>A clay chip or a die against another: a short, dense knock.</summary>
-        private static void Clack(float[] b, float at, float gain, float pitch, SynthRandom r)
+        internal static void Clack(float[] b, float at, float gain, float pitch, SynthRandom r)
         {
             Synth.Resonate(b, at, 0.03f, gain * 2f, 0.0003f, 0.002f, pitch, pitch * 0.96f, 5f, r);
             Synth.Resonate(b, at, 0.025f, gain * 1.2f, 0.0003f, 0.0015f, pitch * 2.31f, pitch * 2.25f, 6f, r);
             Synth.Noise(b, at, 0.015f, gain * 0.3f, 0.0003f, 0.002f, 6000f, 1500f, r);
+        }
+
+        /// <summary>
+        /// Electrical crackle: a scatter of very short, bright noise bursts.
+        /// Density falls off across the span unless <paramref name="build"/>
+        /// is set, which grows it instead, like a charge gathering.
+        /// </summary>
+        internal static void Crackle(float[] b, float at, float duration, float gain, int bursts, SynthRandom r,
+            bool build = false)
+        {
+            for (int i = 0; i < bursts; i++)
+            {
+                // Squaring the position crowds the bursts toward one end.
+                float u = r.Next();
+                u = build ? 1f - u * u : u * u;
+                float t = at + u * duration;
+                float g = gain * r.Range(0.4f, 1f) * (build ? 0.4f + 0.6f * u : 1f - 0.6f * u);
+                Synth.Noise(b, t, r.Range(0.001f, 0.004f), g, 0.0002f, 0.0015f, 9000f, r.Range(2000f, 4000f), r);
+            }
         }
 
         // ── Dice (fallbacks: the Kenney files replace these) ─────────────
@@ -359,6 +387,38 @@ namespace NonaRoyale.Unity.Audio
             Synth.Drive(b, 1.3f);
             Synth.Darken(b, 6000f);
             Synth.Normalize(b, 0.95f);
+            return b;
+        }
+
+        // ── Damage-type layers (AU3) ─────────────────────────────────────
+
+        private static float[] LayerTech(SynthRandom r)
+        {
+            // A short fizz of current across the contact: crackle over a thin, dark hiss.
+            var b = Synth.Buffer(0.22f);
+
+            Crackle(b, 0f, 0.14f, 0.9f, 18, r);
+            Synth.Noise(b, 0f, 0.16f, 0.25f, 0.002f, 0.06f, 7000f, 2500f, r);
+            Tick(b, 0f, 0.35f, 2600f, r);
+
+            Synth.Darken(b, 7000f);
+            Synth.Normalize(b, 0.7f);
+            return b;
+        }
+
+        private static float[] LayerAtomic(SynthRandom r)
+        {
+            // Pressure that nothing slowed: a dense crack on the contact and a
+            // sub drop under it that keeps going after the blow.
+            var b = Synth.Buffer(0.6f);
+
+            Synth.Noise(b, 0f, 0.05f, 0.9f, 0.0003f, 0.012f, 5000f, 300f, r);
+            Synth.Tone(b, 0f, 0.5f, 72f, 32f, Wave.Sine, 0.9f, 0.002f, 0.2f);
+            Synth.Resonate(b, 0.005f, 0.4f, 1.6f, 0.01f, 0.12f, 140f, 60f, 1.2f, r);
+
+            Synth.Drive(b, 2.2f);
+            Synth.Darken(b, 3000f);
+            Synth.Normalize(b, 0.9f);
             return b;
         }
 

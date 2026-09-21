@@ -1,7 +1,7 @@
 # Nona Royale — Audio (Stage 5)
 
 > Location in repo: `docs/design/AUDIO.md` · Project copy: `claude/AUDIO.md`
-> Status: **Closed, 2026-09-16.** AU1 to AU1f and AU2 committed after Play Mode.
+> Status: **Reopened 2026-09-21 for AU3** (ability signatures), in the repo, Play Mode pending. AU1 to AU1f and AU2 closed 2026-09-16 after Play Mode.
 > Related: `NEXT_PHASES.md` (Stage 5), `MOTION.md` (Stage 3, whose presentation steps the sounds follow), `PRESENTATION.md` §3.1, `ART_PIPELINE.md` §8 (licensing)
 
 ## Goal
@@ -56,6 +56,15 @@ Stage 4 (art hookup) was skipped for now: no finished Meshy renders are in hand.
      - **AU1f:** the Music default drops 30%, from 60% to 42%, because the score sat on top of the effects. A Restore defaults row closes the page.
       - **Amended 2026-09-17: the Music default is now 36%.** Untouched saves move to it from either earlier default.
 
+6. **Ability signatures (AU3, settled 2026-09-21, all as recommended):**
+   - **Keyed by ability id, named by slug.** `AbilitySounds` maps each id to a readable slug (`101` → `Bouncer_VelvetRope`). A renamed ability keeps its files. Every ability in the roster has a row, so files can be dropped in for any operator now; a test fails if a new ability has none.
+   - **Moments:** `Tell` (the cast tell), `Impact` (the effect landing on an enemy) and `Assist` (the ally mode: a heal or a hand). Files: `Assets/_Project/Audio/Resources/Audio/SFX/Abilities/<Slug>_<Moment>` (variants `_2` … `_8`). A moment with no file uses its synthesized stand-in if it has one, else the generic cue.
+   - **The signature replaces the generic cue,** and the damage type is layered under every hit: Tech adds a fizz, Atomic a sub drop and a pressure crack. Normal has no layer of its own; the body blow is the Normal family. Over-time damage (bleed, mark, follow-up, Zero-Day) gets no layer.
+   - **Synthesized stand-ins for the alpha three** in the AU1d physical palette, until recordings or generated files replace them (`SFX_PROMPTS.md`).
+   - **The damage type travels on the event.** `DamageDealt.Type` (and `DamageResult.Type`), optional and appended, read by no rule, so the view still computes nothing.
+   - **An execute is preceded by silence:** the mix drops for 0.2 s before the knockout.
+   - AI sound generators are allowed, like Lyria: after a licence check, with a `PROVENANCE.md` row per file.
+
 ## Increments
 
 | #   | Increment | What it delivers |
@@ -67,6 +76,7 @@ Stage 4 (art hookup) was skipped for now: no finished Meshy renders are in hand.
 | AU1e | **Chip steps** | Kenney `chip-lay-1…3` as `Step`, `Step_2`, `Step_3`: trimmed to the landing, darkened, level-matched; `SoundBank` step level 0.41. |
 | AU1f | **Mixer** | `Audio/Resources/Audio/Mixer.mixer` (Master, Music, Effects › Interface, Voice; four exposed faders); `SoundMixer` routes every source and sets the faders, with the AU1 levels as fallback; Music default 42% (was 60%) with a one-time move for untouched saves; Restore defaults on the Sound page; `AudioLevelsTests`, `SoundMixerAssetTests`. |
 | AU2 | **Voices** | `VoiceRules` (priority, cooldown, chance), `VoiceBlips` (per-operator signatures), `VoiceSet` (real clips by operator name), music ducking. Voice hooks on deploy, move, cast, hit, kill, death, victory and quit. Luka's line list. |
+| AU3 | **Ability signatures** | `AbilitySounds` (id → slug for all 32 abilities, Kurbyn's dodge, the damage-type layer rule), `SignatureRecipes` (13 stand-ins for Bouncer, Syla and Kurbyn), `SoundCue.LayerTech` / `LayerAtomic`, `SoundBank` signature loading, `AudioDirector.PlaySignature` / `Hush`, `PresentationBeat.Hush`. Core: `DamageDealt.Type`, `DamageResult.Type`, public `GameEngine.ExecuteCause`. `SFX_PROMPTS.md`. |
 
 ## Rules for this stage
 
@@ -284,3 +294,35 @@ Stage 4 (art hookup) was skipped for now: no finished Meshy renders are in hand.
   - **`AudioLevels`:** `DefaultMusic` 0.36 (was 0.42, now `FormerDefaultMusic`; AU1's 0.6 kept as `OriginalDefaultMusic`). `Version` 3; `MigrateMusic` moves an untouched save from either earlier default to 36%.
   - **Tests:** `AudioLevelsTests` updated (36% default; migration from both earlier defaults). The 50 plain-C# audio tests pass in a scratch harness (`Temp/audio-tests`, compiled with `csc` directly — `dotnet restore` fails under SDK 10, which also breaks the older `tools/tests-verify` project; not caused by this change).
   - **Play Mode watch-list:** the title music fades in on launch; title ↔ match ↔ showdown changes crossfade smoothly; the pause dip glides down and back; music starts at 36%, including on a machine whose saved Music was still 42% or 60%.
+- 2026-09-21 — **AU3 built: ability signatures.** Stage 5 reopened for it. The designer chose ability signatures and the camp palette as the next sound thread, and settled decision 6 as recommended. Written straight to the repo from HEAD `b382048`; Play Mode pending.
+  - **Why:** all 12 operators cast with the same `CastTell`/`CastCell` and hit with the same `Hit`. A player should hear who acted and what kind of damage it was without looking.
+  - **Core (decision 6):**
+    - `DamageResult.Type` and `DamageDealt.Type`: the instance's `DamageType` as it arrived, `null` where there was no instance (All-In Mauling's self-inflicted price, an execute). Optional and appended, like `Cause` and `AmountMitigated`, so every existing call site compiles untouched.
+    - `DamagePipeline.Apply` reports the type on every outcome; `ApplyToSelf` reports none. `GameEngine.EmitDamage` passes it to the event.
+    - `GameEngine.ExecuteCause` is now public, so the view recognises an execute without restating the string (as `DeferredOperatorEffects.ChargeCause` already was).
+    - Tests: 4 in `DamagePipelineTests` (each type reported, Atomic through a shield, the stopped outcomes, self-damage has none) and 2 in `GameEngineTests` (Velvet Rope's hit is Atomic; All-In Mauling's blow is Normal and its price has no type). Mutation: dropping the type in `EmitDamage` fails both engine tests.
+  - **New in `Unity/Audio/`:**
+    - `AbilitySounds`: `SignatureMoment` (`Tell`, `Impact`, `Assist`); the id → slug table for every ability in the roster; `EvasionOf` (Kurbyn → `Kurbyn_EvasiveProtocol`, the one passive with its own sound); `SlugsOf(operator)` for warming; `LayerFor(type, cause)`. Plain C#.
+    - `SignatureRecipes`: stand-ins, plain C#, seeded from a stable FNV hash of the key (`string.GetHashCode` is randomized per process).
+      - Bouncer (brass, hydraulics, weight): Velvet Rope tell, six plates unlocking faster and faster over a hydraulic hiss; its impact, the clamp latching and the drag across the felt. All-In Mauling impact (3 variants), a bare-knuckle body blow; its assist, an open palm on the shoulder. Intimidating Presence is an aura with no event, so it has no sound.
+      - Syla (obsidian, cold air): From the Hip tell, a flick and a thin cut of air; its impact (2 variants), a dark glass tick. Ace Shards tell, a fan drawn like cards; its impact, a burst of glass thinning outward. Tagged From Above tell, two lock clicks and a held breath.
+      - Kurbyn (the neural rig): Dargin Pulse tell, a charge crackling thicker; its impact, a discharge thump, radiating crackle and the stun's ringing (narrow noise near 2.8 kHz, the palette's one deliberate near-tone). Miracle Pull impact, a dead heavy blow with the splash crackling out. Evasive Protocol dodge (2 variants), an air slip with a flicker of static.
+    - `SfxRecipes`: `LayerTech` (a fizz of crackle) and `LayerAtomic` (a crack and a sub drop that keeps going), and a `Crackle` block. The building blocks (`Thud`, `Tick`, `Swish`, `Clack`) are now internal so the signatures share the palette.
+  - **Changed:**
+    - `SoundBank`: `WarmSignature` / `Signature` load `Audio/SFX/Abilities/<Slug>_<Moment>` files per slug, else synthesize the stand-ins on worker threads; `SpecOf(SignatureMoment)` (tell 0.8, impact 0.95, assist 0.8); layer levels (Tech 0.6, Atomic 0.8, under the impact).
+    - `AudioDirector`: `PlaySignature` returns whether the ability has a sound, so the caller falls back to the generic cue; `WarmSignatures`; `Hush(max)` / `ReleaseHush` (effects and the voice stop within 30 ms, the music dips and returns over 0.8 s; what plays after the hush plays at full at once). The hush is released by the knockout step, not timed, because the queue runs on scaled time that the speed setting and the hurry key stretch; a 1.5 s real-time cap and the settle release it if the knockout never plays.
+    - `MatchBootstrap`: the cast tell plays the ability's `Tell`, else the generic cue. On the hit step, the cast's first hit on anyone but the caster plays its `Impact`, once for the batch however many pieces it lands on, in place of `Hit`/`HitBig`; the caster's own price keeps the generic hit. Every hit adds its type layer. A heal from a cast adds the `Assist`. Kurbyn's dodge replaces `Miss`. An execute gets a `Hush` step (0.2 s, scaled like the other holds) before the knockout, whose step lifts it and plays the impact with the knockout if the hit step had not. Signatures are warmed with the voices when a match is dealt.
+    - `PresentationQueue`: `PresentationBeat.Hush`, between `Hit` and `Knockout`. Nothing subscribes to beats by name, so no listener changes.
+  - **Levels:** every stand-in is matched by A-weighted loudness (loudest 50 ms) to the generic cue it replaces, about −18 dBA: tells to `CastTell`, impacts to `HitBig`. Played through a 200 Hz high-pass (a phone speaker), none loses more than 1 dB, except the Atomic layer (3.4 dB), whose crack still carries.
+  - **Tests:** `AbilitySoundsTests` (9: every roster ability has a slug, every slug an ability, slugs start with the operator's file key and are file-safe and unique, keys, Kurbyn's dodge, `SlugsOf`, the layer rule, no layer over time) and `SignatureRecipesTests` (6: every key builds short, finite and silent at the end; every key belongs to a slug and names a moment; each alpha ability has a tell or an impact; determinism; variants differ; unknown keys). The peak floor is 0.3 rather than the cues' 0.5, because bright signatures are level-matched down. Mutation: dropping `bleed` from the over-time causes fails `OverTimeDamage_GetsNoLayer`. **819 passing** (798 before) in a cloud harness: the core suite plus the plain-C# audio tests.
+  - **Compile:** `NonaRoyale.Core` and `NonaRoyale.Unity` compiled in the cloud against the editor's own references (the `NonaRoyale.Unity.rsp` Unity wrote), C# 9: no errors, no warnings.
+  - **Previews** (not committed): `Claude outputs/au3_preview/`: every stand-in and layer on its own, a before/after reel per ability (generic then signature), the execute with its hush, Kurbyn's dodge and Mauling's ally clap before and after, and spectrograms.
+  - **Play Mode watch-list:**
+    - Each alpha ability's tell and impact sound like the sheet, not like `CastTell`/`Hit`; the other nine operators sound as before, apart from the type layers.
+    - Ace Shards and Dargin Pulse play one impact for the burst, not one per piece.
+    - All-In Mauling on an enemy: the knuckle blow on the target, the generic hit on Bouncer. On an ally: the heal plus the clap.
+    - Velvet Rope's hit and Miracle Pull carry the Atomic layer; a bleed tick does not.
+    - Kurbyn's evasions play his dodge; everyone else's play `Miss`.
+    - A Miracle Pull execute: silence, then the blow. Try it with Fast animations and with the hurry key: the blow must never be swallowed by the hush.
+    - The first cast of a match is not silent (signatures are warmed at the deal).
+  - **Open (later increments):** a quieter lock click on Tagged From Above's upkeep ticks; From the Hip's darker tail against a bleeding target; stand-ins for the other nine operators; priority-based voice stealing; looped zone ambience (ADR-0007); energy, capture and dice-settle cues; haptics.
