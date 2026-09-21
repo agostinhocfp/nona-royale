@@ -28,7 +28,7 @@ The guide is the place to learn the roster **without a clock**, and to look some
    - name, then cost · cooldown · range · targeting, as the draft's `AbilityMeta` already writes them;
    - **the rules line**, generated (§2): *"3 Normal · Burdened 2 turns · you heal 1 (2 while your Killzone is live)"*;
    - the flavour line underneath, dimmed.
-   The passive and the aura use the same shape, with the rules line from their status or aura data.
+   Passives and auras use the same shape, listed before the abilities: the rules line from their status or aura data, and a number-free flavour line from `OperatorDefinition.PassiveDescription` / `AuraDefinition.Description`. `RulesText.Traits` is the single list every screen reads — dossier, draft card and match (§5a).
 3. **How to play / How to beat** — the two D3 paragraphs.
 4. **Keywords** — every status, damage type and board term in the rules lines is a link. Tapping one opens its glossary card (§3). This is what answers the Stranger Test's debrief questions 4 ("what is wrong with that piece?") and 6 ("what does safe mean?") without adding anything to the match HUD.
 
@@ -61,12 +61,20 @@ The guide is the place to learn the roster **without a clock**, and to look some
 - **OG3 — Draft → FULL DOSSIER.** On the focused card. It opens over the draft **with the clock still running and still visible** (D4). If the clock fills the seat's slot while the dossier is open, the dossier closes on the pick and the draft shows which card the clock took.
 - **OG4 — In a match.** Tap any piece's portrait in the squad rail — an enemy's included, since "what does *that* do?" is the question a first match asks most — or open it from the pause menu. Read-only; the match does not pause for it unless the player pauses.
 
+## 5a. Passives outside the guide
+
+A passive is part of the kit on every screen that shows the kit, not only in the dossier.
+
+- **Draft card:** one line per ability, then one per passive and aura, with the dossier's tag (`passive`, `aura · r2`). Four lines is the most any kit takes today (Fortuna, Sanity, Lethe), and the wide card's height holds four; a fifth needs `CardHeight` first.
+- **Match:** gold chips on the selected operator's card in the action tray, under its health and statuses, shown in the yard too. A chip opens the trait's card (`GlossaryCard.ShowTrait`): whose it is, the board tag, the rules line with its keywords linked, the flavour. Esc closes it. Chips, not ability cards: a card in the ability row reads as castable, and it would put three operators at four cards across a phone.
+
 ## 6. Tests
 
 All in Core, so they run in the harness and in EditMode alike.
 
 - **Every roster ability formats with no `[unwritten]` run.** Adding an effect kind without its formatter fails here.
 - **Every keyword a rules line emits has a glossary entry**, and every glossary number matches `CombatConfig`.
+- **Every roster passive and aura is a trait with a description, and no description has a digit** (`KitTraitTests`).
 - **Every operator in `Roster.All` has guide copy** (D3). A thirteenth operator without its paragraphs fails the build — deliberately stricter than `OperatorCopy`'s fallback role word.
 - **No digit in guide copy.** The D2 rule, enforced: a number typed into a strategy paragraph fails.
 - **Golden lines** for a handful of abilities (Bio-Link Rage, Sadist, Vendetta, Miracle Pull, The Table), so a formatter change that rewords them is a visible diff, not a silent one.
@@ -88,6 +96,12 @@ All in Core, so they run in the harness and in EditMode alike.
 - **Localisation.** Every string lives in `Core/Text` or the copy file, so it can be extracted later; nothing is being built that would prevent it.
 
 ## Log
+
+- 2026-09-21 — **Passives everywhere the kit is shown** (designer: passives must not be left out of the UI or the guide).
+  - **The audit.** The dossier already listed every passive and aura with a rules line, but with no flavour, where every ability has one. The draft card showed one trait in a spare ability slot and dropped the rest: Fortuna's House Edge, Lethe's haste and Sanity's burden appeared only as status tags. The match's action tray showed none at all.
+  - **Core.** `OperatorDefinition.PassiveDescription` and `AuraDefinition.Description`, optional in the constructors (test and sweep squads carry passives nobody reads) and required of the roster by test. `KitTrait` and `RulesText.Traits`: passives, then the aura, as one list. `RulesText.Passives` now returns `KitTrait`s. Flavour for all seven traits is **Claude's draft**, like the D3 copy, and waits for the designer's rewrite.
+  - **View.** The dossier writes each trait's flavour under its rules line. The draft card lists every trait (§5a). The action tray's operator card gains trait chips that open `GlossaryCard.ShowTrait`; `GlossaryCard` now shares one frame between keyword and trait cards. `MatchBootstrap.HandleKeys` gives Esc to an open card first and holds the shortcuts under it.
+  - **Tests.** `KitTraitTests` (7). Core suite 802 passing in the standalone runner.
 
 - 2026-09-21 — **First Play Mode look, and OG4–OG5** (designer: "it looks great"; the shapes were too big).
   - **Fixed: the silhouettes filled the rows.** `OperatorDossier.Icon` set a layout size on an icon whose box has no layout group, so the size was never applied and every shape kept a new rect's 100 × 100. It now sizes the rect itself. **Probably fixed: the dossier's name did not draw.** The display face has no ellipsis glyph, so a display-face label set to ellipsize draws nothing; the wordmark and the draft clock already set overflow for that reason, and the dossier's name, the guide title and the glossary card title now do too. Not seen fixed yet — confirm on the next look.

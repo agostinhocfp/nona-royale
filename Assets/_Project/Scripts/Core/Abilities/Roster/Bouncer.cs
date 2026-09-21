@@ -63,7 +63,8 @@ namespace NonaRoyale.Core.Abilities
         /// and is evaluated when that enemy's movement is calculated.
         /// </summary>
         public static AuraDefinition IntimidatingPresence { get; } =
-            new AuraDefinition("Intimidating Presence", IntimidatingPresenceRadius, -0.5);
+            new AuraDefinition("Intimidating Presence", IntimidatingPresenceRadius, -0.5,
+                description: "Nobody hurries past the door. Enemies who come near him find their feet heavier.");
 
         /// <summary>
         /// Pull the target adjacent, damaging it if it is an enemy. Usable on an

@@ -11,13 +11,20 @@ namespace NonaRoyale.Unity.View
         /// <summary>Opens the setup screen.</summary>
         void Play();
 
+        /// <summary>
+        /// Opens the operator guide (OPERATOR_GUIDE.md OG2): the roster and the
+        /// glossary, with no clock. The main menu is its primary entry.
+        /// </summary>
+        void OpenGuide();
+
         /// <summary>Leaves the game. Stops Play Mode in the editor.</summary>
         void Quit();
     }
 
     /// <summary>
-    /// The title screen: the wordmark over the board, and PLAY, SETTINGS, QUIT
-    /// (GUI increment J; laid out by VISUAL_PASS.md V3b).
+    /// The title screen: the wordmark over the board, and PLAY, OPERATORS,
+    /// SETTINGS, QUIT (GUI increment J; laid out by VISUAL_PASS.md V3b;
+    /// OPERATORS since OPERATOR_GUIDE.md OG2).
     /// </summary>
     /// <remarks>
     /// <b>No card, and no column.</b> V3's mockup review found that a centred
@@ -61,9 +68,12 @@ namespace NonaRoyale.Unity.View
         private const float LockupSpacing = 8f;
         private const float BandSpacing = 12f;
 
-        /// <summary>What the menu row itself takes: three across, or three stacked (MOBILE.md, M5).</summary>
+        /// <summary>How many buttons the main menu holds.</summary>
+        private const int MenuButtons = 4;
+
+        /// <summary>What the menu row itself takes: all across, or all stacked (MOBILE.md, M5).</summary>
         private static float MenuHeight =>
-            ScreenLayout.Pick(ButtonHeight, 3f * ButtonHeight + 2f * MenuStackGap);
+            ScreenLayout.Pick(ButtonHeight, MenuButtons * ButtonHeight + (MenuButtons - 1) * MenuStackGap);
 
         private const float MenuStackGap = 10f;
 
@@ -95,8 +105,9 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>
         /// Every menu button is the same width, whatever its word, so the row
-        /// reads as one set of three rather than three sizes of thing. Sized
-        /// for CONFIRM QUIT, the longest label that ever lands here.
+        /// reads as one set rather than four sizes of thing. Sized for CONFIRM
+        /// QUIT, the longest label that ever lands here. Four across is 882
+        /// units against a 900-unit band, so the row still fits wide.
         /// </summary>
         private static float MenuButtonWidth => ScreenLayout.Pick(210f, 250f);
 
@@ -181,6 +192,13 @@ namespace NonaRoyale.Unity.View
         {
             Close();
             _host.Play();
+        }
+
+        private void OpenGuide()
+        {
+            _quitArmed = false;
+            Close();
+            _host.OpenGuide();
         }
 
         /// <summary>A warm light behind the wordmark, under everything else.</summary>
@@ -370,7 +388,7 @@ namespace NonaRoyale.Unity.View
         // ── The pages ────────────────────────────────────────────────────
 
         /// <summary>
-        /// The menu, in the bottom band: three equal buttons in a row, and the
+        /// The menu, in the bottom band: four equal buttons in a row, and the
         /// armed QUIT's warning above them rather than below, which would put it
         /// off the bottom edge.
         /// </summary>
@@ -382,7 +400,7 @@ namespace NonaRoyale.Unity.View
 
             _row = Row(_menu, "menu_row", MenuHeight);
 
-            // Three 210-unit buttons need 658 units of width and a phone has
+            // Four 210-unit buttons need 882 units of width and a phone has
             // under 480, so upright they stack (M5). PLAY stays first, which
             // upright also puts it furthest from the thumb's resting place —
             // the one button here that should not be pressed by accident is
@@ -402,6 +420,10 @@ namespace NonaRoyale.Unity.View
             }
 
             MenuButton("PLAY", "Enter", Play, UiTheme.CyanDeep, UiTheme.Cyan);
+
+            // Second, beside PLAY: the guide is where a new player is meant to
+            // learn the roster, with no draft clock running (OPERATOR_GUIDE D1).
+            MenuButton("OPERATORS", "", OpenGuide);
             MenuButton("SETTINGS", "", () => { _page = Page.Settings; _quitArmed = false; PlayPageTransition(); });
 
             if (_quitArmed) MenuButton("CONFIRM QUIT", "", () => _host.Quit(), UiTheme.GoldDeep, UiTheme.Threat);

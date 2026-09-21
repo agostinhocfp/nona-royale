@@ -41,7 +41,8 @@ namespace NonaRoyale.Core.Abilities
             string passiveName = null,
             StatusKind? passive2 = null,
             double passive2Magnitude = 0.0,
-            int? hasteCellCap = null)
+            int? hasteCellCap = null,
+            string passiveDescription = null)
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("An operator needs a name.", nameof(name));
@@ -63,6 +64,7 @@ namespace NonaRoyale.Core.Abilities
             Passive2 = passive2;
             Passive2Magnitude = passive2Magnitude;
             HasteCellCap = hasteCellCap;
+            PassiveDescription = passiveDescription;
         }
 
         public string Name { get; }
@@ -106,6 +108,23 @@ namespace NonaRoyale.Core.Abilities
         /// named passive in the line after the abilities.
         /// </summary>
         public string PassiveName { get; }
+
+        /// <summary>
+        /// What the passive is, for a player reading the kit: the flavour line
+        /// under its generated rules line, as <see cref="AbilityDefinition.Description"/>
+        /// is for an ability. One entry covers a named two-status passive
+        /// (Kurbyn's Evasive Protocol).
+        /// </summary>
+        /// <remarks>
+        /// <b>No numbers, ever</b>, for the same reason as an ability's: the
+        /// rules line already carries them from the data (OPERATOR_GUIDE.md D2).
+        ///
+        /// <b>Optional here, required of the roster.</b> Test and sweep squads
+        /// build operators with passives and no reader, so the constructor
+        /// accepts null; <c>KitTraitTests</c> fails any operator in
+        /// <c>Roster.All</c> whose passive has none.
+        /// </remarks>
+        public string PassiveDescription { get; }
 
         public override string ToString() =>
             $"{Name} (hp {MaxHealth}, speed {BaseSpeed:0.0}, {Abilities.Count} abilities)";

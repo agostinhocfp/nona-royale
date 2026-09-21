@@ -1424,6 +1424,14 @@ namespace NonaRoyale.Unity.Composition
         /// </summary>
         private void HandleKeys()
         {
+            // A passive's card from the operator card sits over the match: Esc
+            // closes it, and the shortcuts wait under it as clicks do.
+            if (GlossaryCard.IsOpen)
+            {
+                if (Input.GetKeyDown(KeyCode.Escape)) GlossaryCard.Close();
+                return;
+            }
+
             if (Input.GetKeyDown(KeyCode.Escape))
             {
                 // Esc backs out of a choice first; with nothing left to back

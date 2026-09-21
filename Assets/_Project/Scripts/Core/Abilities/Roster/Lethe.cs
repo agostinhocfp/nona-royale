@@ -76,7 +76,8 @@ namespace NonaRoyale.Core.Abilities
         /// </remarks>
         public static AuraDefinition Catalyst { get; } =
             new AuraDefinition("Catalyst", CatalystRadius, speedModifier: 0.0,
-                side: AuraSide.Allies, grantsHaste: true);
+                side: AuraSide.Allies, grantsHaste: true,
+                description: "Stand close to her and the night runs faster. Allies near her move as if they were already late.");
 
         /// <summary>
         /// Far larger than a round of enemy turns can deal, so the pool never
@@ -242,6 +243,7 @@ namespace NonaRoyale.Core.Abilities
             baseSpeed: BaseSpeed,
             abilities: All,
             aura: Catalyst,
-            passive: StatusKind.Hastened);
+            passive: StatusKind.Hastened,
+            passiveDescription: "She never waits for the dice to finish. Every roll carries her a little further than anyone else.");
     }
 }

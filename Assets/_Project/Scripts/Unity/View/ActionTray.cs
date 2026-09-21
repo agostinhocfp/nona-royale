@@ -2,6 +2,7 @@
 using NonaRoyale.Core.Abilities;
 using NonaRoyale.Core.Model;
 using NonaRoyale.Core.Services;
+using NonaRoyale.Core.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -43,6 +44,12 @@ namespace NonaRoyale.Unity.View
     /// shows "ready in N" from <c>GameEngine.TurnsUntilReady</c>, and a
     /// too-expensive one shows its cost against the pool. Both are engine
     /// answers (PRESENTATION §1).
+    ///
+    /// <b>Passives and auras are chips on the operator card</b> (2026-09-21).
+    /// They are part of the kit but never pressed, so they are not ability
+    /// cards: a card there would read as castable and push Fortuna, Sanity and
+    /// Lethe to four across a phone. A chip opens the trait's rules over the
+    /// match. The row fits inside the heights above, so the bar did not grow.
     ///
     /// <b>Select, then cast</b> (PRESENTATION §4): choosing an ability draws
     /// its reach on the board, and nothing is spent until Cast or Enter.
@@ -446,18 +453,74 @@ namespace NonaRoyale.Unity.View
 
             // No "no statuses" line: an empty row says the same thing without
             // spending a line on it (H1).
-            if (op.IsInYard) return;
-
-            var tags = compact ? health : UiKit.Rect("statuses", card);
-
-            if (!compact)
+            if (!op.IsInYard)
             {
-                UiKit.Row(tags, 4f);
-                UiKit.Size(tags, height: 18f);
+                var tags = compact ? health : UiKit.Rect("statuses", card);
+
+                if (!compact)
+                {
+                    UiKit.Row(tags, 4f);
+                    UiKit.Size(tags, height: 18f);
+                }
+
+                foreach (var kind in engine.ActiveStatusesOn(op))
+                    UiKit.Tag(tags, StatusPalette.Label(kind), StatusPalette.For(kind), 12f);
             }
 
-            foreach (var kind in engine.ActiveStatusesOn(op))
-                UiKit.Tag(tags, StatusPalette.Label(kind), StatusPalette.For(kind), 12f);
+            // Shown in the yard too: a kit is a kit wherever the piece stands.
+            TraitChips(card, op);
+        }
+
+        /// <summary>
+        /// One gold chip per passive and aura, in the dossier's order; a tap
+        /// opens its rules and flavour over the match. Nothing for an operator
+        /// that carries neither, and no row either.
+        /// </summary>
+        /// <remarks>
+        /// 18 units tall, like the status tags, which is what the bar's height
+        /// leaves in both orientations. On a touch screen the hit box reaches
+        /// past the chip's edges, as the squad rail's pips do, so a finger can
+        /// find it.
+        /// </remarks>
+        private void TraitChips(RectTransform card, OperatorState op)
+        {
+            var definition = DefinitionOf(op);
+            if (definition == null) return;
+
+            var traits = RulesText.Traits(definition);
+            if (traits.Count == 0) return;
+
+            var row = UiKit.Rect("traits", card);
+            var layout = UiKit.Row(row, 4f);
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = true;
+            layout.childAlignment = TextAnchor.MiddleLeft;
+            UiKit.Size(row, height: 18f);
+
+            foreach (var trait in traits)
+            {
+                var shown = trait;
+                var chip = UiKit.Button(row, trait.Name, () => GlossaryCard.ShowTrait(_canvas, op.Name, shown),
+                    size: 11f, tint: UiTheme.GoldDeep, edge: UiTheme.Gold);
+                chip.name = "trait_" + trait.Name;
+
+                // The caption ignores layout, so the chip is sized to its words.
+                var caption = chip.GetComponentInChildren<TMP_Text>();
+                float width = caption != null ? caption.GetPreferredValues(trait.Name).x : 60f;
+                UiKit.Fixed(chip, width + 20f);
+
+                if (ScreenLayout.Touch && chip.targetGraphic != null)
+                    chip.targetGraphic.raycastPadding = new Vector4(-2f, -8f, -2f, -8f);
+            }
+        }
+
+        /// <summary>The roster entry a piece was dealt from. Null for a piece no roster operator matches.</summary>
+        private static OperatorDefinition DefinitionOf(OperatorState op)
+        {
+            foreach (var definition in Roster.All)
+                if (definition.Name == op.Name) return definition;
+
+            return null;
         }
 
         // ── Abilities ────────────────────────────────────────────────────

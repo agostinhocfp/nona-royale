@@ -1,5 +1,6 @@
 // Assets/_Project/Scripts/Unity/View/OperatorDossier.cs
 using System;
+using System.Collections.Generic;
 using NonaRoyale.Core.Abilities;
 using NonaRoyale.Core.Text;
 using TMPro;
@@ -56,17 +57,16 @@ namespace NonaRoyale.Unity.View
                 Divider(column);
             }
 
-            var passives = RulesText.Passives(op);
-            if (passives.Count > 0 || op.Aura != null)
+            // Passives and auras read like abilities: a rules line, and the
+            // flavour under it outside the draft (2026-09-21).
+            var traits = RulesText.Traits(op);
+            if (traits.Count > 0)
             {
-                if (!compact)
-                    Section(column, passives.Count == 0 ? "Aura" : op.Aura != null ? "Passive and aura" : "Passive");
+                if (!compact) Section(column, TraitsHeading(traits));
 
-                foreach (var passive in passives)
-                    Entry(column, passive.Name, "passive", passive.Line, null, onKeyword, compact);
-
-                if (op.Aura != null)
-                    Entry(column, op.Aura.Name, $"aura · r{op.Aura.Radius}", RulesText.ForAura(op.Aura), null, onKeyword, compact);
+                foreach (var trait in traits)
+                    Entry(column, trait.Name, TraitMeta(trait), trait.Line,
+                        compact ? null : trait.Description, onKeyword, compact);
             }
 
             if (!compact) Section(column, "Abilities");
@@ -96,6 +96,22 @@ namespace NonaRoyale.Unity.View
             string cooldown = ability.CooldownTurns > 0 ? $" · cd {ability.CooldownTurns}" : "";
 
             return $"<color=#{UiTheme.Hex(UiTheme.Cyan)}>{ability.EnergyCost}e</color> · {reach}{cooldown}";
+        }
+
+        /// <summary>"passive", or "aura · r2" — the tag beside a trait's name, as an ability's meta sits beside its.</summary>
+        public static string TraitMeta(KitTrait trait) =>
+            trait.Kind == TraitKind.Aura ? $"aura · r{trait.Radius}" : "passive";
+
+        private static string TraitsHeading(IReadOnlyList<KitTrait> traits)
+        {
+            bool passive = false, aura = false;
+            foreach (var trait in traits)
+            {
+                if (trait.Kind == TraitKind.Aura) aura = true;
+                else passive = true;
+            }
+
+            return passive && aura ? "Passive and aura" : aura ? "Aura" : "Passive";
         }
 
         /// <summary>

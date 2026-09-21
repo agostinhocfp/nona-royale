@@ -134,8 +134,16 @@ namespace NonaRoyale.Unity.View
             {
                 var events = new GameObject("EventSystem");
                 events.transform.SetParent(transform, false);
-                events.AddComponent<EventSystem>();
+                var system = events.AddComponent<EventSystem>();
                 events.AddComponent<StandaloneInputModule>();
+
+                // The default 10 pixels is under half a millimetre on a
+                // 500-dpi phone, so a finger's natural wobble turned taps into
+                // drags and the click was withdrawn. Two millimetres, from the
+                // screen's own density, is a swipe on any device; a screen that
+                // reports no density keeps the default (OPERATOR_GUIDE.md §4).
+                if (Screen.dpi > 0f)
+                    system.pixelDragThreshold = Mathf.Max(10, Mathf.RoundToInt(Screen.dpi * 0.08f));
             }
 
             _canvasRect = (RectTransform)go.transform;

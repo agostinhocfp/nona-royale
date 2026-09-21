@@ -191,6 +191,8 @@ namespace NonaRoyale.Core.Abilities
             baseSpeed: Speed,
             abilities: All,
             passive: StatusKind.HouseEdge,
-            passiveName: "The House Edge");
+            passiveName: "The House Edge",
+            passiveDescription:
+                "The house never lets a die go to waste. One she could have moved, she can sell back to the table instead.");
     }
 }

@@ -4,6 +4,7 @@ using NonaRoyale.Core.Abilities;
 using NonaRoyale.Core.Board;
 using NonaRoyale.Core.Bots;
 using NonaRoyale.Core.Draft;
+using NonaRoyale.Core.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -44,6 +45,12 @@ namespace NonaRoyale.Unity.View
     ///
     /// <b>Leaving is never silent.</b> BACK (Esc) with picks made asks first,
     /// and the clock stops while it asks.
+    ///
+    /// <b>The kit reads as rules (OPERATOR_GUIDE.md OG3).</b> The detail panel
+    /// shows each ability's generated rules line, not its flavour, and FULL
+    /// DOSSIER (DOSSIER on the upright sheet) opens the whole operator over
+    /// the pool. The clock keeps running and stays in view while it is open
+    /// (D4); a pick the clock makes for a human seat closes it.
     ///
     /// <b>CPU seats pick on their own</b> (BOTS.md decisions 6 and 7). In ALL
     /// PICK, one CPU pick lands every <see cref="CpuPickInterval"/> seconds,
@@ -161,6 +168,15 @@ namespace NonaRoyale.Unity.View
         private bool _detailDirty;
         private bool _builtPortrait;
 
+        /// <summary>
+        /// The full dossier, over the pool, while one is open (OPERATOR_GUIDE.md
+        /// OG3). Null when closed.
+        /// </summary>
+        private RectTransform _dossierLayer;
+
+        /// <summary>The pick count when the dossier opened, to notice the clock taking a pick under it.</summary>
+        private int _dossierPickCount;
+
         private readonly Dictionary<PlayerColor, BotBrain> _cpu = new Dictionary<PlayerColor, BotBrain>();
         private float _cpuClock;
         private int _cpuTurn;
@@ -218,6 +234,7 @@ namespace NonaRoyale.Unity.View
 
         public void Close()
         {
+            CloseDossier();
             _hold = -1f;
             _leaveArmed = false;
             if (_root != null) _root.gameObject.SetActive(false);
@@ -232,14 +249,17 @@ namespace NonaRoyale.Unity.View
 
             if (Input.GetKeyDown(KeyCode.Escape))
             {
-                // The sheet is the innermost thing open, so it goes first (M6).
-                if (_sheet != null && _sheet.gameObject.activeSelf) ClearFocus();
+                // Innermost first: a keyword's card, then the full dossier,
+                // then the sheet (M6).
+                if (GlossaryCard.IsOpen) GlossaryCard.Close();
+                else if (_dossierLayer != null) CloseDossier();
+                else if (_sheet != null && _sheet.gameObject.activeSelf) ClearFocus();
                 else if (_leaveArmed) Stay();
                 else RequestLeave();
                 return;
             }
 
-            if (_leaveArmed) return;
+            if (_leaveArmed || _dossierLayer != null) return;
 
             if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) StartMatch();
             if (Input.GetKeyDown(KeyCode.Backspace)) Undo();
@@ -505,6 +525,10 @@ namespace NonaRoyale.Unity.View
                 old.SetActive(false);
                 Destroy(old);
 
+                // The dossier lived in the old frame; it goes with it.
+                _dossierLayer = null;
+                GlossaryCard.Close();
+
                 BuildFrame();
                 Rebuild();
             }
@@ -534,6 +558,8 @@ namespace NonaRoyale.Unity.View
                     MarkDirty();
                 }
             }
+
+            if (_dossierLayer != null && ClockTookAPick()) CloseDossier();
 
             if (_dirty) Rebuild();
             else if (_detailDirty) RebuildDetail();
@@ -1058,42 +1084,42 @@ namespace NonaRoyale.Unity.View
 
             UiKit.Divider(card, vertical: false);
 
-            // ── Abilities, one line each; an aura fills the slot after them
-            //    (Bouncer, Lethe), and anything still missing is shown as missing ──
-            for (int i = 0; i < Roster.SquadSize; i++)
+            // ── The kit, one line each: the abilities, then every passive and
+            //    aura, then anything still missing shown as missing. It was a
+            //    spare-slot rule that showed one trait and dropped the rest
+            //    (Fortuna's House Edge, Lethe's haste, Sanity's burden) until
+            //    2026-09-21. Four lines is the most any kit takes today, and the
+            //    card's height holds four; a fifth needs CardHeight first ──
+            var traits = RulesText.Traits(op);
+            int lines = Mathf.Max(Roster.SquadSize, op.Abilities.Count + traits.Count);
+
+            for (int i = 0; i < lines; i++)
             {
                 var line = UiKit.Rect("ability", card);
                 UiKit.Size(line, height: 22f);
                 var lineRow = UiKit.Row(line, 8f);
                 lineRow.childForceExpandHeight = true;
 
-                if (i >= op.Abilities.Count)
+                if (i < op.Abilities.Count)
                 {
-                    if (i == op.Abilities.Count && op.Aura != null)
-                    {
-                        var auraName = UiKit.Label(line, op.Aura.Name, 14f, UiTheme.Text);
-                        UiKit.Size(auraName, flexibleWidth: 1f);
-                        UiKit.Label(line, $"aura · r{op.Aura.Radius}", 13f, UiTheme.TextDim, TextAlignmentOptions.MidlineRight);
-                        continue;
-                    }
-
-                    // A named passive fills the slot the same way (Revú's Equilibrium).
-                    if (i == op.Abilities.Count && op.PassiveName != null)
-                    {
-                        var passiveName = UiKit.Label(line, op.PassiveName, 14f, UiTheme.Text);
-                        UiKit.Size(passiveName, flexibleWidth: 1f);
-                        UiKit.Label(line, "passive", 13f, UiTheme.TextDim, TextAlignmentOptions.MidlineRight);
-                        continue;
-                    }
-
-                    UiKit.Label(line, "— not yet written —", 14f, UiTheme.TextOff);
+                    var ability = op.Abilities[i];
+                    var abilityName = UiKit.Label(line, ability.Name, 14f, UiTheme.Text);
+                    UiKit.Size(abilityName, flexibleWidth: 1f);
+                    UiKit.Label(line, AbilityMeta(ability), 13f, UiTheme.TextDim, TextAlignmentOptions.MidlineRight);
                     continue;
                 }
 
-                var ability = op.Abilities[i];
-                var abilityName = UiKit.Label(line, ability.Name, 14f, UiTheme.Text);
-                UiKit.Size(abilityName, flexibleWidth: 1f);
-                UiKit.Label(line, AbilityMeta(ability), 13f, UiTheme.TextDim, TextAlignmentOptions.MidlineRight);
+                int t = i - op.Abilities.Count;
+                if (t < traits.Count)
+                {
+                    var trait = traits[t];
+                    var traitName = UiKit.Label(line, trait.Name, 14f, UiTheme.Text);
+                    UiKit.Size(traitName, flexibleWidth: 1f);
+                    UiKit.Label(line, OperatorDossier.TraitMeta(trait), 13f, UiTheme.TextDim, TextAlignmentOptions.MidlineRight);
+                    continue;
+                }
+
+                UiKit.Label(line, "— not yet written —", 14f, UiTheme.TextOff);
             }
 
             // ── Why it cannot be picked ──
@@ -1192,14 +1218,6 @@ namespace NonaRoyale.Unity.View
             var rect = (RectTransform)image.transform;
             rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.sizeDelta = new Vector2(size, size);
-        }
-
-        /// <summary>What an aura does and to whom, in the detail panel's words.</summary>
-        private static string AuraReach(AuraDefinition aura)
-        {
-            string who = aura.Side == AuraSide.Allies ? "allies" : "enemies";
-            if (aura.GrantsHaste) return $"hastens {who}";
-            return aura.SpeedModifier < 0.0 ? $"slows {who}" : $"quickens {who}";
         }
 
         /// <summary>Cost, reach and cooldown, as the action tray words them, shortened.</summary>
@@ -1440,7 +1458,10 @@ namespace NonaRoyale.Unity.View
             if (op == null) return;
 
             var close = UiKit.Button(_sheetActions, "CLOSE", ClearFocus, MarkDirty, size: UiTheme.FontSmall);
-            UiKit.Fixed(close, 110f);
+            UiKit.Fixed(close, 92f);
+
+            var dossier = UiKit.Button(_sheetActions, "DOSSIER", () => OpenDossier(op), size: UiTheme.FontSmall);
+            UiKit.Fixed(dossier, 104f);
 
             var picker = Picker;
             bool noSeat = picker == PlayerColor.None;
@@ -1510,42 +1531,31 @@ namespace NonaRoyale.Unity.View
             UiKit.Column(headingSlot, 0f).childForceExpandHeight = true;
             UiKit.Heading(headingSlot, OperatorCopy.Role(op.Name));
 
-            var title = UiKit.Caption(Content(_detail, "name", 34f), op.Name.ToUpperInvariant(), 28f,
-                UiTheme.GoldBright, TextAlignmentOptions.MidlineLeft);
-            title.fontStyle = FontStyles.Bold;
+            // The name, and — wide — the way into the full dossier beside it,
+            // where a long kit cannot push it off the bottom of the panel.
+            var nameRow = Content(_detail, "name", 34f);
+            UiKit.Row(nameRow, 8f).childForceExpandHeight = true;
+
+            var title = UiKit.Label(nameRow, op.Name.ToUpperInvariant(), 28f, UiTheme.GoldBright, bold: true);
             title.characterSpacing = 6f;
+            UiKit.Size(title, flexibleWidth: 1f);
 
-            var traits = new List<string> { $"{op.MaxHealth} health", $"speed ×{op.BaseSpeed:0.0}" };
-            if (op.Passive.HasValue)
+            if (!upright)
             {
-                // A passive's magnitude was a speed bonus (Kurbyn, before
-                // 2026-09-17); the roster's passives now carry none.
-                string magnitude = op.PassiveMagnitude != 0.0 ? $" ({op.PassiveMagnitude:+0.0;-0.0} speed)" : "";
-                string passiveLabel = op.PassiveName ?? StatusPalette.Label(op.Passive.Value);
-                traits.Add($"passive {passiveLabel}{magnitude}");
-                if (op.Passive2.HasValue)
-                    traits.Add($"passive {StatusPalette.Label(op.Passive2.Value)}");
-            }
-            if (op.Aura != null) traits.Add($"aura {op.Aura.Name}, radius {op.Aura.Radius}, {AuraReach(op.Aura)}");
-
-            Paragraph("traits", string.Join("  ·  ", traits), UiTheme.TextDim, UiTheme.FontSmall);
-
-            for (int i = 0; i < op.Abilities.Count; i++)
-            {
-                var ability = op.Abilities[i];
-                var line = Content(_detail, "ability", 26f);
-                var lineRow = UiKit.Row(line, 8f);
-                lineRow.childForceExpandHeight = true;
-
-                var name = UiKit.Label(line, ability.Name, UiTheme.FontBody, UiTheme.Text, bold: true);
-                UiKit.Size(name, flexibleWidth: 1f);
-                UiKit.Label(line, AbilityMeta(ability), UiTheme.FontSmall, UiTheme.TextDim,
-                    TextAlignmentOptions.MidlineRight);
-
-                Paragraph("description", ability.Description, UiTheme.TextDim, 14f);
+                var full = UiKit.Button(nameRow, "FULL DOSSIER", () => OpenDossier(op), size: UiTheme.FontSmall);
+                UiKit.Fixed(full, 150f);
             }
 
-            if (op.Abilities.Count + (op.Aura != null || op.PassiveName != null ? 1 : 0) < Roster.SquadSize)
+            Paragraph("traits", $"{op.MaxHealth} health  ·  speed ×{op.BaseSpeed:0.0}", UiTheme.TextDim, UiTheme.FontSmall);
+
+            // The kit as rules, not flavour (OPERATOR_GUIDE.md OG3): the
+            // generated line is what a player picking against a clock needs,
+            // and the flavour waits in the full dossier.
+            var kit = Content(_detail, "kit");
+            UiKit.Column(kit, 2f).childForceExpandHeight = false;
+            OperatorDossier.Build(kit, op, ShowKeyword, compact: true);
+
+            if (op.Abilities.Count + RulesText.Traits(op).Count < Roster.SquadSize)
                 Paragraph("missing",
                     $"{op.Name} has {op.Abilities.Count} of {Roster.SquadSize} abilities; the rest are not written yet.",
                     UiTheme.Threat, 14f);
@@ -1560,6 +1570,91 @@ namespace NonaRoyale.Unity.View
             UiKit.Column(slot, 0f);
             UiKit.Label(slot, text, size, colour, wrap: true);
         }
+
+        // ── The full dossier (OPERATOR_GUIDE.md OG3) ─────────────────────
+
+        /// <summary>
+        /// Opens the operator's full dossier over the pool. The clock keeps
+        /// running and stays in view (D4): the header and the footer are left
+        /// uncovered, so the time and START are never behind it.
+        /// </summary>
+        /// <remarks>
+        /// <b>The draft is not where the roster is meant to be learned</b> —
+        /// the title's OPERATORS page is, with no clock (D1). This is the
+        /// reminder, taken at the draft's price.
+        /// </remarks>
+        private void OpenDossier(OperatorDefinition op)
+        {
+            if (op == null || _frame == null) return;
+
+            CloseDossier();
+
+            bool upright = ScreenLayout.IsPortrait;
+            float top = upright ? UprightHeaderHeight + 10f : 130f + 16f;
+            float bottom = upright ? UprightFooterHeight + 10f : 62f + 16f;
+
+            _dossierLayer = UiKit.Rect("dossier_layer", _frame);
+            _dossierLayer.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            _dossierLayer.anchorMin = Vector2.zero;
+            _dossierLayer.anchorMax = Vector2.one;
+            _dossierLayer.offsetMin = new Vector2(0f, bottom);
+            _dossierLayer.offsetMax = new Vector2(0f, -top);
+            UiKit.Panel(_dossierLayer, blocksPointer: true);
+            UiKit.Column(_dossierLayer, 8f, upright ? 14 : 22).childForceExpandHeight = false;
+
+            var bar = UiKit.Rect("bar", _dossierLayer);
+            UiKit.Size(bar, height: 40f, flexibleHeight: 0f);
+            UiKit.Row(bar, 8f).childForceExpandHeight = true;
+            var heading = UiKit.Heading(bar, "Dossier · the clock is running");
+            UiKit.Size(heading, flexibleWidth: 1f);
+            var close = UiKit.Button(bar, "CLOSE" + ScreenLayout.KeyMarkup(
+                $"  <size=60%><color=#{UiTheme.Hex(UiTheme.Gold)}>Esc</color></size>"), CloseDossier, size: UiTheme.FontSmall);
+            UiKit.Fixed(close, upright ? 96f : 140f);
+
+            var viewport = UiKit.Rect("viewport", _dossierLayer);
+            UiKit.Size(viewport, flexibleHeight: 1f);
+            var content = UiKit.ScrollColumn(viewport, 4f);
+            OperatorDossier.Build(content, op, ShowKeyword);
+
+            _dossierLayer.SetAsLastSibling();
+            _dossierPickCount = _draft.PickCount;
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_dossierLayer);
+            UiTween.SlideIn(_dossierLayer, new Vector2(0f, -14f), 0.2f);
+        }
+
+        private void CloseDossier()
+        {
+            GlossaryCard.Close();
+            if (_dossierLayer == null) return;
+
+            var go = _dossierLayer.gameObject;
+            _dossierLayer = null;
+            go.SetActive(false);
+            Destroy(go);
+        }
+
+        /// <summary>
+        /// Whether the clock has taken a pick for a human seat while the
+        /// dossier was open, which closes it so the player sees what was taken.
+        /// </summary>
+        /// <remarks>
+        /// A human cannot pick through the dossier — it covers the pool — so a
+        /// human seat's pick made under it is the clock's. CPU picks do not
+        /// count: in ALL PICK they land every second and a half, and a dossier
+        /// that shut on each would be unreadable.
+        /// </remarks>
+        private bool ClockTookAPick()
+        {
+            if (_draft.IsTimeUp || _hold >= 0f) return true;
+            if (_draft.PickCount == _dossierPickCount) return false;
+
+            bool human = _draft.PickCount > 0 && !IsCpu(_draft.LastPickSeat);
+            _dossierPickCount = _draft.PickCount;
+            return human;
+        }
+
+        /// <summary>A tapped keyword's card, over the dossier when one is open so the clock stays in view.</summary>
+        private void ShowKeyword(string id) => GlossaryCard.Show(_dossierLayer != null ? _dossierLayer : _root, id);
 
         // ── Footer ───────────────────────────────────────────────────────
 

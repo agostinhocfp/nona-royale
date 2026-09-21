@@ -142,6 +142,8 @@ namespace NonaRoyale.Core.Abilities
             baseSpeed: Speed,
             abilities: All,
             passive: StatusKind.Equilibrium,
-            passiveName: "Equilibrium");
+            passiveName: "Equilibrium",
+            passiveDescription:
+                "Every blow against him is weighed against what it cost. Cheap shots land double; the expensive ones he shrugs half away.");
     }
 }

@@ -50,7 +50,8 @@ namespace NonaRoyale.Core.Abilities
             int radius,
             double speedModifier,
             AuraSide side = AuraSide.Enemies,
-            bool grantsHaste = false)
+            bool grantsHaste = false,
+            string description = null)
         {
             if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("An aura needs a name.", nameof(name));
             if (radius < 0) throw new ArgumentOutOfRangeException(nameof(radius));
@@ -62,6 +63,7 @@ namespace NonaRoyale.Core.Abilities
             SpeedModifier = speedModifier;
             Side = side;
             GrantsHaste = grantsHaste;
+            Description = description;
         }
 
         public string Name { get; }
@@ -77,6 +79,13 @@ namespace NonaRoyale.Core.Abilities
 
         /// <summary>Whether an operator it reaches counts as Hastened (§5.9).</summary>
         public bool GrantsHaste { get; }
+
+        /// <summary>
+        /// What the aura is, for a player reading the kit. Number-free, like an
+        /// ability's description; the radius and the effect are the rules
+        /// line's. Optional here, required of the roster by <c>KitTraitTests</c>.
+        /// </summary>
+        public string Description { get; }
 
         public override string ToString()
         {

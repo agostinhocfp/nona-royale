@@ -299,6 +299,44 @@ namespace NonaRoyale.Unity.View
             return rect;
         }
 
+        /// <summary>
+        /// Makes <paramref name="viewport"/> a vertical scroll area and returns
+        /// its content: a column that grows with what is put in it.
+        /// </summary>
+        /// <remarks>
+        /// The viewport is sized by whoever owns it; this only masks it, adds
+        /// the scroll, and hangs the content from its top edge. Buttons and
+        /// links inside keep working: a press that becomes a drag scrolls, and
+        /// the event system withdraws its click (<c>HudRoot</c> sets the drag
+        /// threshold from the screen's density).
+        /// </remarks>
+        public static RectTransform ScrollColumn(RectTransform viewport, float spacing = 6f, int padding = 0)
+        {
+            viewport.gameObject.AddComponent<RectMask2D>();
+
+            // A scroll needs something under the pointer to catch a drag that
+            // starts between two lines; a clear fill is that something.
+            if (viewport.GetComponent<Graphic>() == null) Fill(viewport, Color.clear, blocksPointer: true);
+
+            var scroll = viewport.gameObject.AddComponent<ScrollRect>();
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = 30f;
+
+            var content = Rect("scroll_content", viewport);
+            content.anchorMin = new Vector2(0f, 1f);
+            content.anchorMax = new Vector2(1f, 1f);
+            content.pivot = new Vector2(0.5f, 1f);
+            content.sizeDelta = Vector2.zero;
+            Column(content, spacing, padding).childForceExpandHeight = false;
+            content.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            scroll.viewport = viewport;
+            scroll.content = content;
+            return content;
+        }
+
         // ── Content ──────────────────────────────────────────────────────
 
         public static TMP_Text Label(

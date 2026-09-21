@@ -113,6 +113,8 @@ namespace NonaRoyale.Core.Abilities
             passive: StatusKind.Evasion,
             passiveName: "Evasive Protocol",
             passive2: StatusKind.Hastened,
-            hasteCellCap: 2);
+            hasteCellCap: 2,
+            passiveDescription:
+                "He is never quite where the shot was aimed, and always a step further along than he should be.");
     }
 }

@@ -236,6 +236,7 @@ namespace NonaRoyale.Core.Abilities
             maxHealth: MaxHealth,
             baseSpeed: Speed,
             abilities: All,
-            passive: StatusKind.Burdened);
+            passive: StatusKind.Burdened,
+            passiveDescription: "The heaviest thing on the board. Every roll carries him a little less far than it should.");
     }
 }
