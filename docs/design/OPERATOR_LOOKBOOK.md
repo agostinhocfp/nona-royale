@@ -1,7 +1,7 @@
 # Nona Royale — Operator Look Book (procedural Dark Deco figures)
 
 > Location in repo: `docs/design/OPERATOR_LOOKBOOK.md` · Project copy: `claude/OPERATOR_LOOKBOOK.md`
-> Status: **LB0 and LB3 done. LB2 closed at 9 of 12 front-view recipes. LB5a–c done and committed (Bouncer rigged on the board with his event poses). LB5d under way: batch 1 (Nuetu, Sanity, Syla) delivered 2026-09-21, awaiting review in the window.** Written 2026-09-21. **v2 — ambition raised: these are meant to be good, not merely distinct.**
+> Status: **LB0 and LB3 done. LB2 closed at 9 of 12 front-view recipes. LB5a–c done and committed (Bouncer rigged on the board with his event poses). LB5d under way: batch 1 (Nuetu, Sanity, Syla) passed review; batch 2 (Kurbyn, Javi, Mimi) delivered 2026-09-21, awaiting review in the window.** Written 2026-09-21. **v2 — ambition raised: these are meant to be good, not merely distinct.**
 > Related: `ART_DIRECTION.md` §2.2 (Dark Deco cel — the spec), §3 (palette), §5.1 (the value ledger — the source of the recipes), §6.1; `ART_HOOKUP.md` (ART1 — the real-art path this must not break); `STAGE4_HANDOFF.md`; ADR-0009; ADR-0010 (URP 2D lights).
 
 ## Goal
@@ -138,7 +138,7 @@ Plain C# for everything but the Unity view, as before.
 | LB5a | Rig core **(delivered)** | `FigureRig`, `RigPart`, `RigPose`, `OperatorRig`, the build templates, composition of a posed rig into one image for judging, and tests. **Bouncer** redrawn in three-quarter view with rest, idle, cast and seated poses, previewed animated in the Look Book window. No game changes yet. |
 | LB5b | On the board **(delivered)** | `RigView` and `RigAnimator` on `OperatorPiece`: idle, the step, the rise, facing, the hit flash per part, screen bounds, sorting. Bouncer only. |
 | LB5c | Event poses **(delivered)** | Cast aimed at the target, hit recoil, knockout before the shatter, the seated activity, and the cast's cyan tell on the device. |
-| LB5d | The cast **(batch 1 of 4 delivered)** | The eight other recipes redrawn in three-quarter view with a head pass each (hair masses, one face shadow, a signature head shape), and **Luka, Fortuna and Lethe** drawn rigged. Normal maps. |
+| LB5d | The cast **(batch 2 of 4 delivered)** | The eight other recipes redrawn in three-quarter view with a head pass each (hair masses, one face shadow, a signature head shape), and **Luka, Fortuna and Lethe** drawn rigged. Normal maps. |
 
 Stop for Play Mode after each.
 
@@ -279,6 +279,16 @@ All under `Assets/_Project/Scripts/Unity/View/Figures/`. Everything but `FigureS
   - **Checks:** every rig test runs over the four rigs. Outside Unity all 176 plain C# tests pass; all three assemblies compile against the editor's DLLs, with Core rebuilt from the current tree, with no errors or warnings. On the board the three draw rigged at once (`RigRoster`), with the look book no longer used for them.
   - **For the designer to judge in the window:** Nuetu's plate-and-shirt front against the front-view's symmetric shield; Sanity's forearm cuffs and the three tool handles, which may be noise at board scale; Syla's drone housings, which read as a shelf at full size; all three seated activities.
 
+- **2026-09-21 — LB5d batch 1 passed review** ("All green").
+
+- **2026-09-21 — LB5d, batch 2: Kurbyn, Javi, Mimi rigged in three-quarter view,** all on the Light build.
+  - **Kurbyn, the coiled four-point.** Drawn coiled at rest: the torso leans into the facing side, wide through the back and narrow at the hip, the stance wide and low with the knees out over the feet, both fists up before him. The four points are the elbows and the feet. The bare forearms are his only light; the waistcoat hangs open over the brass braces and the loose tie; the neural rig clips flat down the nape, its two filaments the tell. Head pass: hair cropped and pushed back as one shape with a carved highlight, a hard jaw, one brow shadow. Cast: the near fist snapped out straight. Seated: the chair rocked back on two legs, eyes on another table; his activity is tipping further back. His wide stance splays the far thigh, so his seated pose turns it less to keep it under the table.
+  - **Javi, the upright cross.** Narrow, tall, slightly stooped. The bar is his elbows held out wide with the gloved hands up before him, and the bandolier racked across the chest: a brass strap, five steel canisters foreshortened toward the far side, frosted seals, the fourth spent, a charge line on each (the tell). The charcoal waistcoat covers the torso, so the white stays in the sleeves and collar. Head pass: greying hair as one mass, the wire glasses pushed up onto it, a deep cheek line, the head carried forward. Cast: the near hand flicked out at the target. Seated: forearms on the felt, head down; his activity is re-racking a canister without looking up.
+  - **Mimi, the small dart.** Near-black and narrow; the rig is what reads. The pack on her back shows past the near shoulder, with caps on both shoulders, straps straight down the front and two short emitters angled up and out with frost-white tips; the coordinate plate is on the far forearm. The coat-dress skirt rides the hips like Syla's gown. Head pass: hair scraped back into a hard knot, a pale sharp face, the high black collar. Cast: the near hand points while the far forearm lifts the plate; emitters and plate light. Seated: hands flat on the felt, the rig dark; her activity is checking the plate.
+  - **Squint at 64 px, rest poses:** every pair involving the new three is under the amber line: the closest are Syla/Mimi 0.68, Javi/Mimi 0.66 and Syla/Javi 0.65 (the three narrow uprights, told apart by the drone housings, the raised hands and the fins); Kurbyn is at 0.58 or under against everyone.
+  - **Checks:** every rig test runs over the seven rigs. Outside Unity all 254 plain C# tests pass; all three assemblies compile against the editor's DLLs with no errors or warnings.
+  - **For the designer to judge in the window:** Kurbyn's guard (fists up) as his rest pose on the board; Javi's hands-up rest, which could read as surrender rather than ready; Mimi's legs, which nearly vanish on the dark floor by design; the heads with hair, which the all-round rim makes a little helmet-like at full size.
+
 ## Read before writing anything
 
 `ART_DIRECTION.md` §2.2, §3, §5 and §5.1 in full — they are the spec, and this document is a summary of them. Then `View/BoardArt.cs`, `View/OperatorPiece.cs`, `View/FigureLayout.cs`, `View/OperatorArtLibrary.cs`, `View/UiTheme.cs`, `View/FigureTilt.cs`, the draft card, and `Core/Abilities/Roster.cs` for the authoritative names. For LB2 onward, also everything under `View/Figures/`. File names come from the design logs and need verifying against the tree.
@@ -299,6 +309,6 @@ feat(tools): operator contact sheet, squint sheet and distinctness tests
 feat(ui): Deco portraits and the powered cast overlay
 ```
 
-## Start prompt for the implementing session (LB5d, batch 2)
+## Start prompt for the implementing session (LB5d, batch 3)
 
-> Read `docs/design/OPERATOR_LOOKBOOK.md` in full, especially the LB5 section and the log, then `ART_DIRECTION.md` §2.2, §3, §5 and §5.1, and the Kurbyn, Javi, Mimi, Revú and Kian blocks in `ART_PROMPTS.md`. Then everything under `View/Figures/`, with `Rig/Rigs/` as the pattern (Bouncer, Nuetu, Sanity, Syla) and `DecoMotifs.Limb` for limbs. Ask me for the batch 1 review first and fix what it raises. Then build batch 2: Kurbyn, Javi and Mimi as three-quarter rigs on the Light build, each with a head pass, its own cast and its own seated activity, squint-checked against every rig already drawn. Stop for the judging window.
+> Read `docs/design/OPERATOR_LOOKBOOK.md` in full, especially the LB5 section and the log, then `ART_DIRECTION.md` §2.2, §3, §5 and §5.1, and the Revú, Kian and Luka blocks in `ART_PROMPTS.md` (and `ART_HOOKUP.md` for Luka's render, which still wins over any rig). Then everything under `View/Figures/`, with `Rig/Rigs/` as the pattern and `DecoMotifs.Limb` for limbs. Ask me for the batch 2 review first and fix what it raises. Then build batch 3: Revú and Kian, redrawn as three-quarter rigs, and Luka rigged from the start, each with a head pass, its own cast and its own seated activity, squint-checked against every rig already drawn. Stop for the judging window.
