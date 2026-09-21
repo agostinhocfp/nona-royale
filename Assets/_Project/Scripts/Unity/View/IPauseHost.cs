@@ -20,5 +20,8 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>Abandons the match and returns to the title screen (GUI increment J).</summary>
         void MainMenu();
+
+        /// <summary>Opens the operator guide over the paused match; leaving it returns to the pause menu (OPERATOR_GUIDE.md OG4).</summary>
+        void OpenGuide();
     }
 }

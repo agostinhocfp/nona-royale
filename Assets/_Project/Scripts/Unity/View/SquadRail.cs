@@ -414,7 +414,7 @@ namespace NonaRoyale.Unity.View
 
             var seatColour = BoardLayout.ColourOf(op.Owner);
             var iconColour = op.IsInYard ? Color.Lerp(seatColour, UiTheme.PieceWaiting, 0.55f) : seatColour;
-            UiKit.Icon(top, PieceShape.For(op), iconColour, 18f);
+            DossierIcon(top, op, iconColour, 18f, 24f, 20f);
 
             var name = UiKit.Label(top, op.Name, 13f, commandable || !op.IsInYard ? UiTheme.Text : UiTheme.TextDim);
             UiKit.Size(name, flexibleWidth: 1f);
@@ -472,7 +472,7 @@ namespace NonaRoyale.Unity.View
             UiKit.Size(pips, height: 18f);
 
             foreach (var op in seat.Operators)
-                UiKit.Icon(pips, PieceShape.For(op), PipTint(op, colour, engine), SpinePip);
+                DossierIcon(pips, op, PipTint(op, colour, engine), SpinePip, 26f, 18f);
         }
 
         // ── Seat forms shared by both arrangements ───────────────────────
@@ -524,13 +524,45 @@ namespace NonaRoyale.Unity.View
             foreach (var op in seat.Operators)
             {
                 if (engine.IsHome(op)) home++;
-                UiKit.Icon(pips, PieceShape.For(op), PipTint(op, colour, engine), SpinePip);
+                DossierIcon(pips, op, PipTint(op, colour, engine), SpinePip, 22f, 22f);
             }
 
             UiKit.Label(spine, $"{home}/{seat.Operators.Count}", 13f, UiTheme.TextDim,
                 align: TextAlignmentOptions.MidlineRight);
 
             return spine.gameObject;
+        }
+
+        /// <summary>
+        /// An operator's silhouette that opens its dossier when tapped
+        /// (OPERATOR_GUIDE.md OG4) — every seat's, enemies included.
+        /// </summary>
+        /// <remarks>
+        /// <b>The hit box is bigger than the mark.</b> A 14-unit pip is a
+        /// fine mark and an impossible target for a finger, so the button
+        /// around it is sized separately and stays clear, drawing nothing.
+        ///
+        /// <b>It sits inside the row's own button</b> on the player's seat. A
+        /// click goes to the innermost handler, so the silhouette opens the
+        /// dossier and the rest of the row still selects or deploys; the two
+        /// never both fire.
+        /// </remarks>
+        private void DossierIcon(RectTransform parent, OperatorState op, Color tint, float size, float hitWidth, float hitHeight)
+        {
+            var hit = UiKit.Rect($"dossier_{op.Name}", parent);
+            UiKit.Fixed(hit, hitWidth, hitHeight);
+            var target = UiKit.Fill(hit, Color.clear, blocksPointer: true);
+
+            var button = hit.gameObject.AddComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            button.targetGraphic = target;
+            button.navigation = new Navigation { mode = Navigation.Mode.None };
+            button.onClick.AddListener(() => _host.OpenDossier(op));
+
+            var icon = UiKit.Icon(hit, PieceShape.For(op), tint, size);
+            var rect = (RectTransform)icon.transform;
+            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(size, size);
         }
 
         /// <summary>
@@ -665,7 +697,7 @@ namespace NonaRoyale.Unity.View
 
             var seatColour = BoardLayout.ColourOf(op.Owner);
             var iconColour = op.IsInYard ? Color.Lerp(seatColour, UiTheme.PieceWaiting, 0.55f) : seatColour;
-            UiKit.Icon(row, PieceShape.For(op), iconColour, 26f);
+            DossierIcon(row, op, iconColour, 26f, 34f, 34f);
 
             var middle = UiKit.Rect("middle", row);
             UiKit.Column(middle, 2f);

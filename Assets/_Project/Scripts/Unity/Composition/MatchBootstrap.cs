@@ -199,6 +199,13 @@ namespace NonaRoyale.Unity.Composition
         private EndScreen _end;
         private TitleScreen _title;
         private DraftScreen _draftScreen;
+        private OperatorGuideScreen _guide;
+
+        /// <summary>
+        /// True while the guide was opened from a match rather than the title,
+        /// so the match keeps its music and counts as paused (OG4).
+        /// </summary>
+        private bool _guideOverMatch;
         private bool _endQueued;
 
         /// <summary>
@@ -296,13 +303,14 @@ namespace NonaRoyale.Unity.Composition
         private bool Busy => _queue != null && _queue.IsBusy;
 
         /// <summary>The screens the app moves between (GUI increment J).</summary>
-        public enum AppScreen { Title, Setup, Draft, Match, Paused, Results }
+        public enum AppScreen { Title, Guide, Setup, Draft, Match, Paused, Results }
 
         /// <summary>
         /// Which screen is showing, read from the open cards, topmost first.
         /// No card open means the match itself.
         /// </summary>
         public AppScreen CurrentScreen =>
+            _guide != null && _guide.IsOpen ? AppScreen.Guide :
             _title != null && _title.IsOpen ? AppScreen.Title :
             _setup != null && _setup.IsOpen ? AppScreen.Setup :
             _draftScreen != null && _draftScreen.IsOpen ? AppScreen.Draft :
@@ -482,6 +490,8 @@ namespace NonaRoyale.Unity.Composition
             if (_pause != null) _pause.Close();
             if (_setup != null) _setup.Close();
             if (_draftScreen != null) _draftScreen.Close();
+            if (_guide != null) _guide.Close();
+            _guideOverMatch = false;
             if (_end != null) _end.Close();
 
             // Opened before the table is dressed: FrameCamera asks the title
@@ -560,6 +570,8 @@ namespace NonaRoyale.Unity.Composition
             _setup.Bind(_hudRoot.Root, this);
             _draftScreen = GetComponent<DraftScreen>() ?? gameObject.AddComponent<DraftScreen>();
             _draftScreen.Bind(_hudRoot.Root, this);
+            _guide = GetComponent<OperatorGuideScreen>() ?? gameObject.AddComponent<OperatorGuideScreen>();
+            _guide.Bind(_hudRoot.Root, CloseGuide);
             _end = GetComponent<EndScreen>() ?? gameObject.AddComponent<EndScreen>();
             _end.Bind(_hudRoot.Root, this);
         }
@@ -921,10 +933,14 @@ namespace NonaRoyale.Unity.Composition
             var screen = CurrentScreen;
             bool live = _match != null && !_match.Engine.MatchOver;
 
-            _audio.Music = live && (screen == AppScreen.Match || screen == AppScreen.Paused)
+            // The guide over a match is a pause, not a trip to the title: the
+            // match's music keeps playing under it, ducked as it is paused.
+            bool guideOverMatch = screen == AppScreen.Guide && _guideOverMatch;
+
+            _audio.Music = live && (screen == AppScreen.Match || screen == AppScreen.Paused || guideOverMatch)
                 ? (_match.Engine.IsFinalStretch ? MusicCue.Showdown : MusicCue.Match)
                 : MusicCue.Title;
-            _audio.Paused = screen == AppScreen.Paused;
+            _audio.Paused = screen == AppScreen.Paused || guideOverMatch;
         }
 
         /// <summary>Screen width the OnGUI panel occupies, including its margin. Pixels.</summary>
@@ -1454,6 +1470,10 @@ namespace NonaRoyale.Unity.Composition
                 case AppScreen.Title:
                     if (escape) _title.Back();
                     else if (enter) _title.Confirm();
+                    return;
+
+                case AppScreen.Guide:
+                    _guide.HandleKeys();
                     return;
 
                 case AppScreen.Setup:
@@ -2209,6 +2229,21 @@ namespace NonaRoyale.Unity.Composition
             NewMatch();
         }
 
+        /// <summary>
+        /// A silhouette in the squad rail was tapped: that operator's dossier,
+        /// over the match (OPERATOR_GUIDE.md OG4). The guide is a full-screen
+        /// card, so the bots and the board wait under it as they do under the
+        /// pause menu, and leaving it comes straight back here.
+        /// </summary>
+        void IControlPanelHost.OpenDossier(OperatorState op)
+        {
+            if (op == null || _guide == null) return;
+
+            SetHovered(null);
+            _guideOverMatch = true;
+            _guide.Open(Roster.ByName(op.Name), () => _guideOverMatch = false);
+        }
+
         // ── Pause menu ───────────────────────────────────────────────────
 
         string IPauseHost.PauseSummary
@@ -2247,6 +2282,19 @@ namespace NonaRoyale.Unity.Composition
             ShowTitle();
         }
 
+        /// <summary>From the pause menu; leaving the guide goes back to it (OG4).</summary>
+        void IPauseHost.OpenGuide()
+        {
+            if (_guide == null) return;
+
+            _guideOverMatch = true;
+            _guide.Open(null, () =>
+            {
+                _guideOverMatch = false;
+                OpenPause();
+            });
+        }
+
         void IPauseHost.OpenSetup()
         {
             SpeakQuit();
@@ -2259,6 +2307,8 @@ namespace NonaRoyale.Unity.Composition
             if (_end != null) _end.Close();
             if (_title != null) _title.Close();
             if (_draftScreen != null) _draftScreen.Close();
+            if (_guide != null) _guide.Close();
+            _guideOverMatch = false;
 
             SetHovered(null);
             if (_match != null) RefreshMarks();
@@ -2349,6 +2399,23 @@ namespace NonaRoyale.Unity.Composition
         // ── Title (GUI increment J) ──────────────────────────────────────
 
         void ITitleHost.Play() => OpenSetup();
+
+        /// <summary>
+        /// Title → OPERATORS (OPERATOR_GUIDE.md OG2). The title closes under
+        /// it and comes back when the guide does; nothing else on the table
+        /// changes, because nothing is at stake on this screen.
+        /// </summary>
+        void ITitleHost.OpenGuide()
+        {
+            if (_title != null) _title.Close();
+            _guideOverMatch = false;
+            _guide.Open();
+        }
+
+        private void CloseGuide()
+        {
+            if (_title != null && !_title.IsOpen) _title.Open();
+        }
 
         void ITitleHost.Quit()
         {

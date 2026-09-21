@@ -250,6 +250,8 @@ namespace NonaRoyale.Unity.View
             Choice("RESUME", "Esc", Close, UiTheme.CyanDeep, UiTheme.Cyan);
             Space(4f);
 
+            // The guide, for the question a first match asks most (OG4).
+            Choice("OPERATORS", "", () => { Close(); _host?.OpenGuide(); });
             Choice("NEW MATCH", "", () => { Close(); _host?.OpenSetup(); });
             Choice("SETTINGS", "", () => { _page = Page.Settings; _armed = null; Rebuild(); PageTransition(); });
             Destructive("menu", "MAIN MENU", "Back to the title. This match is lost.", () => { Close(); _host?.MainMenu(); });

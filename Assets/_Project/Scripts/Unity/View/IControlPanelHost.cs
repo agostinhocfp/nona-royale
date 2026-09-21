@@ -79,5 +79,14 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>Starts a new match with the next seed.</summary>
         void Reseed();
+
+        /// <summary>
+        /// Opens <paramref name="op"/>'s dossier in the operator guide, over
+        /// the match (OPERATOR_GUIDE.md OG4). Any seat's operator, enemies
+        /// included — "what does that do?" is the question a first match
+        /// asks most. The match waits underneath: a full-screen card holds the
+        /// bots and the board, exactly as the pause menu does.
+        /// </summary>
+        void OpenDossier(OperatorState op);
     }
 }
