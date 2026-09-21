@@ -4,15 +4,22 @@ using System.Collections.Generic;
 namespace NonaRoyale.Unity.View
 {
     /// <summary>
-    /// Every operator that has a look-book recipe (OPERATOR_LOOKBOOK.md, LB2).
+    /// Every operator that has a look-book recipe (OPERATOR_LOOKBOOK.md, LB2),
+    /// in the value ledger's order (ART_DIRECTION §5.1).
     /// Adding a recipe means adding a file under <c>Looks/</c> and one line here.
     /// </summary>
     public static class LookRoster
     {
         public static IReadOnlyList<OperatorLook> All { get; } = new[]
         {
+            SylaLook.Look,
             BouncerLook.Look,
+            KurbynLook.Look,
+            JaviLook.Look,
+            SanityLook.Look,
             MimiLook.Look,
+            RevuLook.Look,
+            KianLook.Look,
             NuetuLook.Look,
         };
 

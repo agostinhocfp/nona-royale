@@ -1,7 +1,7 @@
 # Nona Royale — Operator Look Book (procedural Dark Deco figures)
 
 > Location in repo: `docs/design/OPERATOR_LOOKBOOK.md` · Project copy: `claude/OPERATOR_LOOKBOOK.md`
-> Status: **LB0 done. LB2 (3 of 12 recipes) and LB3 (judging window and rule tests) delivered 2026-09-21, awaiting Play Mode.** Written 2026-09-21. **v2 — ambition raised: these are meant to be good, not merely distinct.**
+> Status: **LB0 and LB3 done. LB2 at 9 of 12 recipes (2026-09-21); Luka, Fortuna and Lethe remain.** Written 2026-09-21. **v2 — ambition raised: these are meant to be good, not merely distinct.**
 > Related: `ART_DIRECTION.md` §2.2 (Dark Deco cel — the spec), §3 (palette), §5.1 (the value ledger — the source of the recipes), §6.1; `ART_HOOKUP.md` (ART1 — the real-art path this must not break); `STAGE4_HANDOFF.md`; ADR-0009; ADR-0010 (URP 2D lights).
 
 ## Goal
@@ -84,7 +84,7 @@ This is where a procedural approach beats hand-drawn placeholders, and it's what
 | --- | --- | --- |
 | LB0 | Rasteriser | Polygon fill with analytic AA, 4× supersampling, dilation for the ink line, hard-edged shadow and rim cuts, the layer compositor, caching. Two throwaway figures to prove it. **Done 2026-09-21.** |
 | LB1 | Seat identity | Seat colour moves to the base disc and ring; the figure is untinted so its own value solution survives; optional name labels. **Done through ART1; labels skipped (designer, 2026-09-21).** |
-| LB2 | The twelve | `OperatorLook`, `OperatorLookBook`, the twelve recipes, the Deco motif library. **In progress: Bouncer, Mimi, Nuetu.** |
+| LB2 | The twelve | `OperatorLook`, `OperatorLookBook`, the twelve recipes, the Deco motif library. **9 of 12: Syla, Bouncer, Kurbyn, Javi, Sanity, Mimi, Revú, Kian, Nuetu.** |
 | LB3 | Judging tools | Contact sheet, squint sheet, distinctness and palette tests. **Delivered 2026-09-21.** |
 | LB4 | Portraits and tells | Draft-card portraits at a larger canvas with a Deco frame, plus the powered cyan overlay on cast. |
 
@@ -128,7 +128,7 @@ All under `Assets/_Project/Scripts/Unity/View/Figures/`. Everything but `FigureS
 | `FigureRasterizer.cs` | Renders a drawing onto a `FigureCanvas` into a `FigureImage` (straight RGBA, bottom row first, opaque rows measured). Samples each texel once at its centre and supersamples only texels an edge crosses (about one in eight); the rim reads a texel-resolution grid of the silhouette distance. |
 | `LookBookPalette.cs` | The colours a recipe may use: the shared drawn light and §3 swatches, then one block per operator. Filled from `UiTheme` by `OperatorLookBook.Palette`. |
 | `OperatorLook.cs` | One recipe: the roster name, the waist the table cuts at, and a pure `Draw(palette)`. |
-| `Looks/<Name>Look.cs` | One file per operator. **Bouncer, Mimi, Nuetu** so far. |
+| `Looks/<Name>Look.cs` | One file per operator. Nine so far; Luka, Fortuna and Lethe to come. |
 | `LookRoster.cs` | Every recipe; adding one is a file under `Looks/` and one line here. |
 | `DecoMotifs.cs` | The shared vocabulary: line weight, rim widths (wider on dark figures), `ShadowSide`, `Crescent` (the cel sphere), `Ray`, `Fan`, `Chevron`. |
 | `SilhouetteMetrics.cs` | The squint silhouette at 64 px, intersection-over-union between two, and the palette rules `IsCyan` and `IsGilt`. |
@@ -162,6 +162,23 @@ All under `Assets/_Project/Scripts/Unity/View/Figures/`. Everything but `FigureS
   - `LookBookSketches.cs` is gone, and so are the sketch tests in `FigureRasterizerTests`: the rules now run over the roster in `LookBookRulesTests`. `UiTheme`'s `Sketch*` colours became `Look*` per-operator blocks.
   - All three assemblies (Unity, the edit-mode tests, the editor tools) compile against the editor's DLLs with no errors and no warnings. Rendered outside Unity: no cyan at rest, no gilt, nothing clipped, each figure 110–200 ms under an unwarmed JIT.
 
+- **2026-09-21 — LB2, six more recipes.** The designer approved the first three from the exported sheets ("turning out well") and asked for six more. Chosen: **Syla, Kurbyn, Javi, Sanity, Revú, Kian**, the six with settled briefs and no render. Left for last: **Luka** (his render always wins in play, so his recipe matters for the sheets only), **Fortuna** (her diamond silhouette is still under review in ART_DIRECTION §10) and **Lethe** (her six-point spark is best drawn with Kian's crown already on the sheet to compare against).
+  - **Syla**: a stepped black cape falling to a point at the waist, a bladed fan collar behind the head, the ivory gown down the front and on to the ankle; drones on the shoulders, cradles at the hips. The downward triangle.
+  - **Kurbyn**: the crouched spring, with elbows out, fists low, feet wide; charcoal with an open black waistcoat, brass braces, a loose tie, and bare pale forearms as the value break.
+  - **Javi**: arms held level in white sleeves across a narrow charcoal body; a brass bandolier of steel canisters with frosted seals, one spent; grey gloves. The upright cross.
+  - **Sanity**: one umber octagon, chamfered hard at all four corners, from the shoulders to the boots; charcoal livery at the shoulders, bare forearms, the tool roll as the brass line across him, the prod at his hip.
+  - **Revú**: tall and narrow, with peaked shoulders either side of a long neck; the ledger case hanging on its brass chain is the barb. Oxblood `#4A1320`, a narrow shirt front rather than a V.
+  - **Kian**: four emitter rods and the head make the five points; the §3 emerald itself for the jacket, brass frogging and spectacle rims, the disrupter disc at the sternum.
+  - **Two lessons, both now in the recipes.** A rim down both sides of narrow trousers reads as two lit wires at board scale, so the thin-legged figures (Kurbyn, Javi, Revú, Kian, and Mimi before them) stop their rim at the hip. And a cool sheen screened over emerald drifts into cyan, so Kian's lit planes use the warm key.
+  - **`IsCyan` now needs saturation 0.45** (holo cyan is 0.59). At 0.35 it caught one anti-aliased texel where Kian's steel rim meets his emerald jacket: teal by arithmetic, not a device lit at rest.
+  - **Overlap at 64 px, everything at 0.65 or above:** Bouncer/Sanity 0.83, Sanity/Nuetu 0.79, Bouncer/Nuetu 0.76, Kurbyn/Nuetu 0.69, Mimi/Kian 0.66. The three wide figures cluster in the amber band, as expected; Sanity's first pass was 0.86, over the line, and chamfering his octagon harder brought it down. On the squint sheet all nine read apart by eye. In play, size separates them further (health 12, 10 and 7).
+  - New test: every `LookBookPalette` colour must be filled from `UiTheme` (an unset one draws as a hole). All three assemblies compile against the editor's DLLs with no errors or warnings; rendered outside Unity, no recipe carries cyan at rest or gilt, and none is clipped.
+
+- **2026-09-21 — LB2 revisions from the Look Book window.** Designer review of the six:
+  - **Kurbyn's knees pointed at each other.** The stance is now wide and planted: thighs angle out from the hip, knees bend outward over the feet, shins near vertical.
+  - **Syla's cape is dropped from the board figure only** (designer: "remove the cape for art type only, not the character in general"). Her character, portrait and generator briefs keep it. Without it, her dark frame is the drone housings (stepped wedges that slope down onto the shoulders, now the widest and hardest edge on her), the black opera gloves down both sides of the gown, the hip cradles and the bob, cut straight at the jaw with the face set into it. The ivory gown narrows to the ankle, so she still tapers from shoulders to feet. The trade-off: more ivory shows than inside the cape, so the core-in-a-frame reading is weaker; watch it against Luka's camel once his recipe lands. A black chevron low on the gown closes the frame at the bottom.
+  - Overlap after the changes: Syla/Mimi 0.73, Syla/Kian 0.69; the rest unchanged.
+
 ## Read before writing anything
 
 `ART_DIRECTION.md` §2.2, §3, §5 and §5.1 in full — they are the spec, and this document is a summary of them. Then `View/BoardArt.cs`, `View/OperatorPiece.cs`, `View/FigureLayout.cs`, `View/OperatorArtLibrary.cs`, `View/UiTheme.cs`, `View/FigureTilt.cs`, the draft card, and `Core/Abilities/Roster.cs` for the authoritative names. For LB2 onward, also everything under `View/Figures/`. File names come from the design logs and need verifying against the tree.
@@ -184,4 +201,4 @@ feat(ui): Deco portraits and the powered cast overlay
 
 ## Start prompt for the implementing session (LB2, the next recipes)
 
-> Read `docs/design/OPERATOR_LOOKBOOK.md` including its log, then `ART_DIRECTION.md` §2.2, §3, §5 and §5.1 in full, `ART_PROMPTS.md`'s character blocks for the operators in hand, then everything under `View/Figures/`. Ask me for the Look Book window's exported sheets and a Play Mode screenshot first. Then write the next three recipes, render them outside Unity against the sheets and the overlap matrix before handing them over, and stop for Play Mode.
+> Read `docs/design/OPERATOR_LOOKBOOK.md` including its log, then `ART_DIRECTION.md` §2.2, §3, §5 and §5.1 in full, `ART_PROMPTS.md`'s character blocks for the operators in hand, then everything under `View/Figures/`. Ask me for the Look Book window's exported sheets and a Play Mode screenshot first. Then write the remaining recipes (Luka, Fortuna, Lethe), render them outside Unity against the sheets and the overlap matrix before handing them over, and stop for Play Mode.

@@ -57,6 +57,19 @@ namespace NonaRoyale.Unity.Tests.View
             }
         }
 
+        [Test]
+        public void EveryPaletteColour_IsFilledFromUiTheme()
+        {
+            // An unset FigureColour is transparent black, which draws as a
+            // hole in the figure rather than failing loudly.
+            var palette = OperatorLookBook.Palette;
+            foreach (var field in typeof(LookBookPalette).GetFields())
+            {
+                var colour = (FigureColour)field.GetValue(palette);
+                Assert.Greater(colour.A, 0f, $"LookBookPalette.{field.Name} is never set in OperatorLookBook");
+            }
+        }
+
         [TestCaseSource(nameof(Names))]
         public void NoCyanAtRest_StandingOrSeated(string name)
         {

@@ -107,10 +107,15 @@ namespace NonaRoyale.Unity.View
         // ── Palette rules (ART_DIRECTION §3, §5) ───────────────────────
 
         /// <summary>Holo cyan and its family: the tech register, which no figure may carry at rest.</summary>
+        /// <remarks>
+        /// Saturation from 0.45: holo cyan itself is 0.59. Below that sit the
+        /// anti-aliased texels where Kian's steel rim meets his emerald jacket
+        /// (about 0.35), which are teal by arithmetic, not by intent.
+        /// </remarks>
         public static bool IsCyan(byte r, byte g, byte b)
         {
             Hsv(r, g, b, out float h, out float s, out float v);
-            return h >= 165f && h <= 200f && s >= 0.35f && v >= 0.55f;
+            return h >= 165f && h <= 200f && s >= 0.45f && v >= 0.55f;
         }
 
         /// <summary>Bright gilt gold, which is Fortuna's alone. Aged brass is too dark to count.</summary>

@@ -51,11 +51,45 @@ namespace NonaRoyale.Unity.View
         public FigureColour BouncerSuit;
         public FigureColour BouncerSkin;
 
+        // ── Syla: light core in a dark frame ────────────────────────────
+        public FigureColour SylaGown;
+        public FigureColour SylaCape;
+        public FigureColour SylaSkin;
+
+        // ── Kurbyn: mid-dark, broken by bare forearms ───────────────────
+        public FigureColour KurbynCloth;
+        public FigureColour KurbynSkin;
+
+        // ── Javi: dark waistcoat block, two white sleeves ───────────────
+        public FigureColour JaviWaistcoat;
+        public FigureColour JaviGlove;
+        public FigureColour JaviHair;
+        public FigureColour JaviSkin;
+        public FigureColour JaviSteel;
+        public FigureColour JaviFrost;
+
+        // ── Sanity: large mid-brown mass ────────────────────────────────
+        public FigureColour SanityApron;
+        public FigureColour SanityLivery;
+        public FigureColour SanitySkin;
+        public FigureColour SanitySteel;
+
         // ── Mimi: near-black and small, bright pale hardware ────────────
         public FigureColour MimiCoat;
         public FigureColour MimiRig;
         public FigureColour MimiSteel;
         public FigureColour MimiSkin;
+
+        // ── Revú: the only red torso ────────────────────────────────────
+        public FigureColour RevuJacket;
+        public FigureColour RevuTrousers;
+        public FigureColour RevuHair;
+        public FigureColour RevuSkin;
+
+        // ── Kian: the only green torso ──────────────────────────────────
+        public FigureColour KianJacket;
+        public FigureColour KianShirt;
+        public FigureColour KianSkin;
 
         // ── Nuetu: the only all-light mass, cool dove-grey ──────────────
         public FigureColour NuetuGrey;

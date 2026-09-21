@@ -308,11 +308,45 @@ namespace NonaRoyale.Unity.View
         public static readonly Color LookBouncerSuit = Hex("221D26");
         public static readonly Color LookBouncerSkin = Hex("7A5140");
 
+        // Syla: light core in a dark frame.
+        public static readonly Color LookSylaGown = Hex("E4DCCB");
+        public static readonly Color LookSylaCape = Hex("121014");
+        public static readonly Color LookSylaSkin = Hex("D9C6B4");
+
+        // Kurbyn: mid-dark, broken by bare forearms.
+        public static readonly Color LookKurbynCloth = Hex("3A3538");
+        public static readonly Color LookKurbynSkin = Hex("D2B59C");
+
+        // Javi: dark waistcoat block, two white sleeves.
+        public static readonly Color LookJaviWaistcoat = Hex("2E2A2F");
+        public static readonly Color LookJaviGlove = Hex("8B8F94");
+        public static readonly Color LookJaviHair = Hex("8E8A84");
+        public static readonly Color LookJaviSkin = Hex("B99A80");
+        public static readonly Color LookJaviSteel = Hex("7E878D");
+        public static readonly Color LookJaviFrost = Hex("D8E0E3");
+
+        // Sanity: large mid-brown mass. Umber, never tan (tan is Luka's value).
+        public static readonly Color LookSanityApron = Hex("5A4231");
+        public static readonly Color LookSanityLivery = Hex("2E2A2E");
+        public static readonly Color LookSanitySkin = Hex("9A7560");
+        public static readonly Color LookSanitySteel = Hex("6F777D");
+
         // Mimi: near-black and small, bright pale hardware.
         public static readonly Color LookMimiCoat = Hex("141117");
         public static readonly Color LookMimiRig = Hex("DCE3E6");
         public static readonly Color LookMimiSteel = Hex("8E9AA3");
         public static readonly Color LookMimiSkin = Hex("CDBBAA");
+
+        // Revú: the only red torso. Oxblood darker than blood velvet (§3, §6.1).
+        public static readonly Color LookRevuJacket = Hex("4A1320");
+        public static readonly Color LookRevuTrousers = Hex("2A262B");
+        public static readonly Color LookRevuHair = Hex("A9A9AD");
+        public static readonly Color LookRevuSkin = Hex("C3A58E");
+
+        // Kian: the only green torso, in the §3 emerald itself.
+        public static readonly Color LookKianJacket = Emerald;
+        public static readonly Color LookKianShirt = Hex("141117");
+        public static readonly Color LookKianSkin = Hex("BFA088");
 
         // Nuetu: the only all-light mass, cool dove-grey, black plates on grey.
         public static readonly Color LookNuetuGrey = Hex("B3B7C1");
