@@ -16,6 +16,13 @@ namespace NonaRoyale.Unity.View
     /// colour multiplies it, so one sprite shades every seat. Everything else
     /// is a white alpha mask, like <see cref="DecoSprites"/>.
     ///
+    /// <b>Caches test for a destroyed sprite, not just a null one</b>
+    /// (2026-09-21). The editor destroys a script-created texture when it
+    /// changes scene, even while a static field still holds it, and C#'s
+    /// <c>??</c> cannot see that: it only asks whether the reference is null.
+    /// Unity's <c>!=</c> does see it, so every lazy sprite below is written
+    /// <c>_x != null ? _x : (_x = Build())</c>, and a destroyed one is rebuilt.
+    ///
     /// <b>One world unit across</b> unless a builder says otherwise, so a
     /// renderer's scale is its size. The cross is built for a given grid and
     /// cached per grid.
@@ -53,19 +60,19 @@ namespace NonaRoyale.Unity.View
         private const float RimStreakWidth = 9f;
 
         /// <summary>A table's gilt rim: a bevelled ring, lit from the top left, with one highlight streak.</summary>
-        public static Sprite TableRim => _rim ?? (_rim = BuildRim(256, 0.9f));
+        public static Sprite TableRim => _rim != null ? _rim : (_rim = BuildRim(256, 0.9f));
 
         /// <summary>The felt inside the rim: bright at the centre, darkening to the edge.</summary>
-        public static Sprite Felt => _felt ?? (_felt = BuildFelt(256, 0.875f, BoardTextures.Felt));
+        public static Sprite Felt => _felt != null ? _felt : (_felt = BuildFelt(256, 0.875f, BoardTextures.Felt));
 
         /// <summary>A dashed ring just inside the rim.</summary>
-        public static Sprite DottedRing => _dotted ?? (_dotted = BuildDotted(256, 0.79f, 64));
+        public static Sprite DottedRing => _dotted != null ? _dotted : (_dotted = BuildDotted(256, 0.79f, 64));
 
         /// <summary>A thin arc over the table's upper right quarter, the dealer's line.</summary>
-        public static Sprite TableArc => _arc ?? (_arc = BuildArc(256, 0.5f, -8f, 98f));
+        public static Sprite TableArc => _arc != null ? _arc : (_arc = BuildArc(256, 0.5f, -8f, 98f));
 
         /// <summary>A disc with a soft edge, for drop shadows.</summary>
-        public static Sprite SoftDisc => _softDisc ?? (_softDisc = BuildSoftDisc(128, 0.35f));
+        public static Sprite SoftDisc => _softDisc != null ? _softDisc : (_softDisc = BuildSoftDisc(128, 0.35f));
 
         // ── Table body (VISUAL_PASS.md, V2) ──────────────────
 
@@ -83,22 +90,22 @@ namespace NonaRoyale.Unity.View
         /// Eight texels wide because nothing varies across it - the whole face
         /// is one vertical ramp, and it is stretched to the table's width.
         /// </remarks>
-        public static Sprite TableEdge => _edge ?? (_edge = BuildEdge(8, 128));
+        public static Sprite TableEdge => _edge != null ? _edge : (_edge = BuildEdge(8, 128));
 
         /// <summary>The gilt band around the table's lip: a bright roll over a body that melts into the face.</summary>
-        public static Sprite TableBand => _band ?? (_band = BuildBand(8, 64));
+        public static Sprite TableBand => _band != null ? _band : (_band = BuildBand(8, 64));
 
         // ── Figures ─────────────────────────────────────────────────────
 
         private static Sprite _bust, _bustOutline, _pawn, _pawnOutline, _halo;
 
         /// <summary>An operator seated at its table: head and shoulders.</summary>
-        public static Sprite Bust => _bust ?? (_bust = BuildFigure(128, BustDistance, false));
-        public static Sprite BustOutline => _bustOutline ?? (_bustOutline = BuildFigure(128, BustDistance, true));
+        public static Sprite Bust => _bust != null ? _bust : (_bust = BuildFigure(128, BustDistance, false));
+        public static Sprite BustOutline => _bustOutline != null ? _bustOutline : (_bustOutline = BuildFigure(128, BustDistance, true));
 
         /// <summary>An operator standing on the floor: head, collar, flared body, base.</summary>
-        public static Sprite Pawn => _pawn ?? (_pawn = BuildFigure(128, PawnDistance, false));
-        public static Sprite PawnOutline => _pawnOutline ?? (_pawnOutline = BuildFigure(128, PawnDistance, true));
+        public static Sprite Pawn => _pawn != null ? _pawn : (_pawn = BuildFigure(128, PawnDistance, false));
+        public static Sprite PawnOutline => _pawnOutline != null ? _pawnOutline : (_pawnOutline = BuildFigure(128, PawnDistance, true));
 
         /// <summary>Where the shape pin sits on each figure, in sprite units from the centre.</summary>
         public static readonly Vector2 BustPin = new Vector2(0f, -0.2f);
@@ -108,21 +115,21 @@ namespace NonaRoyale.Unity.View
         public static readonly Vector2 PawnHead = new Vector2(0f, 0.30f);
 
         /// <summary>An arc over a selected figure's head.</summary>
-        public static Sprite Halo => _halo ?? (_halo = BuildHalo(128));
+        public static Sprite Halo => _halo != null ? _halo : (_halo = BuildHalo(128));
 
         // ── Vault ───────────────────────────────────────────────────────
 
         private static Sprite _vaultPlate, _vaultFrame, _vaultDial, _boss;
 
         /// <summary>The vault door: a square with its corners scooped out.</summary>
-        public static Sprite VaultPlate => _vaultPlate ?? (_vaultPlate = BuildVault(256, VaultPart.Plate));
-        public static Sprite VaultFrame => _vaultFrame ?? (_vaultFrame = BuildVault(256, VaultPart.Frame));
+        public static Sprite VaultPlate => _vaultPlate != null ? _vaultPlate : (_vaultPlate = BuildVault(256, VaultPart.Plate));
+        public static Sprite VaultFrame => _vaultFrame != null ? _vaultFrame : (_vaultFrame = BuildVault(256, VaultPart.Frame));
 
         /// <summary>The dial on the door: a ring and a cross.</summary>
-        public static Sprite VaultDial => _vaultDial ?? (_vaultDial = BuildVault(256, VaultPart.Dial));
+        public static Sprite VaultDial => _vaultDial != null ? _vaultDial : (_vaultDial = BuildVault(256, VaultPart.Dial));
 
         /// <summary>A polished sphere, for the dial's hub.</summary>
-        public static Sprite Boss => _boss ?? (_boss = BuildBoss(64));
+        public static Sprite Boss => _boss != null ? _boss : (_boss = BuildBoss(64));
 
         // ── Floor ───────────────────────────────────────────────────────
 
@@ -185,16 +192,16 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>A few faint curved lines, the grain of the table.</summary>
-        public static Sprite Veins => _veins ?? (_veins = BuildVeins(512, 7));
+        public static Sprite Veins => _veins != null ? _veins : (_veins = BuildVeins(512, 7));
 
         /// <summary>A solid white square, bilinear so a thin line stays smooth.</summary>
-        public static Sprite Solid => _solid ?? (_solid = DecoSprites.Rasterize(4, 4, (x, y) => 1f, 4f, Vector4.zero));
+        public static Sprite Solid => _solid != null ? _solid : (_solid = DecoSprites.Rasterize(4, 4, (x, y) => 1f, 4f, Vector4.zero));
 
         /// <summary>
         /// Soft drifting haze for the light pools (G3): a cloud of noise that
         /// fades to nothing at its edge. One world unit across.
         /// </summary>
-        public static Sprite Haze => _haze ?? (_haze = BuildHaze(192));
+        public static Sprite Haze => _haze != null ? _haze : (_haze = BuildHaze(192));
 
         /// <summary>
         /// The cross-shaped floor for a grid of <paramref name="gridCells"/>
@@ -209,7 +216,7 @@ namespace NonaRoyale.Unity.View
         {
             var marble = BoardTextures.Marble;
             int key = gridCells * 100 + armWidth + (marble != null ? 100000 : 0);
-            if (Crosses.TryGetValue(key, out var sprites)) return sprites;
+            if (Crosses.TryGetValue(key, out var sprites) && System.Array.TrueForAll(sprites, s => s != null)) return sprites;
 
             sprites = new[]
             {
@@ -233,7 +240,7 @@ namespace NonaRoyale.Unity.View
         public static Sprite TableRule(float sideCells, float insetCells)
         {
             int key = Mathf.RoundToInt(sideCells * 100f) * 1000 + Mathf.RoundToInt(insetCells * 100f);
-            if (TableRules.TryGetValue(key, out var sprite)) return sprite;
+            if (TableRules.TryGetValue(key, out var sprite) && sprite != null) return sprite;
 
             sprite = BuildTableRule(512, sideCells, insetCells);
             TableRules[key] = sprite;

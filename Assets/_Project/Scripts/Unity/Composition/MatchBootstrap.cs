@@ -623,6 +623,10 @@ namespace NonaRoyale.Unity.Composition
             _feedback = GetComponent<FeedbackLayer>() ?? gameObject.AddComponent<FeedbackLayer>();
             _feedback.Bind(_layout.CellSize);
 
+            // Look-book figures render on the thread pool while the rest of
+            // the match builds; a piece that binds first waits for its own.
+            OperatorLookBook.Prewarm(_match.Operators.Select(o => o.Name).Distinct());
+
             foreach (var op in _match.Operators)
             {
                 var go = new GameObject();

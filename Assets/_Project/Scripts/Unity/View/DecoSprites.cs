@@ -48,22 +48,22 @@ namespace NonaRoyale.Unity.View
         public const float HairlineWidth = 1.5f;
 
         /// <summary>A docked or floating panel's body. Corners cut at 10.</summary>
-        public static Sprite PanelFill => _panelFill ?? (_panelFill = Chamfer(10, null));
+        public static Sprite PanelFill => _panelFill != null ? _panelFill : (_panelFill = Chamfer(10, null));
 
         /// <summary>A floating panel's frame: one hairline on the edge (G3; was a double rule).</summary>
-        public static Sprite PanelEdge => _panelEdge ?? (_panelEdge = Chamfer(10, new[] { new Band(0f, HairlineWidth) }));
+        public static Sprite PanelEdge => _panelEdge != null ? _panelEdge : (_panelEdge = Chamfer(10, new[] { new Band(0f, HairlineWidth) }));
 
         /// <summary>A button, card or die. Corners cut at 6.</summary>
-        public static Sprite ButtonFill => _buttonFill ?? (_buttonFill = Chamfer(6, null));
+        public static Sprite ButtonFill => _buttonFill != null ? _buttonFill : (_buttonFill = Chamfer(6, null));
 
         /// <summary>A button's resting edge: one hairline.</summary>
-        public static Sprite ButtonEdge => _buttonEdge ?? (_buttonEdge = Chamfer(6, new[] { new Band(0f, HairlineWidth) }));
+        public static Sprite ButtonEdge => _buttonEdge != null ? _buttonEdge : (_buttonEdge = Chamfer(6, new[] { new Band(0f, HairlineWidth) }));
 
         /// <summary>The edge of a control that wants pressing: 2 units and a 1-unit rule inside.</summary>
-        public static Sprite ButtonEdgeDouble => _buttonEdgeDouble ?? (_buttonEdgeDouble = Chamfer(6, new[] { new Band(0f, 2f), new Band(4f, 1f) }));
+        public static Sprite ButtonEdgeDouble => _buttonEdgeDouble != null ? _buttonEdgeDouble : (_buttonEdgeDouble = Chamfer(6, new[] { new Band(0f, 2f), new Band(4f, 1f) }));
 
         /// <summary>Small chips, tags and pills. Corners cut at 4.</summary>
-        public static Sprite ChipFill => _chipFill ?? (_chipFill = Chamfer(4, null));
+        public static Sprite ChipFill => _chipFill != null ? _chipFill : (_chipFill = Chamfer(4, null));
 
         // ── HUD ornaments (simple) ──────────────────────────────────────
 
@@ -87,22 +87,22 @@ namespace NonaRoyale.Unity.View
         /// a <see cref="RuleBox"/>-thick box. Runs along x; stretch it as a
         /// simple (not sliced) image.
         /// </summary>
-        public static Sprite RuleAlong => _ruleAlong ?? (_ruleAlong = BuildRule(horizontal: true));
+        public static Sprite RuleAlong => _ruleAlong != null ? _ruleAlong : (_ruleAlong = BuildRule(horizontal: true));
 
         /// <summary>The same hairline, running along y.</summary>
-        public static Sprite RuleUp => _ruleUp ?? (_ruleUp = BuildRule(horizontal: false));
+        public static Sprite RuleUp => _ruleUp != null ? _ruleUp : (_ruleUp = BuildRule(horizontal: false));
 
         /// <summary>
         /// A quarter sunburst radiating from its bottom-left corner. Placed at a
         /// panel's corner and rotated, it opens inward.
         /// </summary>
-        public static Sprite CornerFan => _fan ?? (_fan = BuildFan((int)FanSize));
+        public static Sprite CornerFan => _fan != null ? _fan : (_fan = BuildFan((int)FanSize));
 
         /// <summary>A tall diamond, 2:3. Energy pips, bullets, rule centres.</summary>
-        public static Sprite Diamond => _diamond ?? (_diamond = BuildDiamond(16, 24, 0f));
+        public static Sprite Diamond => _diamond != null ? _diamond : (_diamond = BuildDiamond(16, 24, 0f));
 
         /// <summary>The same diamond as an outline, for an empty pip.</summary>
-        public static Sprite DiamondOutline => _diamondOutline ?? (_diamondOutline = BuildDiamond(16, 24, 1.6f));
+        public static Sprite DiamondOutline => _diamondOutline != null ? _diamondOutline : (_diamondOutline = BuildDiamond(16, 24, 1.6f));
 
         private static Sprite _panelSheen;
 
@@ -110,7 +110,7 @@ namespace NonaRoyale.Unity.View
         /// A vertical falloff, strongest at the top: a panel's sheen
         /// (UI_MOTION.md increment U4). Stretched simple, never sliced.
         /// </summary>
-        public static Sprite PanelSheen => _panelSheen ?? (_panelSheen = BuildSheen(64));
+        public static Sprite PanelSheen => _panelSheen != null ? _panelSheen : (_panelSheen = BuildSheen(64));
 
         // ── Board (world space) ─────────────────────────────────────────
 
@@ -120,13 +120,13 @@ namespace NonaRoyale.Unity.View
         /// A cell's inlay: a chamfered line inset from the tile's edge. One
         /// world unit across, like <see cref="Primitives"/>.
         /// </summary>
-        public static Sprite TileInlay => _tileInlay ?? (_tileInlay = BuildTileInlay(64));
+        public static Sprite TileInlay => _tileInlay != null ? _tileInlay : (_tileInlay = BuildTileInlay(64));
 
         /// <summary>A disc outline, a tenth of the radius thick. Yard rims.</summary>
-        public static Sprite RingThin => _ringThin ?? (_ringThin = BuildRing(128, 0.9f));
+        public static Sprite RingThin => _ringThin != null ? _ringThin : (_ringThin = BuildRing(128, 0.9f));
 
         /// <summary>A soft radial falloff, for pools of light.</summary>
-        public static Sprite Glow => _glow ?? (_glow = BuildGlow(128));
+        public static Sprite Glow => _glow != null ? _glow : (_glow = BuildGlow(128));
 
         // ── Builders ────────────────────────────────────────────────────
 

@@ -277,6 +277,37 @@ namespace NonaRoyale.Unity.View
         public static readonly Color PieceBarBack = WithAlpha(Obsidian, 0.85f);
         public static readonly Color Select = Cyan;
 
+        // ── Look book (OPERATOR_LOOKBOOK.md) ────────────────────────────
+        // Procedural operator figures, drawn to ART_DIRECTION §2.2. The ink,
+        // brass, obsidian and cyan come from the §3 swatches above.
+
+        /// <summary>The drawn cool rim on a dark figure: steel, never holo cyan (§5: devices are dark at rest).</summary>
+        public static readonly Color LookRim = Hex("8C9DB0");
+
+        /// <summary>The same rim on a light figure, where steel would read as a shadow.</summary>
+        public static readonly Color LookRimOnLight = Hex("E6EEF5");
+
+        /// <summary>Multiplied into a figure's hard shadow shape: the cool dark ambient (§2.2 rule 5).</summary>
+        public static readonly Color LookShade = Hex("7E7A94");
+
+        /// <summary>Screened into a hard highlight shape: the warm gold key from the upper left.</summary>
+        public static readonly Color LookKey = Hex("4A3A22");
+
+        /// <summary>A dark suit's lit planes. Cooler than the key, or black cloth goes brown.</summary>
+        public static readonly Color LookSuitSheen = Hex("3A3548");
+
+        /// <summary>The hard specular wedge on black plate.</summary>
+        public static readonly Color LookPlateSheen = Hex("3E3C48");
+
+        /// <summary>Shirts and collars: bone, not white.</summary>
+        public static readonly Color LookBone = Hex("E8E1D3");
+
+        // LB0's two throwaway sketches. LB2 replaces these with the §5.1 recipes.
+        public static readonly Color SketchBouncerSuit = Hex("221D26");
+        public static readonly Color SketchBouncerSkin = Hex("7A5140");
+        public static readonly Color SketchNuetuGrey = Hex("B3B7C1");
+        public static readonly Color SketchNuetuPlate = Hex("17141A");
+
         // ── Seats ───────────────────────────────────────────────────────
 
         public static readonly Color SeatRed = new Color(0.84f, 0.27f, 0.31f);

@@ -54,32 +54,32 @@ namespace NonaRoyale.Unity.View
         /// near-nothing at the skirting; dimmed toward the left and right ends
         /// so the wall has no visible edge.
         /// </summary>
-        public static Sprite Wall => _wall ?? (_wall = BuildWall(192, 128));
+        public static Sprite Wall => _wall != null ? _wall : (_wall = BuildWall(192, 128));
 
         /// <summary>The box along the wall's head, with a soft shadow under it.</summary>
-        public static Sprite Pelmet => _pelmet ?? (_pelmet = BuildPelmet(64, 40));
+        public static Sprite Pelmet => _pelmet != null ? _pelmet : (_pelmet = BuildPelmet(64, 40));
 
         /// <summary>A gilt hairline under the pelmet, bright along its top.</summary>
-        public static Sprite Rail => _rail ?? (_rail = BuildRail(32, 12));
+        public static Sprite Rail => _rail != null ? _rail : (_rail = BuildRail(32, 12));
 
         /// <summary>The board at the wall's foot, so the cloth meets something.</summary>
-        public static Sprite Skirting => _skirting ?? (_skirting = BuildSkirting(64, 28));
+        public static Sprite Skirting => _skirting != null ? _skirting : (_skirting = BuildSkirting(64, 28));
 
         /// <summary>A side column: a dark shaft with one lit edge toward the table.</summary>
-        public static Sprite Column => _column ?? (_column = BuildColumn(56, 224));
+        public static Sprite Column => _column != null ? _column : (_column = BuildColumn(56, 224));
 
         /// <summary>The sconce's bracket and cup, unlit.</summary>
-        public static Sprite Sconce => _sconce ?? (_sconce = BuildSconce(28, 36));
+        public static Sprite Sconce => _sconce != null ? _sconce : (_sconce = BuildSconce(28, 36));
 
         /// <summary>A candle flame, for a sconce.</summary>
-        public static Sprite Flame => _flame ?? (_flame = BuildFlame(14, 22));
+        public static Sprite Flame => _flame != null ? _flame : (_flame = BuildFlame(14, 22));
 
         /// <summary>
         /// A soft round falloff, drawn under a light so its spill reads without
         /// a real <c>Light2D</c>. Its own sprite so it can be tinted and faded
         /// apart from whatever it sits behind, the way the vault's glow is.
         /// </summary>
-        public static Sprite Halo => _halo ?? (_halo = BuildHalo(96));
+        public static Sprite Halo => _halo != null ? _halo : (_halo = BuildHalo(96));
 
         // ── Builders ────────────────────────────────────────────────────
 

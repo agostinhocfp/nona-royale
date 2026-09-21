@@ -57,10 +57,14 @@ namespace NonaRoyale.Unity.Tests.View
             Assert.AreEqual(17f / 10f, art.OpaqueTop, 1e-5f);
             Assert.IsNotNull(art.Silhouette);
 
-            var mask = art.Silhouette.texture.GetPixel(4, 10);
-            Assert.AreEqual(1f, mask.r, 1e-3f);
-            Assert.AreEqual(1f, mask.a, 1e-3f);
-            Assert.AreEqual(0f, art.Silhouette.texture.GetPixel(4, 1).a, 1e-3f);
+            // The mask is uploaded and released from CPU memory, so it is read
+            // back through the GPU rather than with GetPixel.
+            var mask = ReadBack(art.Silhouette.texture);
+            var inside = mask.GetPixel(4, 10);
+            Assert.AreEqual(1f, inside.r, 1e-2f);
+            Assert.AreEqual(1f, inside.a, 1e-2f);
+            Assert.AreEqual(0f, mask.GetPixel(4, 1).a, 1e-2f);
+            Object.DestroyImmediate(mask);
         }
 
         [Test]
@@ -90,6 +94,18 @@ namespace NonaRoyale.Unity.Tests.View
             Assert.IsFalse(Child(piece, "outline").enabled);
             Assert.IsTrue(Child(piece, "seat_base").enabled);
             Assert.IsTrue(Child(piece, "seat_ring").enabled);
+        }
+
+        [Test]
+        public void ADestroyedCachedSprite_IsBuiltAgain()
+        {
+            // What the editor does to script-made textures on a scene change.
+            var pawn = BoardArt.Pawn;
+            Object.DestroyImmediate(pawn.texture);
+            Object.DestroyImmediate(pawn);
+
+            Assert.IsTrue(BoardArt.Pawn != null);
+            Assert.IsTrue(Primitives.Disc != null);
         }
 
         [Test]
@@ -128,6 +144,30 @@ namespace NonaRoyale.Unity.Tests.View
 
             Assert.Fail($"No child '{name}'.");
             return null;
+        }
+
+        /// <summary>A readable copy of a texture that may not be readable, via a render texture.</summary>
+        private static Texture2D ReadBack(Texture source)
+        {
+            var target = RenderTexture.GetTemporary(source.width, source.height, 0,
+                RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+            var previous = RenderTexture.active;
+
+            try
+            {
+                Graphics.Blit(source, target);
+                RenderTexture.active = target;
+
+                var copy = new Texture2D(source.width, source.height, TextureFormat.RGBA32, false, true);
+                copy.ReadPixels(new Rect(0, 0, source.width, source.height), 0, 0);
+                copy.Apply();
+                return copy;
+            }
+            finally
+            {
+                RenderTexture.active = previous;
+                RenderTexture.ReleaseTemporary(target);
+            }
         }
 
         /// <summary>A readable sprite, opaque between two rows, pivoted at the bottom, 10 pixels per unit.</summary>

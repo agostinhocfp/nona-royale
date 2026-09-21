@@ -21,17 +21,17 @@ namespace NonaRoyale.Unity.View
         private static readonly Dictionary<int, Sprite> Polygons = new Dictionary<int, Sprite>();
         private static readonly Dictionary<int, Sprite> Stars = new Dictionary<int, Sprite>();
 
-        public static Sprite Disc => _disc ?? (_disc = BuildDisc(64, filled: true));
-        public static Sprite Ring => _ring ?? (_ring = BuildDisc(64, filled: false));
+        public static Sprite Disc => _disc != null ? _disc : (_disc = BuildDisc(64, filled: true));
+        public static Sprite Ring => _ring != null ? _ring : (_ring = BuildDisc(64, filled: false));
 
         /// <summary>Board cells. Squares read as a Ludo grid; discs read as beads.</summary>
-        public static Sprite Square => _square ?? (_square = BuildSquare(8));
+        public static Sprite Square => _square != null ? _square : (_square = BuildSquare(8));
 
         /// <summary>
         /// A plus sign. Not a polygon — its concave corners are what make it
         /// read as a medic's mark rather than a rotated square.
         /// </summary>
-        public static Sprite Cross => _cross ?? (_cross = BuildCross(96));
+        public static Sprite Cross => _cross != null ? _cross : (_cross = BuildCross(96));
 
         /// <summary>
         /// A regular polygon, cached per shape. Sides and rotation are how
@@ -43,7 +43,7 @@ namespace NonaRoyale.Unity.View
         {
             int key = sides * 1000 + Mathf.RoundToInt(rotationDegrees);
 
-            if (!Polygons.TryGetValue(key, out var sprite))
+            if (!Polygons.TryGetValue(key, out var sprite) || sprite == null)
             {
                 sprite = BuildPolygon(96, sides, rotationDegrees);
                 Polygons[key] = sprite;
@@ -61,7 +61,7 @@ namespace NonaRoyale.Unity.View
         {
             int key = points * 1000 + Mathf.RoundToInt(rotationDegrees);
 
-            if (!Stars.TryGetValue(key, out var sprite))
+            if (!Stars.TryGetValue(key, out var sprite) || sprite == null)
             {
                 sprite = BuildStar(96, points, rotationDegrees);
                 Stars[key] = sprite;

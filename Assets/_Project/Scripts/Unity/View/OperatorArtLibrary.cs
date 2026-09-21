@@ -27,6 +27,13 @@ namespace NonaRoyale.Unity.View
         /// <summary>Highest opaque point, in sprite units from the pivot.</summary>
         public float OpaqueTop { get; }
 
+        /// <summary>
+        /// False once Unity has destroyed a sprite this holds, which the editor
+        /// does to script-made textures when it changes scene. A cache that
+        /// finds a dead figure builds it again.
+        /// </summary>
+        public bool IsAlive => Sprite != null && (ReferenceEquals(Silhouette, null) || Silhouette != null);
+
         public FigureArt(Sprite sprite, Sprite silhouette, float opaqueBottom, float opaqueTop)
         {
             Sprite = sprite;
@@ -49,6 +56,12 @@ namespace NonaRoyale.Unity.View
     /// by name keeps the no-scene-wiring rule, and audio already works this
     /// way. A missing file is not an error: the caller falls back to the
     /// procedural figure or shape, pose by pose.
+    ///
+    /// <b>Then the look book</b> (OPERATOR_LOOKBOOK.md, LB0).
+    /// <see cref="Figure"/> asks <see cref="OperatorLookBook"/> for a pose
+    /// with no render, before giving up. A look-book figure is a
+    /// <see cref="FigureArt"/> like a render, so the piece draws it the same
+    /// way. <see cref="Rendered"/> answers for renders alone.
     ///
     /// <b>The importer makes the textures readable</b>
     /// (<c>Editor/OperatorArtImporter</c>), so this class can measure the
@@ -74,11 +87,23 @@ namespace NonaRoyale.Unity.View
         public static string PathFor(string operatorName, FigurePose pose) =>
             Folder + Key(operatorName) + (pose == FigurePose.Seated ? "_seated" : "_standing");
 
-        /// <summary>The rendered figure, or null when the operator has none for this pose.</summary>
+        /// <summary>
+        /// The figure for a pose: the render if there is one, else the
+        /// look-book figure, else null (the caller draws the pawn or bust).
+        /// </summary>
         public static FigureArt Figure(string operatorName, FigurePose pose)
         {
+            var rendered = Rendered(operatorName, pose);
+            if (rendered != null) return rendered;
+
+            return OperatorLookBook.Enabled ? OperatorLookBook.Figure(operatorName, pose) : null;
+        }
+
+        /// <summary>The rendered figure alone, or null when the operator has no render for this pose.</summary>
+        public static FigureArt Rendered(string operatorName, FigurePose pose)
+        {
             var path = PathFor(operatorName, pose);
-            if (Figures.TryGetValue(path, out var cached)) return cached;
+            if (Figures.TryGetValue(path, out var cached) && (cached == null || cached.IsAlive)) return cached;
 
             var sprite = Resources.Load<Sprite>(path);
             var art = sprite != null ? Measure(sprite, path) : null;
