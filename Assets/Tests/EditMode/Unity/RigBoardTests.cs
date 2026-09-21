@@ -407,5 +407,18 @@ namespace NonaRoyale.Unity.Tests.View
 
             Assert.Greater(powered, 0, "the cast has something to light");
         }
+
+        // ── The palette rules (LB5d) ────────────────────────────────────
+
+        [TestCaseSource(nameof(Names))]
+        public void OnlyFortuna_CarriesGilt(string name)
+        {
+            int gilt = 0;
+            foreach (var part in _images[name].Right.Parts)
+                gilt += SilhouetteMetrics.Count(part.Standing, SilhouetteMetrics.IsGilt);
+
+            if (name == "Fortuna") Assert.Greater(gilt, 0, "gilt is Fortuna's whole distinction");
+            else Assert.AreEqual(0, gilt, "operator metal is aged brass or tarnished silver (§3)");
+        }
     }
 }

@@ -38,9 +38,9 @@ namespace NonaRoyale.Unity.View
         /// <summary>
         /// Where a posed figure is assembled for judging: wider than the
         /// look book's canvas, since a step, a hit or a knockout reaches past
-        /// a standing figure's footprint.
+        /// a standing figure's footprint, and taller, for Lethe's headdress (LB5d).
         /// </summary>
-        public static readonly FigureCanvas PoseCanvas = new FigureCanvas(-1.6f, -0.1f, 307, 307, 96f, 4);
+        public static readonly FigureCanvas PoseCanvas = new FigureCanvas(-1.6f, -0.1f, 307, 336, 96f, 4);
 
         /// <summary>Every part at rest, each on a canvas just big enough for its ink and rim.</summary>
         public static List<RigPartImage> RenderParts(OperatorRig rig, LookBookPalette palette, float pixelsPerUnit, int supersample, bool powered = false)

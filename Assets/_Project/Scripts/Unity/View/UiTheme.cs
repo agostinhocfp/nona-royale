@@ -354,6 +354,21 @@ namespace NonaRoyale.Unity.View
         public static readonly Color LookLukaShirt = Hex("1C181B");
         public static readonly Color LookLukaSkin = Hex("C28B6B");
 
+        // Fortuna: the only gold-dominant figure, and the only bright metal (§3, §5.1).
+        public static readonly Color LookFortunaCloth = Hex("2B272D");
+        public static readonly Color LookFortunaShirt = Hex("17141A");
+        public static readonly Color LookFortunaSkin = Hex("C9A58C");
+        public static readonly Color LookFortunaHair = Hex("1B1416");
+        public static readonly Color LookFortunaGold = Gold;
+        public static readonly Color LookFortunaGoldLight = GoldBright;
+
+        // Lethe: the only true mid-grey figure; tarnished silver, never gold.
+        public static readonly Color LookLetheGown = Hex("7C7A82");
+        public static readonly Color LookLetheGlove = Hex("66646C");
+        public static readonly Color LookLetheSilver = Hex("A3A4A6");
+        public static readonly Color LookLetheSkin = Hex("D6C8BE");
+        public static readonly Color LookLetheHair = Hex("221E24");
+
         // Nuetu: the only all-light mass, cool dove-grey, black plates on grey.
         public static readonly Color LookNuetuGrey = Hex("B3B7C1");
         public static readonly Color LookNuetuPlate = Hex("17141A");

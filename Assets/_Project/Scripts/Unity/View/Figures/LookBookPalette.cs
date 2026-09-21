@@ -96,6 +96,21 @@ namespace NonaRoyale.Unity.View
         public FigureColour LukaShirt;
         public FigureColour LukaSkin;
 
+        // ── Fortuna: the only gilt figure (LB5d) ───────────────────────
+        public FigureColour FortunaCloth;
+        public FigureColour FortunaShirt;
+        public FigureColour FortunaSkin;
+        public FigureColour FortunaHair;
+        public FigureColour FortunaGold;
+        public FigureColour FortunaGoldLight;
+
+        // ── Lethe: the only true mid-grey (LB5d) ────────────────────────
+        public FigureColour LetheGown;
+        public FigureColour LetheGlove;
+        public FigureColour LetheSilver;
+        public FigureColour LetheSkin;
+        public FigureColour LetheHair;
+
         // ── Nuetu: the only all-light mass, cool dove-grey ──────────────
         public FigureColour NuetuGrey;
         public FigureColour NuetuPlate;

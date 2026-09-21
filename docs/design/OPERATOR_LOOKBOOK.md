@@ -1,7 +1,7 @@
 # Nona Royale — Operator Look Book (procedural Dark Deco figures)
 
 > Location in repo: `docs/design/OPERATOR_LOOKBOOK.md` · Project copy: `claude/OPERATOR_LOOKBOOK.md`
-> Status: **LB0 and LB3 done. LB2 closed at 9 of 12 front-view recipes. LB5a–c done and committed (Bouncer rigged on the board with his event poses). LB5d under way: batches 1 and 2 (Nuetu, Sanity, Syla, Kurbyn, Javi, Mimi) passed review; batch 3 (Revú, Kian, Luka) delivered 2026-09-21, awaiting review in the window.** Written 2026-09-21. **v2 — ambition raised: these are meant to be good, not merely distinct.**
+> Status: **LB0 and LB3 done. LB2 closed at 9 of 12 front-view recipes. LB5a–c done and committed (Bouncer rigged on the board with his event poses). LB5d under way: batches 1–3 passed review; batch 4 (Fortuna, Lethe) delivered 2026-09-21, awaiting review: all twelve operators now stand as rigs. Normal maps are the last LB5d item.** Written 2026-09-21. **v2 — ambition raised: these are meant to be good, not merely distinct.**
 > Related: `ART_DIRECTION.md` §2.2 (Dark Deco cel — the spec), §3 (palette), §5.1 (the value ledger — the source of the recipes), §6.1; `ART_HOOKUP.md` (ART1 — the real-art path this must not break); `STAGE4_HANDOFF.md`; ADR-0009; ADR-0010 (URP 2D lights).
 
 ## Goal
@@ -138,7 +138,7 @@ Plain C# for everything but the Unity view, as before.
 | LB5a | Rig core **(delivered)** | `FigureRig`, `RigPart`, `RigPose`, `OperatorRig`, the build templates, composition of a posed rig into one image for judging, and tests. **Bouncer** redrawn in three-quarter view with rest, idle, cast and seated poses, previewed animated in the Look Book window. No game changes yet. |
 | LB5b | On the board **(delivered)** | `RigView` and `RigAnimator` on `OperatorPiece`: idle, the step, the rise, facing, the hit flash per part, screen bounds, sorting. Bouncer only. |
 | LB5c | Event poses **(delivered)** | Cast aimed at the target, hit recoil, knockout before the shatter, the seated activity, and the cast's cyan tell on the device. |
-| LB5d | The cast **(batch 3 of 4 delivered)** | The eight other recipes redrawn in three-quarter view with a head pass each (hair masses, one face shadow, a signature head shape), and **Luka, Fortuna and Lethe** drawn rigged. Normal maps. |
+| LB5d | The cast **(all twelve rigged; normal maps to come)** | The eight other recipes redrawn in three-quarter view with a head pass each (hair masses, one face shadow, a signature head shape), and **Luka, Fortuna and Lethe** drawn rigged. Normal maps. |
 
 Stop for Play Mode after each.
 
@@ -300,6 +300,19 @@ All under `Assets/_Project/Scripts/Unity/View/Figures/`. Everything but `FigureS
   - **Checks:** every rig test runs over the ten rigs, including the palette-completeness rule for the new Luka colours. Outside Unity all 332 plain C# tests pass; all three assemblies compile against the editor's DLLs with no errors or warnings.
   - **For the designer to judge in the window:** Revú's silver hair, which reads close to a bald grey head at full size; Kian's frogging, which comes up bright on the emerald; Luka's rig against his render (only a fallback on the board, but the window shows it); how far Revú's seated arm reaches for the ledger.
 
+- **2026-09-21 — LB5d batch 3 passed review** ("Green").
+
+- **2026-09-21 — LB5d, batch 4: Fortuna and Lethe rigged from the start.** All twelve operators now have a rig.
+  - **Fortuna, the only gilt figure.** Upright and still, squared shoulders, narrow waist, the long straight skirt on the hips (it walks and sinks like Syla's). The first draft kept the gold to trim and read as a dark figure; the ledger asks for gold-dominant, so the gold is now a stepped yoke across the shoulders, a stepped corset panel at the waist, a stepped panel down the skirt front and a hem band, plus the chain, the garters and the cuffs, each with a bright wedge (`UiTheme.Gold` and `GoldBright`, the only operator allowed them). The near hand rests on the dealer's shoe at her hip; its feed line is the tell. Head pass: dark hair in a low sculpted roll with two carved highlights, a calm face, a small dark mouth. Cast: the near hand flicks forward off the shoe, dealing. Seated: dealing at the table, both hands on the felt; her activity is sliding a card out.
+  - **The diamond is not settled here.** At 64 px her outline reads as a column with the elbows out, and it sits at 0.74 against both Syla and Javi, just under the amber line. The gold carries her apart, not the silhouette. The open question (ART_PROMPTS) is her piece pin against the eight-pointed chip notch, which this figure does not decide.
+  - **Lethe, the six-point spark, the only true mid-grey.** Very tall and still, a narrow body under a wide hard shoulder line, hands hanging. The headdress is five tarnished-silver blades fanning from the temples, the middle three highest: the tallest element on any figure. The smoke-grey column gown falls to the floor on the hips; silver beading at the shoulders and hem; the lattice collar across the collarbones with its points of cyan, and the nanite cells at the hips, are the tell. Rimmed with the light rim, since the dark rim vanishes on mid-grey. Head pass: hair pulled flat under the headdress, a calm symmetrical face, a small closed mouth. Cast: the near hand raised toward the target, palm out. Seated: hands flat on the table, looking at the middle of the board; her activity is the smallest on the board, a lowering of the head.
+  - **New colours:** `UiTheme.LookFortuna*` (charcoal, dark shirt, skin, hair, gold, bright gold) and `UiTheme.LookLethe*` (gown, glove, tarnished silver, skin, hair), wired through the look-book palette.
+  - **`RigComposer.PoseCanvas`** grows from 307 to 336 texels tall, for Lethe's headdress. It is only the judging canvas; on the board every part has its own.
+  - **New rule test:** `RigBoardTests.OnlyFortuna_CarriesGilt`, the look book's gilt rule over every rig.
+  - **Squint at 64 px, rest poses:** Syla/Fortuna 0.74, Javi/Fortuna 0.74, Revú/Fortuna 0.69, Fortuna/Lethe 0.69; Lethe is at 0.66 or under against everyone.
+  - **Checks:** outside Unity all 396 plain C# tests pass; all three assemblies compile against the editor's DLLs with no errors or warnings.
+  - **For the designer to judge in the window:** whether Fortuna's gold now reads as hers rather than as costume, and whether her silhouette needs its own point (the review question); Lethe's headdress at board scale, where five thin blades may merge; Lethe's seated reach.
+
 ## Read before writing anything
 
 `ART_DIRECTION.md` §2.2, §3, §5 and §5.1 in full — they are the spec, and this document is a summary of them. Then `View/BoardArt.cs`, `View/OperatorPiece.cs`, `View/FigureLayout.cs`, `View/OperatorArtLibrary.cs`, `View/UiTheme.cs`, `View/FigureTilt.cs`, the draft card, and `Core/Abilities/Roster.cs` for the authoritative names. For LB2 onward, also everything under `View/Figures/`. File names come from the design logs and need verifying against the tree.
@@ -320,6 +333,6 @@ feat(tools): operator contact sheet, squint sheet and distinctness tests
 feat(ui): Deco portraits and the powered cast overlay
 ```
 
-## Start prompt for the implementing session (LB5d, batch 4)
+## Start prompt for the implementing session (LB5d, normal maps)
 
-> Read `docs/design/OPERATOR_LOOKBOOK.md` in full, especially the LB5 section and the log, then `ART_DIRECTION.md` §2.2, §3, §5 and §5.1, and the Fortuna and Lethe blocks in `ART_PROMPTS.md`. Then everything under `View/Figures/`, with `Rig/Rigs/` as the pattern. Ask me for the batch 3 review first and fix what it raises. Then build batch 4: Fortuna (the only gilt figure; the diamond silhouette is under review, so test it against the eight-pointed chip notch at piece size) and Lethe (the six-point spark, the only true mid-grey), rigged from the start with new `UiTheme.LookFortuna*` and `LookLethe*` colours, each with a head pass, its own cast and its own seated activity, squint-checked against all ten rigs. Normal maps follow once all twelve stand. Stop for the judging window.
+> Read `docs/design/OPERATOR_LOOKBOOK.md` in full, especially the LB5 section and the log, then ADR-0010 (URP 2D lights) and `LIGHTING.md`. Then everything under `View/Figures/` and `View/Figures/Rig/`, especially `FigureRasterizer`, `RigImages`, `OperatorRigArt` and `RigView`. Ask me for the batch 4 review first and fix what it raises. Then plan the normal maps: one per part, derived from the shade and light layers (the cel shapes as flat facets), uploaded as secondary textures so URP's 2D lights catch the brass, the gold and the black cloth. Confirm the approach with me before building it. Stop for Play Mode.
