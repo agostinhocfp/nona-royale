@@ -113,3 +113,25 @@ Do these in order: Unity has to compile the importer **before** the PNGs arrive,
 - Whether the pin on a painted chest reads well, or should move to the disc.
 - `art/source/…/Meshy_AI_Luka_4k_biped.zip` duplicates the GLBs and adds a third clip (Boom Dance); it is ignored by git.
 - `ART_PIPELINE.md` §2 raster editor is still undecided.
+
+## Bouncer — hand-rigged `.blend` through the script (2026-09-22)
+
+### Tools
+
+- **`tools/blender/render_operator.py` renders a hand-rigged `.blend`.**
+  - `--model` takes a `.blend` as well as a GLB. The file is opened as it is and never written back to; `--save-blend` refuses the model's own path.
+  - The rig is the armature that skins a mesh, not the first armature in the file, so a leftover clip skeleton (`MIXAMO_clip`) is skipped. The file's lights are hidden from the render; bone constraints (IK, Copy Location) are muted for the run, in memory only.
+  - A second armature modifier pointing at the same rig is dropped for the run, with a warning. It is invisible at rest and deforms the mesh twice once posed.
+  - A material with no Principled BSDF (texture straight into an Emission) still renders textured: the script takes the texture feeding the emission, then any image texture.
+  - Required bones are checked up front with a readable error. The seated lean uses the last two spine bones present, so a rig without `mixamorig:Spine1` works; a Meshy rig leans Spine1 and Spine2 exactly as before.
+  - The seated and portrait crops are fractions of the standing height (0.030 and 0.073, Luka's 0.05 m and 0.12 m at 1.64 m), so any rig scale crops the same. Luka's output is unchanged.
+  - The run examples name Blender 5.2, the designer's install.
+
+### Bouncer
+
+- **Source:** `art/source/characters/bouncer/bouncer_rig.blend`. Meshy model (447,042 faces, one 2048² texture, packed), rigged by hand in Blender, bones renamed to `mixamorig:*` (no Spine1), plus `root` and IK targets/poles.
+- **Renders** in `art/renders/bouncer/` with `--head 1 --legs 1 --arms 1`: standing, seated, portrait. Rendered in the cloud with the `bpy` 5.0.1 module under `xvfb-run` (about 55 s for three images); the file was saved by 5.2 and opened with the usual newer-version warning.
+- **Proportions are off-spec:** as rigged he measures about **10 heads**, not the 6 the art bible locks. Because the game scales every standing render to the same height, his head would draw at about half Luka's size. Comparison in `Claude outputs/bouncer_proportions_compare.png`: A as rigged, B `--head 1.45 --legs 0.85`, C `--head 1.7 --legs 0.83` (about 6 heads; the collar stretches up the neck). **Designer's call, open.**
+- **In the file:** `Mesh_0` has two armature modifiers (`Armature`, `Armature.001`) on the same rig; remove `Armature.001`. The armature object is at scale 0.224 and the mesh at a non-uniform ~1.24; neither affects the renders.
+- **Texture, not script:** the gauntlet's seams carry painted cyan, so the device reads as lit at rest (`ART_DIRECTION.md` §5), and its brass reads brighter than aged brass (§3). Fix in the texture.
+- Not yet copied into `Assets/…/Operators/`: waits on the proportion call.

@@ -1,10 +1,15 @@
 # tools/blender/render_operator.py
 """
-Renders an operator's board sprites from a rigged Meshy/Mixamo GLB
+Renders an operator's board sprites from a rigged Meshy/Mixamo GLB, or from a
+hand-rigged .blend whose bones use Mixamo names
 (ADR-0009, ART_PIPELINE.md §2, ART_HOOKUP.md).
 
 What it does, in order:
-  1. Imports the GLB into an empty scene and stops its animation.
+  1. Loads the model and stops its animation. A GLB is imported into an empty
+     scene; a .blend is opened as it is and is never written back to. The
+     rig is the armature that skins a mesh, so a leftover clip skeleton in the
+     file is ignored. Bone constraints (a hand rig's IK) are muted for the run
+     and the file's own lights are hidden from the render.
   2. Fixes the proportions (head up, legs down, optional arms) and bakes them
      into the rest pose, then stands the figure back on the floor.
   3. Poses and renders three images with a fixed orthographic camera at the
@@ -22,13 +27,24 @@ level, 1024x1024, into <out>/reference/:
 Upload those to Meshy (multi-view image to 3D) to regenerate the model at
 6 heads natively, instead of stretching bones on every render.
 
+The rig must use Mixamo bone names ("mixamorig:" prefix). It needs Hips, Neck,
+Head, Spine2 and at least one of Spine/Spine1, both UpLegs, both Feet, the left
+ToeBase, and both Arm/ForeArm/Hand chains. Anything else (a root, IK targets,
+fingers) is ignored.
+
 Run it from the repo root (Windows):
-  "C:\\Program Files\\Blender Foundation\\Blender 4.5\\blender.exe" --background ^
+  "C:\\Program Files\\Blender Foundation\\Blender 5.2\\blender.exe" --background ^
       --python tools\\blender\\render_operator.py -- ^
       --model art\\source\\characters\\luka\\luka_walk.glb --name luka
 
+A hand-rigged .blend whose proportions are already 6 heads:
+  "C:\\Program Files\\Blender Foundation\\Blender 5.2\\blender.exe" --background ^
+      --python tools\\blender\\render_operator.py -- ^
+      --model art\\source\\characters\\bouncer\\bouncer_rig.blend --name bouncer ^
+      --head 1 --legs 1 --arms 1
+
 Options (after the lone "--"):
-  --model PATH       the GLB (required)
+  --model PATH       the GLB or .blend (required)
   --name NAME        file-name stem, lowercase (required)
   --out DIR          output folder (default art/renders/<name>)
   --head 1.3         head scale; 1 keeps the model's
@@ -38,7 +54,7 @@ Options (after the lone "--"):
   --pitch 25         camera pitch down, degrees (the board angle)
   --line 1.6         outline thickness, pixels
   --only standing    render one image: standing, seated or portrait
-  --save-blend PATH  also save the posed scene
+  --save-blend PATH  also save the posed scene (never the --model file)
   --preview          quarter-size renders, few samples (for checking)
   --reference        render the Meshy multi-view sheet instead of the sprites
 
@@ -62,7 +78,7 @@ AMBIENT = (0.10, 0.09, 0.11)
 # Plain grey behind the reference sheet: 115/255 in sRGB, as the concept crops.
 REFERENCE_GREY = (0.171, 0.171, 0.171)
 
-# Mixamo bone names, as Meshy exports them.
+# Mixamo bone names, as Meshy exports them and as a hand rig is renamed to.
 B = "mixamorig:"
 HEAD = B + "Head"
 HIPS = B + "Hips"
@@ -70,6 +86,22 @@ NECK = B + "Neck"
 SPINE = (B + "Spine", B + "Spine1", B + "Spine2")
 LEGS = (B + "LeftUpLeg", B + "RightUpLeg")
 ARMS = (B + "LeftArm", B + "RightArm")
+
+# Every bone the script reads or turns. The spine is checked on its own:
+# a hand rig may have no Spine1.
+REQUIRED = (
+    HIPS, NECK, HEAD,
+    *LEGS,
+    B + "LeftFoot", B + "RightFoot", B + "LeftToeBase",
+    *ARMS,
+    B + "LeftForeArm", B + "RightForeArm",
+    B + "LeftHand", B + "RightHand",
+)
+
+# Crops as fractions of the standing height. Luka's were 0.05 m and 0.12 m at
+# 1.64 m; as fractions, a rig at any scale frames the same way.
+SEATED_CUT_ABOVE_HIPS = 0.030
+PORTRAIT_CUT_BELOW_NECK = 0.073
 
 
 # ── Arguments ────────────────────────────────────────────────────────────
@@ -93,27 +125,52 @@ def parse_args():
     args = p.parse_args(argv)
     if args.out is None:
         args.out = os.path.join("art", "renders", args.name)
+    if args.save_blend and os.path.abspath(args.save_blend) == os.path.abspath(args.model):
+        p.error("--save-blend must not overwrite the --model file")
     return args
 
 
 # ── Scene ────────────────────────────────────────────────────────────────
 
-def reset_scene():
-    bpy.ops.wm.read_factory_settings(use_empty=True)
+def load_model(path):
+    """Imports a GLB into an empty scene, or opens a .blend as it is."""
+    if path.lower().endswith(".blend"):
+        bpy.ops.wm.open_mainfile(filepath=os.path.abspath(path), load_ui=False)
+        # The file's own lights would feed the toon ramp; the script sets its own.
+        for o in bpy.context.scene.objects:
+            if o.type == "LIGHT":
+                o.hide_render = True
+    else:
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        bpy.ops.import_scene.gltf(filepath=os.path.abspath(path))
 
+    arm, meshes = find_rig(path)
+    check_bones(arm)
 
-def import_model(path):
-    bpy.ops.import_scene.gltf(filepath=os.path.abspath(path))
-    arm = next(o for o in bpy.context.scene.objects if o.type == "ARMATURE")
-    # Only the skinned meshes: the importer also adds helper shapes (an
-    # icosphere for bone display) that must not be framed or rendered.
-    meshes = [o for o in bpy.context.scene.objects
-              if o.type == "MESH" and any(m.type == "ARMATURE" and m.object == arm for m in o.modifiers)]
+    # A second armature modifier on the same rig deforms the mesh twice once
+    # it is posed (harmless at rest, so it goes unnoticed). Keep the first.
+    for mesh in meshes:
+        seen = False
+        for m in list(mesh.modifiers):
+            if m.type == "ARMATURE" and m.object == arm:
+                if seen:
+                    print("[render_operator] warning: %r has a second armature modifier %r; "
+                          "ignoring it for this run (remove it in the file)" % (mesh.name, m.name))
+                    mesh.modifiers.remove(m)
+                seen = True
+
+    # Only the skinned meshes: a GLB import also adds helper shapes (an
+    # icosphere for bone display), and a .blend may hold props or a stand-in
+    # chair. None of them may be framed or rendered.
     for o in bpy.context.scene.objects:
         if o.type == "MESH" and o not in meshes:
             o.hide_render = True
-    if not meshes:
-        raise SystemExit("No mesh in " + path)
+
+    # Constraints (a hand rig's IK) would fight the posing, which turns bones
+    # directly. Muted in memory only; the file on disk is untouched.
+    for pb in arm.pose.bones:
+        for c in pb.constraints:
+            c.mute = True
 
     # The clip would override every pose; the rest pose is the start point.
     if arm.animation_data:
@@ -124,6 +181,43 @@ def import_model(path):
         pb.matrix_basis = Matrix.Identity(4)
     update()
     return arm, meshes
+
+
+def find_rig(path):
+    """The armature that skins at least one mesh, and those meshes.
+
+    A file can hold other armatures (a clip's skeleton, a reference). They
+    skin nothing, so they are skipped.
+    """
+    objects = list(bpy.context.scene.objects)
+    for arm in (o for o in objects if o.type == "ARMATURE"):
+        meshes = [o for o in objects
+                  if o.type == "MESH" and any(m.type == "ARMATURE" and m.object == arm for m in o.modifiers)]
+        if meshes:
+            print("[render_operator] rig %r, meshes: %s" % (arm.name, ", ".join(m.name for m in meshes)))
+            return arm, meshes
+    raise SystemExit("No armature with a skinned mesh in " + path)
+
+
+def check_bones(arm):
+    """Stops with a readable list, instead of a KeyError halfway through a render."""
+    names = set(arm.pose.bones.keys())
+    missing = [n for n in REQUIRED if n not in names]
+    spine = [n for n in SPINE if n in names]
+    if SPINE[2] not in names or len(spine) < 2:
+        missing.append("%s plus one of %s / %s" % (SPINE[2], SPINE[0], SPINE[1]))
+    if missing:
+        raise SystemExit("The rig %r is missing bones: %s" % (arm.name, ", ".join(missing)))
+
+
+def spine_lean_bones(arm):
+    """The two spine bones the seated pose leans.
+
+    Spine1 and Spine2 on a Meshy rig (as before); Spine and Spine2 on a rig
+    with no Spine1.
+    """
+    present = [n for n in SPINE if n in arm.pose.bones]
+    return present[-2], present[-1]
 
 
 def update():
@@ -284,8 +378,9 @@ def pose_seated(arm):
     rest_pose(arm)
     forward, left, up = body_frame(arm)
     down = -up
-    aim(arm, SPINE[1], up + forward * 0.12)
-    aim(arm, SPINE[2], up + forward * 0.10)
+    lower, chest = spine_lean_bones(arm)
+    aim(arm, lower, up + forward * 0.12)
+    aim(arm, chest, up + forward * 0.10)
     aim(arm, NECK, up)
     aim(arm, HEAD, up - forward * 0.14)
     for side, out in (("Left", left), ("Right", -left)):
@@ -326,6 +421,18 @@ def toon_materials(meshes, flat=False):
                 colour = tuple(socket.default_value)
                 if socket.is_linked:
                     base = socket.links[0].from_socket
+            else:
+                # An unlit material (texture straight into emission, as a
+                # hand-set-up file may have): take the texture it shows.
+                emit = next((n for n in nodes if n.type == "EMISSION" and n.inputs["Color"].is_linked), None)
+                if emit is not None:
+                    base = emit.inputs["Color"].links[0].from_socket
+                else:
+                    tex = next((n for n in nodes if n.type == "TEX_IMAGE" and n.image), None)
+                    if tex is not None:
+                        base = tex.outputs["Color"]
+            if base is None:
+                print("[render_operator] warning: material %r has no texture; rendering its flat colour" % mat.name)
             out = next((n for n in nodes if n.type == "OUTPUT_MATERIAL"), None) or nodes.new("ShaderNodeOutputMaterial")
 
             diffuse = nodes.new("ShaderNodeBsdfDiffuse")
@@ -516,8 +623,7 @@ def render_reference(cam, arm, meshes, name, out):
 
 def main():
     args = parse_args()
-    reset_scene()
-    arm, meshes = import_model(args.model)
+    arm, meshes = load_model(args.model)
     fix_proportions(arm, meshes, args.head, args.legs, args.arms)
 
     scene = bpy.context.scene
@@ -536,6 +642,11 @@ def main():
     outline(scene, args.line)
     os.makedirs(args.out, exist_ok=True)
 
+    # The standing height sets the crops, so a rig at any scale frames the same.
+    pose_standing(arm)
+    standing = posed_points(meshes)
+    height = max(p.z for p in standing) - min(p.z for p in standing)
+
     wanted = [args.only] if args.only else ["standing", "seated", "portrait"]
 
     if "standing" in wanted:
@@ -547,13 +658,15 @@ def main():
         pose_seated(arm)
         hips_z = bone_head(arm, HIPS).z
         # The image stops a little above the hips: the table hides the rest.
-        frame_bottom_at(cam, posed_points(meshes), hips_z + 0.05, arm, args.yaw, args.pitch, 512, 512)
+        frame_bottom_at(cam, posed_points(meshes), hips_z + SEATED_CUT_ABOVE_HIPS * height,
+                        arm, args.yaw, args.pitch, 512, 512)
         render(os.path.join(args.out, args.name + "_seated.png"))
 
     if "portrait" in wanted:
         pose_standing(arm)
         neck_z = bone_head(arm, NECK).z
-        frame_bottom_at(cam, posed_points(meshes), neck_z - 0.12, arm, args.yaw * 0.7, 8.0, 512, 512)
+        frame_bottom_at(cam, posed_points(meshes), neck_z - PORTRAIT_CUT_BELOW_NECK * height,
+                        arm, args.yaw * 0.7, 8.0, 512, 512)
         render(os.path.join(args.out, args.name + "_portrait.png"))
 
     if args.save_blend:
