@@ -234,6 +234,36 @@ namespace NonaRoyale.Core.Abilities
         }
 
         /// <summary>
+        /// A copy of a damage effect that deals <paramref name="bonus"/> more
+        /// to a target whose maximum health is above
+        /// <paramref name="aboveMaxHealth"/> (§2.4's heavy rule, applied to an
+        /// instant hit). Blind Spot's strike.
+        /// </summary>
+        /// <remarks>
+        /// <b>The same "heavy" line the follow-up and the crit read</b>, so one
+        /// operator cannot disagree with itself about who is heavy. The bonus
+        /// is added before a critical multiplier, like the bleeding bonus: a
+        /// critical is a bigger hit, not a hit that skips the riders.
+        ///
+        /// A copy method rather than another <see cref="Damage"/> parameter,
+        /// matching <see cref="WithCritical"/> and <see cref="WithLifesteal"/>,
+        /// so the three compose in any order.
+        /// </remarks>
+        public AbilityEffect WithHeavyBonus(int bonus, int aboveMaxHealth)
+        {
+            if (Kind != EffectKind.Damage)
+                throw new InvalidOperationException("Only a damage effect can carry a heavy bonus.");
+            if (bonus < 1) throw new ArgumentOutOfRangeException(nameof(bonus));
+            if (aboveMaxHealth < 1) throw new ArgumentOutOfRangeException(nameof(aboveMaxHealth));
+
+            return new AbilityEffect(Kind, Scope, Audience, Amount, DamageType, Radius,
+                Status, Duration, Stacks, Magnitude, BonusIfBleeding,
+                ExecuteNumerator, ExecuteDenominator, BonusInOwnZone,
+                CritChance, CritMultiplier, HeavyCritMultiplier, aboveMaxHealth, bonus,
+                ScalesWithCrowd, Lifesteal, StrikesOnCast);
+        }
+
+        /// <summary>
         /// A copy of a damage effect whose caster heals the health the hit
         /// actually removed (§2.5). Vendetta.
         /// </summary>

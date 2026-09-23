@@ -311,14 +311,16 @@ namespace NonaRoyale.Core.Tests.Abilities
         [Test]
         public void Equilibrium_AMidCostCastHitsHimClean()
         {
-            // Blind Spot is 5: its 2 lands as 2.
+            // Blind Spot is 5, so Equilibrium neither doubles nor halves it.
+            // The 3 is the strike's 2 plus Luka's heavy rider: Revú's maximum
+            // of 8 is above the heavy line (§2.4).
             BringEnemyRevuTo(12);
             var luka = AtTrack(20, "Luka", PlayerColor.Red, Luka.MaxHealth, 9);
             _board.Add(luka);
 
             _abilities.Use(luka, Luka.BlindSpot, _enemyRevu, _red, _board);
 
-            Assert.That(_enemyRevu.Health, Is.EqualTo(Revu.MaxHealth - 2));
+            Assert.That(_enemyRevu.Health, Is.EqualTo(Revu.MaxHealth - 3));
         }
 
         [Test]

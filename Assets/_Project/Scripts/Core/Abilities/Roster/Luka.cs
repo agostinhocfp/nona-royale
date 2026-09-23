@@ -49,6 +49,12 @@ namespace NonaRoyale.Core.Abilities
         public const int FollowUpReach = 2;
 
         /// <summary>
+        /// Extra damage Blind Spot's strike deals a heavy target (2026-09-23),
+        /// matching the bonus its follow-up already paid.
+        /// </summary>
+        public const int HeavyStrikeBonus = 1;
+
+        /// <summary>
         /// Luka's ring wipes him out of every lens in the room; he reappears
         /// beside the target and strikes it. If it is still within reach when
         /// his next turn begins, he strikes it again.
@@ -63,6 +69,14 @@ namespace NonaRoyale.Core.Abilities
         /// <b>The teleport is Collision's landing with no rake</b> (§7.6):
         /// placement one cell past the target, or one short when that cell is
         /// taken. It collides with nothing and passes through nobody.
+        ///
+        /// <b>Both hits read the heavy line</b> (designer, 2026-09-23). The
+        /// strike deals 2, or 3 against a heavy target; the follow-up deals 1,
+        /// or 2. Before this only the follow-up paid the bonus, so the
+        /// escapable half of the ability was the only half that punished a
+        /// tank — backwards for a duelist whose whole purpose is the one big
+        /// target. <see cref="HeavyAbove"/> is the one line all three riders
+        /// read (strike, follow-up, Vendetta's crit).
         ///
         /// <b>Two now, and one or two later if the target stays.</b> The
         /// follow-up is Zero-Day's pattern turned into a duel: telegraphed by
@@ -83,13 +97,14 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition BlindSpot { get; } = new AbilityDefinition(
             id: 901, name: "Blind Spot",
             description:
-                "Luka's ring wipes him from every lens in the room. He reappears beside the target and strikes it, and if it is still close when his next turn begins, he strikes it again, harder if it is a heavy target.",
+                "Luka's ring wipes him from every lens in the room. He reappears beside the target and strikes it, harder if it is a heavy target, and if it is still close when his next turn begins, he strikes it again.",
             energyCost: 5, cooldownTurns: 3, range: 3,
             effects: new[]
             {
                 AbilityEffect.Dash(pathDamage: 0, audience: EffectAudience.EnemyOnly),
                 AbilityEffect.Damage(EffectScope.PrimaryTarget, 2, DamageType.Normal,
-                    EffectAudience.EnemyOnly),
+                        EffectAudience.EnemyOnly)
+                    .WithHeavyBonus(HeavyStrikeBonus, HeavyAbove),
                 AbilityEffect.FollowUp(
                     damage: 1, heavyBonus: 1, heavyAboveMaxHealth: HeavyAbove,
                     withinRange: FollowUpReach, damageType: DamageType.Normal)

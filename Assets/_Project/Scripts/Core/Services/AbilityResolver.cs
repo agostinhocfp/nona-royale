@@ -934,6 +934,12 @@ namespace NonaRoyale.Core.Services
             if (effect.BonusIfBleeding > 0 && _statuses.IsBleeding(recipient))
                 amount += effect.BonusIfBleeding;
 
+            // The heavy rider on an instant hit (§2.4), read from the same line
+            // the crit and the follow-up read. Added before the multiplier, as
+            // the bleeding bonus is.
+            if (effect.HeavyBonus > 0 && effect.CountsAsHeavy(recipient.MaxHealth))
+                amount += effect.HeavyBonus;
+
             bool selfInflicted = ReferenceEquals(recipient, caster);
             bool critical = !selfInflicted && RollsCritical(effect);
 

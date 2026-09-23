@@ -148,6 +148,31 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
+        public void BlindSpot_StrikesAHeavyTargetForThree()
+        {
+            // The heavy rider on the strike itself (designer, 2026-09-23). It
+            // reads the same line the follow-up reads, and pays whether or not
+            // the follow-up ever lands.
+            Assert.That(_heavy.MaxHealth, Is.GreaterThan(Luka.HeavyAbove), "precondition: heavy");
+
+            CastBlindSpot(_heavy);
+
+            Assert.That(_heavy.Health, Is.EqualTo(_heavy.MaxHealth - 3));
+        }
+
+        [Test]
+        public void BlindSpot_PaysNoHeavyBonus_ToACommonTarget()
+        {
+            // The pairing that keeps the rider honest: the same cast, a target
+            // at or below the heavy line, and no extra point.
+            Assert.That(_target.MaxHealth, Is.LessThanOrEqualTo(Luka.HeavyAbove), "precondition: not heavy");
+
+            CastBlindSpot(_target);
+
+            Assert.That(_target.Health, Is.EqualTo(_target.MaxHealth - 2));
+        }
+
+        [Test]
         public void BlindSpot_StrikesNobodyOnTheWay()
         {
             // A teleport with no path damage must not report a zero hit on
@@ -217,15 +242,17 @@ namespace NonaRoyale.Core.Tests.Abilities
         [Test]
         public void FollowUp_DealsTwo_ToAHeavyTarget()
         {
-            // Heavy is maximum health above 6 — the Bouncer and Sanity today.
+            // Heavy is maximum health above Luka.HeavyAbove — the Bouncer and
+            // Sanity today. Both halves pay the rider, so a heavy target takes
+            // three on the cast and two on the follow-up.
             CastBlindSpot(_heavy);
-            Assert.That(_heavy.Health, Is.EqualTo(7), "precondition: the cast's two");
+            Assert.That(_heavy.Health, Is.EqualTo(6), "precondition: the cast's two plus the heavy point");
 
             AdvanceToCasterUpkeep();
             var fired = Fire();
 
             Assert.That(fired[0].MarkedTargetBonus, Is.EqualTo(1));
-            Assert.That(_heavy.Health, Is.EqualTo(5));
+            Assert.That(_heavy.Health, Is.EqualTo(4));
         }
 
         [Test]
