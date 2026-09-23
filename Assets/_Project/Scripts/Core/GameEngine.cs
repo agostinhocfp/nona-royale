@@ -269,16 +269,43 @@ namespace NonaRoyale.Core
             return events;
         }
 
+        /// <summary>
+        /// Raised once at the end of every <see cref="Execute"/>, accepted or
+        /// refused, with the seat whose turn it was when the command arrived,
+        /// the command, and the events it produced (REPLAY.md).
+        /// </summary>
+        /// <remarks>
+        /// <b>One hook for every caller.</b> Humans, CPU seats, the bot table
+        /// and tests all reach the rules through <see cref="Execute"/>, so a
+        /// recorder listening here cannot miss a command the way one wired to
+        /// each call site could. A listener must not send commands of its own
+        /// from inside the callback, and nothing it does may change the match.
+        ///
+        /// The seat is captured before the command runs because an end-turn
+        /// hands over: by the time the events are back, the current player is
+        /// already the next seat.
+        /// </remarks>
+        public event Action<PlayerColor, ICommand, IReadOnlyList<IGameEvent>> Executed;
+
         public IReadOnlyList<IGameEvent> Execute(ICommand command)
         {
             if (command == null) throw new ArgumentNullException(nameof(command));
 
+            var seat = _turns.CurrentPlayer != null ? _turns.CurrentPlayer.Color : PlayerColor.None;
             var events = new List<IGameEvent>();
 
+            ExecuteCore(command, events);
+
+            Executed?.Invoke(seat, command, events);
+            return events;
+        }
+
+        private void ExecuteCore(ICommand command, List<IGameEvent> events)
+        {
             if (MatchOver)
             {
                 events.Add(new CommandRejected("the match is over"));
-                return events;
+                return;
             }
 
             // An if-chain rather than a switch on type patterns, which older
@@ -290,8 +317,6 @@ namespace NonaRoyale.Core
             else if (command is CashDieCommand cash) CashDie(cash, events);
             else if (command is EndTurnCommand) EndTurn(events);
             else events.Add(new CommandRejected($"unknown command {command.GetType().Name}"));
-
-            return events;
         }
 
         // ── Turn flow ────────────────────────────────────────────────────
