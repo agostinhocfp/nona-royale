@@ -1,7 +1,7 @@
 # Nona Royale — Stage 6: Deterministic Replays
 
 > Location in repo: `docs/design/REPLAY.md` · Project copy: `claude/REPLAY.md`
-> Status: **RP1a built 2026-09-22, awaiting Unity test run and commit.** RP1b, RP2 and RP3 not started.
+> Status: **RP1a built and passing in Unity 2026-09-23; commit pending.** RP1b, RP2 and RP3 not started.
 > Related: `NEXT_PHASES.md` (stage rules), `PRESENTATION.md`, `CONVENTIONS.md`, `COMBAT_SYSTEMS.md`, ADR-0004 (core architecture), ADR-0012 (sides)
 
 ## Why this stage
@@ -156,7 +156,7 @@ Line 1 is the header. Each later line is one accepted command, in order. Every l
 - [x] A replay recorded before a config change is refused, naming both hashes (CLI).
 - [x] A truncated file plays to its last complete line (CLI).
 - [x] The recorder doesn't touch the match RNG (CLI).
-- [ ] The Unity Test Runner shows the previous total plus 57, with no reds, and `Fingerprint_MatchesTheGoldenHash` passes **under Mono** (this is the cross-runtime check).
+- [x] The Unity Test Runner shows all 57 replay tests passing, `Fingerprint_MatchesTheGoldenHash` included, **under Mono** (the cross-runtime check). The run's six reds are all in `RigPieceTests`, not in replay code (log, 2026-09-23).
 - [ ] (RP1b) Twenty matches leave exactly twenty files, and a pinned one survives.
 
 ## Standing rules (carried from `NEXT_PHASES.md`)
@@ -177,3 +177,4 @@ Line 1 is the header. Each later line is one accepted command, in order. Every l
 
 - **2026-09-22 — stage opened.** Feature chosen from a shortlist of three. The other two (combat forecast / threat map, win-probability recap) are parked as candidates. Three decisions taken (table above). No code written, no repo read.
 - **2026-09-22 — seams checked, RP1a built.** HEAD `3a9db82 feat(guide): passives and auras on every screen that shows a kit`. The working tree had no core changes; Fortuna, Mimi and Kian are all committed. The baseline was 802/0 green. The seam check found the match-construction trap described above, and the designer chose `GameEngine.Executed` plus `MatchRecipe` (both recommended). Built: `MatchRecipe`, the `Executed` hook, and `NonaRoyale.Core.Replay` (JSON subset, codecs, header, reader and writer, recorder, player, fingerprint). **The determinism proof passed on the first run** across 60 bot matches, so no hidden nondeterminism turned up. Tests went to 859/0 in the CLI harness. Golden rules hash `f7820c60`. Waiting on the Unity Test Runner (Mono) and the commit.
+- **2026-09-23 — Unity Test Runner (Mono).** 1459 tests: 1451 passed, 6 failed, 2 inconclusive. **All 57 replay tests pass**, including `Replay_OfSeededBotMatch_ProducesIdenticalEventStream` (0.97 s) and `Fingerprint_MatchesTheGoldenHash`, so `f7820c60` is the same under Mono and .NET 8. The 6 failures and 2 inconclusives are all in `NonaRoyale.Unity.Tests.View` (`RigPieceTests`, one `OperatorLookBookTests`), and none of them involve replay code. Cause: the untracked Bouncer renders (`Art/Resources/Art/Operators/bouncer_{portrait,seated,standing}.png`, dated 2026-09-22 01:44, before this stage started) give Bouncer a real render, so the rig tests that bind Bouncer find no rig. `Bouncer_IsDrawnAsARig_SeatedAndStanding` already says so in its own `Assume`: "point this test at a rigged operator without one." This belongs to the art hookup, not to RP1a. RP1a is committed without those PNGs.
