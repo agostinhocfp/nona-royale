@@ -106,7 +106,7 @@ namespace NonaRoyale.Core.Abilities
             id: 1102, name: "Sadist",
             description:
                 "Collection day. The deeper the target's side is in debt, the harder it lands, and whoever stands near the debtor pays a share. The debt is settled either way.",
-            energyCost: 7, cooldownTurns: 3, range: 3,
+            energyCost: 6, cooldownTurns: 3, range: 3,
             effects: new[]
             {
                 AbilityEffect.DebtDamage(
