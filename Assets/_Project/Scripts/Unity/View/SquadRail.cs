@@ -115,6 +115,12 @@ namespace NonaRoyale.Unity.View
         // Keyed by the state object: rows are rebuilt, the operators are not.
         private readonly Dictionary<OperatorState, float> _lastFractions = new Dictionary<OperatorState, float>();
 
+        // Each seat's debt as the rail last drew it, so a chip pops only when
+        // the figure actually changed (COMBAT_SYSTEMS §3.3). Keyed by seat:
+        // the debt is the seat's, never a piece's.
+        private readonly Dictionary<PlayerColor, int> _shownDebt = new Dictionary<PlayerColor, int>();
+        private readonly Dictionary<PlayerColor, int> _debtThisBuild = new Dictionary<PlayerColor, int>();
+
         /// <summary>One operator row's hover wash, and whether selection already owns the row.</summary>
         private sealed class RowGlow
         {
@@ -260,12 +266,15 @@ namespace NonaRoyale.Unity.View
 
             _rowGlows.Clear();
             _folds.Clear();
+            _debtThisBuild.Clear();
 
             var match = _host?.Match;
             if (match == null) return;
 
             if (_builtPortrait) RebuildBand(match);
             else RebuildRail(match);
+
+            foreach (var pair in _debtThisBuild) _shownDebt[pair.Key] = pair.Value;
 
             // Rows were recreated disabled; the hover may outlive a rebuild.
             ApplyHover();
@@ -366,6 +375,8 @@ namespace NonaRoyale.Unity.View
             UiKit.Label(tab,
                 $"<color=#{UiTheme.Hex(UiTheme.Cyan)}>{seat.Energy}</color><color=#{UiTheme.Hex(UiTheme.TextDim)}>/{engine.EnergyCap}e</color>",
                 12f, align: TextAlignmentOptions.Center);
+
+            DebtChip(tab, seat, 11f, 14f);
         }
 
         /// <summary>
@@ -464,6 +475,8 @@ namespace NonaRoyale.Unity.View
                 12f, bold: true);
             UiKit.Size(name, flexibleWidth: 1f);
 
+            DebtChip(head, seat, 11f, 16f);
+
             UiKit.Label(head, $"{home}/{seat.Operators.Count}", 12f, UiTheme.TextDim,
                 align: TextAlignmentOptions.MidlineRight);
 
@@ -526,6 +539,8 @@ namespace NonaRoyale.Unity.View
                 if (engine.IsHome(op)) home++;
                 DossierIcon(pips, op, PipTint(op, colour, engine), SpinePip, 22f, 22f);
             }
+
+            DebtChip(spine, seat, 12f, 18f);
 
             UiKit.Label(spine, $"{home}/{seat.Operators.Count}", 13f, UiTheme.TextDim,
                 align: TextAlignmentOptions.MidlineRight);
@@ -651,6 +666,22 @@ namespace NonaRoyale.Unity.View
                 $"<color=#{UiTheme.Hex(UiTheme.TextDim)}>home</color> {home}/{seat.Operators.Count}   " +
                 $"<color=#{UiTheme.Hex(UiTheme.Cyan)}>{seat.Energy}</color><color=#{UiTheme.Hex(UiTheme.TextDim)}>/{cap}e</color>",
                 UiTheme.FontSmall, align: TextAlignmentOptions.MidlineRight);
+
+            // Beside the pool it is paid from (§3.3), and absent while nothing is owed.
+            DebtChip(header, seat, UiTheme.FontSmall, 22f);
+        }
+
+        /// <summary>
+        /// The seat's debt as a Roman numeral on a blood-velvet plate
+        /// (<see cref="DebtMark"/>), hidden at zero. It pops when the figure
+        /// changed since the rail last drew it: a loan arriving, or interest.
+        /// </summary>
+        private void DebtChip(Transform parent, PlayerState seat, float size, float height)
+        {
+            var chip = DebtMark.Chip(parent, size, height);
+            int previous = _shownDebt.TryGetValue(seat.Color, out int shown) ? shown : 0;
+            DebtMark.Set(chip, seat.Debt, previous);
+            _debtThisBuild[seat.Color] = seat.Debt;
         }
 
         private void OperatorRow(RectTransform parent, OperatorState op, bool playing, Core.GameEngine engine)

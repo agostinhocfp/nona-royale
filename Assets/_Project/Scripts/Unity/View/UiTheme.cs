@@ -142,6 +142,20 @@ namespace NonaRoyale.Unity.View
         public static readonly Color Sheltered = Hex("E8C877");
         public static readonly Color Move = Hex("D9D6D0");
 
+        /// <summary>
+        /// Debt's numerals on the board (COMBAT_SYSTEMS §3.3): a pale oxblood,
+        /// Revú's jacket lifted until it reads on the dark floor. Kept off the
+        /// damage coral and the heal green so a numeral is never mistaken for
+        /// health; the Roman figure and the display face do the rest.
+        /// </summary>
+        public static readonly Color Debt = Hex("E9A1A8");
+
+        /// <summary>The plate a seat's debt sits on in the HUD: blood velvet, the one red the house allows.</summary>
+        public static readonly Color DebtPlate = BloodVelvet;
+
+        /// <summary>A debt burned by a collision: ember, not coral, since nothing was hurt.</summary>
+        public static readonly Color DebtBurn = Hex("F2A65A");
+
         public static readonly Color DieFace = Hex("EDE3CC");
         public static readonly Color DieInk = Ink;
 

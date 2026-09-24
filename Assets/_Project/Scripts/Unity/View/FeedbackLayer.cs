@@ -5,7 +5,8 @@ namespace NonaRoyale.Unity.View
 {
     /// <summary>
     /// Plays the one-off effects that explain what just happened: numbers,
-    /// misses, blocks, and the burst where an operator was neutralized.
+    /// misses, blocks, the burst where an operator was neutralized, and the
+    /// moments a seat's debt changes hands.
     /// </summary>
     /// <remarks>
     /// <c>COMBAT_SYSTEMS</c> §9.3 says <c>DamageDealt</c>, <c>DamageEvaded</c>
@@ -119,6 +120,48 @@ namespace NonaRoyale.Unity.View
                 seatColour, _scale * 1.2f);
 
             Pulse(at, seatColour, 4.2f);
+        }
+
+        // ── Debt (COMBAT_SYSTEMS §3.3) ───────────────────────────────────
+
+        /// <summary>
+        /// Lifts a debt numeral clear of the damage number the same batch
+        /// usually spawns on the same piece, so the two never overprint.
+        /// </summary>
+        private Vector3 AboveHit(Vector3 at) => at + BoardTilt.ScreenUp * (_scale * 0.55f);
+
+        /// <summary>
+        /// A loan landing: "+II" rising off the operator it was aimed at, in
+        /// oxblood on the display face. Nothing when the seat was already at
+        /// the cap — the history says so, and the board has nothing new to show.
+        /// </summary>
+        public void DebtIncurred(Vector3 at, int amount)
+        {
+            if (amount <= 0) return;
+            FloatingText.Spawn(transform, AboveHit(at), DebtMark.Loan(amount), UiTheme.Debt, _scale * 1.1f, display: true);
+        }
+
+        /// <summary>
+        /// Sadist collecting: the figure called in, stamped over the target a
+        /// size larger than any damage number, with a blood-velvet ring. The
+        /// damage itself still arrives as the usual number beneath it.
+        /// </summary>
+        public void DebtCalled(Vector3 at, int amount)
+        {
+            if (amount <= 0) return;
+            FloatingText.Spawn(transform, AboveHit(at), DebtMark.Roman(amount), UiTheme.Debt, _scale * 1.6f, display: true);
+            Pulse(at, UiTheme.WithAlpha(UiTheme.DebtPlate, 0.95f), 3.4f);
+        }
+
+        /// <summary>
+        /// A debtor landing on its creditor: the figure, struck through, in
+        /// ember over the creditor, with an ember ring.
+        /// </summary>
+        public void DebtBurned(Vector3 at, int amount)
+        {
+            if (amount <= 0) return;
+            FloatingText.Spawn(transform, AboveHit(at), DebtMark.Burned(amount), UiTheme.DebtBurn, _scale * 1.3f, display: true);
+            Pulse(at, UiTheme.WithAlpha(UiTheme.DebtBurn, 0.85f), 3.0f);
         }
 
         private void Pulse(Vector3 at, Color colour, float finalScale)

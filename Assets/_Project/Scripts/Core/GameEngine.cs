@@ -1156,11 +1156,11 @@ namespace NonaRoyale.Core
 
                 case EffectOutcomeKind.DebtIncurred:
                     events.Add(new DebtIncurred(outcome.Recipient.Owner, outcome.Amount,
-                        PlayerOf(outcome.Recipient.Owner)?.Debt ?? 0, caster));
+                        PlayerOf(outcome.Recipient.Owner)?.Debt ?? 0, caster, outcome.Recipient));
                     break;
 
                 case EffectOutcomeKind.DebtCalled:
-                    events.Add(new DebtCalled(outcome.Recipient.Owner, outcome.Amount, caster));
+                    events.Add(new DebtCalled(outcome.Recipient.Owner, outcome.Amount, caster, outcome.Recipient));
                     break;
 
                 // Placement again, with the caster as the subject: reported as

@@ -2574,6 +2574,34 @@ namespace NonaRoyale.Unity.Composition
                     continue;
                 }
 
+                // Debt (COMBAT_SYSTEMS §3.3): the board shows a seat's debt
+                // only while something happens to it; the standing figure is
+                // in the rail and the top bar. Collection at a turn's end has
+                // no piece to land on, so it shows there alone.
+                var loan = e as DebtIncurred;
+                if (loan != null)
+                {
+                    var piece = PieceFor(loan.Debtor);
+                    if (piece != null) _feedback.DebtIncurred(piece.transform.position, loan.Amount);
+                    continue;
+                }
+
+                var called = e as DebtCalled;
+                if (called != null)
+                {
+                    var piece = PieceFor(called.Target);
+                    if (piece != null) _feedback.DebtCalled(piece.transform.position, called.Amount);
+                    continue;
+                }
+
+                var burned = e as DebtBurned;
+                if (burned != null)
+                {
+                    var piece = PieceFor(burned.Creditor);
+                    if (piece != null) _feedback.DebtBurned(piece.transform.position, burned.Amount);
+                    continue;
+                }
+
                 var down = e as OperatorNeutralized;
                 if (down != null)
                 {

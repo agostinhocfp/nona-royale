@@ -42,6 +42,7 @@ Same reasoning for status badges. The view receives `StatusApplied` and `StatusE
 | Active statuses, per operator | A status that cannot be seen may as well not apply                                                                             |
 | Why health changed            | Upkeep damage lands in a phase where nothing else moves; a bar dropping with no cause is the board declining to explain itself |
 | Whose turn, and their energy  | The pool is shared, so it is a squad-level decision                                                                            |
+| Each seat's debt              | It is paid from the pool as the seat ends its turn, so it is part of every spending decision; Roman numerals beside the pool, never on a piece (`COMBAT_SYSTEMS.md` §3.3) |
 | Which operators are deployed  | Occupancy is the number the design keeps fighting for                                                                          |
 | Safe cells                    | The only cells carrying a rule a player must see without asking                                                                |
 

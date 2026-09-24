@@ -52,6 +52,12 @@ namespace NonaRoyale.Unity.View
         private Image _accent;
         private TMP_Text _seat;
         private TMP_Text _energy;
+
+        // The playing seat's debt chip (§3.3), and what it last showed for
+        // whom, so a figure pops only when it changed for the same seat.
+        private TMP_Text _debt;
+        private NonaRoyale.Core.Board.PlayerColor? _debtSeat;
+        private int _debtShown;
         private TMP_Text _round;
         private TMP_Text _prompt;
         private RectTransform _pips;
@@ -148,6 +154,10 @@ namespace NonaRoyale.Unity.View
             BuildPips(energyBox, 11f, 17f);
             _energy = UiKit.Label(energyBox, "", UiTheme.FontBody, bold: true);
 
+            // The playing seat's debt, beside its pool (§3.3). Hidden at zero,
+            // so it costs the prompt no width on a turn without one.
+            _debt = DebtMark.Chip(_rect, UiTheme.FontBody, 26f);
+
             _round = UiKit.Label(_rect, "", UiTheme.FontBody, UiTheme.Heading);
             _round.characterSpacing = UiTheme.HeadingSpacing * 0.5f;
             UiKit.Fixed(_round, 120f);
@@ -197,6 +207,7 @@ namespace NonaRoyale.Unity.View
             // cyan diamonds beside a number read as a pool on their own.
             BuildPips(energyBox, 8f, 13f);
             _energy = UiKit.Label(energyBox, "", UiTheme.FontSmall, bold: true);
+            _debt = DebtMark.Chip(energyBox, UiTheme.FontSmall, 20f);
 
             _round = UiKit.Label(top, "", 13f, UiTheme.Heading, TextAlignmentOptions.MidlineRight);
             _round.characterSpacing = UiTheme.HeadingSpacing * 0.4f;
@@ -266,7 +277,7 @@ namespace NonaRoyale.Unity.View
 
             string key = engine.MatchOver
                 ? $"over|{engine.Winner}|{engine.Round}"
-                : $"{engine.CurrentPlayer.Color}|{engine.CurrentPlayer.Energy}|{engine.EnergyCap}|{engine.Round}|{Prompt(engine)}|{seatTag}";
+                : $"{engine.CurrentPlayer.Color}|{engine.CurrentPlayer.Energy}|{engine.CurrentPlayer.Debt}|{engine.EnergyCap}|{engine.Round}|{Prompt(engine)}|{seatTag}";
 
             if (key == _shown) return;
             _shown = key;
@@ -285,6 +296,7 @@ namespace NonaRoyale.Unity.View
                     ? $"<color=#{UiTheme.Hex(UiTheme.Readable(colour))}>{winner.Value.ToString().ToUpperInvariant()}</color> WINS"
                     : "MATCH OVER";
                 _energy.text = "";
+                ShowDebt(null, 0);
                 _prompt.text = ScreenLayout.Touch
                     ? "Match over — tap MENU for the results"
                     : "Match over — press <b>Esc</b> for the results";
@@ -301,6 +313,7 @@ namespace NonaRoyale.Unity.View
                 : $"<color=#{UiTheme.Hex(UiTheme.Cyan)}>({seatTag})</color>";
             _seat.text = $"<color=#{UiTheme.Hex(UiTheme.Readable(seatColour))}>{seat.Color.ToString().ToUpperInvariant()}</color> <size=70%><color=#{UiTheme.Hex(UiTheme.TextDim)}>{who}</color></size>";
             _energy.text = $"{seat.Energy}<color=#{UiTheme.Hex(UiTheme.TextDim)}>/{engine.EnergyCap}</color>";
+            ShowDebt(seat.Color, seat.Debt);
             _prompt.text = seatTag == null
                 ? Prompt(engine)
                 : ScreenLayout.Touch
@@ -308,6 +321,18 @@ namespace NonaRoyale.Unity.View
                     : "The CPU is playing — hold <b>Space</b> to hurry it, <b>Esc</b> to pause";
 
             SetPips(seat.Energy, engine.EnergyCap);
+        }
+
+        /// <summary>
+        /// The playing seat's debt chip. It pops only when the same seat's
+        /// figure changed — a turn changing hands is not news.
+        /// </summary>
+        private void ShowDebt(NonaRoyale.Core.Board.PlayerColor? seat, int debt)
+        {
+            int previous = seat.HasValue && seat == _debtSeat ? _debtShown : debt;
+            DebtMark.Set(_debt, debt, previous);
+            _debtSeat = seat;
+            _debtShown = debt;
         }
 
         /// <summary>One pip per point of the cap, lit up to the pool. Gains cascade in (U2); losses snap.</summary>

@@ -95,12 +95,13 @@ namespace NonaRoyale.Core.Abilities
         /// Splash victims take half of it, rounded down, whatever their own
         /// seats owe; a share of 0 is not dealt. The debt is then cleared.
         ///
-        /// <b>Cost 7, cooldown 3, range 3, Normal</b> (repriced 2026-09-21).
+        /// <b>Cost 6, cooldown 3, range 3, Normal</b> (repriced 2026-09-21 to 7,
+        /// and to 6 by the designer on 2026-09-24).
         /// Leech Round into Sadist is the plan: a loan the debtor refuses to
         /// pay grows by one a turn, up to the cap, and the ultimate collects it.
         ///
         /// <b>Mirror match:</b> Equilibrium halves a Sadist aimed at another
-        /// Revú (cost 7), so the most it deals him is 3.
+        /// Revú (cost 6, still the dear band), so the most it deals him is 3.
         /// </remarks>
         public static AbilityDefinition Sadist { get; } = new AbilityDefinition(
             id: 1102, name: "Sadist",

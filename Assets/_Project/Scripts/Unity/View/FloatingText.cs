@@ -30,7 +30,13 @@ namespace NonaRoyale.Unity.View
         private float _scale;
         private float _age;
 
-        public static FloatingText Spawn(Transform parent, Vector3 position, string message, Color colour, float scale)
+        /// <param name="display">
+        /// Set the label in the display face instead of the data face. Debt's
+        /// Roman numerals use it, so they never read as a damage figure
+        /// (<see cref="DebtMark"/>).
+        /// </param>
+        public static FloatingText Spawn(
+            Transform parent, Vector3 position, string message, Color colour, float scale, bool display = false)
         {
             var go = new GameObject($"float_{message}");
             go.transform.SetParent(parent, false);
@@ -50,7 +56,8 @@ namespace NonaRoyale.Unity.View
             text.overflowMode = TextOverflowModes.Overflow;
             // Over everything the board draws (V1b, FigureTilt).
             text.sortingOrder = FigureTilt.FloatingTextOrder;
-            UiFonts.ApplyData(text);
+            if (display) UiFonts.ApplyDisplay(text);
+            else UiFonts.ApplyData(text);
             floating._text = text;
 
             return floating;

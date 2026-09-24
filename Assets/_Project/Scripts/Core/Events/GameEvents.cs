@@ -162,11 +162,14 @@ namespace NonaRoyale.Core.Events
     /// </summary>
     public sealed class DebtIncurred : IGameEvent
     {
-        public DebtIncurred(PlayerColor player, int amount, int owed, OperatorState source)
+        public DebtIncurred(PlayerColor player, int amount, int owed, OperatorState source, OperatorState debtor = null)
         {
-            Player = player; Amount = amount; Owed = owed; Source = source;
+            Player = player; Amount = amount; Owed = owed; Source = source; Debtor = debtor;
         }
         public PlayerColor Player { get; }
+
+        /// <summary>The operator the cast was aimed at, whose seat now owes. Where the view shows the loan.</summary>
+        public OperatorState Debtor { get; }
 
         /// <summary>What this cast added; 0 when the seat was already at the cap.</summary>
         public int Amount { get; }
@@ -213,11 +216,14 @@ namespace NonaRoyale.Core.Events
     /// <summary>A seat's debt was called in by an ability and cleared (§3.3). Revú's Sadist.</summary>
     public sealed class DebtCalled : IGameEvent
     {
-        public DebtCalled(PlayerColor player, int amount, OperatorState source)
+        public DebtCalled(PlayerColor player, int amount, OperatorState source, OperatorState target = null)
         {
-            Player = player; Amount = amount; Source = source;
+            Player = player; Amount = amount; Source = source; Target = target;
         }
         public PlayerColor Player { get; }
+
+        /// <summary>The operator Sadist was aimed at. Where the view stamps the figure.</summary>
+        public OperatorState Target { get; }
 
         /// <summary>The debt cleared; may be 0.</summary>
         public int Amount { get; }

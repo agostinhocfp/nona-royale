@@ -153,10 +153,11 @@ namespace NonaRoyale.Core.Tests.Abilities
 
             Assert.That((Revu.LeechRound.EnergyCost, Revu.LeechRound.CooldownTurns, Revu.LeechRound.Range),
                 Is.EqualTo((3, 1, 3)));
-            // Designer, 2026-09-21: Sadist 9 → 7 energy, cooldown 4 → 3, and a
+            // Designer, 2026-09-24 (d03bb69): Sadist 7 → 6 energy. Before that,
+            // 2026-09-21: Sadist 9 → 7 energy, cooldown 4 → 3, and a
             // floor of 2 on the primary figure.
             Assert.That((Revu.Sadist.EnergyCost, Revu.Sadist.CooldownTurns, Revu.Sadist.Range),
-                Is.EqualTo((7, 3, 3)));
+                Is.EqualTo((6, 3, 3)));
             Assert.That(Revu.SadistMinimumDamage, Is.EqualTo(2));
         }
 
@@ -526,12 +527,51 @@ namespace NonaRoyale.Core.Tests.Abilities
                 Assert.That(debt.Amount, Is.EqualTo(2));
                 Assert.That(debt.Owed, Is.EqualTo(blue.Debt));
                 Assert.That(debt.Source, Is.SameAs(revu));
+                Assert.That(debt.Debtor, Is.SameAs(syla), "where the view shows the loan");
                 Assert.That(blue.Energy, Is.EqualTo(pool), "nothing is taken at cast time");
                 Assert.That(match.Statuses.ScalesCastDamage(revu), Is.True, "his passive reached the engine");
                 return;
             }
 
             Assert.Fail("No seed gave Red three energy on the first roll.");
+        }
+
+        [Test]
+        public void TheEngine_ReportsWhereSadistCollected()
+        {
+            // The view stamps the figure on the operator Sadist was aimed at,
+            // so the event has to say who that was (§3.3).
+            var squads = new Dictionary<PlayerColor, IReadOnlyList<OperatorDefinition>>
+            {
+                [PlayerColor.Red] = new[] { Revu.Definition, Bouncer.Definition, Mimi.Definition },
+                [PlayerColor.Blue] = new[] { Syla.Definition, Javi.Definition, Kian.Definition }
+            };
+
+            var match = MatchFactory.Create(new[] { PlayerColor.Red, PlayerColor.Blue }, 1, squads,
+                openingDeployments: 3);
+            match.Engine.Start();
+
+            var revu = match.Operators.First(o => o.Name == "Revú");
+            var syla = match.Operators.First(o => o.Name == "Syla");
+            int circuit = match.Map.Profile.CircuitLength;
+            revu.MoveTo((10 - match.Map.StartTrackIndex(PlayerColor.Red) + circuit) % circuit);
+            syla.MoveTo((12 - match.Map.StartTrackIndex(PlayerColor.Blue) + circuit) % circuit);
+
+            var red = match.Players.First(p => p.Color == PlayerColor.Red);
+            var blue = match.Players.First(p => p.Color == PlayerColor.Blue);
+            var ledger = new EnergyLedger(EnergyConfig.Default);
+            ledger.IncurDebt(blue, 4, revu.Id);
+
+            match.Engine.Execute(new RollDiceCommand());
+            ledger.GrantBounty(red, EnergyConfig.Default.EnergyCap);
+
+            var events = match.Engine.Execute(new UseAbilityCommand(revu.Id, Revu.Sadist.Id, syla.Id, null));
+            var called = events.OfType<DebtCalled>().Single();
+
+            Assert.That(called.Target, Is.SameAs(syla));
+            Assert.That(called.Amount, Is.EqualTo(4));
+            Assert.That(called.Source, Is.SameAs(revu));
+            Assert.That(blue.Debt, Is.EqualTo(0));
         }
     }
 }
