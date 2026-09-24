@@ -100,14 +100,22 @@ namespace NonaRoyale.Core.Abilities
         /// friend or foe, exchange coordinates instantly.
         /// </summary>
         /// <remarks>
-        /// Range 6 is the longest in the game, and that is the point. It is the
-        /// only compensation a 5-health operator gets for being in a fight at
-        /// all: she can open an exchange from outside everything else's reach,
-        /// and leave one the same way.
+        /// <b>Range 9 since 2026-09-24 (designer; was 6).</b> The longest
+        /// targeted reach in the game by four cells, and that is the point: it
+        /// is her mobility. She has no haste on a board where four operators
+        /// carry it, walked the fewest cells on the roster and was landed on
+        /// the most, and the bots always spend this swapping with an enemy
+        /// ahead of her, so one cast is her advance and their setback at once.
+        /// Measured against 6 (4,000 paired matches, <c>MIMI_KURBYN_ANALYSIS.md</c>):
+        /// 21.6% → 25.3%, 2.36 → 2.74 swaps a match, 4.7 → 6.5 cells each,
+        /// home at the end 54% → 63%. Range 8 measured 23.8% and is the
+        /// fallback if 9 feels harsh at the table; the cooldown is not the
+        /// lever (3 measured 21.1%).
         ///
         /// Because progress moves one-for-one with cells, the range also bounds
-        /// the swing: a swap shifts either operator by at most 6 cells of
-        /// journey, never the whole board. A swap that would carry either of
+        /// the swing: a swap shifts either operator by at most 9 cells of
+        /// journey, never the whole board — up to 18 cells between two sides,
+        /// which is the price to watch. A swap that would carry either of
         /// them off its own track is refused before it is paid for
         /// (<c>AbilityResolver.TrySwapProgress</c>).
         ///
@@ -131,7 +139,7 @@ namespace NonaRoyale.Core.Abilities
             id: 402, name: "Translocation",
             description:
                 "Trade places with anyone on the board, friend or enemy.",
-            energyCost: 3, cooldownTurns: 4, range: 6,
+            energyCost: 3, cooldownTurns: 4, range: TranslocationRange,
             effects: new[] { AbilityEffect.Swap() });
 
         /// <summary>
@@ -180,6 +188,9 @@ namespace NonaRoyale.Core.Abilities
                     CryoFieldTickDamage, CryoFieldRadius, CryoFieldDurationTurns,
                     DamageType.Normal)
             });
+
+        /// <summary>Translocation's reach in track steps. 6 until 2026-09-24; see its remarks.</summary>
+        public const int TranslocationRange = 9;
 
         /// <summary>Per-tick field damage. Designer tuning flag — the design table left it blank.</summary>
         public const int CryoFieldTickDamage = 2;

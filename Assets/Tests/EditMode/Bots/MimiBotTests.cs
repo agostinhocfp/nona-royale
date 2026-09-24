@@ -64,6 +64,8 @@ namespace NonaRoyale.Core.Tests.Bots
             Assert.That(Mimi.CryoPulse.EnergyCost, Is.EqualTo(4));
             Assert.That(Mimi.CryoField.EnergyCost, Is.EqualTo(4));
             Assert.That(Mimi.Translocation.EnergyCost, Is.EqualTo(3));
+            // 2026-09-24: Translocation's range 6 → 9, her mobility.
+            Assert.That(Mimi.Translocation.Range, Is.EqualTo(9));
             Assert.That(Mimi.CryoField.Range, Is.EqualTo(0), "centred on herself");
             Assert.That(Mimi.CryoField.Effects[0].Radius, Is.EqualTo(Mimi.CryoFieldRadius));
             Assert.That(Mimi.CryoFieldRadius, Is.EqualTo(3));

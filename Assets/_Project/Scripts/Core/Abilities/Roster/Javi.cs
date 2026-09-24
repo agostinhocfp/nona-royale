@@ -124,8 +124,8 @@ namespace NonaRoyale.Core.Abilities
         /// of every four of the holder's turns, so choosing <i>when</i> is the
         /// whole skill of the ability.
         ///
-        /// <b>Range 4, not the sketched 6.</b> Range 6 is Mimi's, and §10.4 makes
-        /// it the sole compensation for her 5 health. Designed at 3; raised to 4
+        /// <b>Range 4, not the sketched 6.</b> Range 6 was Mimi's (9 since
+        /// 2026-09-24), and §10.4 made it the sole compensation for her 5 health. Designed at 3; raised to 4
         /// in the 2026-09-15 pass, one less than his other two abilities.
         ///
         /// <b>Ally-only, so a hostile cast is refused and costs nothing.</b>

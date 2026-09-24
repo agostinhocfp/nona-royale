@@ -295,6 +295,8 @@ The band is 1.0–1.5 (§6), so −0.5 costs a 1.5 operator a third of its movem
 
 ### 5.5 Evasion
 
+> **Dormant since 2026-09-24: no operator holds it.** Kurbyn, its only holder, lost it (§10.3). The rule below, `StatusKind.Evasion`, `CombatConfig.EvasionChance` and the pipeline step stay in the core for the next operator who wants them, the way Predator's Read's watch did. The glossary's damage lines no longer mention it.
+
 - **Effect:** the **first** instance of Normal damage against the holder **each round** is negated on a `EvasionChance = 0.12` seeded roll. Every subsequent instance that round lands automatically. The rate was 0.5, then 0.3 (2026-09-15), then 0.12 (2026-09-17, §10.3) — every tuning pass that left it standing failed to move Kurbyn.
 - **A failed roll still spends the charge.** The charge is the _attempt_, not the success. If a miss left it intact, the holder would keep rolling against every hit until one landed, and the per-round cap — the thing that bounds the worst case — would stop binding at all.
 - The charge refreshes at the holder's upkeep. "Round" therefore means _since the holder's last turn began_, which is the window during which opponents actually attack it.
@@ -854,17 +856,34 @@ Two numbers here have been walked back under measurement. The squad buff was **+
 
 ### 10.3 Kurbyn, DarkGrave — Brawler
 
-**HP 7 · Speed 1.0× with permanent haste (+1 on a roll of 6 or less, +2 above, capped at 2 cells a turn) · two actives and the passive since 2026-09-17**
+**HP 7 · Speed 1.0× with permanent haste (+1 on a roll of 6 or less, +2 above, capped at 2 cells a turn) · two actives and the passive since 2026-09-17 · no evasion since 2026-09-24**
 
 | #   | Ability              | Type         | Cost | CD  | Range                | Effect                                                                                                                                                                                              |
 | --- | -------------------- | ------------ | ---- | --- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | **Dargin Pulse**     | Active       | 6    | 3   | 2 (AOE, self-origin) | **2 Normal** to all enemies in the window; **Stun 1 turn** (§5.1).                                                                                                                                  |
-| 2   | **Evasive Protocol** | Passive      | —    | —   | self                 | First Normal damage instance each round: negated on a **12%** roll (§5.5). Permanent **Hastened** — +1 cell on a roll of 6 or less, +2 above, capped at **2** cells a turn where the roster's cap is 3 (§5.9). |
+| 2   | **Evasive Protocol** | Passive      | —    | —   | self                 | Permanent **Hastened** — +1 cell on a roll of 6 or less, +2 above, capped at **2** cells a turn where the roster's cap is 3 (§5.9). _(Until 2026-09-24 it also negated the first Normal instance each round on a 12% roll, §5.5.)_ |
 | 3   | **Miracle Pull**     | Active (Ult) | 9    | 3   | 2                    | **3 Atomic** to the target. **Execute:** if the target was below 50% HP **at cast time**, it is instead neutralized outright. **2 Atomic** to enemies within 3 of the target, excluding the target. |
 
 > **Predator's Read was removed 2026-09-17 (designer; §11).** The paragraph below is the reasoning that built it the day before, kept for the record. The watch machinery it introduced (§5.15, §6.7, `EffectKind.Watch`) stays in the core, dormant, for the next operator who wants it.
 
 **Predator's Read fills the three-energy rung (2026-09-16, designer).** His cheapest cast was 6, so on a lean turn Kurbyn watched the fight rather than shaping it. The ability needed the roster's fifteenth effect kind (§9.1): the follow-up's machinery with the trigger inverted — a follow-up resolves at the upkeep and punishes a target that stayed; the watch resolves on the move and punishes a target that left. The fiction is his established one (the neural-prediction rig reads the target; if it moves, the answer is already on its way), and the damage is deliberately not the point: a target that stands still to dodge the 2 has spent its move, which under compulsory movement (§6.1) is often the worse half of the choice. Priced with Short Circuit and From the Hip, the other cheap control tools, and Normal so his own evasion's answers — a charge, a plate, a cleanse — all work against it. Unmeasured; adding him a third ability shifts the draft's dice stream, so no figure taken before compares with one after.
+
+**Evasion removed (designer, 2026-09-24), after `MIMI_KURBYN_ANALYSIS.md`.** He was first in the field at 28.5% (10,000 matches) and the only operator with two passives, which stacked into "can't catch him, can't hit him": 0.69 deaths a match against a field average of 1.11, 7.9 damage taken against 12.3, home at the end 81% against 58%. The evasion itself dodged only 0.35 hits a match, yet removing it cost him 2.5 points, because the bots priced the 12% into every hit on him and aimed elsewhere; he took 4.1 hits a match, the fewest on the roster. A coin flip nobody could see or plan around.
+
+| Kurbyn, 4,000 paired matches                        | Win share | Deaths | Home |
+| --------------------------------------------------- | --------- | ------ | ---- |
+| 12% on the first hit each round (the rule until now) | 28.9%     | 0.69   | 81%  |
+| 12% on every hit, no per-round cap                  | 28.8%     | 0.69   | 80%  |
+| First hit each round always misses                  | 33.6%     | 0.11   | 96%  |
+| First hit each life always misses                   | 31.6%     | 0.43   | 87%  |
+| **No evasion**                                      | **26.4%** | 1.00   | 73%  |
+| No haste (evasion kept)                             | 24.8%     | —      | 59%  |
+| Haste cap 2 → 1                                     | 27.3%     | —      | —    |
+
+- **The cap never bound.** Hits after the first in a round are rare, so uncapping the roll changes nothing.
+- **A guaranteed miss is far too strong on top of haste**, even once per life. The bots undervalue popping it (they price the first hit at 0 and look elsewhere), but not by five points.
+- **He keeps the name and the haste**, the one readable identity: the one who is always already there. The passive's flavour line no longer promises a dodge.
+- With Mimi's range 9 in the same tree, the field measured 23.3% (Kian) to 26.1% (Lethe, Kurbyn, Javi), the tightest spread on record. Fingerprint `1e94d11f` → `eb8af0ee`.
 
 **Rebuilt 2026-09-17 (designer).** The paragraph after next describes the old passive and is superseded. Evasive Protocol is one fiction carried as two permanent statuses — Evasion at 12% and Hastened at the flat +1/+2 — and his base speed is a plain 1.0. The speed channel no longer carries him at all; a Kurbyn moving at his base plus haste cells is the rules, not a bug.
 
@@ -890,7 +909,7 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 | --- | ----------------- | ------ | ---- | --- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | 1   | **Cryo-Pulse**    | Active | 4    | 3   | 3 (AOE radius 2, target-origin, **inclusive**) | **2 Tech** to every enemy in the window, the target included; applies **1 Bleed** and **Slow 1 turn** to each. |
 | 2   | **Cryo Field**    | Active | 4    | 3   | self (AOE radius 3, self-origin, **2 ticks**)  | **2 Normal** to every enemy within 3 of her **current** cell, at each of her next **two upkeeps** (§5.14, §6.6). Ends early if cleansed or if she is neutralized. |
-| 3   | **Translocation** | Active | 3    | 4   | 6                                              | **Swap** cells with the target, ally or enemy. Placement — collides with nothing, triggers nothing (§7.4).     |
+| 3   | **Translocation** | Active | 3    | 4   | 9                                              | **Swap** cells with the target, ally or enemy. Placement — collides with nothing, triggers nothing (§7.4).     |
 
 **Both 6-cost casts cut to 4 (designer, 2026-09-17).** She was last in the bots sweep at 16%. The price came down; the payloads did not change. Cryo Field's range 0 means it is centred on herself: it bills every enemy within 2 of her, five cells. The same pass taught the bots to cast Cryo Field. The planner had no scoring for a self-centred field, so it had been cast 0.00 times a match.
 
@@ -924,7 +943,28 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 **Cryo-Pulse is unmeasured and possibly stronger than its peer.** Against Dargin Pulse it is the same cost, radius and damage, but it originates on a target three cells away rather than on the caster, and applies two statuses rather than one. For a 1.0-speed operator, remote origin is most of the game. It was 4 energy in the first draft and did more than either 6-cost area ability for two-thirds the price. The tier was a second objection at the time and is now abolished; the peer comparison was always the real one, so the price stands.
 
-**Translocation's range 6 is the longest in the game**, and it is the only compensation a 5-health operator gets for being in a fight. Because progress moves one-for-one with cells, the range also bounds the swing: a swap shifts either operator by at most 6 cells of journey.
+**Translocation's range 6 is the longest in the game**, and it is the only compensation a 5-health operator gets for being in a fight. Because progress moves one-for-one with cells, the range also bounds the swing: a swap shifts either operator by at most 6 cells of journey. _(Superseded 2026-09-24: the range is 9, below.)_
+
+**Range 6 → 9 (designer, 2026-09-24), after `MIMI_KURBYN_ANALYSIS.md`.** She was last in the field at 21.7% (10,000 matches). The measurements said why: she walked the fewest cells on the roster (65.6 a match against a field average of 72), was landed on the most (1.10 times a match), died the most (1.34), and got home least (54% against 58%). Four operators now carry haste and she has none. Her damage is not the problem, and Translocation is her real engine: the bots cast it 2.36 times a match, **always on an enemy ahead of her**, gaining her 4.7 cells and costing them 4.7. The range is the lever that moves it; the cooldown is not.
+
+| Mimi, 4,000 paired matches         | Win share | Note                                  |
+| ---------------------------------- | --------- | ------------------------------------- |
+| Baseline (range 6)                 | 21.6%     |                                       |
+| **Translocation range 9**          | **25.3%** | 2.74 swaps, 6.5 cells each, home 63%  |
+| Permanent haste passive            | 25.2%     | a fifth hasted operator; declined     |
+| Health 8 + Cryo-Pulse Burdened     | 24.7%     |                                       |
+| Health 8 + Cryo Field tick 3       | 24.5%     |                                       |
+| Translocation range 8              | 23.8%     | the fallback                          |
+| Health 8                           | 23.6%     | the second lever                      |
+| Cryo Field tick 3                  | 23.2%     |                                       |
+| Cryo-Pulse 3 damage                | 22.5%     |                                       |
+| Cryo-Pulse Burdened instead of Slow| 22.2%     |                                       |
+| Translocation cooldown 3           | 21.1%     | more swaps, worse ones                |
+
+- **It pushes her identity instead of copying someone else's**: "the one who is never where you left her", not a fifth hasted piece.
+- **The price to watch is the swing.** A swap now moves either piece up to 9 cells, so up to 18 between two sides. If that reads as harsh to the victim at a human table, **fall back to 8**; health 8 is the safe second lever.
+- **What the harness cannot see:** how often humans swap with allies (the bots never do), and how being swapped back 9 cells feels.
+- `Mimi.TranslocationRange` holds the number. `SwapEffectTests` pins that 9 cells reaches and 10 does not; `MimiBotTests.TheDesignersNumbers` pins the value. Fingerprint `793eac2a` → `1e94d11f`.
 
 **Its cooldown is the whole limiter.** At 3 energy against a 3.5 drip both 3 and 4 gate to roughly every turn, so raising the cost would not have limited it whatever it was set to. A cooldown longer than the economy imposes is exactly what §3.1 says a stated cooldown is for. This is also the cheapest denial tool in the design: swapping with an operator near its home mouth sends it backwards while you take its cell, which is a version of the play `_HANDOFF_opt_out_home_entry.md` prices at 3–6 energy as an entire new mechanic.
 
@@ -942,7 +982,7 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 **All three abilities may be aimed at himself** (§10's self-cast opt-in, 2026-09-17). His toolkit is defensive, and a healer who cannot treat himself is half one — heal, plate and cleanse all take him as a legal target. Nothing else on the roster self-casts.
 
-**Ranges 5 / 4 / 5.** The kit was designed at range 3 across the board — a support who cannot reach the fight is a dead ability list, so he paid for reach in fragility rather than speed — and the 2026-09-15 balance pass (`e85d710`) raised Nanite Infusion and Neural Purge to 5 and Trauma Plate to 4. That is a deliberate designer change; `Javi.cs` records it. Note that §10.4 makes Mimi's range 6 her sole compensation for 5 health, and Neural Purge now sits one cell short of it — the gap to watch if either moves again.
+**Ranges 5 / 4 / 5.** The kit was designed at range 3 across the board — a support who cannot reach the fight is a dead ability list, so he paid for reach in fragility rather than speed — and the 2026-09-15 balance pass (`e85d710`) raised Nanite Infusion and Neural Purge to 5 and Trauma Plate to 4. That is a deliberate designer change; `Javi.cs` records it. Note that §10.4 makes Mimi's range 6 her sole compensation for 5 health, and Neural Purge now sits one cell short of it — the gap to watch if either moves again. _(Dated: Translocation is range 9 since 2026-09-24, so the gap is four cells.)_
 
 **Heal 2, not 3.** Collision is 3, so a heal never fully undoes a hit — he blunts damage rather than erasing it, which is the difference between a support and an undo button. Cooldown 2 on a 3-cost ability is one of only two cooldowns on the roster that bind tighter than the economy (§3.1).
 
@@ -1061,7 +1101,7 @@ Casts per match: Drone Strike 4.58 → 5.87, Sonic Disrupter 2.72 → 3.70, Inve
 | Collision | 7 → 6 | 4 → 3 | 5 → 6 |
 
 - **Zero-Day at range 3** matches From the Hip and Blind Spot. He no longer has to stand inside the fight to throw it.
-- **Collision is no longer priced as an ultimate.** At 6 energy and cooldown 3 it has the same price and cooldown as Ace Shards, Cryo-Pulse, Vendetta and Neural Purge. Range 6 ties Translocation for the longest targeted reach on the roster (Drone Strike's is unlimited, but it aims at a cell). The dash now covers up to seven cells.
+- **Collision is no longer priced as an ultimate.** At 6 energy and cooldown 3 it has the same price and cooldown as Ace Shards, Cryo-Pulse, Vendetta and Neural Purge. Range 6 ties Translocation for the longest targeted reach on the roster (Drone Strike's is unlimited, but it aims at a cell). The dash now covers up to seven cells. _(Dated: Collision is range 5 since 2026-09-20 and Translocation 9 since 2026-09-24.)_
 
 **Burdened instead of 0.5 (designer, 2026-09-17).** The designer's read: he was too slow to matter (21% in the bots sweep, after the Lethe and lifesteal changes). Two ideas were weighed, both about 5.4 cells a roll against 0.5's 3.75: **speed 0.75**, or **haste in reverse**. The burden won. It is a subtraction a player can do at a glance, where 0.75 breaks the half-step band and its rounding. It cancels cleanly against haste. And it hands his slow immunity back to the roster as counterplay. A **+1 to each ability's primary damage** (Short Circuit 2, Zero-Day's marked target +2, Collision 4) was also proposed, measured, and not adopted: on top of the burden it overshot.
 
@@ -1920,3 +1960,5 @@ The watch machinery (§6.7) is dormant: `PredatorsReadTests` and `WatchBotTests`
 - 2026-09-24 — **Debt is drawn** (§3.3): Roman numerals in the display face (`DebtMark`), a blood-velvet chip beside each seat's pool in the squad rail and the top bar, and board moments for a loan (+II), Sadist's collection (the figure stamped) and a burn (struck through). `DebtIncurred` carries its debtor and `DebtCalled` its target, so the view knows where to draw them. **Measured why the debt does not bite** (§10.11): collected every turn, it never builds; stopping the automatic collection makes it grow at no cost in balance. Tests 883 → 884.
 - 2026-09-24 — **Debt stops being collected** (designer; §3.3, §10.11, §10.12). It grows by 1 each time the debtor ends its turn owing, to 6, and ends only when Sadist calls it or a collision burns it; no energy moves. `EnergyLedger.CollectDebt` → `AccrueDebt`, `DebtCollection` → `DebtAccrual` (the file renamed with its `.meta`), `DebtCollected` → `DebtAccrued`, reported only when the debt grew. The bots lose `DebtShortfall` and Sadist's forgone-drain term, and `EnergyDenial` is renamed `DebtWorth`. Glossary, Leech Round's description and Revú's and Fortuna's guide copy rewritten. Measured, 2,000 paired matches: Revú 25.8% → 26.6%, mean seat debt 0.03 → 0.66, Sadist 4+ in 41% of its casts. **The replay fingerprint did not move** — it hashes numbers, not code — so a replay recorded between `46d7640` and this change would desync rather than be refused. Tests 884 → 882 (the collection tests replaced by growth tests, the shortfall bot tests removed), 6 of 6 mutations killed.
 - 2026-09-24 — **Lethe reworked** (designer; §7.4, §10.10), after `LETHE_ANALYSIS.md`. **Nano Cell loses its stun** — heal 2 and the 99-point bubble, energy the only price. **Catalyst gains a slipstream**: allies up to 6 cells behind her are hastened too (`AuraDefinition.Trail`, `TargetingRules.StepsBehind`, in the fingerprint). **Eris' Exploit draws first**: new `EffectKind.DrawToCell` (19) drags every enemy within 4 of the cell up to 2 cells toward it, clamped like every one-operator placement, then the crowd zone strikes. The bots count the crowd the draw can make and give the drag no value of its own. View: the HASTE tag is gone — a hastened piece trails lime speed streaks and leaves afterimages as it walks (`HasteTrail`); hovering or selecting an aura's holder draws its lane (`GameEngine.AuraCellsOf`). Measured, 4,000 paired matches: Lethe 23.1% → 26.5%. Fingerprint `4f2a0d21` → `793eac2a`. Tests 882 → 894; 8 of 8 mutations killed (the draw's forward clamp checked separately).
+- 2026-09-24 — **Mimi's Translocation range 6 → 9** (designer; §10.4), after `MIMI_KURBYN_ANALYSIS.md`. Her reach is her mobility: she walks the fewest cells, is landed on the most and has no haste, and the bots always swap her with an enemy ahead. Measured, 4,000 paired matches: 21.6% → 25.3%, 2.36 → 2.74 swaps, home at the end 54% → 63%. Range 8 (23.8%) is the fallback if the swing reads as harsh at the table. `Mimi.TranslocationRange`; `SwapEffectTests` gains the 9-reaches, 10-does-not pair. Fingerprint `793eac2a` → `1e94d11f`. Tests 894 → 896. No bot or view change: the planner and the target highlight both read the range from the definition.
+- 2026-09-24 — **Kurbyn loses Evasion** (designer; §5.5, §10.3), after `MIMI_KURBYN_ANALYSIS.md`. Evasive Protocol is permanent haste alone, still capped at 2 cells a turn. Measured, 4,000 paired matches: 28.9% → 26.4%, deaths 0.69 → 1.00; uncapping the 12% (28.8%) and a guaranteed first-hit miss (33.6% per round, 31.6% per life) were measured and rejected. Evasion is dormant, not deleted: no operator holds it, and the glossary's Normal and Atomic lines drop it. Guide copy and the passive's flavour line rewritten; `KitTraitTests` keeps the two-status passive shape on a test double and pins Kurbyn's as haste alone. With Mimi's range 9, the field spans 23.3%–26.1%. Fingerprint `1e94d11f` → `eb8af0ee`; tests 896 → 897. The view is untouched: the teal evasion fade and Kurbyn's dodge sound are keyed to the status and the event, so they simply never fire.

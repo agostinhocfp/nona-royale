@@ -122,6 +122,24 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
+        public void ASwap_ReachesNineCells() => SwapAcross(9, approved: true);
+
+        [Test]
+        public void ASwap_DoesNotReachTen() => SwapAcross(10, approved: false);
+
+        private void SwapAcross(int gap, bool approved)
+        {
+            // Range 6 → 9 (designer, 2026-09-24): the reach is her mobility.
+            Assert.That(Mimi.Translocation.Range, Is.EqualTo(9));
+            _enemy.MoveTo(ProgressAtTrack(PlayerColor.Blue, MimiCell + gap));
+
+            var result = Use(Mimi.Translocation, _enemy);
+
+            Assert.That(result.Approved, Is.EqualTo(approved));
+            Assert.That(CellOf(_mimi), Is.EqualTo(approved ? MimiCell + gap : MimiCell));
+        }
+
+        [Test]
         public void ASwap_ShiftsEachOperatorByTheSameCellDistanceOnItsOwnPath()
         {
             // The point of the conversion: the two operators enter the circuit

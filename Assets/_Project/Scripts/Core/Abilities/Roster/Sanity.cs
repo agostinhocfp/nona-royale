@@ -190,9 +190,9 @@ namespace NonaRoyale.Core.Abilities
         /// <b>It is the mobility his burden denies him.</b> A roll of 7 moves
         /// him five cells; this moves him up to seven — six to the target
         /// and one past it — in either direction, for 6 energy once every three
-        /// of his turns. Range 6 ties Translocation for the longest targeted
-        /// reach on the roster (Drone Strike's is unlimited, but it aims at a
-        /// cell). Dashing
+        /// of his turns. (Dated: the range is 5 since 2026-09-20, and
+        /// Translocation's is 9 since 2026-09-24, so the tie is gone; Drone
+        /// Strike's is unlimited, but it aims at a cell.) Dashing
         /// backwards to an ally behind him is the escape the rest of the kit
         /// refuses to give him, and it is also why the ability carries the
         /// camping rule: a sheltered engineer may not dash to an ally behind
