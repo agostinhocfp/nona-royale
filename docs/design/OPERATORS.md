@@ -74,6 +74,8 @@ A neural-prediction rig that lets him slip the first punch of any exchange and f
 
 He dominated the first human sessions, and the response was to give one other operator a way through him rather than to take the prediction away. The rig is untouched; what changed is that it is no longer an answer to everything.
 
+**The dodge is gone (2026-09-24, designer).** The rig no longer slips the first punch; it only puts him a step ahead of everyone, which is his haste. The random dodge was a coin flip nobody could see, and it stacked with the haste into an operator nobody could catch or hit (`COMBAT_SYSTEMS.md` §10.3).
+
 Read at the table: _the one who is always already there._
 
 ---

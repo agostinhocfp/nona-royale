@@ -22,6 +22,18 @@ namespace NonaRoyale.Core.Abilities
     /// speed bonus traded for permanent flat haste — +1 cell on a roll of 6 or
     /// less, +2 above, capped at 2 cells per turn where the roster's haste cap
     /// is 3 (§5.9). The passive is now two statuses, one fiction.
+    ///
+    /// <b>Evasion removed (2026-09-24, designer).</b> The analysis in
+    /// <c>MIMI_KURBYN_ANALYSIS.md</c> found it dodged 0.35 hits a match yet
+    /// cost 2.5 points to remove: the bots priced the 12% into every hit on
+    /// him and aimed elsewhere, so he took the fewest hits on the roster. A
+    /// coin flip nobody could see or plan around, stacked on haste into "can't
+    /// catch him, can't hit him". Uncapping the 12% changed nothing (28.8%),
+    /// and a guaranteed first-hit miss was far worse (33.6% each round, 31.6%
+    /// once per life). Without it: 28.9% → 26.4%, deaths 0.69 → 1.00. He keeps
+    /// the name and the haste. The evasion machinery (§5.5,
+    /// <c>StatusKind.Evasion</c>, <c>CombatConfig.EvasionChance</c>) stays in
+    /// the core, dormant, as Predator's Read's watch did.
     /// </remarks>
     public static class Kurbyn
     {
@@ -100,21 +112,20 @@ namespace NonaRoyale.Core.Abilities
             new[] { DarginPulse, MiraclePull };
 
         /// <summary>
-        /// His uniform shape, for drafting. Evasive Protocol is one fiction
-        /// carried as two permanent statuses: Evasion (12%, COMBAT_SYSTEMS
-        /// §5.5) and Hastened — flat cells, capped at 2 a turn rather than the
-        /// roster's 3 (§5.9). No magnitude on either: neither is speed.
+        /// His uniform shape, for drafting. Evasive Protocol is permanent
+        /// Hastened — flat cells, capped at 2 a turn rather than the roster's 3
+        /// (§5.9). No magnitude: haste is not speed. Until 2026-09-24 it also
+        /// carried Evasion (12%, §5.5) as a second status.
         /// </summary>
         public static OperatorDefinition Definition { get; } = new OperatorDefinition(
             name: "Kurbyn",
             maxHealth: MaxHealth,
             baseSpeed: BaseSpeed,
             abilities: All,
-            passive: StatusKind.Evasion,
+            passive: StatusKind.Hastened,
             passiveName: "Evasive Protocol",
-            passive2: StatusKind.Hastened,
             hasteCellCap: 2,
             passiveDescription:
-                "He is never quite where the shot was aimed, and always a step further along than he should be.");
+                "By the time the shot is aimed, he is already a step further along than he should be.");
     }
 }

@@ -528,8 +528,8 @@ namespace NonaRoyale.Core.Text
 
         /// <summary>
         /// An operator's passives: a name, a line and the flavour each. A named
-        /// passive that carries two statuses (Kurbyn's Evasive Protocol) is one
-        /// entry with both halves.
+        /// passive that carries two statuses (Kurbyn's Evasive Protocol until
+        /// 2026-09-24) is one entry with both halves.
         /// </summary>
         /// <remarks>
         /// An unnamed passive is titled by its status's glossary entry

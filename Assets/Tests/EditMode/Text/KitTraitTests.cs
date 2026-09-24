@@ -67,13 +67,27 @@ namespace NonaRoyale.Core.Tests.Text
         [Test]
         public void ANamedTwoStatusPassive_IsOneTrait()
         {
-            // Kurbyn's Evasive Protocol is Evasion and Hastened under one name.
-            var traits = RulesText.Traits(Kurbyn.Definition);
+            // Kurbyn's Evasive Protocol was Evasion and Hastened under one name
+            // until 2026-09-24. No operator carries two now; the shape stays.
+            var twoStatus = new OperatorDefinition("Test", 7, 1.0, Kurbyn.All,
+                passive: StatusKind.Evasion, passiveName: "Evasive Protocol",
+                passive2: StatusKind.Hastened, hasteCellCap: 2);
+            var traits = RulesText.Traits(twoStatus);
 
             Assert.That(traits.Count, Is.EqualTo(1));
             Assert.That(traits[0].Name, Is.EqualTo("Evasive Protocol"));
             Assert.That(traits[0].Status, Is.EqualTo(StatusKind.Evasion));
             Assert.That(traits[0].Line.HasUnwritten, Is.False);
+        }
+
+        [Test]
+        public void KurbynsPassive_IsHasteAlone()
+        {
+            var traits = RulesText.Traits(Kurbyn.Definition);
+
+            Assert.That(traits.Count, Is.EqualTo(1));
+            Assert.That(traits[0].Name, Is.EqualTo("Evasive Protocol"));
+            Assert.That(traits[0].Status, Is.EqualTo(StatusKind.Hastened));
         }
 
         [Test]

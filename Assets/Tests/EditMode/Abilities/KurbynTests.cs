@@ -24,9 +24,9 @@ namespace NonaRoyale.Core.Tests.Abilities
             // 2026-09-17. A test so that changing them is a deliberate act that
             // also updates §10.3.
             Assert.That(Kurbyn.BaseSpeed, Is.EqualTo(1.0));
-            Assert.That(CombatConfig.Default.EvasionChance, Is.EqualTo(0.12));
-            Assert.That(Kurbyn.Definition.Passive, Is.EqualTo(StatusKind.Evasion));
-            Assert.That(Kurbyn.Definition.Passive2, Is.EqualTo(StatusKind.Hastened));
+            // 2026-09-24: Evasion removed; the passive is haste alone.
+            Assert.That(Kurbyn.Definition.Passive, Is.EqualTo(StatusKind.Hastened));
+            Assert.That(Kurbyn.Definition.Passive2, Is.Null);
             Assert.That(Kurbyn.Definition.HasteCellCap, Is.EqualTo(2));
             Assert.That(Kurbyn.Definition.PassiveName, Is.EqualTo("Evasive Protocol"));
         }
@@ -42,17 +42,18 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
-        public void BothPassives_AreLiveFromMatchStart()
+        public void HisHaste_IsLiveFromMatchStart_AndEvasionIsGone()
         {
             var match = MatchFactory.CreateAlphaMatch(
                 new[] { PlayerColor.Red }, 1, openingDeployments: 3);
             match.Engine.Start();
             var kurbyn = match.Operators.First(o => o.Name == "Kurbyn");
 
-            Assert.That(match.Statuses.Has(kurbyn, StatusKind.Evasion), Is.True);
             Assert.That(match.Statuses.Has(kurbyn, StatusKind.Hastened), Is.True);
+            Assert.That(match.Statuses.Has(kurbyn, StatusKind.Evasion), Is.False,
+                "removed 2026-09-24");
             Assert.That(match.Statuses.SpeedModifier(kurbyn), Is.EqualTo(0.0),
-                "neither passive is speed");
+                "haste is not speed");
         }
     }
 }

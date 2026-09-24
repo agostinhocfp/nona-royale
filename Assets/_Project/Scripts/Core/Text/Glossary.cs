@@ -138,13 +138,13 @@ namespace NonaRoyale.Core.Text
             switch (type)
             {
                 case DamageType.Normal:
-                    return line.Text("Stopped by ").Keyword("Evasion", Keywords.Status(StatusKind.Evasion))
-                        .Text(" and ").Keyword("Shields", Keywords.Status(StatusKind.Shield)).Text(".");
+                    // Evasion left the text with Kurbyn's (2026-09-24): no operator holds it.
+                    return line.Text("Stopped by ").Keyword("Shields", Keywords.Status(StatusKind.Shield)).Text(".");
                 case DamageType.Tech:
                     return line.Text("Normal damage from a device, and a ")
                         .Keyword("Tech Ward", Keywords.Status(StatusKind.TechWard)).Text(" blocks it outright.");
                 case DamageType.Atomic:
-                    return line.Text("Ignores evasion, shields and wards. Nothing but a safe cell stops it.");
+                    return line.Text("Ignores shields and wards. Nothing but a safe cell stops it.");
                 default:
                     return line.Text(RulesText.UnwrittenPrefix + type + "]");
             }

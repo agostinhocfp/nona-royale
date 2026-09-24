@@ -95,9 +95,8 @@ namespace NonaRoyale.Core.Text
                 "The one who is always already there.",
                 "You are always hasted, so you choose where the fight happens. " +
                 "Dive into a cluster with Dargin Pulse, which hits and stuns everything close, " +
-                "then finish a wounded enemy with Miracle Pull: anything under half health is neutralized outright. " +
-                "Evasion sometimes eats the first hit of a round, but never plan around it.",
-                "Atomic damage ignores his evasion. Slows and stuns take away the mobility his kit is built on, " +
+                "then finish a wounded enemy with Miracle Pull: anything under half health is neutralized outright.",
+                "Slows and stuns take away the mobility his kit is built on, " +
                 "and Burdened cancels his haste outright — Nuetu is built for him. Keep wounded operators out of his reach, " +
                 "because at half health they are one cast from the yard, and don't bunch up where his pulse can catch several."),
 
