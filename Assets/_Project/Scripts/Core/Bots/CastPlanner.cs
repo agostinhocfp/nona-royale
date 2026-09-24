@@ -284,7 +284,14 @@ namespace NonaRoyale.Core.Bots
                 case EffectKind.DeployZone:
                     if (cell.HasValue)
                     {
-                        var caught = board.EnemiesNear(own, cell.Value, effect.Radius);
+                        // A zone that follows a draw strikes the crowd the draw
+                        // made (Eris' Exploit): anyone the draw can bring inside
+                        // the radius counts as caught.
+                        var draw = DrawOf(ability);
+                        int reach = draw.Cells > 0
+                            ? Math.Min(draw.Radius, effect.Radius + draw.Cells)
+                            : effect.Radius;
+                        var caught = board.EnemiesNear(own, cell.Value, Math.Max(effect.Radius, reach));
 
                         // A crowd zone bills each victim once per other victim
                         // (Eris' Exploit), so a lone target is worth nothing.
@@ -298,6 +305,15 @@ namespace NonaRoyale.Core.Bots
                             offence += value * w.DelayedDiscount;
                         }
                     }
+                    break;
+
+                case EffectKind.DrawToCell:
+                    // Worth nothing on its own: the crowd it makes is scored by
+                    // the zone that follows. Valuing the drag as lost enemy
+                    // ground sent the bots casting Eris' Exploit at lone
+                    // pieces — 41% of casts hit nobody, and a setback to one
+                    // opponent is shared by the other two (Lethe 24.5% against
+                    // 26.5%, 4,000 paired matches, 2026-09-24).
                     break;
 
                 case EffectKind.AttachCharge:
@@ -706,6 +722,14 @@ namespace NonaRoyale.Core.Bots
             if (gap <= 0 || gap > board.Circuit / 2) return 0.0;
 
             return gap * w.Progress * 1.5;
+        }
+
+        /// <summary>The draw an ability makes before its zone, if any: its reach and its cells.</summary>
+        private static (int Radius, int Cells) DrawOf(AbilityDefinition ability)
+        {
+            foreach (var effect in ability.Effects)
+                if (effect.Kind == EffectKind.DrawToCell) return (effect.Radius, effect.Amount);
+            return (0, 0);
         }
 
         private static int CellRadius(AbilityDefinition ability)

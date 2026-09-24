@@ -11,7 +11,8 @@ namespace NonaRoyale.Core.Tests.Bots
     /// <summary>
     /// What the bots had to learn for Lethe (2026-09-17): a shield is as deep
     /// as its pool, a stun on a friend is a price, a cleanse strips the bubble
-    /// it would wash, and a crowd zone is worthless on a lone enemy.
+    /// it would wash, and a crowd zone is worthless on a lone enemy. Since
+    /// 2026-09-24, Eris' Exploit counts the crowd its draw can make.
     /// </summary>
     [TestFixture]
     public class LetheBotTests
@@ -72,7 +73,6 @@ namespace NonaRoyale.Core.Tests.Bots
         private void BubbleBouncer()
         {
             _match.Statuses.Apply(_bouncer, StatusKind.Shield, Lethe.NanoCellDurationTurns, magnitude: Lethe.NanoCellPool);
-            _match.Statuses.Apply(_bouncer, StatusKind.Stun, Lethe.NanoCellDurationTurns);
         }
 
         /// <summary>
@@ -112,9 +112,12 @@ namespace NonaRoyale.Core.Tests.Bots
         }
 
         [Test]
-        public void NanoCell_WithNothingNearby_IsNotWorthItsStun()
+        public void NanoCell_WithNothingNearby_IsWorthLittle()
         {
-            Assert.That(Score(_lethe, Lethe.NanoCell, _bouncer).Defence, Is.LessThan(0.0));
+            // No stun to pay since 2026-09-24, so a quiet bubble is a small
+            // plus — the heal, when there is anything to heal — not a loss.
+            Assert.That(Score(_lethe, Lethe.NanoCell, _bouncer).Defence, Is.GreaterThanOrEqualTo(0.0));
+            Assert.That(Score(_lethe, Lethe.NanoCell, _bouncer).Defence, Is.LessThan(1.0));
         }
 
         [Test]
@@ -145,6 +148,28 @@ namespace NonaRoyale.Core.Tests.Bots
             _match.Statuses.Apply(_bouncer, StatusKind.Stun, 1);
 
             Assert.That(Score(_javi, Javi.NeuralPurge, _bouncer).Defence, Is.GreaterThan(0.0));
+        }
+
+        [Test]
+        public void ErisExploit_CountsTheCrowdItCanDraw()
+        {
+            // 2026-09-24: two enemies three and four cells from the zone are
+            // outside its radius of 2, but inside the draw's reach of 4, which
+            // brings both in. Before the draw they would have been worth nothing.
+            Place(_foes[0], 13 + 3);
+            Place(_foes[1], 13 + 4);
+
+            Assert.That(Score(_lethe, Lethe.ErisExploit, null, Track(13)).Offence, Is.GreaterThan(0.0));
+        }
+
+        [Test]
+        public void ErisExploit_IsWorthNothingWhenOnlyOneEnemyCanBeDrawn()
+        {
+            // The drag alone is not valued: it sent the bots casting at lone
+            // pieces (2026-09-24).
+            Place(_foes[0], 13 + 3);
+
+            Assert.That(Score(_lethe, Lethe.ErisExploit, null, Track(13)).Offence, Is.EqualTo(0.0));
         }
 
         [Test]

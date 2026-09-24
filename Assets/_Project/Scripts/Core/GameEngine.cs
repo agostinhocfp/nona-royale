@@ -1544,6 +1544,17 @@ namespace NonaRoyale.Core
         }
 
         /// <summary>
+        /// The track cells <paramref name="op"/>'s aura covers right now — its
+        /// radius and, for Catalyst, its slipstream behind (§10.10). Empty for
+        /// an operator with no aura. Display only: the lane drawn when the
+        /// holder is selected or hovered.
+        /// </summary>
+        public IReadOnlyList<CellRef> AuraCellsOf(OperatorState op) => _auras.CellsCovered(op);
+
+        /// <summary>Which side <paramref name="op"/>'s aura reaches, or null for none. Display only.</summary>
+        public AuraSide? AuraSideOf(OperatorState op) => _auras.SideOf(op);
+
+        /// <summary>
         /// Which statuses are currently active on an operator, for the view to
         /// draw.
         /// </summary>

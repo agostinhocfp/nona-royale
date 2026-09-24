@@ -451,6 +451,29 @@ namespace NonaRoyale.Core.Services
         }
 
         /// <summary>The cell an operator occupies, for use as an area's origin.</summary>
+        /// <summary>
+        /// How many cells <paramref name="follower"/> stands behind
+        /// <paramref name="leader"/>, counted forward along the loop the way
+        /// every piece travels: 1 for the cell just behind, 0 for the same cell.
+        /// Null when either is off the loop.
+        /// </summary>
+        public int? StepsBehind(OperatorState follower, OperatorState leader)
+        {
+            if (follower == null) throw new ArgumentNullException(nameof(follower));
+            if (leader == null) throw new ArgumentNullException(nameof(leader));
+            if (!IsInPlay(follower) || !IsInPlay(leader)) return null;
+
+            var from = CellOf(follower);
+            var to = CellOf(leader);
+            if (!from.IsOnTrack || !to.IsOnTrack) return null;
+
+            int circuit = _map.Profile.CircuitLength;
+            return ((to.Index - from.Index) % circuit + circuit) % circuit;
+        }
+
+        /// <summary>Cells in one lap of the shared loop.</summary>
+        public int CircuitLength => _map.Profile.CircuitLength;
+
         public CellRef CellOf(OperatorState op)
         {
             if (op == null) throw new ArgumentNullException(nameof(op));

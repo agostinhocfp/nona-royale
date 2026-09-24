@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using NonaRoyale.Core.Abilities;
+using NonaRoyale.Core.Board;
 using NonaRoyale.Core.Model;
 
 namespace NonaRoyale.Core.Services
@@ -119,6 +120,40 @@ namespace NonaRoyale.Core.Services
         }
 
         /// <summary>
+        /// The track cells <paramref name="source"/>'s aura covers right now:
+        /// its radius either way, and its trail behind it (2026-09-24). Empty
+        /// for an operator with no aura or out of play. For the view's lane.
+        /// </summary>
+        public IReadOnlyList<CellRef> CellsCovered(OperatorState source)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+
+            var cells = new List<CellRef>();
+            if (!_auras.TryGetValue(source.Id, out var aura) || !_targeting.IsInPlay(source)) return cells;
+
+            var centre = _targeting.CellOf(source);
+            if (!centre.IsOnTrack) return cells;
+
+            int circuit = _targeting.CircuitLength;
+            var seen = new HashSet<int>();
+
+            void Add(int offset)
+            {
+                int index = ((centre.Index + offset) % circuit + circuit) % circuit;
+                if (seen.Add(index)) cells.Add(CellRef.Track(index));
+            }
+
+            for (int step = -aura.Radius; step <= aura.Radius; step++) Add(step);
+            for (int step = 1; step <= aura.Trail; step++) Add(-step);
+
+            return cells;
+        }
+
+        /// <summary>Which side <paramref name="source"/>'s aura reaches, or null for none.</summary>
+        public AuraSide? SideOf(OperatorState source) =>
+            source != null && _auras.TryGetValue(source.Id, out var aura) ? aura.Side : (AuraSide?)null;
+
+        /// <summary>
         /// The aura <paramref name="source"/> projects onto <paramref name="op"/>
         /// right now, or null: right side, both in play, within radius.
         /// </summary>
@@ -137,9 +172,18 @@ namespace NonaRoyale.Core.Services
             if (!_targeting.IsInPlay(source)) return null;
 
             int? distance = _targeting.Distance(source, op);
-            if (distance == null || distance > aura.Radius) return null;
+            if (distance == null) return null;
+            if (distance <= aura.Radius) return aura;
 
-            return aura;
+            // The slipstream (2026-09-24): the cells behind the projector, along
+            // the way everyone travels, reach as far as the trail does.
+            if (aura.Trail > 0)
+            {
+                int? behind = _targeting.StepsBehind(op, source);
+                if (behind != null && behind.Value >= 1 && behind.Value <= aura.Trail) return aura;
+            }
+
+            return null;
         }
     }
 }

@@ -174,7 +174,7 @@ The whole kit is a duel. Blind Spot puts him next to his target, and the threat 
 
 Added 2026-09-17, mechanics first. **Look, fiction and camp are unwritten**; backstories are deferred for the whole roster.
 
-Her kit is about where a squad stands. Allies who stay near her move faster, she can seal one of them in a bubble that ordinary damage cannot reach but that also holds them in place, and she punishes the enemy for bunching up: a patch of track where every enemy inside hurts every other enemy inside. She rewards her own side for standing together and punishes the other side for doing the same.
+Her kit is about where a squad stands, and since 2026-09-24 she decides it rather than waiting for it. Allies near her or following in her wake move faster; she can wrap one of them in a bubble that ordinary damage cannot reach; and she drags the enemy together before turning the crowd on itself: a patch of track where every enemy inside hurts every other enemy inside.
 
 Read at the table: _the one who decides where everyone stands._
 

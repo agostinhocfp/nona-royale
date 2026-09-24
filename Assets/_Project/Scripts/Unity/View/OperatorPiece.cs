@@ -234,6 +234,9 @@ namespace NonaRoyale.Unity.View
 
         private MotionSettings _motion;
 
+        /// <summary>Lime streaks and afterimages while the engine reports haste (2026-09-24).</summary>
+        private HasteTrail _haste;
+
         // ── The rig (LB5b) ──────────────────────────────────────
         private RigView _rig;
         private RigAnimator _animator;
@@ -441,7 +444,28 @@ namespace NonaRoyale.Unity.View
             transform.localScale = Vector3.one * _baseScale;
             _ground = transform.position;
             _target = _ground;
+
+            _haste = gameObject.AddComponent<HasteTrail>();
+            _haste.Bind(this, _figure, motion);
         }
+
+        /// <summary>
+        /// What a haste afterimage is drawn from: the render's silhouette or the
+        /// pawn. Null for a rigged figure, whose parts cannot be copied as one
+        /// sprite; its streaks carry the look alone.
+        /// </summary>
+        internal Sprite GhostSprite =>
+            RigActive || _body == null ? null : _rendered ? _flashOverlay.sprite : _body.sprite;
+
+        /// <summary>Where an afterimage is laid: the body, with its scale and lean.</summary>
+        internal Transform GhostFrame => _body != null ? _body.transform : null;
+
+        /// <summary>The piece's depth, so an afterimage can sit just behind it.</summary>
+        internal int GroupOrder => _sorting != null ? _sorting.sortingOrder : 0;
+        internal int GroupLayer => _sorting != null ? _sorting.sortingLayerID : 0;
+
+        /// <summary>Mid-body in figure units, where the haste streaks run.</summary>
+        internal float TrailHeight => _layout.HeadY * 0.55f;
 
         /// <summary>
         /// Seated in the yard, standing anywhere else. Swaps the figure, then
@@ -629,6 +653,8 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         public void Shatter()
         {
+            if (_haste != null) _haste.Show(false, null);
+
             if (_hidden || _collapsing) return;
 
             if (RigActive && !Seated)
@@ -752,9 +778,14 @@ namespace NonaRoyale.Unity.View
         /// Whether the engine reports Evasion on this operator. Passed in, never
         /// inferred: the piece does not read the status registry (PRESENTATION §1).
         /// </param>
-        public void Refresh(bool evasive)
+        /// <param name="hastened">Whether the engine reports Hastened: drawn as streaks, not a tag.</param>
+        /// <param name="travel">The world direction to the next cell on the piece's path, for the streaks.</param>
+        public void Refresh(bool evasive, bool hastened = false, Vector3? travel = null)
         {
             if (Operator == null || _body == null) return;
+
+            // A seated or vanished figure has nowhere to rush to.
+            if (_haste != null) _haste.Show(hastened && !Operator.IsInYard && !_hidden, travel);
 
             _alpha = evasive ? EvasiveAlpha : 1f;
 

@@ -253,6 +253,10 @@ namespace NonaRoyale.Core.Text
                 case EffectKind.DebtDamage: DebtDamage(line, e); return;
                 case EffectKind.DealDice: Dice(line, e); return;
                 case EffectKind.SetTable: Table(line, e); return;
+                case EffectKind.DrawToCell:
+                    line.Keyword("draws", Keywords.Placement).Text(" enemies within ").Number(e.Radius)
+                        .Text(" up to ").Number(e.Amount).Text(e.Amount == 1 ? " cell" : " cells").Text(" toward it");
+                    return;
             }
 
             line.Text(UnwrittenPrefix + e.Kind + "]");
@@ -619,7 +623,9 @@ namespace NonaRoyale.Core.Text
 
             if (aura.GrantsHaste)
             {
-                line.Text(who + " within ").Number(aura.Radius).Text(" of you count as ")
+                line.Text(who + " within ").Number(aura.Radius).Text(" of you");
+                if (aura.Trail > 0) line.Text(", or up to ").Number(aura.Trail).Text(" behind you,");
+                line.Text(" count as ")
                     .Keyword("Hastened", Keywords.Status(StatusKind.Hastened)).Text(" for any move they start there");
                 return line;
             }

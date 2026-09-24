@@ -379,6 +379,12 @@ namespace NonaRoyale.Core.Services
                         continue;
                     }
 
+                    if (effect.Kind == EffectKind.DrawToCell)
+                    {
+                        RunDrawToCell(effect, caster, targetCell, allOperators, outcomes);
+                        continue;
+                    }
+
                     RunEffect(effect, caster, primaryTarget, allOperators, outcomes);
                 }
             }
@@ -630,6 +636,42 @@ namespace NonaRoyale.Core.Services
                     scalesWithCrowd: effect.ScalesWithCrowd);
 
                 outcomes.Add(EffectOutcome.ZoneDeployed(caster, cell.Value, effect.Amount));
+            }
+        }
+
+        /// <summary>
+        /// Draws every enemy within the effect's radius of the cell up to
+        /// <c>Amount</c> cells toward it (§7.4). Placement: nothing collides and
+        /// nothing triggers.
+        /// </summary>
+        /// <remarks>
+        /// <b>Measured in cells, applied in progress</b>, like every placement:
+        /// the signed shortest shift from the piece to the cell, capped at the
+        /// draw, then clamped to the piece's own loop — never behind its start,
+        /// never into its home column (§7.4, "placement that moves one operator
+        /// clamps"). A piece already on the cell does not move. Pieces off the
+        /// loop are out of reach: <c>EnemiesInArea</c> only finds track cells.
+        /// </remarks>
+        private void RunDrawToCell(
+            AbilityEffect effect, OperatorState caster, CellRef? cell,
+            IReadOnlyList<OperatorState> allOperators, List<EffectOutcome> outcomes)
+        {
+            if (cell == null || !cell.Value.IsOnTrack) return;
+
+            int track = _map.Profile.TrackLength;
+
+            foreach (var enemy in _targeting.EnemiesInArea(cell.Value, effect.Radius, caster.Owner, allOperators))
+            {
+                int from = _map.CellAt(enemy.Owner, enemy.Progress).Index;
+                int shift = SignedShortestShift(from, cell.Value.Index);
+                if (shift == 0) continue;
+
+                int step = Math.Sign(shift) * Math.Min(Math.Abs(shift), effect.Amount);
+                int progress = Math.Min(track - 1, Math.Max(0, enemy.Progress + step));
+                if (progress == enemy.Progress) continue;
+
+                enemy.MoveTo(progress);
+                outcomes.Add(EffectOutcome.Pulled(enemy, progress));
             }
         }
 

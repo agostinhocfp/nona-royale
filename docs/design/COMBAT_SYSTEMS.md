@@ -641,6 +641,8 @@ Pull, push, swap and teleport effects **never collide** and never trigger cell e
 
 **A swap** exchanges the caster's and the target's cells outright. It works on an ally or an enemy.
 
+**A draw** (Eris' Exploit, 2026-09-24) moves every enemy within its reach of a target cell up to its distance toward that cell, each by its own signed shortest shift in cells. It moves each operator on its own, so it follows the one-operator rule below and clamps: never behind a piece's start cell, never past its last loop cell. A piece already on the cell stays. Safe cells do not hold a piece against it — placement is not damage.
+
 #### Placement is measured in cells, applied in progress
 
 Each colour enters the circuit at its own start cell, so two operators can stand four cells apart while their progress values differ by forty. Every placement effect therefore computes the move as a **signed shift in cells** and applies that same shift to each operator's own progress. Without the conversion a placement would silently grant or cost most of a lap.
@@ -1126,13 +1128,15 @@ Casts per match: Drone Strike 4.58 → 5.87, Sonic Disrupter 2.72 → 3.70, Inve
 
 **HP 7 · Speed 1.0× (permanently Hastened) · Complete — both abilities and the aura implemented** _(added 2026-09-17)_
 
-> **Bouncer's shape, pointed the other way:** two actives, with an aura in the middle slot. His aura slows enemies near him; hers hastens allies near her. **No new effect kind.** Nano Cell uses existing effects, Catalyst is an aura with a side and a haste flag, and Eris' Exploit is a `DeployZone` with a crowd setting (ADR-0007 Amendment 1).
+> **Bouncer's shape, pointed the other way:** two actives, with an aura in the middle slot. His aura slows enemies near him; hers hastens allies near her. Nano Cell uses existing effects, Catalyst is an aura with a side, a haste flag and — since 2026-09-24 — a trail, and Eris' Exploit is a `DrawToCell` (new 2026-09-24, §7.4) followed by a `DeployZone` with a crowd setting (ADR-0007 Amendment 1).
+
+> **Reworked 2026-09-24 (designer), after a measurement** (`LETHE_ANALYSIS.md`, 4,000 paired matches a row): her kit was built around where pieces stand, and a dice race almost never made the huddles and crowds it waited for. Nano Cell lost its stun, Catalyst gained a slipstream, and Eris' Exploit drags the enemy together before it strikes. Measured below.
 
 | #   | Ability           | Type    | Cost | CD  | Range      | Effect                                                                                                                                                                                                                                  |
 | --- | ----------------- | ------- | ---- | --- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Nano Cell**     | Active  | 4    | 4   | 4          | Ally (or herself): **heal 2**, **Shield, 99-point pool, 2 turns** and **Stun, 2 turns** (§5.1, §5.6). Normal and Tech are absorbed; Atomic goes through.                                                                              |
-| 2   | **Catalyst**      | Passive | —    | —   | 2          | **Aura, allies only.** An ally within 2 when it starts a move counts as **Hastened** for that move (§5.9). Lethe herself is Hastened by her passive, permanently.                                                                         |
-| 3   | **Eris' Exploit** | Active  | 4    | 3   | 3 (cell)   | **Zone, radius 2** (ADR-0007). **On the cast, and again at Lethe's next upkeep**, **each enemy inside takes 1 Normal for every other enemy inside**, as a single hit. One enemy inside takes nothing. Kills credit Lethe. |
+| 1   | **Nano Cell**     | Active  | 4    | 4   | 4          | Ally (or herself): **heal 2** and **Shield, 99-point pool, 2 turns** (§5.6). Normal and Tech are absorbed; Atomic goes through. **No stun since 2026-09-24.**                                                                          |
+| 2   | **Catalyst**      | Passive | —    | —   | 2, and 6 behind | **Aura, allies only.** An ally within 2 of her, **or up to 6 cells behind her** along the way everyone travels, when it starts a move counts as **Hastened** for that move (§5.9). Lethe herself is Hastened by her passive, permanently. |
+| 3   | **Eris' Exploit** | Active  | 4    | 3   | 3 (cell)   | **First, every enemy within 4 of the cell is drawn up to 2 cells toward it** (placement, §7.4). Then a **zone, radius 2** (ADR-0007): **on the cast, and again at Lethe's next upkeep**, **each enemy inside takes 1 Normal for every other enemy inside**, as a single hit. One enemy inside takes nothing. Kills credit Lethe. |
 
 **Her speed is haste, not a multiplier (designer, 2026-09-17).** The handoff specced "base 1.0, effective 1.5 through her own passive haste", which was Kurbyn's construction when haste was +0.5 speed. Haste has been flat cells since 2026-09-16, so the passive now gives her +1 cell on a roll of 6 or less and +2 above, once per roll, capped at 3 per turn: about 1.6 cells a roll. The passive carries no magnitude, and `StatusRegistry.SpeedModifier` skips Hastened, so her speed is 1.0 and she sits inside the band. A passive survives cleanses and neutralize (§1.2).
 
@@ -1142,24 +1146,26 @@ Casts per match: Drone Strike 4.58 → 5.87, Sonic Disrupter 2.72 → 3.70, Inve
 
 **Eris' Exploit costs 4 with a 3-turn cooldown since 2026-09-20 (designer)**, down from 6 and 4. It was the rarest cast on the roster at under one a match, and the zone rewards a clustered board that the bots never give it. At 4 it also left Equilibrium's dear band (§5.17), so its instant hit against Revú is no longer halved. **The reprice bought nothing in the sweep** — 0.94 → 0.93 casts a match — because price was never what stopped it: the bots do not cluster, so there is rarely a second enemy in the circle to bill. Her win share moved 24% → 25%, and most of that is the Nano Cell heal. If it is still rare in human play, the dial is the radius or the crowd rule, not the cost.
 
-**Nano Cell is total immunity bought with total inaction.** A shield whose pool a round of enemy turns cannot empty, plus a stun. Its edges:
+**Nano Cell is a round of immunity, paid in energy** (designer, 2026-09-24). A shield whose pool a round of enemy turns cannot empty. **Until 2026-09-24 it also stunned the ally for 2 turns**, and the price was larger than the shelter: 88% of bubbles absorbed nothing, a heal-only Nano Cell beat the real one (25.4% against 23.1%), and removing the stun alone moved her to 26.6%. If she reads strong, cost 5 is the dial (measured 23.7% with the rest of the rework, so it is a big one). Its edges:
 
-- **The stun takes hold at once.** Cast on an ally during her own seat's turn, a status is active immediately (§5), so an ally that has not moved yet loses this turn's move as well. Move first, then bubble. Duration 2 is the minimum that protects at all: it covers exactly one round of enemy turns and takes the ally's next turn.
+- **Duration 2** covers exactly one round of enemy turns and the ally's own next turn.
 - **Atomic ignores it** (§2.2): bleed, marks, Velvet Rope, Miracle Pull and Vendetta all go through.
 - **It blocks the road.** A collision is Normal damage, so the bubble eats it, the target survives and the mover bounces (§7.2).
-- **Neural Purge strips both halves** (§5.8). A Javi on her side can free the ally early; an enemy cannot, because a cleanse only reaches allies. A blanket immunity with no answer would be oppressive, so this is intended. Do not "fix" it.
-- **"Cannot be stunned inside" is redundant**, not contradicted: the bubble already stuns. **Status immunity was proposed and dropped**, because it needed an immunity system with a carve-out on day one.
-- **Cost 4, not the spec's 3.** At 3 it blanked a 9-energy Killzone or Drone Strike on one ally for a third of the price. At 4 it costs the same as Trauma Plate, and the stun pays the rest.
-- **She may bubble herself.** Auras survive stun (§10.1), so a bubbled Lethe keeps hastening her squad from a cell that Normal and Tech damage cannot hurt. Nano Cell is one of the four abilities carrying §10's self-cast opt-in flag (2026-09-17); the self-bubble pays the stun as its price.
+- **Neural Purge strips it** (§5.8): a cleanse is indiscriminate. Intended.
+- **Status immunity was proposed and dropped** (2026-09-17), because it needed an immunity system with a carve-out on day one.
+- **Cost 4, not the spec's 3.** At 3 it blanked a 9-energy Killzone or Drone Strike on one ally for a third of the price.
+- **She may bubble herself.** Nano Cell is one of the four abilities carrying §10's self-cast opt-in flag (2026-09-17). The bots never do.
 
-**Catalyst is haste, not speed, and it is local** (designer, 2026-09-17). A +0.5 speed aura would have put Syla and Javi at 2.0×, where a mean roll covers a quarter of the loop, because `MovementResolver.EffectiveSpeed` has a floor and no ceiling. Haste is flat cells under a per-turn cap, so nothing can overflow. It is also **not a copy of Tagged From Above's payout**: that one follows the squad anywhere for two turns, while Catalyst ends two cells from Lethe. Its rules:
+**Catalyst is haste, not speed, and it follows her** (designer, 2026-09-17; slipstream 2026-09-24). A +0.5 speed aura would have put Syla and Javi at 2.0×, where a mean roll covers a quarter of the loop, because `MovementResolver.EffectiveSpeed` has a floor and no ceiling. Haste is flat cells under a per-turn cap, so nothing can overflow. It is also **not a copy of Tagged From Above's payout**: that one follows the squad anywhere for two turns, while Catalyst reaches two cells either side of Lethe and six behind her. Its rules:
+
+- **The slipstream** (2026-09-24): an ally up to 6 cells behind her along the direction everyone travels is reached too (`AuraDefinition.Trail`, `TargetingRules.StepsBehind`). Beside her, allies stood within 2 on only 27% of her turns; a race strings a squad out behind its runner, and the wake meets them there. Measured: haste given to her allies went from 2.7 to 5.9 cells a match, on 20% of their moves instead of 9%.
 
 - **Read where the move starts.** An ally that walks out of range keeps the cells of the move that took it out, and still pays for them against the turn cap. If Lethe moves away first, the ally behind gets nothing.
 - **A yes or no, not a stack.** Catalyst on top of a payout, or on top of another haste, still pays one bonus per roll under one cap.
-- **Visible.** `GameEngine.ActiveStatusesOn` lists Hastened on an ally inside the aura, so the HASTE tag appears and disappears as pieces move.
+- **Visible.** `GameEngine.ActiveStatusesOn` lists Hastened on an ally inside the aura, and since 2026-09-24 a hastened piece trails lime speed streaks instead of carrying a HASTE tag (`HasteTrail`). Hovering or selecting her draws the cells the aura covers as a faint lane (`GameEngine.AuraCellsOf`).
 - **Not on herself.** Her own haste is the passive.
 
-**Eris' Exploit is the anti-clustering ability.** N enemies inside take N−1 each per tick:
+**Eris' Exploit is the anti-clustering ability, and since 2026-09-24 it makes the cluster it punishes.** It first draws every enemy within 4 of the cell up to 2 cells toward it — placement, so nothing collides and nothing triggers; each piece clamps at its own start cell behind and its last loop cell ahead (§7.4). Then N enemies inside take N−1 each per tick:
 
 | Caught | Each, per hit | Each, both hits | Total |
 | ------ | -------------- | ---------------- | ----- |
@@ -1172,6 +1178,8 @@ Casts per match: Drone Strike 4.58 → 5.87, Sonic Disrupter 2.72 → 3.70, Inve
 - **Radius 2, not the spec's 3.** Five cells limit the crowd by geometry. At seven cells, four victims were routine on stacked safe cells: 24 damage for 6 energy, against Ace Shards' 4 each at the same price. At radius 2 a crowd of four needs four enemies inside five cells, and since the +1 health, six damage kills only Mimi outright.
 - **It strikes on the cast, then once more at her next upkeep** (designer, 2026-09-18; ADR-0007 Amendment 2). It was a plain zone — nothing at cast, two later ticks — and the crowd could simply scatter, which made a 6-energy cast worth nothing often enough that she sat at the bottom of the sweep. The first hit is now undodgeable; the second still is, so a crowd that breaks up has still been controlled, and the total against a crowd that stays put is unchanged.
 - **The crowd is counted again at the tick**, not fixed at the cast.
+- **Why the draw** (2026-09-24). A crowd of three or more enemies was within her reach on 1% of her turns, so the quadratic bill was a formality: 78% of casts struck exactly two enemies for 1 each. A larger radius (3) or billing a lone enemy for 1 moved nothing. With the draw, each cast moves about two pieces, 31% of casts strike three or more, damage on the cast rises from 2.4 to 2.9, and casts rise from 0.69 to 1.23 a match. The drag also pulls pieces off safe cells and into allied zones.
+- **The bots do not value the drag on its own.** Scoring it as lost enemy ground sent them casting at lone pieces — 41% of casts struck nobody — and cost her two points (`BOTS.md`).
 - **Only the instant hit is a cast hit**, so only it carries the ability's cost and meets Revú's Equilibrium (§5.17). A deferred tick has no cost to read.
 - **The bots cannot measure this change.** They never scatter out of a zone, so they always ate both ticks; the sweep reads 22.9% → 22.7% and 0.96 → 0.97 casts, which is noise. The change is worth what human opponents' dodging was worth, and nothing less.
 - **One hit per victim**, so an evasion charge or a plate meets it once, as with a Killzone tick. **A lone victim is not hit at all.** A zero-damage instance would still spend its evasion charge.
@@ -1196,6 +1204,20 @@ Casts per match: Drone Strike 4.58 → 5.87, Sonic Disrupter 2.72 → 3.70, Inve
 - The "with" run was built just before the device-key fix above, which only matters when a Lethe and a Nuetu share a seat and a cell.
 
 **All numbers are the designer's (2026-09-17)** and reasoned against peers. Only the sweep above has measured them.
+
+**The rework, measured** (2026-09-24, 4,000 bots-against-bots matches, paired seeds, ±0.7 points; `LETHE_ANALYSIS.md`):
+
+| | Before | After |
+| --- | --- | --- |
+| Lethe win share | 23.1% | **26.5%** |
+| Haste given to her allies | 2.7 cells a match (9% of their moves) | 5.9 (20%) |
+| Nano Cell casts | 0.91 | 1.24 |
+| Eris' Exploit casts | 0.69 | 1.23 |
+| Eris casts striking 3 or more | 22% | 31% |
+| Eris damage on the cast | 2.4 | 2.9 |
+
+- **Most of the gain is the stun.** Removing it alone measured 26.6%; the draw and the slipstream add frequency and spectacle more than wins. She is third on the table, behind Kurbyn and Javi.
+- **What the harness still cannot see:** humans chasing her wake on purpose, and humans scattering from her reach.
 
 ### 10.11 Revú — Loan Shark
 
@@ -1897,3 +1919,4 @@ The watch machinery (§6.7) is dormant: `PredatorsReadTests` and `WatchBotTests`
 - 2026-09-24 — **Two designer balance commits, logged after the fact:** Killzone's detonation radius 1 → 2 (`d78e634`, §10.7; the commit says "range") and Sadist 7 → 6 energy (`d03bb69`, §10.11; still in Equilibrium's dear band). Neither moved its tests, so `RevuTests.TheDraftsNumbers` and the replay fingerprint were red on HEAD; both are moved here (fingerprint `9914fd33` → `4f2a0d21`).
 - 2026-09-24 — **Debt is drawn** (§3.3): Roman numerals in the display face (`DebtMark`), a blood-velvet chip beside each seat's pool in the squad rail and the top bar, and board moments for a loan (+II), Sadist's collection (the figure stamped) and a burn (struck through). `DebtIncurred` carries its debtor and `DebtCalled` its target, so the view knows where to draw them. **Measured why the debt does not bite** (§10.11): collected every turn, it never builds; stopping the automatic collection makes it grow at no cost in balance. Tests 883 → 884.
 - 2026-09-24 — **Debt stops being collected** (designer; §3.3, §10.11, §10.12). It grows by 1 each time the debtor ends its turn owing, to 6, and ends only when Sadist calls it or a collision burns it; no energy moves. `EnergyLedger.CollectDebt` → `AccrueDebt`, `DebtCollection` → `DebtAccrual` (the file renamed with its `.meta`), `DebtCollected` → `DebtAccrued`, reported only when the debt grew. The bots lose `DebtShortfall` and Sadist's forgone-drain term, and `EnergyDenial` is renamed `DebtWorth`. Glossary, Leech Round's description and Revú's and Fortuna's guide copy rewritten. Measured, 2,000 paired matches: Revú 25.8% → 26.6%, mean seat debt 0.03 → 0.66, Sadist 4+ in 41% of its casts. **The replay fingerprint did not move** — it hashes numbers, not code — so a replay recorded between `46d7640` and this change would desync rather than be refused. Tests 884 → 882 (the collection tests replaced by growth tests, the shortfall bot tests removed), 6 of 6 mutations killed.
+- 2026-09-24 — **Lethe reworked** (designer; §7.4, §10.10), after `LETHE_ANALYSIS.md`. **Nano Cell loses its stun** — heal 2 and the 99-point bubble, energy the only price. **Catalyst gains a slipstream**: allies up to 6 cells behind her are hastened too (`AuraDefinition.Trail`, `TargetingRules.StepsBehind`, in the fingerprint). **Eris' Exploit draws first**: new `EffectKind.DrawToCell` (19) drags every enemy within 4 of the cell up to 2 cells toward it, clamped like every one-operator placement, then the crowd zone strikes. The bots count the crowd the draw can make and give the drag no value of its own. View: the HASTE tag is gone — a hastened piece trails lime speed streaks and leaves afterimages as it walks (`HasteTrail`); hovering or selecting an aura's holder draws its lane (`GameEngine.AuraCellsOf`). Measured, 4,000 paired matches: Lethe 23.1% → 26.5%. Fingerprint `4f2a0d21` → `793eac2a`. Tests 882 → 894; 8 of 8 mutations killed (the draw's forward clamp checked separately).

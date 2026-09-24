@@ -310,6 +310,29 @@ namespace NonaRoyale.Core.Abilities
         /// many of its owner's turns it stands for. Reused fields, the same trade
         /// <see cref="DeployZone"/> makes.
         /// </remarks>
-        SetTable = 18
+        SetTable = 18,
+
+        /// <summary>
+        /// Draws every enemy within <c>Radius</c> of the target cell up to
+        /// <c>Amount</c> cells toward it (§7.4, 2026-09-24). Placement, never
+        /// movement: it collides with nothing and triggers nothing. Lethe's
+        /// Eris' Exploit, ahead of its zone.
+        /// </summary>
+        /// <remarks>
+        /// <b>Why it exists.</b> Eris' Exploit bills each victim for the rest of
+        /// the crowd, and a dice race almost never makes a crowd: three enemies
+        /// within its reach on 1% of her turns (<c>LETHE_ANALYSIS.md</c>). The
+        /// draw makes the crowd the zone then punishes.
+        ///
+        /// <b>Only pieces on the outer loop move</b>, and each clamps the way
+        /// every one-operator placement does: never behind its own start cell,
+        /// never past its last loop cell into its home column. Safe cells do not
+        /// hold a piece against it — placement is not damage.
+        ///
+        /// A cell kind: the resolver routes it with the target cell, like
+        /// <see cref="DeployZone"/>, and it must be declared before the zone so
+        /// the zone strikes the crowd it made.
+        /// </remarks>
+        DrawToCell = 19
     }
 }

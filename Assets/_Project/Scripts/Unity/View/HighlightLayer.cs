@@ -19,6 +19,9 @@ namespace NonaRoyale.Unity.View
     public sealed class HighlightLayer : MonoBehaviour
     {
         private readonly List<GameObject> _markers = new List<GameObject>();
+
+        /// <summary>The aura lane (2026-09-24): its own list, so a hover can redraw it without the rest.</summary>
+        private readonly List<GameObject> _auraMarkers = new List<GameObject>();
         private BoardLayout _layout;
 
         public void Bind(BoardLayout layout) => _layout = layout;
@@ -102,15 +105,44 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
+        /// The cells an operator's aura covers, as a faint lane: Catalyst's
+        /// radius and its wake behind Lethe, or Bouncer's drag around him
+        /// (§10.1, §10.10). Drawn only while the holder is selected or hovered.
+        /// </summary>
+        public void ShowAura(IEnumerable<CellRef> cells, Color colour)
+        {
+            ClearAura();
+            if (cells == null) return;
+
+            foreach (var cell in cells)
+            {
+                var marker = Spawn(cell, _layout.CellSize * 0.72f, UiTheme.WithAlpha(colour, 0.2f), 0, Primitives.Disc);
+                if (marker != null)
+                {
+                    _markers.Remove(marker);
+                    _auraMarkers.Add(marker);
+                }
+            }
+        }
+
+        public void ClearAura()
+        {
+            foreach (var marker in _auraMarkers)
+                if (marker != null) Destroy(marker);
+
+            _auraMarkers.Clear();
+        }
+
+        /// <summary>
         /// Reach is drawn as dots, not rings: a selected operator can show its
         /// landings and its ability's reach at once, and both are cyan (live).
         /// Shape tells them apart.
         /// </summary>
         private static Color ReachColour => UiTheme.WithAlpha(UiTheme.Cyan, 0.55f);
 
-        private void Spawn(CellRef cell, float size, Color colour, int order, Sprite sprite = null)
+        private GameObject Spawn(CellRef cell, float size, Color colour, int order, Sprite sprite = null)
         {
-            if (_layout == null) return;
+            if (_layout == null) return null;
 
             var go = new GameObject($"hl_{cell}");
             go.transform.SetParent(transform, false);
@@ -123,6 +155,7 @@ namespace NonaRoyale.Unity.View
             renderer.sortingOrder = order;
 
             _markers.Add(go);
+            return go;
         }
     }
 }

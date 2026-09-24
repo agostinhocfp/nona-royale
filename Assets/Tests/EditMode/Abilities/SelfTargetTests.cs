@@ -149,13 +149,13 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
-        public void NanoCell_OnHerself_ShieldsAndStuns_TheStunIsThePrice()
+        public void NanoCell_OnHerself_Shields_AndCostsOnlyEnergy()
         {
             var result = Use(_lethe, Lethe.NanoCell, _lethe);
 
             Assert.That(result.Approved, Is.True, result.ToString());
             Assert.That(_statuses.ShieldPool(_lethe), Is.EqualTo(Lethe.NanoCellPool));
-            Assert.That(_statuses.IsStunned(_lethe), Is.True);
+            Assert.That(_statuses.IsStunned(_lethe), Is.False, "no stun since 2026-09-24");
             Assert.That(_red.Energy, Is.EqualTo(12 - 4));
         }
 

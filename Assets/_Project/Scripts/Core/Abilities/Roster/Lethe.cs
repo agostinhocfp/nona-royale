@@ -14,14 +14,14 @@ namespace NonaRoyale.Core.Abilities
     /// allies quick near her. Both are local: they hold only while the
     /// operators stand close, and they are gone the moment anyone steps out.
     ///
-    /// <b>The kit is about where the squad stands.</b> Catalyst pays allies to
-    /// stay close to her, Nano Cell locks one of them in place, and Eris'
-    /// Exploit punishes the enemy for doing what Catalyst asks her own side to
-    /// do. Two crowd tools on one operator, one on each side of the table.
+    /// <b>The kit is about where everyone stands, and since 2026-09-24 she
+    /// decides it rather than waiting for it.</b> Catalyst pays allies near her
+    /// or trailing her, Nano Cell shelters one of them, and Eris' Exploit drags
+    /// the enemy together before it turns them on each other.
     ///
-    /// <b>Every number here is the designer's and unmeasured.</b> Adding a
-    /// tenth operator shifts the draft's dice stream, so nothing measured
-    /// before her compares with a figure taken after.
+    /// <b>Reworked after measurement</b> (<c>LETHE_ANALYSIS.md</c>): as built,
+    /// the board almost never made the crowds and huddles her kit needed, and
+    /// Nano Cell's stun cost her side more than the bubble saved.
     /// </remarks>
     public static class Lethe
     {
@@ -59,6 +59,17 @@ namespace NonaRoyale.Core.Abilities
         public const int CatalystRadius = 2;
 
         /// <summary>
+        /// Cells behind her, along the way everyone travels, that Catalyst also
+        /// reaches: the slipstream (designer, 2026-09-24).
+        /// </summary>
+        /// <remarks>
+        /// A race strings a squad out behind its runner; beside her they stood
+        /// within two cells on only 27% of her turns. The trail meets them where
+        /// they are.
+        /// </remarks>
+        public const int CatalystTrail = 6;
+
+        /// <summary>
         /// Her passive aura. Not an ability — never used, no cost, no cooldown,
         /// no duration (§10.1, §10.3). An ally within
         /// <see cref="CatalystRadius"/> when it starts a move counts as
@@ -77,7 +88,8 @@ namespace NonaRoyale.Core.Abilities
         public static AuraDefinition Catalyst { get; } =
             new AuraDefinition("Catalyst", CatalystRadius, speedModifier: 0.0,
                 side: AuraSide.Allies, grantsHaste: true,
-                description: "Stand close to her and the night runs faster. Allies near her move as if they were already late.");
+                description: "Stay close to her, or follow in her wake, and the night runs faster. Allies near her or behind her move as if they were already late.",
+                trail: CatalystTrail);
 
         /// <summary>
         /// Far larger than a round of enemy turns can deal, so the pool never
@@ -92,64 +104,48 @@ namespace NonaRoyale.Core.Abilities
         /// <remarks>
         /// Cast on an ally during her own turn, a status takes hold at once
         /// (§5). Duration 1 would expire at the end of this turn, before any
-        /// enemy acted. Duration 2 covers exactly one round of enemy turns,
-        /// and takes the ally's next turn in exchange.
+        /// enemy acted. Duration 2 covers exactly one round of enemy turns.
         /// </remarks>
         public const int NanoCellDurationTurns = 2;
 
         /// <summary>
-        /// A bubble on an ally: nothing that can be mitigated gets through, and
-        /// nothing inside can move or act.
+        /// A bubble on an ally: it heals 2 on the way in, and nothing that can
+        /// be mitigated gets through for a round.
         /// </summary>
         /// <remarks>
-        /// <b>No new mechanics.</b> A shield with a pool nothing can empty, and
-        /// a stun. Normal and Tech are absorbed, a collision included (§5.6);
-        /// Atomic ignores every mitigation layer (§2.2), so bleed, marks,
-        /// Velvet Rope, Miracle Pull and Vendetta all go straight through.
+        /// <b>No new mechanics.</b> A heal, and a shield with a pool nothing can
+        /// empty. Normal and Tech are absorbed, a collision included (§5.6);
+        /// Atomic ignores every mitigation layer (§2.2), so bleed, marks, Velvet
+        /// Rope, Miracle Pull and Vendetta all go straight through.
         ///
-        /// <b>The stun is the price, and it is total.</b> The bubbled ally
-        /// cannot move and cannot spend energy (§5.1). The original "cannot be
-        /// stunned inside" is therefore redundant rather than contradicted: it
-        /// already is. Status immunity was proposed and dropped — it would have
-        /// needed an immunity system with a carve-out on day one.
-        ///
-        /// <b>Cast order matters.</b> The stun takes hold at once, so an ally
-        /// that has not moved yet this turn loses that move as well as the
-        /// next. Move first, then bubble.
+        /// <b>No stun since 2026-09-24</b> (designer). The stun cost the ally one
+        /// or two moves, and in a race that price was larger than the shelter:
+        /// 88% of bubbles absorbed nothing, a heal-only Nano Cell beat the real
+        /// one, and removing the stun moved her from 23% to 27% of wins
+        /// (<c>LETHE_ANALYSIS.md</c>). The price is now the energy alone; 5 is
+        /// the first dial if she reads strong.
         ///
         /// <b>It blocks the road.</b> A collision's damage is Normal, so the
         /// bubble eats it, the target survives, and the mover bounces (§7.2).
         ///
-        /// <b>Neural Purge strips both, and the ability needs that.</b> A cleanse
-        /// is indiscriminate (§5.8), so a Javi on her side can pop the bubble to
-        /// free the ally early. An enemy cannot: a cleanse only reaches allies.
-        /// Do not "fix" this: a blanket immunity with no answer at all would be
-        /// oppressive.
+        /// <b>Neural Purge strips it</b>: a cleanse is indiscriminate (§5.8).
         ///
-        /// <b>Cost 4, cooldown 4</b> (designer, 2026-09-17). Trauma Plate's
-        /// price: at 3 it blanked a 9-energy Killzone or Drone Strike on one
-        /// ally for a third of the cost. The stun is the rest of the price.
-        /// Range 4, as Trauma Plate. It may be cast on herself; her aura
-        /// survives the stun (§10.1), so a bubbled Lethe is a stationary
-        /// Catalyst that Normal and Tech damage cannot touch.
+        /// <b>Cost 4, cooldown 4, range 4</b> (designer, 2026-09-17). It may be
+        /// cast on herself.
         /// </remarks>
         public static AbilityDefinition NanoCell { get; } = new AbilityDefinition(
             id: 1001, name: "Nano Cell",
             description:
-                "Seals an ally inside a lattice of nanites. Ordinary harm slides off it, but nothing inside can move or act until it dissolves.",
+                "Wraps an ally in a lattice of nanites that knits its wounds and turns ordinary harm aside until it dissolves.",
             energyCost: 4, cooldownTurns: 4, range: 4,
-            // Opts in to self-cast (§10, 2026-09-17): the self-bubble pays the
-            // stun as its price, and her aura survives it (§10.1).
+            // Opts in to self-cast (§10, 2026-09-17).
             allowsSelfTarget: true,
             effects: new[]
             {
                 AbilityEffect.Heal(EffectScope.PrimaryTarget, 2, EffectAudience.AllyOnly),
                 AbilityEffect.Status_(
                     EffectScope.PrimaryTarget, StatusKind.Shield, duration: NanoCellDurationTurns,
-                    EffectAudience.AllyOnly, magnitude: NanoCellPool),
-                AbilityEffect.Status_(
-                    EffectScope.PrimaryTarget, StatusKind.Stun, duration: NanoCellDurationTurns,
-                    EffectAudience.AllyOnly)
+                    EffectAudience.AllyOnly, magnitude: NanoCellPool)
             });
 
         /// <summary>Each victim's damage per other victim, per tick.</summary>
@@ -171,6 +167,12 @@ namespace NonaRoyale.Core.Abilities
         /// </summary>
         public const int ErisExploitLingerTicks = 1;
 
+        /// <summary>How far from the cell Eris' Exploit reaches to drag enemies in.</summary>
+        public const int ErisDrawRadius = 4;
+
+        /// <summary>How many cells each of them is dragged toward it, at most.</summary>
+        public const int ErisDrawCells = 2;
+
         /// <summary>
         /// A field on a cell that turns every enemy inside it against the
         /// others: each takes 1 for every other enemy caught with it.
@@ -186,6 +188,14 @@ namespace NonaRoyale.Core.Abilities
         /// Drone Strike divides a fixed payload (best against one), Killzone
         /// bills each victim in full (linear), and this bills each victim for
         /// the rest of the crowd (quadratic).
+        ///
+        /// <b>It makes its own crowd</b> (designer, 2026-09-24). Before the zone
+        /// strikes, every enemy within <see cref="ErisDrawRadius"/> of the cell
+        /// is dragged up to <see cref="ErisDrawCells"/> cells toward it —
+        /// placement, so nothing collides (§7.4). Without it, three enemies were
+        /// in her reach on 1% of her turns and the quadratic bill was a
+        /// formality (<c>LETHE_ANALYSIS.md</c>). The drag also pulls pieces off
+        /// safe cells and into allied zones, which is the point.
         ///
         /// <b>It does nothing with one enemy inside.</b> That is its failure
         /// condition, stated here so nobody discovers it at the table: aimed at
@@ -216,11 +226,13 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition ErisExploit { get; } = new AbilityDefinition(
             id: 1002, name: "Eris' Exploit",
             description:
-                "Sows discord in a patch of track: every enemy inside turns on every other one at once, and again next round on whoever stayed.",
+                "Sows discord in a patch of track: it draws the enemy in around it, then every enemy inside turns on every other one at once, and again next round on whoever stayed.",
             energyCost: 4, cooldownTurns: 3, range: 3,
             targeting: AbilityTargeting.Cell,
             effects: new[]
             {
+                // The draw first, so the zone strikes the crowd it made.
+                AbilityEffect.DrawToCell(ErisDrawRadius, ErisDrawCells),
                 AbilityEffect.CrowdZone(
                     perOtherVictim: ErisExploitPerOtherVictim,
                     lingerTicks: ErisExploitLingerTicks,

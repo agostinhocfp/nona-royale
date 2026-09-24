@@ -73,11 +73,13 @@ namespace NonaRoyale.Unity.View
         /// True for a status the piece itself shows, which therefore gets no tag.
         /// </summary>
         /// <remarks>
-        /// Only Evasion, which fades the silhouette (<c>OperatorPiece</c>). It is
-        /// a passive on the operators that have it, so as a tag it sat under the
-        /// same pieces all match and taught nothing after the first turn.
+        /// Evasion, which fades the silhouette (<c>OperatorPiece</c>), and since
+        /// 2026-09-24 Hastened, which trails lime streaks (<c>HasteTrail</c>).
+        /// Both sit on the same pieces most of the match — passives, and
+        /// Catalyst's wake — so as tags they taught nothing after the first turn.
         /// </remarks>
-        public static bool IsDrawnOnPiece(StatusKind kind) => kind == StatusKind.Evasion;
+        public static bool IsDrawnOnPiece(StatusKind kind) =>
+            kind == StatusKind.Evasion || kind == StatusKind.Hastened;
 
         /// <summary>The word printed on the tag.</summary>
         public static string Label(StatusKind kind)

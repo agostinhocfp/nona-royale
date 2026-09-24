@@ -159,6 +159,7 @@ namespace NonaRoyale.Core.Replay
             else
             {
                 d.Line(at + ".Aura.Radius", op.Aura.Radius);
+                d.Line(at + ".Aura.Trail", op.Aura.Trail);
                 d.Line(at + ".Aura.SpeedModifier", op.Aura.SpeedModifier);
                 d.Line(at + ".Aura.Side", op.Aura.Side.ToString());
                 d.Line(at + ".Aura.GrantsHaste", op.Aura.GrantsHaste);

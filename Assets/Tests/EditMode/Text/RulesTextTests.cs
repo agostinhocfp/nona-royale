@@ -177,6 +177,20 @@ namespace NonaRoyale.Core.Tests.Text
         }
 
         [Test]
+        public void Golden_Catalyst()
+        {
+            Assert.That(RulesText.ForAura(Lethe.Catalyst).ToPlainText(), Is.EqualTo(
+                "allies within 2 of you, or up to 6 behind you, count as Hastened for any move they start there"));
+        }
+
+        [Test]
+        public void Golden_ErisExploit()
+        {
+            Assert.That(RulesText.For(Lethe.ErisExploit).ToPlainText(), Does.StartWith(
+                "draws enemies within 4 up to 2 cells toward it"));
+        }
+
+        [Test]
         public void Golden_LeechRound()
         {
             Assert.That(RulesText.For(Revu.LeechRound).ToPlainText(), Is.EqualTo("2 Normal, its seat takes on 2 debt"));

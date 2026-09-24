@@ -467,6 +467,7 @@ namespace NonaRoyale.Core.Tests.Abilities
             Place(_target, 13);
             Place(_near, 11);
             Place(_green, 31);
+            Place(_far, 32);   // out of the draw's reach of 4 (2026-09-24)
             var lethe = AtTrack(20, "Lethe", PlayerColor.Red, Lethe.MaxHealth, 10);
             _board.Add(lethe);
 

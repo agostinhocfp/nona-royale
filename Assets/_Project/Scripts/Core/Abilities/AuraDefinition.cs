@@ -51,15 +51,18 @@ namespace NonaRoyale.Core.Abilities
             double speedModifier,
             AuraSide side = AuraSide.Enemies,
             bool grantsHaste = false,
-            string description = null)
+            string description = null,
+            int trail = 0)
         {
             if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("An aura needs a name.", nameof(name));
             if (radius < 0) throw new ArgumentOutOfRangeException(nameof(radius));
+            if (trail < 0) throw new ArgumentOutOfRangeException(nameof(trail));
             if (speedModifier == 0.0 && !grantsHaste)
                 throw new ArgumentException("An aura that neither changes speed nor grants haste does nothing.");
 
             Name = name;
             Radius = radius;
+            Trail = trail;
             SpeedModifier = speedModifier;
             Side = side;
             GrantsHaste = grantsHaste;
@@ -70,6 +73,18 @@ namespace NonaRoyale.Core.Abilities
 
         /// <summary>Track steps in either direction.</summary>
         public int Radius { get; }
+
+        /// <summary>
+        /// Track steps <b>behind</b> the projector, along the way everyone
+        /// travels, that it also reaches — a slipstream (2026-09-24). Zero for
+        /// none. Lethe's Catalyst: allies near her or following her.
+        /// </summary>
+        /// <remarks>
+        /// Behind, not ahead, because a race strings a squad out behind its
+        /// runner: measured, allies stood within two cells of her on only 27%
+        /// of her turns (<c>LETHE_ANALYSIS.md</c>).
+        /// </remarks>
+        public int Trail { get; }
 
         /// <summary>Signed change to an affected operator's speed multiplier. Zero for none.</summary>
         public double SpeedModifier { get; }
@@ -91,7 +106,8 @@ namespace NonaRoyale.Core.Abilities
         {
             string payload = GrantsHaste ? "haste" : $"{SpeedModifier:+0.0;-0.0}";
             string side = Side == AuraSide.Allies ? "allies" : "enemies";
-            return $"{Name} (r{Radius}, {payload}, {side})";
+            string reach = Trail > 0 ? $"r{Radius}+{Trail} behind" : $"r{Radius}";
+            return $"{Name} ({reach}, {payload}, {side})";
         }
     }
 }

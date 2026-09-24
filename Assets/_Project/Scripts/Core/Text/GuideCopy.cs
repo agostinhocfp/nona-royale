@@ -155,12 +155,12 @@ namespace NonaRoyale.Core.Text
 
             ["Lethe"] = new GuideCopyEntry(Camp.Owner,
                 "The one who decides where everyone stands.",
-                "Keep your squad close: allies near you move faster, and you are always hasted yourself. " +
-                "Nano Cell heals an ally and seals them in a shield that stops everything but Atomic, at the price of a stun — " +
-                "move them first, then seal them. Eris' Exploit is for crowds: every enemy inside hurts for every other enemy inside, " +
+                "Run ahead and let your squad ride your wake: allies near you, or following a few cells behind, move faster, " +
+                "and you are always hasted yourself. Nano Cell heals an ally and wraps them in a shield that stops everything but Atomic. " +
+                "Eris' Exploit drags nearby enemies together, then every enemy inside hurts for every other enemy inside, " +
                 "now and again at your next upkeep.",
-                "Spread out, because Eris' Exploit does nothing to a lone enemy. Atomic damage goes straight through Nano Cell. " +
-                "Pull her squad away from her and they lose the haste."),
+                "Don't trail her pieces, and don't stand within her reach in a group: Eris' Exploit makes its own crowd. " +
+                "Atomic damage goes straight through Nano Cell, and a squad left behind her loses the haste."),
 
             ["Revú"] = new GuideCopyEntry(Camp.Owner,
                 "The one who makes you pay to touch him.",

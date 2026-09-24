@@ -462,6 +462,20 @@ namespace NonaRoyale.Core.Abilities
         /// <see cref="DeployZone"/>: Amount is the first tick's per-neighbour
         /// payload, Magnitude the lingering one, Stacks the lingering ticks.
         /// </remarks>
+        /// <summary>
+        /// Draws every enemy within <paramref name="radius"/> of the target cell
+        /// up to <paramref name="cells"/> cells toward it (§7.4). Placement.
+        /// </summary>
+        /// <remarks>Packed into the shared fields: Amount is the cells, Radius the reach.</remarks>
+        public static AbilityEffect DrawToCell(int radius, int cells, EffectAudience audience = EffectAudience.EnemyOnly)
+        {
+            if (radius < 1) throw new ArgumentOutOfRangeException(nameof(radius));
+            if (cells < 1) throw new ArgumentOutOfRangeException(nameof(cells));
+
+            return new AbilityEffect(EffectKind.DrawToCell, EffectScope.PrimaryTarget, audience,
+                cells, default, radius, default, 0, 0, 0, 0, 0, 0);
+        }
+
         public static AbilityEffect CrowdZone(
             int perOtherVictim, int lingerTicks, int radius, DamageType damageType,
             EffectAudience audience = EffectAudience.Any,

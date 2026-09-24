@@ -159,6 +159,7 @@ namespace NonaRoyale.Core.Tests.Abilities
 
             Assert.That(op.Aura.Name, Is.EqualTo("Catalyst"));
             Assert.That(op.Aura.Radius, Is.EqualTo(2));
+            Assert.That(op.Aura.Trail, Is.EqualTo(6), "the slipstream, 2026-09-24");
             Assert.That(op.Aura.Side, Is.EqualTo(AuraSide.Allies));
             Assert.That(op.Aura.GrantsHaste, Is.True);
             Assert.That(op.Aura.SpeedModifier, Is.EqualTo(0.0), "Catalyst never touches the speed channel");
@@ -173,11 +174,19 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(heal.Amount, Is.EqualTo(2));
             Assert.That(heal.Audience, Is.EqualTo(EffectAudience.AllyOnly));
 
+            // Designer, 2026-09-24: the stun is gone; the bubble costs energy only.
+            Assert.That(cell.Effects.Any(e => e.Status == StatusKind.Stun && e.Kind == EffectKind.ApplyStatus), Is.False);
+
             // Designer, 2026-09-20: Eris' Exploit 6 → 4 energy, cooldown 4 → 3.
             var eris = Lethe.ErisExploit;
             Assert.That((eris.EnergyCost, eris.CooldownTurns, eris.Range), Is.EqualTo((4, 3, 3)));
             Assert.That(eris.Targeting, Is.EqualTo(AbilityTargeting.Cell));
-            Assert.That(eris.Effects[0].Radius, Is.EqualTo(2));
+            // Designer, 2026-09-24: it draws the crowd in first — within 4, up
+            // to 2 cells — and the zone is still radius 2.
+            Assert.That(eris.Effects[0].Kind, Is.EqualTo(EffectKind.DrawToCell));
+            Assert.That((eris.Effects[0].Radius, eris.Effects[0].Amount), Is.EqualTo((4, 2)));
+            Assert.That(eris.Effects[1].Kind, Is.EqualTo(EffectKind.DeployZone));
+            Assert.That(eris.Effects[1].Radius, Is.EqualTo(2));
         }
 
         [Test]
@@ -202,14 +211,14 @@ namespace NonaRoyale.Core.Tests.Abilities
         // ── Nano Cell ────────────────────────────────────────────────────
 
         [Test]
-        public void NanoCell_ShieldsAndStunsTheAlly_AtOnce()
+        public void NanoCell_ShieldsTheAlly_AndStunsNobody()
         {
             var result = Bubble(_ally);
 
             Assert.That(result.Approved, Is.True, result.ToString());
             Assert.That(_statuses.ShieldPool(_ally), Is.EqualTo(Lethe.NanoCellPool));
-            Assert.That(_statuses.IsStunned(_ally), Is.True,
-                "cast in its own side's turn, the stun takes hold now — move first, then bubble");
+            Assert.That(_statuses.IsStunned(_ally), Is.False,
+                "no stun since 2026-09-24: the ally still moves this turn");
             Assert.That(_red.Energy, Is.EqualTo(12 - 4));
         }
 
@@ -243,7 +252,7 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
-        public void NanoCell_LastsOneEnemyRound_AndTheAllysNextTurn()
+        public void NanoCell_LastsOneEnemyRound_AndTheAllysNextTurn_WithoutAStun()
         {
             Bubble(_ally);
 
@@ -252,14 +261,14 @@ namespace NonaRoyale.Core.Tests.Abilities
             _clock.BeginTurnFor(PlayerColor.Blue);
             Assert.That(_statuses.ShieldPool(_ally), Is.EqualTo(Lethe.NanoCellPool), "the enemy round is covered");
 
-            // The ally's next turn: still inside, still stunned.
+            // The ally's next turn: still inside, and free to move.
             _clock.BeginTurnFor(PlayerColor.Red);
-            Assert.That(_statuses.IsStunned(_ally), Is.True, "the turn it pays with");
+            Assert.That(_statuses.ShieldPool(_ally), Is.EqualTo(Lethe.NanoCellPool), "its own next turn too");
+            Assert.That(_statuses.IsStunned(_ally), Is.False);
 
             // End of that turn: gone.
             _statuses.ExpireCompleted(_ally);
             AdvanceToRedsNextTurn();
-            Assert.That(_statuses.IsStunned(_ally), Is.False);
             Assert.That(_statuses.ShieldPool(_ally), Is.EqualTo(0));
         }
 
@@ -282,22 +291,22 @@ namespace NonaRoyale.Core.Tests.Abilities
 
             Assert.That(result.Approved, Is.True, result.ToString());
             Assert.That(_statuses.ShieldPool(_lethe), Is.EqualTo(Lethe.NanoCellPool));
-            Assert.That(_statuses.IsStunned(_lethe), Is.True);
+            Assert.That(_statuses.IsStunned(_lethe), Is.False);
         }
 
         [Test]
-        public void NanoCell_TheBubbledAllyCannotCast()
+        public void NanoCell_TheBubbledAllyCanStillCast()
         {
+            // It could not before 2026-09-24: the stun took its hands too.
             Bubble(_javi);
 
             var result = _abilities.Use(_javi, Javi.NeuralPurge, _ally, _red, _board);
 
-            Assert.That(result.Approved, Is.False);
-            Assert.That(result.Refusal, Is.EqualTo(AbilityRefusal.CasterStunned));
+            Assert.That(result.Approved, Is.True, result.ToString());
         }
 
         [Test]
-        public void NeuralPurge_PopsTheBubble_ShieldAndStunTogether()
+        public void NeuralPurge_PopsTheBubble()
         {
             // Stated in Lethe.cs so nobody "fixes" it: the cleanse is the answer
             // a blanket immunity needs.
@@ -307,7 +316,6 @@ namespace NonaRoyale.Core.Tests.Abilities
 
             Assert.That(purge.Approved, Is.True, purge.ToString());
             Assert.That(_statuses.ShieldPool(_ally), Is.EqualTo(0));
-            Assert.That(_statuses.IsStunned(_ally), Is.False);
         }
 
         // ── Eris' Exploit ────────────────────────────────────────────────
@@ -375,10 +383,12 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
-        public void ErisExploit_RadiusTwo_CountsNobodyThreeAway()
+        public void ErisExploit_RadiusTwo_CountsNobodyBeyondTheDraw()
         {
+            // Five away is outside the draw's reach of 4, so it is neither
+            // dragged in nor counted.
             Crowd(2);
-            Place(_foes[2], ZoneTrack + 3);   // one step past the edge
+            Place(_foes[2], ZoneTrack + 5);
             Seed(ZoneTrack);
             AdvanceToRedsNextTurn();
 
@@ -386,6 +396,86 @@ namespace NonaRoyale.Core.Tests.Abilities
 
             Assert.That(fired.Caught.Count, Is.EqualTo(2));
             Assert.That(_foes[2].Health, Is.EqualTo(7));
+            Assert.That(_foes[2].Progress, Is.EqualTo(ProgressAtTrack(PlayerColor.Blue, ZoneTrack + 5)), "not moved");
+        }
+
+        // ── The draw (2026-09-24) ────────────────────────────────────────
+
+        [Test]
+        public void ErisExploit_DrawsEnemiesWithinFour_UpToTwoCells_BeforeItStrikes()
+        {
+            // Two already inside, one three away and one four away: the draw
+            // brings both of those inside the radius, so four are struck for 3.
+            Crowd(2);
+            Place(_foes[2], ZoneTrack + 3);
+            Place(_foes[3], ZoneTrack - 4);
+
+            var cast = Seed(ZoneTrack);
+
+            Assert.That(cast.Approved, Is.True, cast.ToString());
+            Assert.That(_foes[2].Progress, Is.EqualTo(ProgressAtTrack(PlayerColor.Blue, ZoneTrack + 1)), "3 away → 1 away");
+            Assert.That(_foes[3].Progress, Is.EqualTo(ProgressAtTrack(PlayerColor.Blue, ZoneTrack - 2)), "4 away → 2 away");
+            Assert.That(_foes.All(f => f.Health == 7 - 3), Is.True, "four caught, 3 each");
+            Assert.That(cast.Outcomes.Count(o => o.Kind == EffectOutcomeKind.Pulled), Is.EqualTo(3),
+                "the two it moved, and the one at 11 drawn onto the cell");
+        }
+
+        [Test]
+        public void ErisExploit_DrawsNoFurtherThanTheCell()
+        {
+            // Away from any start cell or home entry, so no clamp can hide an
+            // overshoot: Lethe at 18, the zone at 20.
+            Place(_lethe, 18);
+            Place(_foes[0], 21);
+            Place(_foes[1], 20);
+
+            Seed(20);
+
+            Assert.That(_foes[0].Progress, Is.EqualTo(ProgressAtTrack(PlayerColor.Blue, 20)), "one away lands on it, not past it");
+            Assert.That(_foes[1].Progress, Is.EqualTo(ProgressAtTrack(PlayerColor.Blue, 20)), "already there, stays");
+        }
+
+        [Test]
+        public void ErisExploit_NeverDrawsAPieceBehindItsOwnStart()
+        {
+            // A Blue piece on its own start cell, just ahead of the zone, has
+            // no path behind it: it clamps where it stands.
+            Crowd(2);
+            Place(_foes[2], _map.StartTrackIndex(PlayerColor.Blue));
+            Assert.That(_foes[2].Progress, Is.EqualTo(0), "precondition: on its start cell");
+
+            Seed(ZoneTrack);
+
+            Assert.That(_foes[2].Progress, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void ErisExploit_NeverDrawsAPieceIntoItsHomeColumn()
+        {
+            // Blue's last loop cell sits just behind its start. A Blue piece two
+            // cells short of its start, drawn toward that start, would cross its
+            // home entry: it clamps on its last loop cell instead.
+            int start = _map.StartTrackIndex(PlayerColor.Blue);
+            int track = _map.Profile.TrackLength;
+            Place(_lethe, start - 1);
+            Place(_foes[0], start - 2);
+            Assert.That(_foes[0].Progress, Is.EqualTo(track - 2), "precondition: two short of its home entry");
+
+            var cast = Seed(start);
+
+            Assert.That(cast.Approved, Is.True, cast.ToString());
+            Assert.That(_foes[0].Progress, Is.EqualTo(track - 1), "its last loop cell, never its home column");
+        }
+
+        [Test]
+        public void ErisExploit_LeavesHerOwnSideWhereItStands()
+        {
+            Crowd(2);
+            int allyBefore = _ally.Progress, javiBefore = _javi.Progress;
+
+            Seed(ZoneTrack);
+
+            Assert.That((_ally.Progress, _javi.Progress), Is.EqualTo((allyBefore, javiBefore)));
         }
 
         [Test]
@@ -560,6 +650,54 @@ namespace NonaRoyale.Core.Tests.Abilities
 
             Place(_ally, 13);
             Assert.That(rules.GrantsHaste(_ally, _board), Is.False, "three away: it fades");
+        }
+
+        [Test]
+        public void Catalyst_ReachesSixBehindHer_TheSlipstream()
+        {
+            // Designer, 2026-09-24: allies trailing her along the way everyone
+            // travels are reached too, six cells deep. Lethe stands at 10.
+            var rules = Auras((_lethe, Lethe.Catalyst));
+
+            Place(_ally, 10 - 6);
+            Assert.That(rules.GrantsHaste(_ally, _board), Is.True, "six behind: the end of the wake");
+
+            Place(_ally, 10 - 7);
+            Assert.That(rules.GrantsHaste(_ally, _board), Is.False, "seven behind: out of it");
+
+            Place(_ally, 10 + 3);
+            Assert.That(rules.GrantsHaste(_ally, _board), Is.False, "ahead of her the reach is still two");
+
+            Place(_foes[0], 10 - 3);
+            Assert.That(rules.GrantsHaste(_foes[0], _board), Is.False, "an enemy in her wake gains nothing");
+        }
+
+        [Test]
+        public void Catalyst_CoversHerRadius_AndHerWake_ForTheLane()
+        {
+            // Two either side of her at 10, and six behind: 4 to 12.
+            var rules = Auras((_lethe, Lethe.Catalyst));
+
+            var cells = rules.CellsCovered(_lethe).Select(c => c.Index).OrderBy(i => i).ToList();
+
+            Assert.That(cells, Is.EqualTo(Enumerable.Range(4, 9).ToList()));
+            Assert.That(rules.CellsCovered(_javi), Is.Empty, "no aura, no lane");
+            Assert.That(rules.SideOf(_lethe), Is.EqualTo(AuraSide.Allies));
+
+            _lethe.MoveTo(PathMap.YardProgress);
+            Assert.That(rules.CellsCovered(_lethe), Is.Empty, "out of play, no lane");
+        }
+
+        [Test]
+        public void StepsBehind_CountsForwardAlongTheLoop()
+        {
+            Place(_ally, 10 - 6);
+            Assert.That(_targeting.StepsBehind(_ally, _lethe), Is.EqualTo(6));
+            Assert.That(_targeting.StepsBehind(_lethe, _ally), Is.EqualTo(_map.Profile.CircuitLength - 6),
+                "the other way round is almost a lap");
+
+            _ally.MoveTo(PathMap.YardProgress);
+            Assert.That(_targeting.StepsBehind(_ally, _lethe), Is.Null);
         }
 
         [Test]

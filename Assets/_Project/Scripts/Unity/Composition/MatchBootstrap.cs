@@ -1595,6 +1595,7 @@ namespace NonaRoyale.Unity.Composition
 
             _hovered = piece;
             RefreshMarks();
+            RefreshAuraLane();
 
             var op = piece != null ? piece.Operator : null;
             if (_rail != null) _rail.SetHovered(op);
@@ -2736,6 +2737,7 @@ namespace NonaRoyale.Unity.Composition
                 DrawAim();
 
             RefreshMarks();
+            RefreshAuraLane();
         }
 
         private void CollectMoveOptions()
@@ -2898,11 +2900,15 @@ namespace NonaRoyale.Unity.Composition
                     else piece.Settle(position);
 
                     // Statuses come from the engine, never from replaying
-                    // StatusApplied/StatusExpired (PRESENTATION §1). Evasion is
-                    // drawn on the piece; everything else is a tag.
+                    // StatusApplied/StatusExpired (PRESENTATION §1). Evasion and
+                    // haste are drawn on the piece; everything else is a tag.
                     var statuses = _match.Engine.ActiveStatusesOn(piece.Operator);
+                    bool hastened = statuses.Contains(StatusKind.Hastened);
 
-                    piece.Refresh(evasive: statuses.Contains(StatusKind.Evasion));
+                    piece.Refresh(
+                        evasive: statuses.Contains(StatusKind.Evasion),
+                        hastened: hastened,
+                        travel: hastened && !yard ? TravelAt(piece.Operator) : (Vector3?)null);
 
                     if (_pieceHud != null)
                     {
@@ -2913,6 +2919,59 @@ namespace NonaRoyale.Unity.Composition
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// The world direction from an operator's cell to the next one on its
+        /// own path — which way its haste streaks trail from. At the last cell
+        /// the step behind it is read instead.
+        /// </summary>
+        private Vector3? TravelAt(OperatorState op)
+        {
+            var map = _match.Map;
+            int progress = op.Progress;
+            if (progress < 0) return null;
+
+            bool last = progress + 1 >= map.Profile.Journey;
+            int from = last ? progress - 1 : progress;
+            if (from < 0) return null;
+
+            var a = _layout.PositionOf(map.CellAt(op.Owner, from));
+            var b = _layout.PositionOf(map.CellAt(op.Owner, from + 1));
+            var direction = b - a;
+            return direction.sqrMagnitude > 1e-6f ? direction : (Vector3?)null;
+        }
+
+        /// <summary>
+        /// The aura lane (2026-09-24): the cells the hovered — or else the
+        /// selected — operator's aura covers, faintly, in its side's colour.
+        /// Catalyst draws its radius and the wake behind Lethe in haste lime;
+        /// Bouncer's drag draws in slow's colour. The cells are the engine's
+        /// (<c>GameEngine.AuraCellsOf</c>).
+        /// </summary>
+        private void RefreshAuraLane()
+        {
+            if (_highlights == null) return;
+
+            var subject = _hovered != null ? _hovered.Operator : _selectedOperator;
+            if (_match == null || subject == null || _match.Engine.MatchOver)
+            {
+                _highlights.ClearAura();
+                return;
+            }
+
+            var side = _match.Engine.AuraSideOf(subject);
+            if (side == null)
+            {
+                _highlights.ClearAura();
+                return;
+            }
+
+            var colour = side == AuraSide.Allies
+                ? StatusPalette.OnBoard(StatusKind.Hastened)
+                : StatusPalette.OnBoard(StatusKind.Slow);
+
+            _highlights.ShowAura(_match.Engine.AuraCellsOf(subject), colour);
         }
 
         /// <summary>An operator's place in its squad, which is its seat at the table.</summary>

@@ -39,7 +39,7 @@ Same reasoning for status badges. The view receives `StatusApplied` and `StatusE
 |                               | Why                                                                                                                            |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | Health, per operator          | Every combat decision is a threshold question                                                                                  |
-| Active statuses, per operator | A status that cannot be seen may as well not apply                                                                             |
+| Active statuses, per operator | A status that cannot be seen may as well not apply. Most are tags; Evasion fades the piece and Hastened trails lime streaks (2026-09-24), because both sit on the same pieces all match |
 | Why health changed            | Upkeep damage lands in a phase where nothing else moves; a bar dropping with no cause is the board declining to explain itself |
 | Whose turn, and their energy  | The pool is shared, so it is a squad-level decision                                                                            |
 | Each seat's debt              | It grows every turn it is owed and is what Sadist will hit for, so it decides who chases Revú; Roman numerals beside the pool, never on a piece (`COMBAT_SYSTEMS.md` §3.3) |
@@ -52,6 +52,7 @@ Same reasoning for status badges. The view receives `StatusApplied` and `StatusE
 | ------------------------------ | -------------------------------------------------------------- |
 | Where a move would land        | After rolling                                                  |
 | Which cells an ability reaches | When an ability is selected                                    |
+| Which cells an aura covers     | When its holder is hovered or selected: a faint lane (Catalyst's wake, Bouncer's drag) |
 | Whether an ability can be cast | Always in the tray, from the engine, with the reason it cannot |
 | What just happened, in words   | The event log, always present but scannable                    |
 
