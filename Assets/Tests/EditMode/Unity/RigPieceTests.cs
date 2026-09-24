@@ -26,6 +26,13 @@ namespace NonaRoyale.Unity.Tests.View
             OperatorRigArt.ClearCache();
             OperatorLookBook.Enabled = true;
             OperatorRigArt.Enabled = true;
+
+            // Bouncer has real board renders since c14a2b4 (2026-09-23), and a
+            // render outranks the rig, so these tests hide them: they are about
+            // a rigged figure, and his rig is the one with named parts.
+            // Register(null) records "no art" until TearDown clears the cache.
+            OperatorArtLibrary.Register("Bouncer", FigurePose.Seated, null);
+            OperatorArtLibrary.Register("Bouncer", FigurePose.Standing, null);
         }
 
         [TearDown]
@@ -41,8 +48,8 @@ namespace NonaRoyale.Unity.Tests.View
         [Test]
         public void Bouncer_IsDrawnAsARig_SeatedAndStanding()
         {
-            Assume.That(OperatorArtLibrary.Rendered("Bouncer", FigurePose.Standing), Is.Null,
-                "Bouncer has a real render now; point this test at a rigged operator without one.");
+            Assert.That(OperatorArtLibrary.Rendered("Bouncer", FigurePose.Standing), Is.Null,
+                "precondition: SetUp hides his renders");
 
             var piece = Bind("Bouncer");
 

@@ -41,8 +41,10 @@ namespace NonaRoyale.Unity.Tests.View
         [Test]
         public void AnOperatorWithNoRender_GetsItsLookBookFigure()
         {
-            Assume.That(OperatorArtLibrary.Rendered("Bouncer", FigurePose.Standing), Is.Null,
-                "Bouncer has a real render now; point this test at an operator without one.");
+            // Bouncer has real renders since c14a2b4 (2026-09-23); hide the
+            // standing one so the look book underneath is what gets drawn.
+            OperatorArtLibrary.Register("Bouncer", FigurePose.Standing, null);
+            Assert.That(OperatorArtLibrary.Rendered("Bouncer", FigurePose.Standing), Is.Null, "precondition");
 
             var art = OperatorArtLibrary.Figure("Bouncer", FigurePose.Standing);
 
