@@ -78,12 +78,12 @@ namespace NonaRoyale.Core.Model
 
         /// <summary>
         /// What this seat owes (§3.3, 2026-09-24). Only <c>EnergyLedger</c>
-        /// changes it. Collected from the pool at the end of this seat's turn.
+        /// changes it. It grows as this seat ends its turns and ends only when
+        /// Sadist calls it or a collision burns it.
         /// </summary>
         /// <remarks>
         /// <b>One figure per seat, not per operator</b> (designer): it sits
-        /// beside the pool it is paid from, so the board carries no marker for
-        /// it.
+        /// beside the seat's pool, so the board carries no marker for it.
         /// </remarks>
         public int Debt { get; private set; }
 

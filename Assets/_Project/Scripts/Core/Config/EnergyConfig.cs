@@ -73,9 +73,9 @@ namespace NonaRoyale.Core.Config
         public int DebtCap { get; }
 
         /// <summary>
-        /// Added to a seat's debt when it ends its turn without paying all of
-        /// it (§3.3). Charged once per turn, on the unpaid remainder only, and
-        /// never past <see cref="DebtCap"/>.
+        /// Added to a seat's debt each time it ends its turn owing anything
+        /// (§3.3), never past <see cref="DebtCap"/>. Nothing is ever paid, so
+        /// this is the only way a debt changes between a loan and its end.
         /// </summary>
         public int DebtInterest { get; }
 

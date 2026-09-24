@@ -158,7 +158,7 @@ namespace NonaRoyale.Core.Events
 
     /// <summary>
     /// A seat was put in debt by an enemy ability (§3.3). Revú's Leech Round.
-    /// Nothing has been paid yet; the seat pays when it ends its turn.
+    /// Nothing is ever paid; the debt grows as the seat ends its turns.
     /// </summary>
     public sealed class DebtIncurred : IGameEvent
     {
@@ -184,33 +184,24 @@ namespace NonaRoyale.Core.Events
     }
 
     /// <summary>
-    /// A seat paid what it could of its debt as it ended its turn (§3.3). The
-    /// energy is destroyed; an unpaid remainder drew interest.
+    /// A seat's debt grew as it ended its turn (§3.3). Nothing was paid:
+    /// debt ends only when Sadist calls it or a collision burns it.
     /// </summary>
-    public sealed class DebtCollected : IGameEvent
+    public sealed class DebtAccrued : IGameEvent
     {
-        public DebtCollected(PlayerColor player, int paid, int interest, int owed, int remaining)
+        public DebtAccrued(PlayerColor player, int interest, int owed)
         {
-            Player = player; Paid = paid; Interest = interest; Owed = owed; Remaining = remaining;
+            Player = player; Interest = interest; Owed = owed;
         }
         public PlayerColor Player { get; }
 
-        /// <summary>Energy taken from the pool against the debt.</summary>
-        public int Paid { get; }
-
-        /// <summary>Added to the unpaid remainder.</summary>
+        /// <summary>Added this turn.</summary>
         public int Interest { get; }
 
         /// <summary>The debt afterwards.</summary>
         public int Owed { get; }
 
-        /// <summary>The pool afterwards.</summary>
-        public int Remaining { get; }
-
-        public override string ToString() =>
-            Owed == 0
-                ? $"{Player} pays its debt of {Paid} ({Remaining} energy left)"
-                : $"{Player} pays {Paid} of its debt; +{Interest} interest, {Owed} still owed";
+        public override string ToString() => $"{Player}'s debt grows by {Interest} ({Owed} owed)";
     }
 
     /// <summary>A seat's debt was called in by an ability and cleared (§3.3). Revú's Sadist.</summary>

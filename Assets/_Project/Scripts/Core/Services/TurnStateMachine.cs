@@ -287,15 +287,14 @@ namespace NonaRoyale.Core.Services
         public int RollOneDie() => _random.NextInt(1, _config.DiceSides + 1);
 
         /// <summary>
-        /// Closes the turn: the seat's debt is collected, status durations
-        /// expire, then the win check runs.
+        /// Closes the turn: the seat's debt grows, status durations expire,
+        /// then the win check runs.
         /// </summary>
         /// <remarks>
-        /// <b>Debt is collected here, not at upkeep</b> (§3.3). A debt run up on
-        /// an opponent's turn is paid from what the seat chose to keep after its
-        /// own turn, income included, so paying and spending are a decision it
-        /// makes with the bill in front of it. At upkeep the first payment would
-        /// come out of a pool spent before the debt existed.
+        /// <b>Debt grows here, not at upkeep</b> (§3.3): a loan made on an
+        /// opponent's turn draws its first interest only after the debtor has
+        /// had a whole turn of its own to answer it — by landing on its
+        /// creditor, which burns it.
         ///
         /// Expiry sits here rather than at upkeep so a 1-turn stun applied during
         /// an opponent's turn blocks a real action phase before it lapses (§6).
@@ -314,7 +313,7 @@ namespace NonaRoyale.Core.Services
             if (Phase != TurnPhase.Action && Phase != TurnPhase.AwaitingRoll)
                 throw new InvalidOperationException($"Cannot end a turn during {Phase}.");
 
-            var debt = _energy.CollectDebt(CurrentPlayer);
+            var debt = _energy.AccrueDebt(CurrentPlayer);
 
             var expired = new List<ExpiredStatus>();
 

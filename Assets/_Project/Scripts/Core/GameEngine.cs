@@ -560,13 +560,11 @@ namespace NonaRoyale.Core
 
             var report = _turns.EndTurn();
 
-            // Collected before anything expires, as the turn machine ran it:
-            // the bill closes the turn (§3.3).
-            if (report.Debt.Happened)
-            {
-                events.Add(new DebtCollected(report.Player, report.Debt.Paid, report.Debt.Interest,
-                    report.Debt.Owed, PlayerOf(report.Player)?.Energy ?? 0));
-            }
+            // Before anything expires, as the turn machine ran it (§3.3). Only
+            // a debt that actually grew is reported: one already at the cap
+            // has nothing new to say every turn.
+            if (report.Debt.Interest > 0)
+                events.Add(new DebtAccrued(report.Player, report.Debt.Interest, report.Debt.Owed));
 
             foreach (var expired in report.Expired)
                 events.Add(new StatusExpired(expired.Operator, expired.Kind));

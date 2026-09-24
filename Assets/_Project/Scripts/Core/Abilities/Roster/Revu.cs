@@ -11,9 +11,8 @@ namespace NonaRoyale.Core.Abilities
     /// </summary>
     /// <remarks>
     /// <b>The punishment web, reworked around debt (2026-09-24).</b> Leech
-    /// Round puts the target's seat in debt; the seat pays from its pool when it
-    /// ends its turn, or carries the remainder with interest. Sadist calls the
-    /// debt in as damage. His passive makes the cheap answers to him the
+    /// Round puts the target's seat in debt, and the debt grows by one each
+    /// time that seat ends its turn. Sadist calls the debt in as damage. His passive makes the cheap answers to him the
     /// dangerous ones, and the one free answer is to land on him with the dice,
     /// which also burns what you owe him (§3.3).
     ///
@@ -64,17 +63,17 @@ namespace NonaRoyale.Core.Abilities
         /// cooldown 1, range 3 (designer, 2026-09-17), so it is a cast he can
         /// make every turn the pool allows.
         ///
-        /// <b>Nothing is taken now</b> (2026-09-24). The seat pays when it ends
-        /// its own turn, so it chooses between keeping energy back to settle and
-        /// spending it and letting the debt grow. Paid debt is destroyed, not
-        /// handed to Revú (designer).
+        /// <b>No energy is taken, now or later</b> (designer, 2026-09-24). The
+        /// debt grows by one as the seat ends each turn, up to the cap. The
+        /// debtor's answers are to land on Revú, which burns it, or to reach
+        /// him before Sadist does.
         ///
         /// A seat already at the cap owes no more, and the event says so.
         /// </remarks>
         public static AbilityDefinition LeechRound { get; } = new AbilityDefinition(
             id: 1101, name: "Leech Round",
             description:
-                "A round with a loan attached. It wounds the target, and the target's side owes the house before its turn is out.",
+                "A round with a loan attached. It wounds the target, and the target's side owes the house a debt that grows every turn until it is collected.",
             energyCost: 3, cooldownTurns: 1, range: 3,
             effects: new[]
             {
@@ -97,8 +96,8 @@ namespace NonaRoyale.Core.Abilities
         ///
         /// <b>Cost 6, cooldown 3, range 3, Normal</b> (repriced 2026-09-21 to 7,
         /// and to 6 by the designer on 2026-09-24).
-        /// Leech Round into Sadist is the plan: a loan the debtor refuses to
-        /// pay grows by one a turn, up to the cap, and the ultimate collects it.
+        /// Leech Round into Sadist is the plan: a loan grows by one a turn, up to
+        /// the cap, and the ultimate collects it.
         ///
         /// <b>Mirror match:</b> Equilibrium halves a Sadist aimed at another
         /// Revú (cost 6, still the dear band), so the most it deals him is 3.

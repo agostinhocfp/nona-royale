@@ -100,10 +100,9 @@ namespace NonaRoyale.Core.Text
                 .Number(energy.EnergyCap).Text(". It refills from your rolls, and a knockout pays a bounty of ")
                 .Number(combat.NeutralizeEnergyBounty).Text("."));
             Term(list, Keywords.Debt, "Debt", new RulesLine()
-                .Text("What your seat owes an enemy, beside your ")
-                .Keyword("energy", Keywords.Energy).Text(". When your turn ends your pool pays what it can, and that energy is gone; whatever is left unpaid grows by ")
+                .Text("What your seat owes an enemy. It is never paid: each time your turn ends it grows by ")
                 .Number(energy.DebtInterest).Text(", never past ").Number(energy.DebtCap)
-                .Text(". Land one of your operators on the one you owe and the whole debt burns."));
+                .Text(", until the one you owe collects it as damage. Land one of your operators on the one you owe and the whole debt burns."));
             Term(list, Keywords.Critical, "Critical", new RulesLine()
                 .Text("A hit that rolls a critical is multiplied. The ability says the chance and the multiplier."));
             Term(list, Keywords.Heavy, "Heavy", new RulesLine()

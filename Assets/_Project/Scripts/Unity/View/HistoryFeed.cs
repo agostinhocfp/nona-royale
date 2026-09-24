@@ -176,7 +176,7 @@ namespace NonaRoyale.Unity.View
             OperatorDeployed deployed = null;
             OperatorPityDeployed pity = null;
             OperatorReachedHome home = null;
-            DebtCollected debt = null;
+            DebtAccrued debt = null;
             bool collided = false;
 
             foreach (var e in segment)
@@ -186,7 +186,7 @@ namespace NonaRoyale.Unity.View
                 else if (e is OperatorPityDeployed p && pity == null) pity = p;
                 else if (e is OperatorReachedHome h && home == null) home = h;
                 else if (e is CollisionResolved) collided = true;
-                else if (e is DebtCollected c && debt == null) debt = c;
+                else if (e is DebtAccrued c && debt == null) debt = c;
             }
 
             Tally(segment, out int damage, out int heal, out bool knockout);
@@ -240,12 +240,12 @@ namespace NonaRoyale.Unity.View
             else if (debt != null)
             {
                 // A turn closed by the end-turn command has nothing else in its
-                // segment, and the bill would otherwise vanish from the strip
-                // (§3.3). Quiet: no toast, the chip and its card only.
-                item = New(HistoryKind.Upkeep, null, round, "DEBT", $"{debt.Player} settles up");
+                // segment, and the interest would otherwise vanish from the
+                // strip (§3.3). Quiet: no toast, the chip and its card only.
+                item = New(HistoryKind.Upkeep, null, round, "DEBT", $"{debt.Player}'s debt grows");
                 item.Seat = debt.Player;
-                item.Value = $"-{debt.Paid}";
-                item.ValueColour = UiTheme.GoldBright;
+                item.Value = DebtMark.Roman(debt.Owed);
+                item.ValueColour = UiTheme.Debt;
                 item.Toast = false;
             }
             else

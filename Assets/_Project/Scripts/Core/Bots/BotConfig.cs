@@ -60,21 +60,17 @@ namespace NonaRoyale.Core.Bots
         /// <summary>Multiplier on the worth of the harmful statuses a cleanse strips.</summary>
         public double Cleanse { get; set; } = 1.2;
 
-        /// <summary>Per point of debt an ability puts on an enemy seat (§3.3): energy it will pay or owe.</summary>
-        public double EnergyDenial { get; set; } = 0.5;
-
         /// <summary>
-        /// Per point of its own seat's debt a cast would leave unpaid at the end
-        /// of the turn (§3.3). An unpaid point stays owed, draws interest and
-        /// feeds Sadist, so it costs more than the energy that caused it — which
-        /// is what makes a bot in debt keep some of its pool back.
+        /// Per point of debt an ability puts on an enemy seat (§3.3): a point
+        /// of a later Sadist, and the interest it will draw. Named
+        /// <c>EnergyDenial</c> while the debt was collected from the pool.
         /// </summary>
-        public double DebtShortfall { get; set; } = 0.6;
+        public double DebtWorth { get; set; } = 0.5;
 
         /// <summary>
         /// Per point of debt a collision burns by landing on the creditor
-        /// (§3.3). Above <see cref="EnergyDenial"/>: burning it saves the energy
-        /// and the Sadist it was feeding.
+        /// (§3.3). Above <see cref="DebtWorth"/>: a burn ends a debt that would
+        /// otherwise only grow.
         /// </summary>
         public double DebtBurn { get; set; } = 0.8;
 

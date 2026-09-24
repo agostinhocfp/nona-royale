@@ -14,9 +14,9 @@ namespace NonaRoyale.Unity.View
     /// mean one thing. The cap is six, so the longest figure is two characters.
     ///
     /// <b>One figure per seat, and never parked on a piece</b> (designer,
-    /// 2026-09-24). The standing number lives in the HUD beside the pool it is
-    /// paid from; the board only shows debt for the moment something happens
-    /// to it (<see cref="FeedbackLayer"/>).
+    /// 2026-09-24). The standing number lives in the HUD beside the seat's
+    /// pool; the board only shows debt for the moment something happens to it
+    /// (<see cref="FeedbackLayer"/>).
     /// </remarks>
     public static class DebtMark
     {

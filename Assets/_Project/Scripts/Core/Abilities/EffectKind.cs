@@ -238,11 +238,10 @@ namespace NonaRoyale.Core.Abilities
         /// caster, within the cap (§3.3, 2026-09-24). Revú's Leech Round.
         /// </summary>
         /// <remarks>
-        /// <b>Nothing is taken at cast time.</b> The seat pays from its pool when
-        /// it ends its own turn, and an unpaid remainder draws interest, so the
-        /// debtor always has a turn to choose between paying and spending. It
-        /// replaced an instant drain (2026-09-17), which gave the victim no
-        /// choice and the spectator nothing to follow.
+        /// <b>No energy moves, now or later.</b> The debt grows by interest as
+        /// the seat ends its turns, until Sadist calls it or a collision burns
+        /// it. It replaced an instant drain (2026-09-17), which gave the victim
+        /// nothing to answer and the spectator nothing to follow.
         ///
         /// The first kind that reaches past an operator into a player. It needs
         /// the seats, which the resolver takes at composition; a resolver built

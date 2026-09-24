@@ -478,8 +478,8 @@ namespace NonaRoyale.Core.Abilities
         }
 
         /// <summary>
-        /// Puts the primary target's seat in debt to the caster (§3.3), collected
-        /// from its pool when it ends its turn. Revú's Leech Round.
+        /// Puts the primary target's seat in debt to the caster (§3.3); the debt
+        /// grows as the seat ends its turns. Revú's Leech Round.
         /// </summary>
         public static AbilityEffect IncurDebt(int amount, EffectAudience audience = EffectAudience.EnemyOnly)
         {

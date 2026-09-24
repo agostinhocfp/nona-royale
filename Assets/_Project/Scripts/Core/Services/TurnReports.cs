@@ -152,7 +152,7 @@ namespace NonaRoyale.Core.Services
             IReadOnlyList<ExpiredStatus> expired,
             PlayerColor? winner,
             IReadOnlyList<PlayerColor> winningSeats = null,
-            DebtCollection debt = default)
+            DebtAccrual debt = default)
         {
             Player = player;
             Expired = expired ?? throw new ArgumentNullException(nameof(expired));
@@ -169,10 +169,10 @@ namespace NonaRoyale.Core.Services
         public IReadOnlyList<ExpiredStatus> Expired { get; }
 
         /// <summary>
-        /// What the closing seat paid against its debt (§3.3). Empty when it
-        /// owed nothing.
+        /// What the closing seat's debt did (§3.3): the interest it drew. Empty
+        /// when it owed nothing.
         /// </summary>
-        public DebtCollection Debt { get; }
+        public DebtAccrual Debt { get; }
 
         /// <summary>
         /// The seat the winning side is named after, or null while the match

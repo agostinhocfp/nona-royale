@@ -13,8 +13,8 @@ namespace NonaRoyale.Core.Tests.Bots
     /// What the bots had to learn for Revú (2026-09-17; debt rework
     /// 2026-09-24): Equilibrium rescales what a cast is worth against him, a
     /// loan is worth what the debt cap still has room for, Sadist is worth the
-    /// debt it calls in, a seat in debt pays for casting into its own bill, and
-    /// landing on the creditor is worth the debt it burns.
+    /// debt it calls in, and landing on the creditor is worth the debt it burns.
+    /// The shortfall term went with automatic collection (2026-09-24).
     /// </summary>
     [TestFixture]
     public class RevuBotTests
@@ -61,12 +61,6 @@ namespace NonaRoyale.Core.Tests.Bots
         }
 
         private static readonly EnergyLedger Ledger = new EnergyLedger(Config.EnergyConfig.Default);
-
-        private static void SetPool(PlayerState player, int amount)
-        {
-            Ledger.Spend(player, player.Energy);
-            if (amount > 0) Ledger.GrantBounty(player, amount);
-        }
 
         private static void SetDebt(PlayerState player, int amount, OperatorState creditor)
         {
@@ -116,7 +110,7 @@ namespace NonaRoyale.Core.Tests.Bots
             SetDebt(_blue, 6, _revu);
             double atCap = Score(_revu, Revu.LeechRound, _enemyRevu).Offence;
 
-            double point = Weights.EnergyDenial * Weights.Offence;
+            double point = Weights.DebtWorth * Weights.Offence;
             Assert.That(clear - nearCap, Is.EqualTo(point).Within(1e-9), "room for 1 of the 2");
             Assert.That(nearCap - atCap, Is.EqualTo(point).Within(1e-9), "room for none");
         }
@@ -132,38 +126,6 @@ namespace NonaRoyale.Core.Tests.Bots
 
             Assert.That(clear, Is.GreaterThan(0.0), "the floor is worth something");
             Assert.That(deep, Is.GreaterThan(clear), "a seat at the cap is the play");
-        }
-
-        [Test]
-        public void DebtShortfall_IsWhatTheCastLeavesUnpaid()
-        {
-            SetPool(_red, 6);
-
-            SetDebt(_red, 0, _enemyRevu);
-            Assert.That(CastPlanner.DebtShortfall(_red, 3), Is.EqualTo(0), "no debt");
-
-            SetDebt(_red, 3, _enemyRevu);
-            Assert.That(CastPlanner.DebtShortfall(_red, 3), Is.EqualTo(0), "6 pays the cast and the bill");
-
-            SetDebt(_red, 5, _enemyRevu);
-            Assert.That(CastPlanner.DebtShortfall(_red, 3), Is.EqualTo(2), "3 left against 5 owed");
-
-            SetPool(_red, 2);
-            Assert.That(CastPlanner.DebtShortfall(_red, 2), Is.EqualTo(2), "already short 3; now 5");
-        }
-
-        [Test]
-        public void ASeatInDebt_PaysForCastingIntoItsOwnBill()
-        {
-            SetPool(_red, 6);
-
-            SetDebt(_red, 0, _enemyRevu);
-            double square = Score(_revu, Revu.LeechRound, _enemyRevu).Score;
-
-            SetDebt(_red, 5, _enemyRevu);
-            double owing = Score(_revu, Revu.LeechRound, _enemyRevu).Score;
-
-            Assert.That(square - owing, Is.EqualTo(2 * Weights.DebtShortfall).Within(1e-9));
         }
 
         [Test]

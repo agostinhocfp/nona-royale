@@ -131,12 +131,11 @@ namespace NonaRoyale.Core.Services
         /// the cap, and reports what was actually added. Revú's Leech Round.
         /// </summary>
         /// <remarks>
-        /// <b>Nothing is taken now.</b> The pool pays when the debtor ends its
-        /// own turn (<see cref="CollectDebt"/>), so the seat always gets a full
-        /// turn, income included, to decide between paying and spending. The
-        /// creditor is recorded even when the cap refuses the amount: the seat
-        /// still owes that operator, and a collision against it still burns the
-        /// debt.
+        /// <b>Nothing is taken, now or later.</b> The debt grows as the debtor
+        /// ends its turns (<see cref="AccrueDebt"/>) until Sadist calls it or a
+        /// collision burns it. The creditor is recorded even when the cap
+        /// refuses the amount: the seat still owes that operator, and a
+        /// collision against it still burns the debt.
         /// </remarks>
         public int IncurDebt(PlayerState debtor, int amount, int creditorId)
         {
@@ -150,31 +149,28 @@ namespace NonaRoyale.Core.Services
         }
 
         /// <summary>
-        /// Collects a seat's debt as it ends its turn (§3.3): the pool pays what
-        /// it can, destroyed, and an unpaid remainder draws interest within the
-        /// cap.
+        /// Grows a seat's debt as it ends its turn (§3.3): interest on the whole
+        /// debt, within the cap. Nothing is paid and no energy moves.
         /// </summary>
         /// <remarks>
-        /// <b>Destroyed, not transferred</b> (designer, 2026-09-24), as the drain
-        /// it replaced was. Interest is charged once, on the remainder only, so a
-        /// seat that pays in full is square and one that pays nothing owes one
-        /// more than it did.
+        /// <b>No automatic collection</b> (designer, 2026-09-24). The first
+        /// version took what the pool could pay every turn, and a seat almost
+        /// always could — the debt was the old drain one turn late, and it never
+        /// built. Measured without collection, it does build, at no cost in
+        /// balance (§10.11). A debt ends only when Sadist calls it or a
+        /// collision against a creditor burns it.
         /// </remarks>
-        public DebtCollection CollectDebt(PlayerState debtor)
+        public DebtAccrual AccrueDebt(PlayerState debtor)
         {
             if (debtor == null) throw new ArgumentNullException(nameof(debtor));
 
             int before = debtor.Debt;
-            if (before == 0) return DebtCollection.None;
+            if (before == 0) return DebtAccrual.None;
 
-            int paid = Math.Min(before, debtor.Energy);
-            debtor.SetEnergy(debtor.Energy - paid);
+            int interest = Math.Min(_config.DebtInterest, Math.Max(0, _config.DebtCap - before));
+            debtor.SetDebt(before + interest);
 
-            int unpaid = before - paid;
-            int interest = unpaid > 0 ? Math.Min(_config.DebtInterest, _config.DebtCap - unpaid) : 0;
-            debtor.SetDebt(unpaid + interest);
-
-            return new DebtCollection(before, paid, interest, debtor.Debt);
+            return new DebtAccrual(before, interest, debtor.Debt);
         }
 
         /// <summary>

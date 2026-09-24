@@ -164,13 +164,13 @@ namespace NonaRoyale.Core.Text
 
             ["Revú"] = new GuideCopyEntry(Camp.Owner,
                 "The one who makes you pay to touch him.",
-                "Lend first, collect later. Leech Round hurts and puts the target's side in debt; " +
-                "they pay it from their pool when their turn ends, or it grows. Sadist deals whatever they owe, " +
-                "and splashes the enemies around the target. Equilibrium halves expensive casts against you, " +
-                "so enemies are pushed onto cheap ones — and every one they cast is energy not kept for the bill.",
-                "Keep enough back to pay what you owe, or watch the debt grow toward his Sadist. " +
-                "Cheap abilities hit him double: that is the way in. " +
-                "Better still, land on him with the dice: collisions ignore his passive and burn your whole debt."),
+                "Lend first, collect later. Leech Round hurts and puts the target's side in debt, " +
+                "and the debt grows every turn they leave it. Sadist deals whatever they owe and splashes " +
+                "the enemies around the target, so let a loan ripen before you call it. " +
+                "Equilibrium halves expensive casts against you, so enemies are pushed onto cheap ones.",
+                "The debt never goes away on its own: land on him with the dice and the whole of it burns. " +
+                "Cheap abilities hit him double, and collisions ignore his passive entirely — " +
+                "the sooner you reach him, the less his Sadist has to collect."),
 
             ["Fortuna"] = new GuideCopyEntry(Camp.Owner,
                 "The one who deals the dice.",
@@ -179,7 +179,7 @@ namespace NonaRoyale.Core.Text
                 "The House Edge sells a die you don't want to move for energy. " +
                 "The Table sits on the track and stops the first enemy dice move that tries to cross it.",
                 "She cannot defend herself: no shield, no escape, nothing that stops a punch — get to her. " +
-                "Revú's debt eats the energy she makes. Route around her tables, or move by placement: " +
+                "Route around her tables, or move by placement: " +
                 "pulls, pushes, swaps and dashes never trigger them."),
         };
     }
