@@ -250,7 +250,7 @@ namespace NonaRoyale.Core.Abilities
             effects: new[]
             {
                 AbilityEffect.DeployZone(
-                    detonationDamage: 1, lingerDamage: 1, lingerTicks: 2, radius: 1,
+                    detonationDamage: 1, lingerDamage: 1, lingerTicks: 2, radius: 2,
                     damageType: DamageType.Normal,
                     detonationStatus: StatusKind.Stun, statusDuration: 2),
                 AbilityEffect.Heal(EffectScope.Caster, 1, EffectAudience.Any)
