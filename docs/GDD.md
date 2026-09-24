@@ -28,6 +28,8 @@ The board is standard Ludo geometry. **The originality is the combat layer built
 
 2–4 players. Local hot-seat for the MVP; the architecture preserves a clean seam for online later (ADR-0004), but netcode is out of scope and gets its own ADR.
 
+**Who plays first is drawn from the seed.** Seats play in the direction of travel (Red, Blue, Green, Violet); the match opens at a seat drawn from the seed and goes around from there, so that seat also opens every round. The draw has its own stream, never the match RNG, so the dice a seed gives do not depend on it (`Core/Services/TurnOrder.cs`, 2026-09-24).
+
 **Two players is a different game, not a smaller one.** Combat scales with the number of _pairs_ of players, so a two-seat match is close to a pure race no matter how the rules are tuned (`COMBAT_SYSTEMS.md` §12). If 1v1 is meant to ship it needs its own design, not a seat count.
 
 ### 2.2 Draft

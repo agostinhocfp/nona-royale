@@ -112,7 +112,13 @@ namespace NonaRoyale.Unity.Composition
         [Tooltip("Operators already on the board at the start. 2 is the adopted value.")]
         [Range(0, 3)] public int openingDeployments = 2;
 
+        [Tooltip("The match seed: the dice, who plays first and any random picks. Drawn fresh at launch " +
+                 "and for every new match and rematch, unless Pin Seed is on.")]
         public int seed = 20260912;
+
+        [Tooltip("Keep the seed above instead of drawing a fresh one: at launch, in setup, and a rematch or " +
+                 "RESTART steps it by one. For reproducing a bug; off for play.")]
+        public bool pinSeed = false;
 
         [Header("Presentation")]
         [Tooltip("World units per board cell.")]
@@ -331,6 +337,10 @@ namespace NonaRoyale.Unity.Composition
         private void Start()
         {
             _seats.Clear();
+
+            // The inspector's seed is a starting value for debugging, not the
+            // game's: every launch used to open on the same dice.
+            if (!pinSeed) seed = FreshSeed();
 
             // A crossed table is two sides of two, so it seats four whatever
             // the inspector says (ADR-0012).
@@ -601,7 +611,10 @@ namespace NonaRoyale.Unity.Composition
             var board = Board;
 
             if (_seats.Count == 0) _seats.AddRange(MatchSettings.AllSeats.Take(players));
-            var seats = _seats.ToList();
+
+            // Table order rotated so a seat drawn from the seed opens (TurnOrder).
+            // _seats stays in table order: it is what setup shows and edits.
+            var seats = TurnOrder.Opening(_seats, seed);
 
             // Who is on whose side (ADR-0012). One map for the whole match,
             // handed to the factory rather than consulted by the view: the
@@ -2232,11 +2245,24 @@ namespace NonaRoyale.Unity.Composition
             SelectionChanged();
         }
 
+        /// <remarks>
+        /// A fresh seed, not the next one: System.Random's first draws for
+        /// neighbouring seeds are correlated, so seed + 1 opened on dice much
+        /// like the last match's. A pinned seed still steps by one, so a
+        /// debugging run walks a known sequence.
+        /// </remarks>
         void IControlPanelHost.Reseed()
         {
-            seed++;
+            seed = pinSeed ? seed + 1 : FreshSeed();
             NewMatch();
         }
+
+        /// <summary>
+        /// A seed for a new match. Choosing one is the view's business, not a
+        /// rule (the setup screen's SHUFFLE draws the same way); the dice it
+        /// gives come from the core.
+        /// </summary>
+        private static int FreshSeed() => Random.Range(1, 100000000);
 
         /// <summary>
         /// A silhouette in the squad rail was tapped: that operator's dossier,
@@ -2322,7 +2348,12 @@ namespace NonaRoyale.Unity.Composition
             SetHovered(null);
             if (_match != null) RefreshMarks();
 
-            _setup.Open();
+            // A new match gets a new seed. Only the setup's copy changes, so
+            // BACK to a live match leaves that match's seed as it was; DEAL
+            // commits it.
+            var settings = ((IMatchFlowHost)this).Settings;
+            if (!pinSeed) settings.Seed = FreshSeed();
+            _setup.Open(settings);
         }
 
         // ── Match flow (GUI increment I) ─────────────────────────────────

@@ -30,7 +30,7 @@ Before the match, the seats choose their three operators from the full roster in
      - **START** is available once the draft is complete.
    - Both modes: **BACK** (Esc) returns to setup, with a warning if any picks exist. While that warning is open, the clock is frozen.
 6. **The clock is 30 s flat at every seat count.** Four seats share one pointer for twelve picks, so the clock may expire often at big tables. The timeout fill covers that. Tune it after a playtest.
-7. **REMATCH keeps the drafted squads** under ALL PICK, SNAKE and ALPHA THREE, and uses the next seed. RANDOM still re-rolls, as it does today. NEW MATCH goes back through setup and the draft.
+7. **REMATCH keeps the drafted squads** under ALL PICK, SNAKE and ALPHA THREE, and draws a fresh seed (the next seed until 2026-09-24; neighbouring seeds opened on similar dice). RANDOM still re-rolls, as it does today. NEW MATCH goes back through setup and the draft.
 8. **Role lines live in the view.** An `OperatorCopy` table keyed by name, with a fallback, holds them (same pattern as `PieceShape`). Display text stays out of the rules.
 9. **Random picks draw from a draft RNG**, `new SeededRandom(seed ^ DraftConfig.SeedSalt)`, never from the match RNG. The dice stream therefore doesn't depend on how many picks were random.
    - Consequence: explicit squads skip `Roster.DraftRandom`. The same seed gives different dice under ALL PICK than under RANDOM. That's expected.

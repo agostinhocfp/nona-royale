@@ -171,7 +171,7 @@ _Added 2026-09-16, GUI phase increment I. Draft screen added 2026-09-16, increme
   - **HUD:** the turn button reads "BLUE IS THINKING". The top bar names the seat "(CPU · STYLE)" and says how to hurry or pause. The squad rail tags CPU seats.
   - **Refusals:** a CPU's refused command goes to the full log only, never to a toast.
   - **Watch mode:** a table with no human seats is allowed.
-- **A finished match opens the end screen** a beat after the winning move: the winner, the round, the seed, and a row per seat with its squad (shapes and names, since DR2) and a CPU tag where it applies, operators home, knockouts and operators lost. REMATCH deals the same table with the next seed, keeping drafted squads (RANDOM draws again); NEW MATCH opens setup; VIEW BOARD hides the screen until Esc; MAIN MENU returns to the title.
+- **A finished match opens the end screen** a beat after the winning move: the winner, the round, the seed, and a row per seat with its squad (shapes and names, since DR2) and a CPU tag where it applies, operators home, knockouts and operators lost. REMATCH deals the same table with a fresh seed (and so, often, a different first seat), keeping drafted squads (RANDOM draws again); NEW MATCH opens setup; VIEW BOARD hides the screen until Esc; MAIN MENU returns to the title.
 - **Every tally is an engine answer.** Knockout credit is a core rule (COMBAT_SYSTEMS §1.2), not something the view infers from who was nearby.
 - While setup, the draft or the end screen is open, the board and the game keys are ignored. Enter deals, starts or rematches; Esc goes back.
 
