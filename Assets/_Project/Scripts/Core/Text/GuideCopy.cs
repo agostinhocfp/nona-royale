@@ -145,11 +145,11 @@ namespace NonaRoyale.Core.Text
 
             ["Luka"] = new GuideCopyEntry(Camp.Alone,
                 "The one you have to outrun, not outlast.",
-                "Pick one target and stay on it. Blind Spot puts you beside them and hits; " +
+                "Pick one target and stay on it. Blind Spot puts you beside them, hits and slows them for a round; " +
                 "if they are still close at your next upkeep, you hit again, harder against big targets. " +
                 "Hermes' Ring makes you immune to Tech damage for a while. " +
                 "Vendetta's blows are Atomic, can crit, and heal you for what they take — your way back into a losing fight.",
-                "After Blind Spot, move away on your turn: the second strike only lands if he is still close. " +
+                "After Blind Spot, move away on your turn: the second strike only lands if he is still close, and the slow means you need a good roll. " +
                 "Nothing he carries shields him from Normal damage. His crits hit heavy targets harder, so tanks should not duel him alone."),
 
             ["Lethe"] = new GuideCopyEntry(Camp.Owner,
