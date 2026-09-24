@@ -246,11 +246,11 @@ namespace NonaRoyale.Core.Text
                     Hit(line, e.Amount, e.DamageType);
                     return;
 
-                case EffectKind.DrainEnergy:
-                    line.Text("destroys ").Number(e.Amount).Text(" of its seat's ").Keyword("energy", Keywords.Energy);
+                case EffectKind.IncurDebt:
+                    line.Text("its seat takes on ").Number(e.Amount).Text(" ").Keyword("debt", Keywords.Debt);
                     return;
 
-                case EffectKind.MissingEnergyDamage: MissingEnergy(line, e); return;
+                case EffectKind.DebtDamage: DebtDamage(line, e); return;
                 case EffectKind.DealDice: Dice(line, e); return;
                 case EffectKind.SetTable: Table(line, e); return;
             }
@@ -454,11 +454,10 @@ namespace NonaRoyale.Core.Text
             line.Text(" to enemies within ").Number(e.Radius).Text(" of wherever you stand");
         }
 
-        private static void MissingEnergy(RulesLine line, AbilityEffect e)
+        private static void DebtDamage(RulesLine line, AbilityEffect e)
         {
-            line.Number(1).Text(" ").Keyword(e.DamageType.ToString(), Keywords.Damage(e.DamageType))
-                .Text(" for every ").Number(e.Amount).Text(" ").Keyword("energy", Keywords.Energy)
-                .Text(" its seat is missing");
+            line.Text("its seat's ").Keyword("debt", Keywords.Debt).Text(" as ")
+                .Keyword(e.DamageType.ToString(), Keywords.Damage(e.DamageType)).Text(" damage");
 
             if (e.MinimumDamage > 0) line.Text(", at least ").Number(e.MinimumDamage);
 
@@ -469,6 +468,8 @@ namespace NonaRoyale.Core.Text
                 else line.Text("1/").Number(e.Stacks);
                 line.Text(" of that to enemies within ").Number(e.Radius).Text(" of it");
             }
+
+            line.Text("; the debt is cleared");
         }
 
         private static void Dice(RulesLine line, AbilityEffect e)

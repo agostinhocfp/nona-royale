@@ -6,7 +6,7 @@ using NonaRoyale.Core.Board;
 namespace NonaRoyale.Core.Model
 {
     /// <summary>
-    /// One seat at the table: its three operators and its energy pool.
+    /// One seat at the table: its three operators, its energy pool and its debt.
     /// </summary>
     /// <remarks>
     /// <b>Energy is player-level, not per-operator.</b> The tactical question
@@ -19,6 +19,9 @@ namespace NonaRoyale.Core.Model
     public sealed class PlayerState
     {
         private readonly List<OperatorState> _operators;
+
+        /// <summary>Ids of the operators this seat's debt is owed to (§3.3).</summary>
+        private readonly HashSet<int> _creditors = new HashSet<int>();
 
         public PlayerState(PlayerColor color, IEnumerable<OperatorState> operators)
         {
@@ -73,7 +76,36 @@ namespace NonaRoyale.Core.Model
         /// </remarks>
         public int DeployDroughtTurns { get; private set; }
 
+        /// <summary>
+        /// What this seat owes (§3.3, 2026-09-24). Only <c>EnergyLedger</c>
+        /// changes it. Collected from the pool at the end of this seat's turn.
+        /// </summary>
+        /// <remarks>
+        /// <b>One figure per seat, not per operator</b> (designer): it sits
+        /// beside the pool it is paid from, so the board carries no marker for
+        /// it.
+        /// </remarks>
+        public int Debt { get; private set; }
+
+        /// <summary>
+        /// The operators this debt is owed to. A collision against any of them
+        /// by one of this seat's operators burns the whole debt (§3.3).
+        /// Emptied whenever the debt reaches zero.
+        /// </summary>
+        public IReadOnlyCollection<int> Creditors => _creditors;
+
+        /// <summary>Whether this seat owes anything to <paramref name="operatorId"/>.</summary>
+        public bool OwesTo(int operatorId) => Debt > 0 && _creditors.Contains(operatorId);
+
         internal void SetEnergy(int energy) => Energy = Math.Max(0, energy);
+
+        internal void SetDebt(int debt)
+        {
+            Debt = Math.Max(0, debt);
+            if (Debt == 0) _creditors.Clear();
+        }
+
+        internal void AddCreditor(int operatorId) => _creditors.Add(operatorId);
 
         internal void MarkEnergyGranted() => HasBeenGrantedEnergyThisTurn = true;
 
@@ -88,6 +120,8 @@ namespace NonaRoyale.Core.Model
             HasBeenGrantedEnergyThisTurn = false;
         }
 
-        public override string ToString() => $"{Color} (energy {Energy}, turn {TurnIndex})";
+        public override string ToString() => Debt > 0
+                ? $"{Color} (energy {Energy}, owes {Debt}, turn {TurnIndex})"
+                : $"{Color} (energy {Energy}, turn {TurnIndex})";
     }
 }

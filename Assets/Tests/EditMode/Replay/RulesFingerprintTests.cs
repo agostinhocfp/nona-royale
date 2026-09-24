@@ -27,7 +27,7 @@ namespace NonaRoyale.Core.Tests.Replay
         /// of Unity's Mono and of the .NET 8 harness, or a replay recorded in
         /// the editor could not be played back by a tool.
         /// </remarks>
-        private const string Golden = "37363066";
+        private const string Golden = "9914fd33";
 
         private static string Dump() =>
             RulesFingerprint.Dump(
@@ -100,7 +100,7 @@ namespace NonaRoyale.Core.Tests.Replay
             dials += ForEachDial(RosterSpeeds.Default, speeds =>
                 RulesFingerprint.Of(GameConfig.Default, CombatConfig.Default, EnergyConfig.Default, Roster.All, speeds), baseline);
 
-            Assert.AreEqual(8 + 19 + 3 + 3, dials, "a constructor gained or lost a dial; check the dump covers it");
+            Assert.AreEqual(8 + 19 + 5 + 3, dials, "a constructor gained or lost a dial; check the dump covers it");
         }
 
         /// <summary>

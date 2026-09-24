@@ -173,13 +173,13 @@ namespace NonaRoyale.Core.Abilities
         /// <summary>
         /// A floor under a computed damage figure, for effects whose amount is
         /// read off the board rather than declared (today only
-        /// <see cref="EffectKind.MissingEnergyDamage"/>). Zero means no floor.
+        /// <see cref="EffectKind.DebtDamage"/>). Zero means no floor.
         /// </summary>
         /// <remarks>
         /// It floors the <b>primary</b> figure only, and the splash is still
-        /// divided from that floored figure, so a topped-up seat's neighbours
-        /// are billed the minimum's share rather than nothing — the ability
-        /// stays a punishment for an empty pool and merely stops being a blank.
+        /// divided from that floored figure, so the neighbours of a seat that
+        /// owes nothing are billed the minimum's share rather than nothing — the
+        /// ability stays a collection and merely stops being a blank.
         /// Applied before mitigation, so a shield or Equilibrium still reduces
         /// it: this is a floor on what the cast <i>computes</i>, never a
         /// guarantee of what lands.
@@ -478,38 +478,37 @@ namespace NonaRoyale.Core.Abilities
         }
 
         /// <summary>
-        /// Removes energy from the primary target's seat (§3.3). Destroyed,
-        /// not transferred. Revú's Leech Round.
+        /// Puts the primary target's seat in debt to the caster (§3.3), collected
+        /// from its pool when it ends its turn. Revú's Leech Round.
         /// </summary>
-        public static AbilityEffect DrainEnergy(int amount, EffectAudience audience = EffectAudience.EnemyOnly)
+        public static AbilityEffect IncurDebt(int amount, EffectAudience audience = EffectAudience.EnemyOnly)
         {
             if (amount < 1) throw new ArgumentOutOfRangeException(nameof(amount));
 
-            return new AbilityEffect(EffectKind.DrainEnergy, EffectScope.PrimaryTarget, audience,
+            return new AbilityEffect(EffectKind.IncurDebt, EffectScope.PrimaryTarget, audience,
                 amount, default, 0, default, 0, 0, 0, 0, 0, 0);
         }
 
         /// <summary>
-        /// One damage to the primary target for every <paramref name="energyPerDamage"/>
-        /// its seat is missing from the cap, and that figure divided by
-        /// <paramref name="splashDivisor"/> to enemies within
-        /// <paramref name="splashRadius"/> of it (§3.3). Revú's Sadist.
+        /// The target's seat debt as damage, at least <paramref name="minimumDamage"/>,
+        /// and that figure divided by <paramref name="splashDivisor"/> to enemies
+        /// within <paramref name="splashRadius"/> of it; the debt is then cleared
+        /// (§3.3). Revú's Sadist.
         /// </summary>
         /// <remarks>
-        /// Packed into the shared fields: Amount is the energy per damage
-        /// point, Radius the splash radius, Stacks the splash divisor.
+        /// Packed into the shared fields: Radius is the splash radius, Stacks the
+        /// splash divisor. Amount is unused — the figure is read off the seat.
         /// </remarks>
-        public static AbilityEffect MissingEnergyDamage(
-            int energyPerDamage, int splashRadius, int splashDivisor, DamageType damageType,
+        public static AbilityEffect DebtDamage(
+            int splashRadius, int splashDivisor, DamageType damageType,
             EffectAudience audience = EffectAudience.EnemyOnly, int minimumDamage = 0)
         {
-            if (energyPerDamage < 1) throw new ArgumentOutOfRangeException(nameof(energyPerDamage));
             if (splashRadius < 0) throw new ArgumentOutOfRangeException(nameof(splashRadius));
             if (splashDivisor < 1) throw new ArgumentOutOfRangeException(nameof(splashDivisor));
             if (minimumDamage < 0) throw new ArgumentOutOfRangeException(nameof(minimumDamage));
 
-            return new AbilityEffect(EffectKind.MissingEnergyDamage, EffectScope.PrimaryTarget, audience,
-                energyPerDamage, damageType, splashRadius, default, 0, splashDivisor, 0, 0, 0, 0,
+            return new AbilityEffect(EffectKind.DebtDamage, EffectScope.PrimaryTarget, audience,
+                0, damageType, splashRadius, default, 0, splashDivisor, 0, 0, 0, 0,
                 minimumDamage: minimumDamage);
         }
 

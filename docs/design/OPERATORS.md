@@ -188,7 +188,7 @@ Read at the table: _the one who decides where everyone stands._
 
 Added 2026-09-17 from `OPERATOR_DRAFTS.md` §3, mechanics first. **Look, fiction and camp are unwritten.** A loan shark could plausibly work for the house or against it; that is a decision to take, not a default.
 
-The punishment web. Everything about him has a price tag. His passive makes cheap answers hit him twice as hard and expensive ones half as hard. His basic ability wounds a target and drains its side's energy. His ultimate hits harder the emptier the enemy's energy pool is. Every way to deal with him costs something, and the one free answer is to land on him with the dice.
+The punishment web, run as a loan book (reworked 2026-09-24). Everything about him has a price tag. His passive makes cheap answers hit him twice as hard and expensive ones half as hard. His basic ability wounds a target and puts its side in debt, which that side pays from its pool as its turn ends — or carries, with interest. His ultimate deals whatever the target's side owes. Every way to deal with him costs something, and the one free answer is to land on him with the dice, which also burns the whole debt. The debt is one figure per seat, beside the pool; nothing about it is drawn on the board.
 
 Read at the table: _the one who makes you pay to touch him._
 

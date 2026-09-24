@@ -105,6 +105,8 @@ namespace NonaRoyale.Core.Replay
             d.Line("EnergyConfig.EnergyCap", energy.EnergyCap);
             d.Line("EnergyConfig.DiceDivisor", energy.DiceDivisor);
             d.Line("EnergyConfig.CashedDieEnergy", energy.CashedDieEnergy);
+            d.Line("EnergyConfig.DebtCap", energy.DebtCap);
+            d.Line("EnergyConfig.DebtInterest", energy.DebtInterest);
 
             d.Line("RosterSpeeds.Bouncer", alphaSpeeds.Bouncer);
             d.Line("RosterSpeeds.Syla", alphaSpeeds.Syla);

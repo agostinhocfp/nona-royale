@@ -173,7 +173,13 @@ namespace NonaRoyale.Core.Tests.Text
         public void Golden_Sadist()
         {
             Assert.That(RulesText.For(Revu.Sadist).ToPlainText(), Is.EqualTo(
-                "1 Normal for every 3 energy its seat is missing, at least 2; half of that to enemies within 2 of it"));
+                "its seat's debt as Normal damage, at least 2; half of that to enemies within 2 of it; the debt is cleared"));
+        }
+
+        [Test]
+        public void Golden_LeechRound()
+        {
+            Assert.That(RulesText.For(Revu.LeechRound).ToPlainText(), Is.EqualTo("2 Normal, its seat takes on 2 debt"));
         }
 
         [Test]

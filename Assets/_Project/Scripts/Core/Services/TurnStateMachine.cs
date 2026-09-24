@@ -108,6 +108,9 @@ namespace NonaRoyale.Core.Services
         /// <summary>What one cashed die pays (§3.4).</summary>
         public int CashedDieEnergy => _energy.CashedDieEnergy;
 
+        /// <summary>The most a seat can owe (§3.3).</summary>
+        public int DebtCap => _energy.DebtCap;
+
         /// <summary>
         /// The current round: 1 while the first seat's first turn has not yet
         /// been followed by its second, and so on.
@@ -263,6 +266,18 @@ namespace NonaRoyale.Core.Services
             return true;
         }
 
+        /// <summary>
+        /// Burns a seat's whole debt (§3.3): one of its operators has collided
+        /// with a creditor. Returns what was cleared. The debt lives in the
+        /// ledger, and the ledger lives here.
+        /// </summary>
+        public int BurnDebt(PlayerState debtor)
+        {
+            if (debtor == null) throw new ArgumentNullException(nameof(debtor));
+
+            return _energy.WriteOffDebt(debtor);
+        }
+
         /// <summary>One die from the match's own stream (§6.8). Fortuna's Deal Again.</summary>
         /// <remarks>
         /// The same stream and the same bounds the roll itself uses, so a re-roll
@@ -272,9 +287,16 @@ namespace NonaRoyale.Core.Services
         public int RollOneDie() => _random.NextInt(1, _config.DiceSides + 1);
 
         /// <summary>
-        /// Closes the turn: status durations expire, then the win check runs.
+        /// Closes the turn: the seat's debt is collected, status durations
+        /// expire, then the win check runs.
         /// </summary>
         /// <remarks>
+        /// <b>Debt is collected here, not at upkeep</b> (§3.3). A debt run up on
+        /// an opponent's turn is paid from what the seat chose to keep after its
+        /// own turn, income included, so paying and spending are a decision it
+        /// makes with the bill in front of it. At upkeep the first payment would
+        /// come out of a pool spent before the debt existed.
+        ///
         /// Expiry sits here rather than at upkeep so a 1-turn stun applied during
         /// an opponent's turn blocks a real action phase before it lapses (§6).
         ///
@@ -292,6 +314,8 @@ namespace NonaRoyale.Core.Services
             if (Phase != TurnPhase.Action && Phase != TurnPhase.AwaitingRoll)
                 throw new InvalidOperationException($"Cannot end a turn during {Phase}.");
 
+            var debt = _energy.CollectDebt(CurrentPlayer);
+
             var expired = new List<ExpiredStatus>();
 
             foreach (var op in CurrentPlayer.Operators)
@@ -306,7 +330,7 @@ namespace NonaRoyale.Core.Services
             PlayerColor? winner = winningSeats.Count == 0 ? (PlayerColor?)null : winningSeats[0];
 
             Phase = winner == null ? TurnPhase.BetweenTurns : TurnPhase.MatchOver;
-            var report = new EndTurnReport(CurrentPlayer.Color, expired, winner, winningSeats);
+            var report = new EndTurnReport(CurrentPlayer.Color, expired, winner, winningSeats, debt);
 
             if (winner == null) CurrentPlayer = null;
             return report;

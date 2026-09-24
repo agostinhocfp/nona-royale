@@ -345,9 +345,9 @@ namespace NonaRoyale.Core.Bots
                     case EffectKind.ProjectField:
                         total += effect.Amount * Math.Max(0, effect.Duration - 1);
                         break;
-                    case EffectKind.MissingEnergyDamage:
-                        // Its most, against an empty pool.
-                        total += EnergyConfig.Default.EnergyCap / effect.Amount;
+                    case EffectKind.DebtDamage:
+                        // Its most, against a seat at the debt cap.
+                        total += EnergyConfig.Default.DebtCap;
                         break;
                     case EffectKind.DashToTarget:
                         total += effect.Amount;

@@ -230,6 +230,9 @@ namespace NonaRoyale.Core
         /// <summary>What one cashed die pays the seat (§3.4). Read by the tray and the bots.</summary>
         public int CashedDieEnergy => _turns.CashedDieEnergy;
 
+        /// <summary>The most a seat can owe (§3.3). Read by the bots and the rules text.</summary>
+        public int DebtCap => _turns.DebtCap;
+
         /// <summary>Whether the current seat may roll again this turn (doubles, §6).</summary>
         public bool CanRollAgain => _turns.CanRollAgain;
 
@@ -557,6 +560,14 @@ namespace NonaRoyale.Core
 
             var report = _turns.EndTurn();
 
+            // Collected before anything expires, as the turn machine ran it:
+            // the bill closes the turn (§3.3).
+            if (report.Debt.Happened)
+            {
+                events.Add(new DebtCollected(report.Player, report.Debt.Paid, report.Debt.Interest,
+                    report.Debt.Owed, PlayerOf(report.Player)?.Energy ?? 0));
+            }
+
             foreach (var expired in report.Expired)
                 events.Add(new StatusExpired(expired.Operator, expired.Kind));
 
@@ -875,6 +886,13 @@ namespace NonaRoyale.Core
                     EmitDamage(occupant, result, events);
                     events.Add(new CollisionResolved(op, occupant, collision.MoverBouncedBack));
 
+                    // Landing on the one you owe burns the whole debt, whoever
+                    // wins the contest (§3.3): dice combat is the free answer
+                    // to Revú, and this makes it the answer to his loan too.
+                    var moverSeat = PlayerOf(op.Owner);
+                    if (moverSeat != null && moverSeat.OwesTo(occupant.Id))
+                        events.Add(new DebtBurned(op.Owner, _turns.BurnDebt(moverSeat), op, occupant));
+
                     if (result.Outcome == DamageOutcome.Neutralized)
                         Neutralize(occupant, result.Cause, op.Id, events);
                 }
@@ -1136,9 +1154,13 @@ namespace NonaRoyale.Core
                     events.Add(new FieldProjected(outcome.Recipient));
                     break;
 
-                case EffectOutcomeKind.EnergyDrained:
-                    events.Add(new EnergyDrained(outcome.Recipient.Owner, outcome.Amount,
-                        PlayerOf(outcome.Recipient.Owner)?.Energy ?? 0, caster));
+                case EffectOutcomeKind.DebtIncurred:
+                    events.Add(new DebtIncurred(outcome.Recipient.Owner, outcome.Amount,
+                        PlayerOf(outcome.Recipient.Owner)?.Debt ?? 0, caster));
+                    break;
+
+                case EffectOutcomeKind.DebtCalled:
+                    events.Add(new DebtCalled(outcome.Recipient.Owner, outcome.Amount, caster));
                     break;
 
                 // Placement again, with the caster as the subject: reported as

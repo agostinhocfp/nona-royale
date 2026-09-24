@@ -500,12 +500,12 @@ namespace NonaRoyale.Core.Services
                         RunProjectField(effect, caster, outcomes);
                         break;
 
-                    case EffectKind.DrainEnergy:
-                        RunDrainEnergy(effect, recipient, outcomes);
+                    case EffectKind.IncurDebt:
+                        RunIncurDebt(effect, caster, recipient, outcomes);
                         break;
 
-                    case EffectKind.MissingEnergyDamage:
-                        RunMissingEnergyDamage(effect, caster, recipient, allOperators, outcomes);
+                    case EffectKind.DebtDamage:
+                        RunDebtDamage(effect, caster, recipient, allOperators, outcomes);
                         break;
 
                     // The dice are the engine's state, not the resolver's, so
@@ -965,40 +965,46 @@ namespace NonaRoyale.Core.Services
         }
 
         /// <summary>
-        /// Takes energy from the target's seat (§3.3). Destroyed, not
-        /// transferred.
+        /// Puts the target's seat in debt to the caster (§3.3). Nothing is taken
+        /// now; the seat pays when it ends its turn.
         /// </summary>
-        private void RunDrainEnergy(AbilityEffect effect, OperatorState recipient, List<EffectOutcome> outcomes)
+        private void RunIncurDebt(
+            AbilityEffect effect, OperatorState caster, OperatorState recipient, List<EffectOutcome> outcomes)
         {
             var seat = SeatOf(recipient);
-            int taken = _energy.Drain(seat, effect.Amount);
-            outcomes.Add(EffectOutcome.EnergyDrained(recipient, taken));
+            int added = _energy.IncurDebt(seat, effect.Amount, caster.Id);
+            outcomes.Add(EffectOutcome.DebtIncurred(recipient, added));
         }
 
         /// <summary>
-        /// Sadist (§3.3): one damage for every <c>Amount</c> energy the
-        /// target's seat is missing from the cap, and half that to enemies
-        /// within <c>Radius</c> of it.
+        /// Sadist (§3.3): the target's seat debt as damage, at least the
+        /// effect's minimum, and that figure divided by <c>Stacks</c> to enemies
+        /// within <c>Radius</c> of it. The debt is then cleared.
         /// </summary>
         /// <remarks>
         /// <b>One figure, from the target's seat, read before any hit lands</b>
-        /// (designer, 2026-09-17). Splash victims take the same half whatever
-        /// their own pools hold. A share of 0 is not dealt: a zero instance
-        /// would still spend an evasion charge (§5.5).
+        /// (designer, 2026-09-17). Splash victims take the same share whatever
+        /// their own seats owe. A share of 0 is not dealt: a zero instance would
+        /// still spend an evasion charge (§5.5).
+        ///
+        /// <b>The debt is cleared whatever the hits did</b> — evaded, shielded
+        /// or halved by Equilibrium, the collection has happened. Clearing it
+        /// only on a landed hit would let a dodge keep the debt alive for the
+        /// next Sadist, which is a second punishment for the same loan.
         ///
         /// Both hits are cast hits, so Equilibrium reads the ability's cost on
         /// each of them.
         /// </remarks>
-        private void RunMissingEnergyDamage(
+        private void RunDebtDamage(
             AbilityEffect effect, OperatorState caster, OperatorState target,
             IReadOnlyList<OperatorState> allOperators, List<EffectOutcome> outcomes)
         {
             var seat = SeatOf(target);
-            int missing = Math.Max(0, _energy.Cap - seat.Energy);
+
             // The floor is on the primary figure, and the splash divides the
-            // floored one — a full seat's neighbours pay the minimum's share,
-            // not nothing, and never more than the debtor (§10.11).
-            int primary = Math.Max(effect.MinimumDamage, missing / effect.Amount);
+            // floored one — the neighbours of a seat that owes nothing pay the
+            // minimum's share, not nothing, and never more than the debtor (§10.11).
+            int primary = Math.Max(effect.MinimumDamage, seat.Debt);
             int splash = primary / Math.Max(1, effect.Stacks);
 
             var splashed = effect.Radius > 0 && splash > 0
@@ -1008,13 +1014,16 @@ namespace NonaRoyale.Core.Services
             if (primary > 0)
                 outcomes.Add(Strike(effect, caster, target, primary));
 
-            if (splashed == null) return;
-
-            foreach (var victim in splashed)
+            if (splashed != null)
             {
-                if (ReferenceEquals(victim, target) || IsAlreadyDown(victim)) continue;
-                outcomes.Add(Strike(effect, caster, victim, splash));
+                foreach (var victim in splashed)
+                {
+                    if (ReferenceEquals(victim, target) || IsAlreadyDown(victim)) continue;
+                    outcomes.Add(Strike(effect, caster, victim, splash));
+                }
             }
+
+            outcomes.Add(EffectOutcome.DebtCalled(target, _energy.WriteOffDebt(seat)));
         }
 
         /// <summary>A plain cast hit of a computed size. No crit, no bonus.</summary>

@@ -17,15 +17,21 @@ namespace NonaRoyale.Core.Config
     /// </remarks>
     public sealed class EnergyConfig
     {
-        public EnergyConfig(int energyCap = 12, int diceDivisor = 2, int cashedDieEnergy = 2)
+        public EnergyConfig(
+            int energyCap = 12, int diceDivisor = 2, int cashedDieEnergy = 2,
+            int debtCap = 6, int debtInterest = 1)
         {
             if (energyCap < 1) throw new ArgumentOutOfRangeException(nameof(energyCap));
             if (diceDivisor < 1) throw new ArgumentOutOfRangeException(nameof(diceDivisor));
             if (cashedDieEnergy < 0) throw new ArgumentOutOfRangeException(nameof(cashedDieEnergy));
+            if (debtCap < 1) throw new ArgumentOutOfRangeException(nameof(debtCap));
+            if (debtInterest < 0) throw new ArgumentOutOfRangeException(nameof(debtInterest));
 
             EnergyCap = energyCap;
             DiceDivisor = diceDivisor;
             CashedDieEnergy = cashedDieEnergy;
+            DebtCap = debtCap;
+            DebtInterest = debtInterest;
         }
 
         /// <summary>
@@ -52,6 +58,26 @@ namespace NonaRoyale.Core.Config
         /// dangerous. It is the first dial if she reads as too strong.
         /// </remarks>
         public int CashedDieEnergy { get; }
+
+        /// <summary>
+        /// The most a seat can owe (§3.3, 2026-09-24). Debt above it is never
+        /// written, whether it comes from a cast or from interest.
+        /// </summary>
+        /// <remarks>
+        /// <b>Six, because the debt is Sadist's figure.</b> The ultimate deals
+        /// what the target's seat owes, so the cap is the most it can ever
+        /// compute — six against an eight-health roster is a near-kill that the
+        /// debtor watched build for at least two of its own turns, never a
+        /// surprise. It is the first dial if the rework reads as too strong.
+        /// </remarks>
+        public int DebtCap { get; }
+
+        /// <summary>
+        /// Added to a seat's debt when it ends its turn without paying all of
+        /// it (§3.3). Charged once per turn, on the unpaid remainder only, and
+        /// never past <see cref="DebtCap"/>.
+        /// </summary>
+        public int DebtInterest { get; }
 
         public static EnergyConfig Default => new EnergyConfig();
     }

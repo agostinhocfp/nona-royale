@@ -10,17 +10,18 @@ namespace NonaRoyale.Core.Abilities
     /// <c>OPERATOR_DRAFTS.md</c> §3.
     /// </summary>
     /// <remarks>
-    /// <b>The punishment web.</b> His ultimate scales with what the enemy has
-    /// spent, his passive makes the cheap answers to him feed that ultimate,
-    /// and his basic drains the pool further. Every door the enemy tries has a
-    /// price on it. The honest answer is collisions: dice combat costs no
-    /// energy and Equilibrium ignores it.
+    /// <b>The punishment web, reworked around debt (2026-09-24).</b> Leech
+    /// Round puts the target's seat in debt; the seat pays from its pool when it
+    /// ends its turn, or carries the remainder with interest. Sadist calls the
+    /// debt in as damage. His passive makes the cheap answers to him the
+    /// dangerous ones, and the one free answer is to land on him with the dice,
+    /// which also burns what you owe him (§3.3).
     ///
     /// <b>Bouncer's shape:</b> two actives, with the passive in the middle
     /// slot, so the ids run 1101 and 1102.
     ///
-    /// <b>Every number is the draft's, unmeasured when written.</b> Adding an
-    /// eleventh operator shifts the draft's dice stream again.
+    /// <b>Debt lives on the seat, not on a piece</b> (designer): one figure
+    /// beside the pool, and no marker on the board.
     /// </remarks>
     public static class Revu
     {
@@ -33,11 +34,8 @@ namespace NonaRoyale.Core.Abilities
 
         public const double Speed = 1.0;
 
-        /// <summary>Energy destroyed by each Leech Round.</summary>
-        public const int LeechDrain = 2;
-
-        /// <summary>Sadist deals one damage per this much energy missing.</summary>
-        public const int SadistEnergyPerDamage = 3;
+        /// <summary>Debt each Leech Round adds to the target's seat.</summary>
+        public const int LeechDebt = 2;
 
         /// <summary>Enemies within this many steps of Sadist's target take the splash.</summary>
         public const int SadistSplashRadius = 2;
@@ -46,78 +44,73 @@ namespace NonaRoyale.Core.Abilities
         public const int SadistSplashDivisor = 2;
 
         /// <summary>
-        /// The least Sadist computes against the primary target, however full
-        /// the target's pool is (2026-09-21, designer).
+        /// The least Sadist computes against the primary target, whatever its
+        /// seat owes (2026-09-21, designer; kept through the debt rework).
         /// </summary>
         /// <remarks>
-        /// Before this the cast could compute zero: a seat at cap paid nothing
-        /// for the roster's most expensive read, which made Sadist a bet on the
-        /// enemy's pool rather than a play. The floor stops the blank without
-        /// touching what a real debt is worth — at 3 energy per point it is
-        /// what 6 missing energy already bought.
+        /// Without it a seat that owes nothing would take nothing, and the
+        /// roster's dearest cast would be a blank. It is the smallest debt one
+        /// Leech Round leaves, so it never makes calling early better than
+        /// letting the loan run.
         /// </remarks>
         public const int SadistMinimumDamage = 2;
 
         /// <summary>
-        /// A round that bleeds the target's side dry of more than blood: 2
-        /// damage, and 2 energy gone from the enemy pool.
+        /// A round with a loan attached: 2 damage, and the target's side owes
+        /// 2 more.
         /// </summary>
         /// <remarks>
-        /// <b>From the Hip's price tag; the drain is the rider.</b> Cost 3,
-        /// range 3. Built at 1 damage and cooldown 2; the designer raised it
-        /// to 2 damage and cooldown 1 (2026-09-17), so it is a cast he can
-        /// make every turn the pool allows. The energy is destroyed, not handed to Revú
-        /// (designer, 2026-09-17); transfers are Ghost's territory.
+        /// <b>From the Hip's price tag; the debt is the rider.</b> Cost 3,
+        /// cooldown 1, range 3 (designer, 2026-09-17), so it is a cast he can
+        /// make every turn the pool allows.
         ///
-        /// <b>It feeds Sadist twice over:</b> the drain empties the pool the
-        /// ultimate reads, and an enemy that answers with a cheap cast pays
-        /// double into Equilibrium for it.
+        /// <b>Nothing is taken now</b> (2026-09-24). The seat pays when it ends
+        /// its own turn, so it chooses between keeping energy back to settle and
+        /// spending it and letting the debt grow. Paid debt is destroyed, not
+        /// handed to Revú (designer).
         ///
-        /// A drain aimed at a dry pool takes nothing, and says so.
+        /// A seat already at the cap owes no more, and the event says so.
         /// </remarks>
         public static AbilityDefinition LeechRound { get; } = new AbilityDefinition(
             id: 1101, name: "Leech Round",
             description:
-                "A round with a hook in it. It wounds the target, and the target's side watches its reserves bleed away.",
+                "A round with a loan attached. It wounds the target, and the target's side owes the house before its turn is out.",
             energyCost: 3, cooldownTurns: 1, range: 3,
             effects: new[]
             {
                 AbilityEffect.Damage(EffectScope.PrimaryTarget, 2, DamageType.Normal, EffectAudience.EnemyOnly),
-                AbilityEffect.DrainEnergy(LeechDrain)
+                AbilityEffect.IncurDebt(LeechDebt)
             });
 
         /// <summary>
-        /// Collection day: one damage for every 3 energy the target's side is
-        /// missing, and half that to enemies within 2 of it.
+        /// Collection day: the target's side takes its whole debt as damage,
+        /// and half that lands on enemies within 2 of it.
         /// </summary>
         /// <remarks>
-        /// <b>The readability rule is the design.</b> "One damage for every 3
-        /// energy missing from their pool" — an empty pool takes 4, a pool of 6
-        /// takes 2, a full pool takes nothing. The enemy can compute it before
-        /// deciding to spend.
+        /// <b>The readability rule is the design.</b> The figure is the debt the
+        /// target's seat already owes, at least 2 — the debtor has been looking
+        /// at the hit it risks since the loan was made.
         ///
         /// <b>One figure, from the target's seat</b> (designer, 2026-09-17).
         /// Splash victims take half of it, rounded down, whatever their own
-        /// pools hold; a share of 0 is not dealt.
+        /// seats owe; a share of 0 is not dealt. The debt is then cleared.
         ///
-        /// <b>Cost 9, cooldown 4 (5 as built; the designer cut it on
-        /// 2026-09-17), range 3, Normal.</b> Leech Round into Sadist is a
-        /// two-turn combo: 2 damage and 2 energy gone, then up to 4 and 2
-        /// splash. It reads as setup because the target's owner sees the pool
-        /// fall and gets a turn to answer.
+        /// <b>Cost 7, cooldown 3, range 3, Normal</b> (repriced 2026-09-21).
+        /// Leech Round into Sadist is the plan: a loan the debtor refuses to
+        /// pay grows by one a turn, up to the cap, and the ultimate collects it.
         ///
         /// <b>Mirror match:</b> Equilibrium halves a Sadist aimed at another
-        /// Revú (cost 9), so the most it deals him is 2.
+        /// Revú (cost 7), so the most it deals him is 3.
         /// </remarks>
         public static AbilityDefinition Sadist { get; } = new AbilityDefinition(
             id: 1102, name: "Sadist",
             description:
-                "Collection day. The emptier the enemy's reserves, the harder it lands, and whoever stands near the debtor pays a share.",
+                "Collection day. The deeper the target's side is in debt, the harder it lands, and whoever stands near the debtor pays a share. The debt is settled either way.",
             energyCost: 7, cooldownTurns: 3, range: 3,
             effects: new[]
             {
-                AbilityEffect.MissingEnergyDamage(
-                    SadistEnergyPerDamage, SadistSplashRadius, SadistSplashDivisor, DamageType.Normal,
+                AbilityEffect.DebtDamage(
+                    SadistSplashRadius, SadistSplashDivisor, DamageType.Normal,
                     minimumDamage: SadistMinimumDamage)
             });
 

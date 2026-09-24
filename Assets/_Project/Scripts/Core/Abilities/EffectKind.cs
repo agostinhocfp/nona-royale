@@ -234,30 +234,36 @@ namespace NonaRoyale.Core.Abilities
         Watch = 14,
 
         /// <summary>
-        /// Removes <c>Amount</c> energy from the primary target's seat pool,
-        /// down to zero. The energy is destroyed, not transferred (§3.3).
-        /// Revú's Leech Round.
+        /// Puts the primary target's seat <c>Amount</c> deeper in debt to the
+        /// caster, within the cap (§3.3, 2026-09-24). Revú's Leech Round.
         /// </summary>
         /// <remarks>
-        /// The first effect that reaches past an operator into a player. It
-        /// needs the seats, which the resolver takes at composition; a
-        /// resolver built without them refuses to run this kind.
+        /// <b>Nothing is taken at cast time.</b> The seat pays from its pool when
+        /// it ends its own turn, and an unpaid remainder draws interest, so the
+        /// debtor always has a turn to choose between paying and spending. It
+        /// replaced an instant drain (2026-09-17), which gave the victim no
+        /// choice and the spectator nothing to follow.
+        ///
+        /// The first kind that reaches past an operator into a player. It needs
+        /// the seats, which the resolver takes at composition; a resolver built
+        /// without them refuses to run this kind.
         /// </remarks>
-        DrainEnergy = 15,
+        IncurDebt = 15,
 
         /// <summary>
-        /// Damage that grows with how empty the primary target's seat pool is:
-        /// <c>floor((cap − pool) ÷ Amount)</c> to the target, and half of that
-        /// (rounded down) to enemies within <c>Radius</c> of it (§3.3). Revú's
-        /// Sadist.
+        /// Calls in the primary target's seat debt as damage (§3.3): the whole
+        /// debt, at least <c>MinimumDamage</c>, to the target, and that figure
+        /// divided by <c>Stacks</c> (rounded down) to enemies within
+        /// <c>Radius</c> of it. The debt is then cleared. Revú's Sadist.
         /// </summary>
         /// <remarks>
-        /// <b>One number, read at cast time from the target's seat</b>
-        /// (designer, 2026-09-17), so a player computes it as "one damage for
-        /// every 3 energy missing". A share of 0 is not dealt at all.
-        /// <c>Stacks</c> carries the splash divisor.
+        /// <b>One number, read at cast time from the target's seat, and the
+        /// debtor can see it all along</b> — the seat's own debt is the hit it is
+        /// risking, which is the readability rule the old "one damage per three
+        /// energy missing" figure only approximated. A share of 0 is not dealt
+        /// at all.
         /// </remarks>
-        MissingEnergyDamage = 16,
+        DebtDamage = 16,
 
         /// <summary>
         /// Changes the dice the caster's seat is holding: re-rolls

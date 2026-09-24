@@ -149,6 +149,19 @@ namespace NonaRoyale.Core.Bots
 
             if (!allFall) score -= weights.Bounce + cells * weights.Progress;
 
+            // Landing on the one your seat owes burns the whole debt, win or
+            // lose (§3.3).
+            var seat = board.SeatOf(mover.Owner);
+            if (seat != null)
+            {
+                foreach (var enemy in occupants)
+                {
+                    if (!seat.OwesTo(enemy.Id)) continue;
+                    score += seat.Debt * weights.DebtBurn;
+                    break;
+                }
+            }
+
             return score;
         }
 

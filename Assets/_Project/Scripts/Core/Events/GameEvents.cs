@@ -157,20 +157,97 @@ namespace NonaRoyale.Core.Events
     }
 
     /// <summary>
-    /// A seat lost energy to an enemy ability (§3.3). Revú's Leech Round.
+    /// A seat was put in debt by an enemy ability (§3.3). Revú's Leech Round.
+    /// Nothing has been paid yet; the seat pays when it ends its turn.
     /// </summary>
-    public sealed class EnergyDrained : IGameEvent
+    public sealed class DebtIncurred : IGameEvent
     {
-        public EnergyDrained(PlayerColor player, int amount, int remaining, OperatorState source)
+        public DebtIncurred(PlayerColor player, int amount, int owed, OperatorState source)
         {
-            Player = player; Amount = amount; Remaining = remaining; Source = source;
+            Player = player; Amount = amount; Owed = owed; Source = source;
         }
         public PlayerColor Player { get; }
+
+        /// <summary>What this cast added; 0 when the seat was already at the cap.</summary>
         public int Amount { get; }
-        public int Remaining { get; }
+
+        /// <summary>The seat's whole debt afterwards.</summary>
+        public int Owed { get; }
         public OperatorState Source { get; }
         public override string ToString() =>
-            $"{Source?.Name} drains {Amount} energy from {Player} ({Remaining} left)";
+            Amount > 0
+                ? $"{Source?.Name} puts {Player} {Amount} in debt ({Owed} owed)"
+                : $"{Player} already owes the most it can ({Owed})";
+    }
+
+    /// <summary>
+    /// A seat paid what it could of its debt as it ended its turn (§3.3). The
+    /// energy is destroyed; an unpaid remainder drew interest.
+    /// </summary>
+    public sealed class DebtCollected : IGameEvent
+    {
+        public DebtCollected(PlayerColor player, int paid, int interest, int owed, int remaining)
+        {
+            Player = player; Paid = paid; Interest = interest; Owed = owed; Remaining = remaining;
+        }
+        public PlayerColor Player { get; }
+
+        /// <summary>Energy taken from the pool against the debt.</summary>
+        public int Paid { get; }
+
+        /// <summary>Added to the unpaid remainder.</summary>
+        public int Interest { get; }
+
+        /// <summary>The debt afterwards.</summary>
+        public int Owed { get; }
+
+        /// <summary>The pool afterwards.</summary>
+        public int Remaining { get; }
+
+        public override string ToString() =>
+            Owed == 0
+                ? $"{Player} pays its debt of {Paid} ({Remaining} energy left)"
+                : $"{Player} pays {Paid} of its debt; +{Interest} interest, {Owed} still owed";
+    }
+
+    /// <summary>A seat's debt was called in by an ability and cleared (§3.3). Revú's Sadist.</summary>
+    public sealed class DebtCalled : IGameEvent
+    {
+        public DebtCalled(PlayerColor player, int amount, OperatorState source)
+        {
+            Player = player; Amount = amount; Source = source;
+        }
+        public PlayerColor Player { get; }
+
+        /// <summary>The debt cleared; may be 0.</summary>
+        public int Amount { get; }
+        public OperatorState Source { get; }
+        public override string ToString() =>
+            Amount > 0
+                ? $"{Source?.Name} calls in {Player}'s debt of {Amount}"
+                : $"{Source?.Name} collects from {Player}, who owed nothing";
+    }
+
+    /// <summary>
+    /// A debtor's operator collided with a creditor, and the seat's whole debt
+    /// burned (§3.3).
+    /// </summary>
+    public sealed class DebtBurned : IGameEvent
+    {
+        public DebtBurned(PlayerColor player, int amount, OperatorState debtor, OperatorState creditor)
+        {
+            Player = player; Amount = amount; Debtor = debtor; Creditor = creditor;
+        }
+        public PlayerColor Player { get; }
+
+        /// <summary>The debt cleared.</summary>
+        public int Amount { get; }
+
+        /// <summary>The operator that landed on the creditor.</summary>
+        public OperatorState Debtor { get; }
+        public OperatorState Creditor { get; }
+        public override string ToString() =>
+            $"{Debtor?.Name} lands on {Creditor?.Name} and burns {Player}'s debt of {Amount}";
     }
 
     public sealed class OperatorDeployed : IGameEvent

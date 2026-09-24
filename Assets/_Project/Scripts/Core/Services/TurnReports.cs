@@ -151,11 +151,13 @@ namespace NonaRoyale.Core.Services
             PlayerColor player,
             IReadOnlyList<ExpiredStatus> expired,
             PlayerColor? winner,
-            IReadOnlyList<PlayerColor> winningSeats = null)
+            IReadOnlyList<PlayerColor> winningSeats = null,
+            DebtCollection debt = default)
         {
             Player = player;
             Expired = expired ?? throw new ArgumentNullException(nameof(expired));
             Winner = winner;
+            Debt = debt;
 
             // Defaulted from the winner so a caller that knows nothing of sides
             // still produces a coherent report (ADR-0012).
@@ -165,6 +167,12 @@ namespace NonaRoyale.Core.Services
 
         public PlayerColor Player { get; }
         public IReadOnlyList<ExpiredStatus> Expired { get; }
+
+        /// <summary>
+        /// What the closing seat paid against its debt (§3.3). Empty when it
+        /// owed nothing.
+        /// </summary>
+        public DebtCollection Debt { get; }
 
         /// <summary>
         /// The seat the winning side is named after, or null while the match

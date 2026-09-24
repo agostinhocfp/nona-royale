@@ -172,10 +172,28 @@ namespace NonaRoyale.Core.Bots
             double cost = ability.EnergyCost * weights.EnergyCost;
             if (seat.Energy + board.Config.EnergyHorizon > board.Engine.EnergyCap) cost *= 0.4;
 
+            // A seat in debt pays at the end of its turn from what it kept, so a
+            // cast that eats into that pays for the shortfall too (§3.3).
+            cost += DebtShortfall(seat, ability.EnergyCost) * weights.DebtShortfall;
+
             double jitter = random == null ? 0.0 : random.NextDouble() * board.Config.Jitter;
             double score = offenceScore + defenceScore - cost + jitter;
 
             return new ScoredCast(caster, ability, target, cell, offenceScore, defenceScore, score);
+        }
+
+        /// <summary>
+        /// How much more of its debt the seat would leave unpaid at the end of
+        /// the turn if it spent <paramref name="cost"/> now (§3.3). Zero for a
+        /// seat that owes nothing or can pay the bill and the cast.
+        /// </summary>
+        public static int DebtShortfall(PlayerState seat, int cost)
+        {
+            if (seat == null || seat.Debt == 0) return 0;
+
+            int unpaidNow = Math.Max(0, seat.Debt - seat.Energy);
+            int unpaidAfter = Math.Max(0, seat.Debt - (seat.Energy - cost));
+            return unpaidAfter - unpaidNow;
         }
 
         // ── Effect values ────────────────────────────────────────────────
@@ -336,26 +354,31 @@ namespace NonaRoyale.Core.Bots
                     offence += WatchValue(board, w, target, effect);
                     break;
 
-                case EffectKind.DrainEnergy:
+                case EffectKind.IncurDebt:
                 {
+                    // Worth what the seat will pay or keep owing: whatever the
+                    // cap still has room for.
                     if (target == null || !board.IsEnemy(target, own)) break;
-                    int pool = board.SeatOf(target.Owner)?.Energy ?? 0;
-                    offence += Math.Min(effect.Amount, pool) * w.EnergyDenial;
+                    int owed = board.SeatOf(target.Owner)?.Debt ?? 0;
+                    offence += Math.Min(effect.Amount, Math.Max(0, board.Engine.DebtCap - owed)) * w.EnergyDenial;
                     break;
                 }
 
-                case EffectKind.MissingEnergyDamage:
+                case EffectKind.DebtDamage:
                 {
-                    // Sadist: one figure from the target's seat, half to the
+                    // Sadist: the target's seat debt, floored, and half to the
                     // enemies around it (§3.3).
                     if (target == null || !board.IsEnemy(target, own) || !board.OnLoop(target)) break;
-                    int pool = board.SeatOf(target.Owner)?.Energy ?? 0;
-                    int primary = Math.Max(effect.MinimumDamage,
-                        Math.Max(0, board.Engine.EnergyCap - pool) / effect.Amount);
+                    int owed = board.SeatOf(target.Owner)?.Debt ?? 0;
+                    int primary = Math.Max(effect.MinimumDamage, owed);
                     int splash = primary / Math.Max(1, effect.Stacks);
 
                     offence += Hit(board, w, target,
                         board.ExpectedHit(target, primary, effect.DamageType, ability.EnergyCost));
+
+                    // Clearing the debt forgoes what it would have drained; a
+                    // bot that calls early pays for it here.
+                    offence -= owed * w.EnergyDenial * 0.5;
 
                     if (splash <= 0) break;
                     foreach (var r in board.EnemiesNear(own, board.CellOf(target), effect.Radius))

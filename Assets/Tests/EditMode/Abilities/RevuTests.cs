@@ -15,9 +15,10 @@ using NUnit.Framework;
 namespace NonaRoyale.Core.Tests.Abilities
 {
     /// <summary>
-    /// Revú, operator #11 (COMBAT_SYSTEMS §10.11, 2026-09-17): Leech Round's
-    /// drain, Sadist's pool-scaled hit, and Equilibrium on the receiving end
-    /// of real abilities.
+    /// Revú, operator #11 (COMBAT_SYSTEMS §10.11, 2026-09-17; debt rework
+    /// 2026-09-24): Leech Round's debt, Sadist calling it in, and Equilibrium
+    /// on the receiving end of real abilities. The ledger's collection,
+    /// interest and burn rules are pinned in <c>DebtTests</c>.
     /// </summary>
     [TestFixture]
     public class RevuTests
@@ -119,9 +120,17 @@ namespace NonaRoyale.Core.Tests.Abilities
         /// <summary>Sets a pool to an exact figure.</summary>
         private void SetPool(PlayerState player, int amount)
         {
-            _energy.Drain(player, player.Energy);
+            _energy.Spend(player, player.Energy);
             if (amount > 0) _energy.GrantBounty(player, amount);
             Assert.That(player.Energy, Is.EqualTo(amount), "precondition");
+        }
+
+        /// <summary>Sets a seat's debt to an exact figure, owed to Revú.</summary>
+        private void SetDebt(PlayerState player, int amount)
+        {
+            _energy.WriteOffDebt(player);
+            if (amount > 0) _energy.IncurDebt(player, amount, _revu.Id);
+            Assert.That(player.Debt, Is.EqualTo(amount), "precondition");
         }
 
         private AbilityResolution Use(AbilityDefinition ability, OperatorState target) =>
@@ -154,7 +163,7 @@ namespace NonaRoyale.Core.Tests.Abilities
         // ── Leech Round ──────────────────────────────────────────────────
 
         [Test]
-        public void LeechRound_WoundsAndDrainsTheTargetsSeat()
+        public void LeechRound_WoundsAndPutsTheTargetsSeatInDebt()
         {
             SetPool(_blue, 7);
 
@@ -162,39 +171,40 @@ namespace NonaRoyale.Core.Tests.Abilities
 
             Assert.That(result.Approved, Is.True, result.ToString());
             Assert.That(_target.Health, Is.EqualTo(5));
-            Assert.That(_blue.Energy, Is.EqualTo(5));
-            Assert.That(result.Outcomes.Single(o => o.Kind == EffectOutcomeKind.EnergyDrained).Amount, Is.EqualTo(2));
+            Assert.That(_blue.Debt, Is.EqualTo(2));
+            Assert.That(_blue.OwesTo(_revu.Id), Is.True, "owed to the caster");
+            Assert.That(result.Outcomes.Single(o => o.Kind == EffectOutcomeKind.DebtIncurred).Amount, Is.EqualTo(2));
         }
 
         [Test]
-        public void LeechRound_DestroysTheEnergy_ItDoesNotTransferIt()
+        public void LeechRound_TakesNothingFromEitherPool_AtCastTime()
         {
+            // The seat pays when its own turn ends (§3.3), and paid debt is
+            // destroyed, never handed to Revú.
             SetPool(_blue, 7);
 
             Use(Revu.LeechRound, _target);
 
+            Assert.That(_blue.Energy, Is.EqualTo(7), "nothing taken yet");
             Assert.That(_red.Energy, Is.EqualTo(12 - 3), "only the cost left Red's pool; nothing came back");
         }
 
         [Test]
-        public void LeechRound_TakesOnlyWhatIsThere()
+        public void LeechRound_StacksDebt_UpToTheCap()
         {
-            SetPool(_blue, 1);
+            var added = new List<int>();
 
-            var result = Use(Revu.LeechRound, _target);
+            for (int i = 0; i < 4; i++)
+            {
+                var result = Use(Revu.LeechRound, _target);
+                added.Add(result.Outcomes.Single(o => o.Kind == EffectOutcomeKind.DebtIncurred).Amount);
+                _abilities.ResetCooldowns(_revu);
+                SetPool(_red, 12);
+                _target.RestoreHealth();
+            }
 
-            Assert.That(_blue.Energy, Is.EqualTo(0));
-            Assert.That(result.Outcomes.Single(o => o.Kind == EffectOutcomeKind.EnergyDrained).Amount, Is.EqualTo(1));
-        }
-
-        [Test]
-        public void LeechRound_OnADryPool_StillSaysSo()
-        {
-            SetPool(_blue, 0);
-
-            var result = Use(Revu.LeechRound, _target);
-
-            Assert.That(result.Outcomes.Single(o => o.Kind == EffectOutcomeKind.EnergyDrained).Amount, Is.EqualTo(0));
+            Assert.That(added, Is.EqualTo(new[] { 2, 2, 2, 0 }), "the fourth finds the seat at the cap, and says so");
+            Assert.That(_blue.Debt, Is.EqualTo(EnergyConfig.Default.DebtCap));
         }
 
         [Test]
@@ -207,7 +217,7 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
-        public void TheEnergyEffects_RefuseToGuess_WithoutTheSeats()
+        public void TheDebtEffects_RefuseToGuess_WithoutTheSeats()
         {
             var blind = new AbilityResolver(
                 _map, _clock, _energy, _statuses, _targeting, _damage, _cellEffects, _operatorEffects);
@@ -218,9 +228,9 @@ namespace NonaRoyale.Core.Tests.Abilities
 
         // ── Sadist ───────────────────────────────────────────────────────
 
-        private int SadistOn(int pool)
+        private int SadistOn(int debt)
         {
-            SetPool(_blue, pool);
+            SetDebt(_blue, debt);
             _target.RestoreHealth();
             Use(Revu.Sadist, _target);
             _abilities.ResetCooldowns(_revu);
@@ -229,21 +239,61 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
-        public void Sadist_OneDamageForEveryThreeMissing()
+        public void Sadist_DealsTheWholeDebt_AtLeastTwo()
         {
-            Assert.That(SadistOn(0), Is.EqualTo(4), "an empty pool");
-            Assert.That(SadistOn(5), Is.EqualTo(2), "7 missing rounds down to 2");
-            Assert.That(SadistOn(6), Is.EqualTo(2));
-            Assert.That(SadistOn(10), Is.EqualTo(2), "2 missing is not a point, but the floor is (2026-09-21)");
+            Assert.That(SadistOn(0), Is.EqualTo(2), "nothing owed: the floor (2026-09-21)");
+            Assert.That(SadistOn(1), Is.EqualTo(2), "below the floor");
+            Assert.That(SadistOn(3), Is.EqualTo(3));
+            Assert.That(SadistOn(6), Is.EqualTo(6), "the cap");
         }
 
         [Test]
-        public void Sadist_AgainstAFullPool_StillDealsItsFloor()
+        public void Sadist_ClearsTheDebt_AndSaysHowMuch()
         {
-            // Designer, 2026-09-21. It used to strike nobody: a seat at cap paid
-            // nothing for the roster's dearest read. The floor is the primary
-            // figure's, and the splash still divides it.
-            SetPool(_blue, 12);
+            SetDebt(_blue, 5);
+
+            var result = Use(Revu.Sadist, _target);
+
+            Assert.That(result.Approved, Is.True, result.ToString());
+            Assert.That(_blue.Debt, Is.EqualTo(0));
+            Assert.That(_blue.Creditors, Is.Empty, "a settled seat owes nobody");
+            Assert.That(result.Outcomes.Single(o => o.Kind == EffectOutcomeKind.DebtCalled).Amount, Is.EqualTo(5));
+        }
+
+        [Test]
+        public void Sadist_ClearsTheDebt_EvenWhenEquilibriumHalvesTheHit()
+        {
+            // Aimed at Blue's own Revú: cost 7, so his 4 lands as 2. The loan is
+            // collected all the same — a dodge or a halving is not a second life
+            // for the debt.
+            BringEnemyRevuTo(12);
+            SetDebt(_blue, 4);
+
+            Use(Revu.Sadist, _enemyRevu);
+
+            Assert.That(_enemyRevu.Health, Is.EqualTo(Revu.MaxHealth - 2));
+            Assert.That(_blue.Debt, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Sadist_LeavesTheSplashVictimsSeatsDebtAlone()
+        {
+            SetDebt(_blue, 2);
+            _energy.IncurDebt(_greenSeat, 3, _revu.Id);
+
+            Use(Revu.Sadist, _target);
+
+            Assert.That(_blue.Debt, Is.EqualTo(0), "the target's seat is settled");
+            Assert.That(_greenSeat.Debt, Is.EqualTo(3), "Green was only standing nearby");
+        }
+
+        [Test]
+        public void Sadist_WithNoDebt_StillDealsItsFloor()
+        {
+            // Designer, 2026-09-21. It used to strike nobody against a full
+            // pool; now the blank case is a seat that owes nothing. The floor is
+            // the primary figure's, and the splash still divides it.
+            SetDebt(_blue, 0);
 
             var result = Use(Revu.Sadist, _target);
 
@@ -256,14 +306,14 @@ namespace NonaRoyale.Core.Tests.Abilities
         [Test]
         public void Sadist_SplashesHalf_ToEnemiesWithinTwo_FromTheTargetsFigure()
         {
-            SetPool(_blue, 0);         // the target's seat: 4, so 2 splash
-            SetPool(_greenSeat, 12);   // Green's own pool is full, and does not matter
+            SetDebt(_blue, 4);          // the target's seat: 4, so 2 splash
+            SetPool(_blue, 12);         // what it holds does not matter any more
 
             Use(Revu.Sadist, _target);
 
             Assert.That(_target.Health, Is.EqualTo(3));
             Assert.That(_near.Health, Is.EqualTo(5), "Blue, one away");
-            Assert.That(_green.Health, Is.EqualTo(5), "Green, one away the other side: the target's figure");
+            Assert.That(_green.Health, Is.EqualTo(5), "Green, one away the other side, owing nothing: the target's figure");
             Assert.That(_far.Health, Is.EqualTo(7), "four away");
             Assert.That(_ally.Health, Is.EqualTo(7), "his own side");
             Assert.That(_revu.Health, Is.EqualTo(Revu.MaxHealth));
@@ -280,12 +330,10 @@ namespace NonaRoyale.Core.Tests.Abilities
                 energyCost: 7, cooldownTurns: 0, range: 3,
                 effects: new[]
                 {
-                    AbilityEffect.MissingEnergyDamage(
-                        Revu.SadistEnergyPerDamage, Revu.SadistSplashRadius, Revu.SadistSplashDivisor,
-                        DamageType.Normal)
+                    AbilityEffect.DebtDamage(Revu.SadistSplashRadius, Revu.SadistSplashDivisor, DamageType.Normal)
                 });
 
-            SetPool(_blue, 9);   // 3 missing: 1 to the target, 0 splash
+            SetDebt(_blue, 1);   // 1 to the target, 0 splash
 
             var result = Use(floorless, _target);
 
@@ -445,7 +493,7 @@ namespace NonaRoyale.Core.Tests.Abilities
         // ── Through the engine ───────────────────────────────────────────
 
         [Test]
-        public void TheEngine_ReportsTheDrain()
+        public void TheEngine_ReportsTheDebt()
         {
             var squads = new Dictionary<PlayerColor, IReadOnlyList<OperatorDefinition>>
             {
@@ -469,15 +517,16 @@ namespace NonaRoyale.Core.Tests.Abilities
                 if (match.Engine.CurrentPlayer.Energy < 3) continue;
 
                 var blue = match.Players.First(p => p.Color == PlayerColor.Blue);
-                int before = blue.Energy;
+                int pool = blue.Energy;
 
                 var events = match.Engine.Execute(new UseAbilityCommand(revu.Id, Revu.LeechRound.Id, syla.Id, null));
-                var drained = events.OfType<EnergyDrained>().Single();
+                var debt = events.OfType<DebtIncurred>().Single();
 
-                Assert.That(drained.Player, Is.EqualTo(PlayerColor.Blue));
-                Assert.That(drained.Amount, Is.EqualTo(Math.Min(2, before)));
-                Assert.That(drained.Remaining, Is.EqualTo(blue.Energy));
-                Assert.That(drained.Source, Is.SameAs(revu));
+                Assert.That(debt.Player, Is.EqualTo(PlayerColor.Blue));
+                Assert.That(debt.Amount, Is.EqualTo(2));
+                Assert.That(debt.Owed, Is.EqualTo(blue.Debt));
+                Assert.That(debt.Source, Is.SameAs(revu));
+                Assert.That(blue.Energy, Is.EqualTo(pool), "nothing is taken at cast time");
                 Assert.That(match.Statuses.ScalesCastDamage(revu), Is.True, "his passive reached the engine");
                 return;
             }

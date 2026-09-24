@@ -138,12 +138,12 @@ namespace NonaRoyale.Core.Services
         WatchMarked = 14,
 
         /// <summary>
-        /// Energy taken from a seat (§3.3). <see cref="EffectOutcome.Recipient"/>
-        /// is the operator targeted, whose seat paid; <see cref="EffectOutcome.Amount"/>
-        /// is what was actually taken. Emitted even when that is 0, so the view
-        /// can say the pool was already dry.
+        /// A seat put in debt (§3.3). <see cref="EffectOutcome.Recipient"/> is
+        /// the operator targeted, whose seat owes; <see cref="EffectOutcome.Amount"/>
+        /// is what was actually added. Emitted even when that is 0, so the view
+        /// can say the seat was already at the cap.
         /// </summary>
-        EnergyDrained = 15,
+        DebtIncurred = 15,
 
         /// <summary>
         /// The caster's seat was dealt dice (§6.8): <see cref="EffectOutcome.Amount"/>
@@ -165,7 +165,14 @@ namespace NonaRoyale.Core.Services
         /// it waits for traffic rather than for an upkeep.
         /// <see cref="EffectOutcome.Cell"/> carries where.
         /// </summary>
-        TableDealt = 17
+        TableDealt = 17,
+
+        /// <summary>
+        /// A seat's debt called in and cleared (§3.3). <see cref="EffectOutcome.Recipient"/>
+        /// is the operator targeted, whose seat owed; <see cref="EffectOutcome.Amount"/>
+        /// is the debt cleared, which may be 0. Revú's Sadist.
+        /// </summary>
+        DebtCalled = 18,
     }
 
     /// <summary>
@@ -266,8 +273,13 @@ namespace NonaRoyale.Core.Services
         public static EffectOutcome WatchMarked(OperatorState target) =>
             new EffectOutcome(EffectOutcomeKind.WatchMarked, target, default, 0, default, 0, 0);
 
-        public static EffectOutcome EnergyDrained(OperatorState recipient, int amount) =>
-            new EffectOutcome(EffectOutcomeKind.EnergyDrained, recipient, default, amount, default, 0, 0);
+        /// <summary>The seat of <paramref name="recipient"/> now owes <paramref name="amount"/> more (§3.3).</summary>
+        public static EffectOutcome DebtIncurred(OperatorState recipient, int amount) =>
+            new EffectOutcome(EffectOutcomeKind.DebtIncurred, recipient, default, amount, default, 0, 0);
+
+        /// <summary>The seat of <paramref name="recipient"/> had <paramref name="amount"/> of debt called in (§3.3).</summary>
+        public static EffectOutcome DebtCalled(OperatorState recipient, int amount) =>
+            new EffectOutcome(EffectOutcomeKind.DebtCalled, recipient, default, amount, default, 0, 0);
 
         /// <summary>A table dealt by <paramref name="caster"/> on <paramref name="cell"/>.</summary>
         public static EffectOutcome TableDealt(OperatorState caster, CellRef cell, int stopDamage) =>

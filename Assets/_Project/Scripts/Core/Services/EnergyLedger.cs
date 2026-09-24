@@ -6,7 +6,8 @@ using NonaRoyale.Core.Model;
 namespace NonaRoyale.Core.Services
 {
     /// <summary>
-    /// The only place energy is created or spent (COMBAT_SYSTEMS §3).
+    /// The only place energy is created or spent, and the only place a seat's
+    /// debt changes (COMBAT_SYSTEMS §3).
     /// </summary>
     /// <remarks>
     /// <b>Why this is one service.</b> The old codebase computed energy in two
@@ -34,6 +35,9 @@ namespace NonaRoyale.Core.Services
 
         /// <summary>What one cashed die pays (§3.4).</summary>
         public int CashedDieEnergy => _config.CashedDieEnergy;
+
+        /// <summary>The most a seat can owe (§3.3).</summary>
+        public int DebtCap => _config.DebtCap;
 
         /// <summary>
         /// Grants this turn's energy: <c>floor(diceTotal / 2)</c>, capped, with
@@ -123,18 +127,67 @@ namespace NonaRoyale.Core.Services
         public EnergyGrant GrantCash(PlayerState player, int amount) => GrantBounty(player, amount);
 
         /// <summary>
-        /// Takes up to <paramref name="amount"/> from a pool and reports what
-        /// was actually taken (§3.3). Destroyed, not transferred, and never
-        /// below zero.
+        /// Puts a seat in debt to <paramref name="creditorId"/> (§3.3), within
+        /// the cap, and reports what was actually added. Revú's Leech Round.
         /// </summary>
-        public int Drain(PlayerState player, int amount)
+        /// <remarks>
+        /// <b>Nothing is taken now.</b> The pool pays when the debtor ends its
+        /// own turn (<see cref="CollectDebt"/>), so the seat always gets a full
+        /// turn, income included, to decide between paying and spending. The
+        /// creditor is recorded even when the cap refuses the amount: the seat
+        /// still owes that operator, and a collision against it still burns the
+        /// debt.
+        /// </remarks>
+        public int IncurDebt(PlayerState debtor, int amount, int creditorId)
         {
-            if (player == null) throw new ArgumentNullException(nameof(player));
+            if (debtor == null) throw new ArgumentNullException(nameof(debtor));
             if (amount < 0) throw new ArgumentOutOfRangeException(nameof(amount));
 
-            int taken = Math.Min(amount, player.Energy);
-            player.SetEnergy(player.Energy - taken);
-            return taken;
+            int added = Math.Min(amount, Math.Max(0, _config.DebtCap - debtor.Debt));
+            debtor.SetDebt(debtor.Debt + added);
+            if (debtor.Debt > 0) debtor.AddCreditor(creditorId);
+            return added;
+        }
+
+        /// <summary>
+        /// Collects a seat's debt as it ends its turn (§3.3): the pool pays what
+        /// it can, destroyed, and an unpaid remainder draws interest within the
+        /// cap.
+        /// </summary>
+        /// <remarks>
+        /// <b>Destroyed, not transferred</b> (designer, 2026-09-24), as the drain
+        /// it replaced was. Interest is charged once, on the remainder only, so a
+        /// seat that pays in full is square and one that pays nothing owes one
+        /// more than it did.
+        /// </remarks>
+        public DebtCollection CollectDebt(PlayerState debtor)
+        {
+            if (debtor == null) throw new ArgumentNullException(nameof(debtor));
+
+            int before = debtor.Debt;
+            if (before == 0) return DebtCollection.None;
+
+            int paid = Math.Min(before, debtor.Energy);
+            debtor.SetEnergy(debtor.Energy - paid);
+
+            int unpaid = before - paid;
+            int interest = unpaid > 0 ? Math.Min(_config.DebtInterest, _config.DebtCap - unpaid) : 0;
+            debtor.SetDebt(unpaid + interest);
+
+            return new DebtCollection(before, paid, interest, debtor.Debt);
+        }
+
+        /// <summary>
+        /// Clears a seat's whole debt and reports what it was (§3.3): Sadist
+        /// calling it in, or a collision against a creditor burning it.
+        /// </summary>
+        public int WriteOffDebt(PlayerState debtor)
+        {
+            if (debtor == null) throw new ArgumentNullException(nameof(debtor));
+
+            int owed = debtor.Debt;
+            debtor.SetDebt(0);
+            return owed;
         }
 
         /// <summary>Whether the pool can cover a cost. Passives are free and never ask.</summary>

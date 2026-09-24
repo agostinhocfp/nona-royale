@@ -10,9 +10,11 @@ using NUnit.Framework;
 namespace NonaRoyale.Core.Tests.Bots
 {
     /// <summary>
-    /// What the bots had to learn for Revú (2026-09-17): Equilibrium rescales
-    /// what a cast is worth against him, a drain is worth the energy it can
-    /// actually take, and Sadist is worth what the target's pool is missing.
+    /// What the bots had to learn for Revú (2026-09-17; debt rework
+    /// 2026-09-24): Equilibrium rescales what a cast is worth against him, a
+    /// loan is worth what the debt cap still has room for, Sadist is worth the
+    /// debt it calls in, a seat in debt pays for casting into its own bill, and
+    /// landing on the creditor is worth the debt it burns.
     /// </summary>
     [TestFixture]
     public class RevuBotTests
@@ -58,11 +60,18 @@ namespace NonaRoyale.Core.Tests.Bots
             op.MoveTo((track - _match.Map.StartTrackIndex(op.Owner) + circuit) % circuit);
         }
 
-        private void SetPool(PlayerState player, int amount)
+        private static readonly EnergyLedger Ledger = new EnergyLedger(Config.EnergyConfig.Default);
+
+        private static void SetPool(PlayerState player, int amount)
         {
-            var ledger = new EnergyLedger(Config.EnergyConfig.Default);
-            ledger.Drain(player, player.Energy);
-            if (amount > 0) ledger.GrantBounty(player, amount);
+            Ledger.Spend(player, player.Energy);
+            if (amount > 0) Ledger.GrantBounty(player, amount);
+        }
+
+        private static void SetDebt(PlayerState player, int amount, OperatorState creditor)
+        {
+            Ledger.WriteOffDebt(player);
+            if (amount > 0) Ledger.IncurDebt(player, amount, creditor.Id);
         }
 
         private static BotWeights Weights => BotWeights.For(BotPersonality.Brawler);
@@ -96,30 +105,101 @@ namespace NonaRoyale.Core.Tests.Bots
         }
 
         [Test]
-        public void LeechRound_IsWorthTheEnergyItCanTake()
+        public void LeechRound_IsWorthTheDebtTheCapHasRoomFor()
         {
-            SetPool(_blue, 6);
-            double full = Score(_revu, Revu.LeechRound, _enemyRevu).Offence;
+            SetDebt(_blue, 0, _revu);
+            double clear = Score(_revu, Revu.LeechRound, _enemyRevu).Offence;
 
-            SetPool(_blue, 0);
-            double dry = Score(_revu, Revu.LeechRound, _enemyRevu).Offence;
+            SetDebt(_blue, 5, _revu);
+            double nearCap = Score(_revu, Revu.LeechRound, _enemyRevu).Offence;
 
-            Assert.That(full - dry, Is.EqualTo(2 * Weights.EnergyDenial * Weights.Offence).Within(1e-9));
+            SetDebt(_blue, 6, _revu);
+            double atCap = Score(_revu, Revu.LeechRound, _enemyRevu).Offence;
+
+            double point = Weights.EnergyDenial * Weights.Offence;
+            Assert.That(clear - nearCap, Is.EqualTo(point).Within(1e-9), "room for 1 of the 2");
+            Assert.That(nearCap - atCap, Is.EqualTo(point).Within(1e-9), "room for none");
         }
 
         [Test]
-        public void Sadist_IsWorthLess_AgainstAFullPool()
+        public void Sadist_IsWorthMore_AgainstADeeperDebt()
         {
-            // It was worth nothing until the floor landed (2026-09-21); now the
-            // bot still reads a full pool as the weakest case, not a blank.
-            SetPool(_blue, 12);
-            double full = Score(_revu, Revu.Sadist, _enemyRevu).Offence;
+            SetDebt(_blue, 0, _revu);
+            double clear = Score(_revu, Revu.Sadist, _enemyRevu).Offence;
 
-            SetPool(_blue, 0);
-            double dry = Score(_revu, Revu.Sadist, _enemyRevu).Offence;
+            SetDebt(_blue, 6, _revu);
+            double deep = Score(_revu, Revu.Sadist, _enemyRevu).Offence;
 
-            Assert.That(full, Is.GreaterThan(0.0), "the floor is worth something");
-            Assert.That(dry, Is.GreaterThan(full), "an empty pool is still the play");
+            Assert.That(clear, Is.GreaterThan(0.0), "the floor is worth something");
+            Assert.That(deep, Is.GreaterThan(clear), "a seat at the cap is the play");
+        }
+
+        [Test]
+        public void DebtShortfall_IsWhatTheCastLeavesUnpaid()
+        {
+            SetPool(_red, 6);
+
+            SetDebt(_red, 0, _enemyRevu);
+            Assert.That(CastPlanner.DebtShortfall(_red, 3), Is.EqualTo(0), "no debt");
+
+            SetDebt(_red, 3, _enemyRevu);
+            Assert.That(CastPlanner.DebtShortfall(_red, 3), Is.EqualTo(0), "6 pays the cast and the bill");
+
+            SetDebt(_red, 5, _enemyRevu);
+            Assert.That(CastPlanner.DebtShortfall(_red, 3), Is.EqualTo(2), "3 left against 5 owed");
+
+            SetPool(_red, 2);
+            Assert.That(CastPlanner.DebtShortfall(_red, 2), Is.EqualTo(2), "already short 3; now 5");
+        }
+
+        [Test]
+        public void ASeatInDebt_PaysForCastingIntoItsOwnBill()
+        {
+            SetPool(_red, 6);
+
+            SetDebt(_red, 0, _enemyRevu);
+            double square = Score(_revu, Revu.LeechRound, _enemyRevu).Score;
+
+            SetDebt(_red, 5, _enemyRevu);
+            double owing = Score(_revu, Revu.LeechRound, _enemyRevu).Score;
+
+            Assert.That(square - owing, Is.EqualTo(2 * Weights.DebtShortfall).Within(1e-9));
+        }
+
+        [Test]
+        public void LandingOnTheCreditor_IsWorthTheDebtItBurns()
+        {
+            // Red's Syla one cell behind Blue's Revú, and Red owes him 3.
+            var board = new BotBoard(_match);
+            int to = _syla.Progress + 1;
+
+            SetDebt(_red, 0, _enemyRevu);
+            double square = MoveScorer.ScoreLanding(board, Weights, _syla, to, 1, 0);
+
+            SetDebt(_red, 3, _enemyRevu);
+            double owing = MoveScorer.ScoreLanding(board, Weights, _syla, to, 1, 0);
+
+            Assert.That(owing - square, Is.EqualTo(3 * Weights.DebtBurn).Within(1e-9));
+        }
+
+        [Test]
+        public void LandingOnSomeoneElsesCreditor_BurnsNothing()
+        {
+            // Red owes a Blue operator, but not the one standing there.
+            OperatorState kian = null;
+            foreach (var op in _match.Operators)
+                if (op.Owner == PlayerColor.Blue && op.Name == "Kian") kian = op;
+
+            var board = new BotBoard(_match);
+            int to = _syla.Progress + 1;
+
+            SetDebt(_red, 0, kian);
+            double square = MoveScorer.ScoreLanding(board, Weights, _syla, to, 1, 0);
+
+            SetDebt(_red, 3, kian);
+            double owing = MoveScorer.ScoreLanding(board, Weights, _syla, to, 1, 0);
+
+            Assert.That(owing, Is.EqualTo(square).Within(1e-9));
         }
     }
 }
