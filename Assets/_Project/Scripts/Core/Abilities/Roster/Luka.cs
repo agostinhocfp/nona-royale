@@ -55,6 +55,12 @@ namespace NonaRoyale.Core.Abilities
         public const int HeavyStrikeBonus = 1;
 
         /// <summary>
+        /// How long Blind Spot's strike slows its target: one turn, the
+        /// target's next (2026-09-24, designer).
+        /// </summary>
+        public const int StrikeSlowTurns = 1;
+
+        /// <summary>
         /// Luka's ring wipes him out of every lens in the room; he reappears
         /// beside the target and strikes it. If it is still within reach when
         /// his next turn begins, he strikes it again.
@@ -93,11 +99,18 @@ namespace NonaRoyale.Core.Abilities
         /// pays for its certainty with a cleanse and a blast that reaches
         /// others; this pays with the escape and the extra point. Normal
         /// damage, both hits — no type was specified.
+        ///
+        /// <b>The strike slows for one round (designer, 2026-09-24).</b> A
+        /// one-turn <see cref="StatusKind.Slow"/> on the target, applied on
+        /// Luka's turn, so it is live for exactly the target's next turn — the
+        /// turn it has to spend getting clear of <see cref="FollowUpReach"/>.
+        /// It prices the escape rather than removing it: at half speed a roll
+        /// still moves the target, just not as far. Cleansed with the marker.
         /// </remarks>
         public static AbilityDefinition BlindSpot { get; } = new AbilityDefinition(
             id: 901, name: "Blind Spot",
             description:
-                "Luka's ring wipes him from every lens in the room. He reappears beside the target and strikes it, harder if it is a heavy target, and if it is still close when his next turn begins, he strikes it again.",
+                "Luka's ring wipes him from every lens in the room. He reappears beside the target and strikes it, harder if it is a heavy target, and slows it for a round. If it is still close when his next turn begins, he strikes it again.",
             energyCost: 5, cooldownTurns: 3, range: 3,
             effects: new[]
             {
@@ -105,6 +118,8 @@ namespace NonaRoyale.Core.Abilities
                 AbilityEffect.Damage(EffectScope.PrimaryTarget, 2, DamageType.Normal,
                         EffectAudience.EnemyOnly)
                     .WithHeavyBonus(HeavyStrikeBonus, HeavyAbove),
+                AbilityEffect.Status_(EffectScope.PrimaryTarget, StatusKind.Slow,
+                    duration: StrikeSlowTurns),
                 AbilityEffect.FollowUp(
                     damage: 1, heavyBonus: 1, heavyAboveMaxHealth: HeavyAbove,
                     withinRange: FollowUpReach, damageType: DamageType.Normal)

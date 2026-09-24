@@ -1586,6 +1586,13 @@ namespace NonaRoyale.Core
         }
 
         /// <summary>
+        /// Whether the operator's next Normal or Tech hit this round would get
+        /// the evasion roll (§5.5). For the bots; no operator holds Evasion
+        /// since 2026-09-24.
+        /// </summary>
+        public bool EvasionReady(OperatorState op) => _statuses.EvasionReady(op);
+
+        /// <summary>
         /// Whether an operator will carry a status on its owner's next turn,
         /// for callers that plan against that turn — the bots, weighing a
         /// watch against a stun (2026-09-17). Auras are not included: they

@@ -564,6 +564,17 @@ namespace NonaRoyale.Core.Services
         // ── IDamageMitigation ────────────────────────────────────────────
 
         /// <summary>
+        /// Whether the holder's next Normal or Tech hit this round would get
+        /// the evasion roll: it holds Evasion and has not spent the round's
+        /// charge. Read-only, for planners (§5.5).
+        /// </summary>
+        public bool EvasionReady(OperatorState op)
+        {
+            if (op == null) throw new ArgumentNullException(nameof(op));
+            return Has(op, StatusKind.Evasion) && !_evasionSpentThisRound.Contains(op.Id);
+        }
+
+        /// <summary>
         /// The first Normal instance each round may be negated on a seeded roll
         /// at <c>CombatConfig.EvasionChance</c>. Every instance after it that
         /// round lands automatically.

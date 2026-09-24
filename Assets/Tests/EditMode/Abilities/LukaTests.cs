@@ -209,6 +209,33 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
+        public void BlindSpot_SlowsTheTarget_ForItsNextTurnOnly()
+        {
+            // Designer, 2026-09-24: the strike slows for one round, the turn
+            // the target has to spend getting clear of the follow-up.
+            CastBlindSpot(_target);
+
+            _clock.BeginTurnFor(PlayerColor.Blue);
+            Assert.That(_statuses.Has(_target, StatusKind.Slow), Is.True, "live on its next turn");
+            Assert.That(_statuses.SpeedModifier(_target),
+                Is.EqualTo(-CombatConfig.Default.SlowSpeedPenalty));
+
+            _clock.BeginTurnFor(PlayerColor.Red);
+            _clock.BeginTurnFor(PlayerColor.Blue);
+            Assert.That(_statuses.Has(_target, StatusKind.Slow), Is.False, "one round, not two");
+        }
+
+        [Test]
+        public void BlindSpot_SlowsOnlyTheTarget()
+        {
+            CastBlindSpot(_target);
+            _clock.BeginTurnFor(PlayerColor.Blue);
+
+            Assert.That(_statuses.Has(_bystander, StatusKind.Slow), Is.False, "passed on the way, untouched");
+            Assert.That(_statuses.Has(_luka, StatusKind.Slow), Is.False);
+        }
+
+        [Test]
         public void BlindSpot_AimedAtAnAlly_IsRefusedAsWrongSide()
         {
             int before = _red.Energy;
@@ -684,6 +711,7 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(Luka.BlindSpot.EnergyCost, Is.EqualTo(5));
             Assert.That(Luka.BlindSpot.CooldownTurns, Is.EqualTo(3));
             Assert.That(Luka.BlindSpot.Range, Is.EqualTo(3));
+            Assert.That(Luka.StrikeSlowTurns, Is.EqualTo(1), "designer, 2026-09-24");
 
             Assert.That(Luka.HermesRing.EnergyCost, Is.EqualTo(3));
             Assert.That(Luka.HermesRing.CooldownTurns, Is.EqualTo(4));

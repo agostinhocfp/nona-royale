@@ -307,7 +307,12 @@ namespace NonaRoyale.Core.Bots
 
             double landed = amount;
             if (Has(target, StatusKind.Shield)) landed = Math.Max(0.0, landed - ShieldPool(target));
-            if (type == DamageType.Normal && Has(target, StatusKind.Evasion))
+            // Only the hit that gets the round's roll is discounted, Normal or
+            // Tech as the pipeline has it (§5.5). Until 2026-09-24 every Normal
+            // hit on a holder was priced at 88%, charge spent or not, and about
+            // 1.4 of Kurbyn's 2.5 evasion points were bots avoiding him for it
+            // (MIMI_KURBYN_ANALYSIS.md). Dormant: nobody holds Evasion now.
+            if ((type == DamageType.Normal || type == DamageType.Tech) && Engine.EvasionReady(target))
                 landed *= 1.0 - Combat.EvasionChance;
 
             return landed;
