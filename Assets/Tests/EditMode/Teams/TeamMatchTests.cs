@@ -180,6 +180,7 @@ namespace NonaRoyale.Core.Tests.Teams
             // Blue's turn now; the win is checked at every turn's end, so the
             // side's win is announced on whoever's turn closes next.
             engine.Execute(new RollDiceCommand());
+            Engine.TurnKit.PayWhatIsOwed(engine);
             var won = engine.Execute(new EndTurnCommand()).OfType<GameWon>().SingleOrDefault();
 
             Assert.That(won, Is.Not.Null);

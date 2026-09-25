@@ -40,8 +40,10 @@ namespace NonaRoyale.Core.Abilities
         /// <summary>
         /// Seven: 6 plus the roster-wide +1 of 2026-09-16 (COMBAT_SYSTEMS
         /// §1.1), which cut knockouts, and so match length, in the bots sweep.
+        ///
+        /// Raised by 1 again on 2026-09-25 (designer, to shorten matches; COMBAT_SYSTEMS §1.1): now 8.
         /// </summary>
-        public const int MaxHealth = 7;
+        public const int MaxHealth = 8;
 
         /// <summary>
         /// 1.0 — plain, since 2026-09-17. Until then his speed was 1.0 plus

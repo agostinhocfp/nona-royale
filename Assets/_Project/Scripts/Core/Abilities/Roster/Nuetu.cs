@@ -62,8 +62,10 @@ namespace NonaRoyale.Core.Abilities
         /// same warning from the 2026-09-12 cut: axes moved together are not
         /// separable afterwards. If he reads weak, put the detonation back first —
         /// it is the one whose effect is easiest to see at the table.
+        ///
+        /// Raised by 1 again on 2026-09-25 (designer, to shorten matches; COMBAT_SYSTEMS §1.1): now 8.
         /// </remarks>
-        public const int MaxHealth = 7;
+        public const int MaxHealth = 8;
 
         /// <summary>
         /// The band's floor, shared with Bouncer, Mimi and Kian. He closes slowly

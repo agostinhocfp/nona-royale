@@ -28,8 +28,10 @@ namespace NonaRoyale.Core.Abilities
         /// Eight: 7 as built, +1 by the designer on 2026-09-17 after the bots
         /// sweep had him at 21%. The draft's "4 HP" reasoning predates the
         /// roster-wide +1 and the draft-health pass.
+        ///
+        /// Raised by 1 again on 2026-09-25 (designer, to shorten matches; COMBAT_SYSTEMS §1.1): now 9.
         /// </summary>
-        public const int MaxHealth = 8;
+        public const int MaxHealth = 9;
 
         public const double Speed = 1.0;
 

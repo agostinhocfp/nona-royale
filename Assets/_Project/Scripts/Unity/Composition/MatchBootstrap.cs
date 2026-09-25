@@ -109,6 +109,13 @@ namespace NonaRoyale.Unity.Composition
         [Tooltip("How fast CPU seats act. Remembered between sessions; this is the first-run default.")]
         public BotSpeed cpuSpeed = BotSpeed.Normal;
 
+        [Tooltip("A human seat that has not rolled 15 s into its turn has the dice rolled for it (TurnPacer). " +
+                 "CPU seats pace themselves; pause and menus freeze the clock.")]
+        public bool rollClock = true;
+
+        [Tooltip("End a human seat's turn on its own once End Turn is the only legal command left (TurnPacer).")]
+        public bool autoEndTurn = true;
+
         [Tooltip("Operators already on the board at the start. 2 is the adopted value.")]
         [Range(0, 3)] public int openingDeployments = 2;
 
@@ -307,6 +314,9 @@ namespace NonaRoyale.Unity.Composition
 
         /// <summary>Whether the board is still catching up with the engine.</summary>
         private bool Busy => _queue != null && _queue.IsBusy;
+
+        /// <summary>The roll clock and auto end-turn for human seats (2026-09-25).</summary>
+        private readonly TurnPacer _pacer = new TurnPacer();
 
         /// <summary>The screens the app moves between (GUI increment J).</summary>
         public enum AppScreen { Title, Guide, Setup, Draft, Match, Paused, Results }
@@ -1318,6 +1328,7 @@ namespace NonaRoyale.Unity.Composition
             if (Input.GetMouseButtonDown(1)) StepBack();
 
             ReleaseBufferedIntent();
+            DrivePacer();
 
             // Last, so it reflects this frame's clicks and keys rather than the last frame's.
             // Esc may have opened the pause menu above; ModalOpen is read again for that.
@@ -1359,6 +1370,30 @@ namespace NonaRoyale.Unity.Composition
                 if (piece != null && piece.IsMoving) return true;
 
             return false;
+        }
+
+        /// <summary>
+        /// Rolls for a human seat that let the roll clock run out, and ends a
+        /// turn with nothing left in it (TurnPacer). Real time, because a clock
+        /// the player reads is in seconds they feel; this runs only while no
+        /// card is open, so pause freezes it all the same.
+        /// </summary>
+        private void DrivePacer()
+        {
+            // A press still waiting for the board is the player's own answer.
+            bool waiting = _buffered != BufferedIntent.None;
+
+            var command = _pacer.Tick(_match, humanTurn: !CpuTurn, busy: Busy || AnyPieceMoving() || waiting,
+                Time.unscaledDeltaTime, rollClock, autoEndTurn);
+
+            if (_turnButton != null) _turnButton.SetCountdown(_pacer.RollSecondsLeft);
+
+            if (command == null) return;
+
+            _log.Add(command is RollDiceCommand
+                ? $"[clock] rolled for the seat after {TurnPacer.RollClockSeconds:0} s"
+                : "[auto] nothing left to do: turn ended");
+            Send(command);
         }
 
         // ── CPU seats (BOT2) ─────────────────────────────────────────────

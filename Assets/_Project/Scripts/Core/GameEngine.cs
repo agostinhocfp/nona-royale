@@ -254,15 +254,75 @@ namespace NonaRoyale.Core
         public IReadOnlyList<int> UnspentDice => _unspentView;
 
         /// <summary>
-        /// Whether the current player still owes the board a move. True exactly
-        /// when <see cref="EndTurnCommand"/> would be rejected.
+        /// Whether the current player still owes the board something before the
+        /// turn can end: a roll, a move, a deploy, or a doubles re-roll. True
+        /// exactly when <see cref="EndTurnCommand"/> would be rejected.
         /// </summary>
         /// <remarks>
         /// For greying out the end-turn button rather than letting a player press
         /// it and read a refusal — the same reasoning that put
-        /// <see cref="CheckAbility"/> here.
+        /// <see cref="CheckAbility"/> here. <b>Not "dice are owed"</b> since
+        /// 2026-09-25: a forced re-roll makes it true with no dice in hand. Ask
+        /// <see cref="DiceOwed"/> for that.
         /// </remarks>
-        public bool MustSpendRoll => Phase == TurnPhase.AwaitingRoll || HasLegalMove();
+        public bool MustSpendRoll =>
+            Phase == TurnPhase.AwaitingRoll || DiceOwed || MustRollAgain;
+
+        /// <summary>Whether some operator of the current player can move with the dice in hand (§6.1).</summary>
+        public bool CanMove => HasLegalMove();
+
+        /// <summary>The die face that deploys an operator (ADR-0003), for text that names it.</summary>
+        public int DeployFace => _movement.DeployFace;
+
+        /// <summary>
+        /// Whether the dice in hand still have a compulsory use: a legal move,
+        /// or a deploy (§6.1). A doubles re-roll is refused while this is true.
+        /// </summary>
+        public bool DiceOwed => HasLegalMove() || MustDeploy;
+
+        /// <summary>
+        /// Whether an unspent deploy face and a yard operator are both in hand,
+        /// which makes the deploy compulsory (§6.1, 2026-09-25).
+        /// </summary>
+        /// <remarks>
+        /// <b>Why:</b> movement was compulsory and deploying was not, so a
+        /// player whose runners were all seated, stunned or home could roll a
+        /// 6 and end the turn on it. With a runner free to move the 6 was
+        /// already owed to the board; this closes the case where it was not.
+        /// "Spawn or move" is the whole rule: moving with the 6 spends it too.
+        /// Double 6 with two operators seated owes two deploys, as it always
+        /// could buy.
+        /// </remarks>
+        public bool MustDeploy
+        {
+            get
+            {
+                if (_turns.Phase != TurnPhase.Action) return false;
+                if (!_unspentDice.Contains(_movement.DeployFace)) return false;
+
+                var player = _turns.CurrentPlayer;
+                if (player == null) return false;
+
+                foreach (var op in player.Operators)
+                    if (op.IsInYard) return true;
+
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Whether the doubles re-roll is compulsory: one is available, the dice
+        /// in hand owe nothing, and no operator of the current player can move
+        /// at all (§6.2, 2026-09-25).
+        /// </summary>
+        /// <remarks>
+        /// <b>Only when nothing can move</b>, because only then is the re-roll
+        /// free. With a runner on the board a re-roll owes the board another
+        /// move, and declining it to keep a piece where it stands is a tactic
+        /// worth keeping. With every runner seated, stunned or home, declining
+        /// only throws away a chance at a 6.
+        /// </remarks>
+        public bool MustRollAgain => _turns.CanRollAgain && !DiceOwed && !HasMovableOperator();
 
         /// <summary>Opens the match. Runs the first upkeep and reports it.</summary>
         public IReadOnlyList<IGameEvent> Start()
@@ -507,6 +567,15 @@ namespace NonaRoyale.Core
                 return;
             }
 
+            // The same dodge, through the yard: a re-roll clears the unspent
+            // dice, so rolling on a held 6 would forfeit a compulsory deploy.
+            if (_hasRolled && MustDeploy)
+            {
+                events.Add(new CommandRejected(
+                    $"deploy with your {_movement.DeployFace} before rolling again"));
+                return;
+            }
+
             var report = _turns.Roll();
 
             _unspentDice.Clear();
@@ -548,6 +617,23 @@ namespace NonaRoyale.Core
             {
                 events.Add(new CommandRejected(
                     "you must use your roll: an operator can still move with it"));
+                return;
+            }
+
+            // Spawn or move (2026-09-25): a deploy face with a seated operator
+            // is owed to the board like a move is.
+            if (MustDeploy)
+            {
+                events.Add(new CommandRejected(
+                    $"you must use your {_movement.DeployFace}: an operator is waiting to deploy"));
+                return;
+            }
+
+            // Nothing on the board can move, so the doubles re-roll costs
+            // nothing and is taken.
+            if (MustRollAgain)
+            {
+                events.Add(new CommandRejected("doubles: roll again, nothing on the board can move"));
                 return;
             }
 
@@ -1688,6 +1774,18 @@ namespace NonaRoyale.Core
 
         private bool CanBeMoved(OperatorState op) =>
             !op.IsInYard && !_win.HasFinished(op) && !_statuses.IsStunned(op);
+
+        /// <summary>Whether any operator of the current player could move at all, whatever the dice.</summary>
+        private bool HasMovableOperator()
+        {
+            var player = _turns.CurrentPlayer;
+            if (player == null) return false;
+
+            foreach (var op in player.Operators)
+                if (CanBeMoved(op)) return true;
+
+            return false;
+        }
 
         /// <summary>
         /// Speed is base, plus statuses, plus any aura reaching it — all

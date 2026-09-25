@@ -88,7 +88,7 @@ namespace NonaRoyale.Core.Tests.Abilities
             // updates §10.12.
             var fortuna = Roster.ByName("Fortuna");
 
-            Assert.That(fortuna.MaxHealth, Is.EqualTo(7));
+            Assert.That(fortuna.MaxHealth, Is.EqualTo(8)); // +1 on 2026-09-25
             Assert.That(fortuna.BaseSpeed, Is.EqualTo(1.0), "at 1.5 she banks and races");
             Assert.That(fortuna.Passive, Is.EqualTo(StatusKind.HouseEdge));
             Assert.That(fortuna.PassiveName, Is.EqualTo("The House Edge"));

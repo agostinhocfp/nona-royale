@@ -269,7 +269,7 @@ namespace NonaRoyale.Core.Tests.Abilities
         [Test]
         public void FollowUp_DealsTwo_ToAHeavyTarget()
         {
-            // Heavy is maximum health above Luka.HeavyAbove — the Bouncer and
+            // Heavy is maximum health above Luka.HeavyAbove — the Bouncer, Revú and
             // Sanity today. Both halves pay the rider, so a heavy target takes
             // three on the cast and two on the follow-up.
             CastBlindSpot(_heavy);
@@ -705,7 +705,7 @@ namespace NonaRoyale.Core.Tests.Abilities
         {
             var luka = Roster.ByName("Luka");
 
-            Assert.That(luka.MaxHealth, Is.EqualTo(7), "6 until the roster-wide +1 of 2026-09-16");
+            Assert.That(luka.MaxHealth, Is.EqualTo(8), "6, then 7 from 2026-09-16, then 8 from 2026-09-25");
             Assert.That(luka.BaseSpeed, Is.EqualTo(1.0));
 
             Assert.That(Luka.BlindSpot.EnergyCost, Is.EqualTo(5));

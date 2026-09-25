@@ -141,7 +141,7 @@ The dev panel (`ControlPanel`) takes the left edge instead of the rail while Tab
 
 **Over the board, not beside it** (increment F2):
 
-- **Turn button** (`TurnButton`). One button at the board's bottom-right corner always names the next step: ROLL, then MOVE FIRST with the dice left, then END TURN. It breathes when pressing it is that step. There is a single place to look, as in a card game's end-turn button.
+- **Turn button** (`TurnButton`). One button at the board's bottom-right corner always names the next step: ROLL, then MOVE FIRST (or DEPLOY FIRST, when a held 6 has nothing else to go to) with the dice left, then END TURN. Since 2026-09-25 ROLL counts down the 15 s roll clock on its hint, and a turn with nothing left but END TURN ends itself after a beat (`TurnPacer`; inspector toggles `rollClock` and `autoEndTurn` on `MatchBootstrap`). It breathes when pressing it is that step. There is a single place to look, as in a card game's end-turn button.
 - **Turn pill** (`TurnBanner`). A slim line under the top bar at the start of every turn, "RED's turn · round 3 · Space to roll", which fades after the roll. It is the hot-seat hand-over cue. It started as a large centred card, which was too big.
 - **Toasts** (`EventToasts`). Up to three short lines under the top bar, for casts, hits, knockouts, upkeep effects and refused commands. Upkeep damage has no visible agent (§2), so the screen has to say it without the player looking for it.
 - **Full log** (`LogPanel`). An overlay beside the strip, opened with L or the strip's LOG button. It takes no width from the board.

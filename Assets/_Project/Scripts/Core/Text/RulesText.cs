@@ -301,7 +301,7 @@ namespace NonaRoyale.Core.Text
                 line.Text("; you ").Keyword("heal what each blow removes", Keywords.Lifesteal);
         }
 
-        /// <summary>"heavy (max health above 7)".</summary>
+        /// <summary>"heavy (max health above N)", N being Luka.HeavyAbove.</summary>
         private static void Heavy(RulesLine line, int above)
         {
             line.Keyword("heavy", Keywords.Heavy).Text(" targets (max health above ").Number(above).Text(")");

@@ -28,8 +28,10 @@ namespace NonaRoyale.Core.Abilities
         /// <summary>
         /// Seven: the roster's common health since the +1 of 2026-09-16, level
         /// with Syla, Javi, Kurbyn, Kian, Nuetu and Luka.
+        ///
+        /// Raised by 1 again on 2026-09-25 (designer, to shorten matches; COMBAT_SYSTEMS §1.1): now 8.
         /// </summary>
-        public const int MaxHealth = 7;
+        public const int MaxHealth = 8;
 
         /// <summary>
         /// Base 1.0. Her mobility is her passive haste, not speed.

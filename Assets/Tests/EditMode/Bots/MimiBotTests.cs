@@ -60,7 +60,7 @@ namespace NonaRoyale.Core.Tests.Bots
         {
             // 2026-09-17, pass one: both of her 6-cost casts down to 4.
             // Pass two: +1 health, Cryo Field tick 1 → 2, radius 2 → 3.
-            Assert.That(Mimi.MaxHealth, Is.EqualTo(7));
+            Assert.That(Mimi.MaxHealth, Is.EqualTo(8)); // +1 on 2026-09-25
             Assert.That(Mimi.CryoPulse.EnergyCost, Is.EqualTo(4));
             Assert.That(Mimi.CryoField.EnergyCost, Is.EqualTo(4));
             Assert.That(Mimi.Translocation.EnergyCost, Is.EqualTo(3));

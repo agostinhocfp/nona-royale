@@ -145,7 +145,7 @@ namespace NonaRoyale.Core.Tests.Abilities
 
             // Designer, 2026-09-17: health 7 → 8, Leech Round 1 → 2 damage and
             // cooldown 2 → 1, Sadist cooldown 5 → 4.
-            Assert.That(op.MaxHealth, Is.EqualTo(8));
+            Assert.That(op.MaxHealth, Is.EqualTo(9)); // +1 on 2026-09-25
             Assert.That(op.BaseSpeed, Is.EqualTo(1.0));
             Assert.That(op.Passive, Is.EqualTo(StatusKind.Equilibrium));
             Assert.That(op.PassiveName, Is.EqualTo("Equilibrium"));

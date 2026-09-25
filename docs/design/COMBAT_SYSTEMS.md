@@ -38,6 +38,13 @@ The old `[Range(3, 9)]` cap on `Operator.maxHealth` is **dead**. The stat is unb
 - **What did not:** damage, collision damage (3), the mark (2 a turn) and the execute threshold (a ratio, so it scales on its own). A 7-health operator now survives two collisions, and a full mark leaves it at 3 rather than 2.
 - **Reasoning written against the old figures** (5, 6 and 9) still stands in §10 and in several code remarks, `CombatConfig.MarkDamagePerTurn` among them. Read those numbers as one lower than today.
 
+**Second roster-wide +1 health (2026-09-25, designer).** Every operator gained one more: the common figure is 8, Revú 9, Sanity 10, Bouncer 11. Same reason: knockouts drive match length (§12).
+
+- **What moved with it:** Luka's heavy line 7 → 8, so the heavy set is unchanged (Bouncer, Sanity, Revú). The replay fingerprint moved (`2ab5a0d1`), so replays recorded before are refused.
+- **What did not:** damage, collision damage, the mark, the execute ratio. An 8-health operator still survives two collisions and dies to the third; a full mark leaves it at 4.
+- **Reasoning written against 7** in §10 and the code remarks: read it as one lower than today, as above.
+- **Measured** in §12, together with the pity deploy at 2 and spawn-or-move (§1.3).
+
 ### 1.2 Neutralized
 
 An operator is neutralized when its HP reaches 0 by any route (collision, ability, bleed, a mark tick, Miracle Pull's execute, or Bouncer's self-damage).
@@ -63,7 +70,8 @@ On neutralize:
 
 A neutralized operator re-enters exactly as it originally deployed (ADR-0003):
 
-- **A roll containing a 6 may deploy one operator**, consuming that die. Deployment is optional.
+- **A roll containing a 6 deploys one operator**, consuming that die. **Using the 6 is compulsory (2026-09-25, "spawn or move"):** while a 6 is unspent and an operator of that seat is seated, the turn cannot end and a doubles re-roll cannot be taken (`GameEngine.MustDeploy`). Moving with the 6 spends it just as well, so the rule only bites when nothing on the board can take it: every runner seated, stunned or home. Before, a 6 rolled in that position could be thrown away with End Turn.
+- **Pity deploy** (`GameConfig.PityDeployAfterTurns = 2`, 3 until 2026-09-25): a turn that ends as its seat's second straight turn without a 6, with an operator seated, deploys one of them free as the turn closes. A 6 anywhere in the turn, or an empty yard, resets the count. It is how a knocked-out operator gets back in without waiting on the dice.
 - **Every die a deploy does not consume is movement**, spent under §6 — pooled onto one operator or dealt between two.
 - **Each deploy consumes one die.** So a double 6 with only **one** operator waiting deploys that one and leaves the other 6 as the movement roll. Spending both dice to deploy a single operator would make a double 6 strictly worse than a single 6, which cannot be the intent.
 - **Double 6 deploys two** operators and forfeits movement for that turn. It still grants the doubles re-roll (§6).
@@ -499,9 +507,15 @@ A turn cannot be ended, and a doubles re-roll cannot be taken, while any of the 
 
 It also excludes a roll whose **pooled** pips floor to zero cells for every operator that could move. Pooling is always available and never moves fewer cells than a single die, so if the pool cannot move anybody, nothing can — and a die that can only move somebody nowhere has no consumer and is forfeit. This is the one rule that guarantees a turn is always endable; without it a heavy slow could deadlock the match.
 
-Deploying stays optional (§1.3). A declined deploy leaves the 6 available as movement, so no die is stranded by declining.
+**Deploying is compulsory too (2026-09-25).** An unspent 6 with an operator seated is owed to the board like a move is (§1.3). It was optional, and with a runner free to move the 6 was already owed as movement; the change closes the one case where it was not.
 
-**Knowingly out of scope:** rolling is not compulsory. A player who never rolls forfeits both their energy grant and their movement, which is self-punishing enough that no rule is needed. Revisit if it ever becomes a real tactic.
+**The doubles re-roll is compulsory when nothing can move (2026-09-25)** (`GameEngine.MustRollAgain`): a re-roll is open, the dice in hand owe nothing, and none of the seat's operators could move at all (seated, stunned or home). Then the re-roll costs nothing and is a free chance at a 6, so End Turn is refused until it is taken. With a runner on the board it stays optional: declining it to keep a piece where it stands is a tactic.
+
+`GameEngine.MustSpendRoll` is true exactly when End Turn would be refused: before the roll, while `DiceOwed` (a legal move or a compulsory deploy), or while `MustRollAgain`.
+
+**Rolling is compulsory** in the engine: End Turn is refused before the roll. Since 2026-09-25 the view also rolls for a human seat that has not rolled 15 s into its turn (`TurnPacer`, PRESENTATION §4.2).
+
+**Auto end-turn (2026-09-25).** When End Turn is the only legal command left (nothing owed, no optional re-roll, no die to cash, no ability castable at any legal aim — `TurnOptions.OnlyEndTurnRemains`), the view ends a human seat's turn after a short beat. A view convenience on an engine answer, not a rule: the command log is the same as a player pressing End Turn.
 
 ### 6.2 Resolution notes
 
@@ -1976,3 +1990,4 @@ The watch machinery (§6.7) is dormant: `PredatorsReadTests` and `WatchBotTests`
 - 2026-09-24 — **Mimi's Translocation range 6 → 9** (designer; §10.4), after `MIMI_KURBYN_ANALYSIS.md`. Her reach is her mobility: she walks the fewest cells, is landed on the most and has no haste, and the bots always swap her with an enemy ahead. Measured, 4,000 paired matches: 21.6% → 25.3%, 2.36 → 2.74 swaps, home at the end 54% → 63%. Range 8 (23.8%) is the fallback if the swing reads as harsh at the table. `Mimi.TranslocationRange`; `SwapEffectTests` gains the 9-reaches, 10-does-not pair. Fingerprint `793eac2a` → `1e94d11f`. Tests 894 → 896. No bot or view change: the planner and the target highlight both read the range from the definition.
 - 2026-09-24 — **Kurbyn loses Evasion** (designer; §5.5, §10.3), after `MIMI_KURBYN_ANALYSIS.md`. Evasive Protocol is permanent haste alone, still capped at 2 cells a turn. Measured, 4,000 paired matches: 28.9% → 26.4%, deaths 0.69 → 1.00; uncapping the 12% (28.8%) and a guaranteed first-hit miss (33.6% per round, 31.6% per life) were measured and rejected. Evasion is dormant, not deleted: no operator holds it, and the glossary's Normal and Atomic lines drop it. Guide copy and the passive's flavour line rewritten; `KitTraitTests` keeps the two-status passive shape on a test double and pins Kurbyn's as haste alone. With Mimi's range 9, the field spans 23.3%–26.1%. Fingerprint `1e94d11f` → `eb8af0ee`; tests 896 → 897. The view is untouched: the teal evasion fade and Kurbyn's dodge sound are keyed to the status and the event, so they simply never fire.
 - 2026-09-24 — **Blind Spot slows for one round** (designer; §10.9). The strike applies Slow 1 turn to its target (`Luka.StrikeSlowTurns`), live for exactly the target's escape turn. Measured, 4,000 paired matches: Luka 25.5% → 24.8% (noise), Blind Spot 1.18 → 1.71 casts, follow-ups landing 17% → 27%. Description, guide copy and the generated rules line ("…, Slow 1 turn") updated. **Also:** the bots' evasion pricing now discounts only the hit that gets the round's roll, Normal or Tech (`StatusRegistry.EvasionReady`, `GameEngine.EvasionReady`, `EvasionPricingTests`); §10.3 records that about 1.4 of Kurbyn's 2.5 evasion points were the old pricing. Fingerprint `eb8af0ee` → `71ebce6e`; tests 897 → 902.
+- 2026-09-25 — **Match length pass** (designer). Five changes: (1) **spawn or move** — an unspent 6 with an operator seated must be used, and the doubles re-roll is compulsory when nothing can move (§1.3, §6.1; `MustDeploy`, `MustRollAgain`, `DiceOwed`, `CanMove`; a re-roll on a held 6 is refused); (2) **pity deploy after 2 dry turns**, was 3 (§1.3); (3) **+1 health across the roster**, the second (§1.1), with Luka's heavy line 7 → 8; (4) and (5) are view-side — auto end-turn when End Turn is the only legal command, and a 15 s roll clock for human seats (`TurnPacer`, PRESENTATION §4.2). Bots sweep, 800 matches, same seeds: turns per seat **27.0 → 24.5**, knockouts 13.7 → 11.0, casts 65.6 → 62.5; health alone gives 24.5 / 10.3, so the pity change buys back 0.7 knockouts at no length. Spawn or move changes nothing for the bots, which always deployed and re-rolled. Win shares beyond the ±1.6 noise band: Lethe 25% → 30% (watch), Luka 21% → 26%, Bouncer 25% → 22%, Sanity 23% → 21%, Kian 23% → 22%. Replay fingerprint `71ebce6e` → `2ab5a0d1`. EditMode tests +24 (`CompulsoryDeployTests`, `PityDeployTests`, `TurnPacerTests`; the pity deploy had no test before), all passing in the .NET harness.

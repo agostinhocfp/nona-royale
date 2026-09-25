@@ -69,8 +69,10 @@ namespace NonaRoyale.Core.Abilities
         /// everyone else. The balance pass the same day withdrew it: at 9 he
         /// survives two collisions, not three, and the slowest speed ever
         /// fielded is the one override left.
+        ///
+        /// Raised by 1 again on 2026-09-25 (designer, to shorten matches; COMBAT_SYSTEMS §1.1): now 10.
         /// </remarks>
-        public const int MaxHealth = 9;
+        public const int MaxHealth = 10;
 
         /// <summary>
         /// 1.0, with the crawl carried by <see cref="Definition"/>'s Burdened

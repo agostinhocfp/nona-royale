@@ -131,7 +131,7 @@ namespace NonaRoyale.Core.Bots
             }
 
             var roll = new RollDiceCommand();
-            if (engine.CanRollAgain && !engine.MustSpendRoll && !_refused.Contains(Key(roll))) return roll;
+            if (engine.CanRollAgain && !engine.DiceOwed && !_refused.Contains(Key(roll))) return roll;
 
             return new EndTurnCommand();
         }

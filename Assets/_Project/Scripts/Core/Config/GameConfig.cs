@@ -25,7 +25,7 @@ namespace NonaRoyale.Core.Config
             double speedMultiplierMax = 2.5,
             int diceSides = 6,
             int dicePerRoll = 2,
-            int pityDeployAfterTurns = 3)
+            int pityDeployAfterTurns = 2)
         {
             if (diceSides < 2)
                 throw new ArgumentOutOfRangeException(nameof(diceSides));
@@ -91,6 +91,10 @@ namespace NonaRoyale.Core.Config
         /// operator, free. Zero disables it.
         /// </summary>
         /// <remarks>
+        /// <b>2 since 2026-09-25</b> (designer, to shorten matches): a knocked-out
+        /// operator waits at most two of its owner's turns. The figures below
+        /// were written for 3 and are kept for the reasoning.
+        ///
         /// <b>At 3 this is a pacing mechanic wearing a protection costume, and
         /// that is the design.</b> P(no deploy face) ≈ 0.69 per roll, so
         /// three-turn droughts are routine — most matches will see this fire.

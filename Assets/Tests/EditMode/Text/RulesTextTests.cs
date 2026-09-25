@@ -200,7 +200,7 @@ namespace NonaRoyale.Core.Tests.Text
         public void Golden_Vendetta()
         {
             Assert.That(RulesText.For(Luka.Vendetta).ToPlainText(), Is.EqualTo(
-                "3 × 1 Atomic; each blow can crit: 10% for ×2, ×3 against heavy targets (max health above 7); " +
+                "3 × 1 Atomic; each blow can crit: 10% for ×2, ×3 against heavy targets (max health above 8); " +
                 "you heal what each blow removes"));
         }
 

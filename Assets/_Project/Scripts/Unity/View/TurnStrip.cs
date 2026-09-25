@@ -21,7 +21,7 @@ namespace NonaRoyale.Unity.View
     /// <b>Every value comes from the engine</b> (PRESENTATION §1): the cap is
     /// <c>GameEngine.EnergyCap</c>, the round is <c>GameEngine.Round</c>, and
     /// the prompt reports only the phase, the unspent dice,
-    /// <c>MustSpendRoll</c> and <c>CanRollAgain</c>. It never works out what a
+    /// <c>MustSpendRoll</c>, <c>CanMove</c>, <c>MustDeploy</c> and <c>CanRollAgain</c>. It never works out what a
     /// die could do.
     ///
     /// <b>Two shapes</b> (MOBILE.md, M3). Wide, it is one row: seat, energy,
@@ -381,13 +381,23 @@ namespace NonaRoyale.Unity.View
                             ? "Doubles — roll again"
                             : touch ? "Dice spent — cast, or END TURN" : "Dice spent — cast, or press <b>E</b> to end the turn";
 
-                    // MustSpendRoll is the engine's answer to "is there a legal
-                    // move for these dice". While dice are left, false means
-                    // none of them can be spent.
-                    if (engine.MustSpendRoll)
+                    // Spawn or move (2026-09-25): a held 6 with nothing that can
+                    // move owes a deploy.
+                    if (engine.MustDeploy && !engine.CanMove)
+                        return touch
+                            ? $"Deploy with your <b>{engine.DeployFace}</b> — tap a piece in your yard"
+                            : $"Deploy with your <b>{engine.DeployFace}</b> — click a piece in your yard";
+
+                    // CanMove is the engine's answer to "is there a legal move
+                    // for these dice". While dice are left, false means none of
+                    // them can be moved.
+                    if (engine.CanMove)
                         return touch
                             ? $"Move <b>{Join(dice)}</b> — tap a piece, then where it lands"
                             : $"Move <b>{Join(dice)}</b> — click a piece, then where it lands";
+
+                    if (engine.CanRollAgain)
+                        return "Doubles — roll again";
 
                     return touch
                         ? $"No legal move for {Join(dice)} — tap END TURN"

@@ -27,9 +27,13 @@ namespace NonaRoyale.Unity.View
     /// thumb already is.
     ///
     /// <b>Every state is an engine answer</b> (PRESENTATION §1): the phase,
-    /// <c>MustSpendRoll</c>, <c>CanRollAgain</c> and the unspent dice. Space
-    /// and E still work, and the button shows its key — unless there is no
-    /// keyboard to press it on (M4).
+    /// <c>DiceOwed</c>, <c>MustDeploy</c>, <c>CanMove</c>, <c>CanRollAgain</c>
+    /// and the unspent dice. Space and E still work, and the button shows its
+    /// key — unless there is no keyboard to press it on (M4).
+    ///
+    /// <b>ROLL counts down</b> while the roll clock runs (<c>TurnPacer</c>,
+    /// 2026-09-25). Only the hint's text changes each second; the button is
+    /// not rebuilt, so its pulse does not restart.
     ///
     /// Only the button catches the pointer.
     /// </remarks>
@@ -50,6 +54,11 @@ namespace NonaRoyale.Unity.View
         private RectTransform _slot;
         private string _shown;
         private bool _placedPortrait;
+
+        // The ROLL hint, kept so the countdown can rewrite it in place.
+        private TMP_Text _rollHint;
+        private string _rollHintBase;
+        private int _countdownShown = -1;
 
         public void Bind(RectTransform canvasRect, IControlPanelHost host)
         {
@@ -121,6 +130,29 @@ namespace NonaRoyale.Unity.View
             if (_placedPortrait != ScreenLayout.IsPortrait) Place();
         }
 
+        /// <summary>
+        /// The roll clock's seconds left, or null when it is not running. Shown
+        /// on the ROLL hint as whole seconds, rounded up.
+        /// </summary>
+        public void SetCountdown(float? secondsLeft)
+        {
+            int whole = secondsLeft.HasValue ? Mathf.CeilToInt(secondsLeft.Value) : -1;
+            if (whole == _countdownShown) return;
+            _countdownShown = whole;
+            ApplyCountdown();
+        }
+
+        private void ApplyCountdown()
+        {
+            if (_rollHint == null) return;
+
+            string clock = _countdownShown >= 0 ? $"{_countdownShown}s" : null;
+            _rollHint.text = string.IsNullOrEmpty(_rollHintBase)
+                ? clock ?? ""
+                : clock == null ? _rollHintBase : $"{_rollHintBase} · {clock}";
+            _rollHint.gameObject.SetActive(!string.IsNullOrEmpty(_rollHint.text));
+        }
+
         /// <summary>Redraws from the engine. Cheap when nothing changed.</summary>
         public void Refresh(GameEngine engine)
         {
@@ -129,9 +161,11 @@ namespace NonaRoyale.Unity.View
             var dice = engine.UnspentDice;
             bool cpu = _host != null && _host.CpuTurn;
             bool portrait = ScreenLayout.IsPortrait;
-            string key = $"{engine.Phase}|{engine.MatchOver}|{engine.MustSpendRoll}|{engine.CanRollAgain}|{string.Join(",", dice)}|{cpu}|{(cpu ? engine.CurrentPlayer.Color.ToString() : "")}|{portrait}|{ScreenLayout.Touch}";
+            string key = $"{engine.Phase}|{engine.MatchOver}|{engine.MustSpendRoll}|{engine.DiceOwed}|{engine.MustDeploy}|{engine.CanRollAgain}|{string.Join(",", dice)}|{cpu}|{(cpu ? engine.CurrentPlayer.Color.ToString() : "")}|{portrait}|{ScreenLayout.Touch}";
             if (key == _shown) return;
             _shown = key;
+            _rollHint = null;
+            _rollHintBase = null;
 
             for (int i = _slot.childCount - 1; i >= 0; i--)
             {
@@ -168,7 +202,7 @@ namespace NonaRoyale.Unity.View
                 tint = UiTheme.ButtonFill;
                 accent = UiTheme.Readable(BoardLayout.ColourOf(seat));
             }
-            else if (engine.Phase == TurnPhase.AwaitingRoll || (engine.CanRollAgain && dice.Count == 0))
+            else if (engine.Phase == TurnPhase.AwaitingRoll || (engine.CanRollAgain && !engine.DiceOwed))
             {
                 label = engine.Phase == TurnPhase.AwaitingRoll ? "ROLL" : "ROLL AGAIN";
                 hint = ScreenLayout.Key("Space");
@@ -181,7 +215,8 @@ namespace NonaRoyale.Unity.View
             }
             else if (engine.Phase == TurnPhase.Action && engine.MustSpendRoll)
             {
-                label = "MOVE FIRST";
+                // Spawn or move (2026-09-25): a held 6 with nothing to move owes a deploy.
+                label = engine.MustDeploy && !engine.CanMove ? "DEPLOY FIRST" : "MOVE FIRST";
                 hint = $"{string.Join(" + ", dice)} left";
                 enabled = false;
                 pulse = false;
@@ -215,8 +250,22 @@ namespace NonaRoyale.Unity.View
                 enabled ? UiTheme.Text : cpu ? accent : UiTheme.TextDim, TextAlignmentOptions.Center, bold: true);
             title.characterSpacing = UiTheme.HeadingSpacing * 0.5f;
 
-            if (!string.IsNullOrEmpty(hint))
-                UiKit.Label(rect, hint, 13f, enabled ? accent : UiTheme.TextOff, TextAlignmentOptions.Center);
+            // The first roll's hint is always made, even empty, so the roll
+            // clock has somewhere to count down on a phone too.
+            bool firstRoll = !cpu && engine.Phase == TurnPhase.AwaitingRoll;
+
+            if (!string.IsNullOrEmpty(hint) || firstRoll)
+            {
+                var hintLabel = UiKit.Label(rect, hint ?? "", 13f, enabled ? accent : UiTheme.TextOff,
+                    TextAlignmentOptions.Center);
+
+                if (firstRoll)
+                {
+                    _rollHint = hintLabel;
+                    _rollHintBase = hint;
+                    ApplyCountdown();
+                }
+            }
 
             // The showpiece control floats over the board, so it gets a floating
             // card's fans: small and dim (G3), and none while it waits.

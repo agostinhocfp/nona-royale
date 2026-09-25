@@ -151,7 +151,7 @@ namespace NonaRoyale.Core.Tests.Abilities
             // updates §10.10.
             var op = Roster.ByName("Lethe");
 
-            Assert.That(op.MaxHealth, Is.EqualTo(7));
+            Assert.That(op.MaxHealth, Is.EqualTo(8)); // +1 on 2026-09-25
             Assert.That(op.BaseSpeed, Is.EqualTo(1.0));
             Assert.That(op.Passive, Is.EqualTo(StatusKind.Hastened));
             Assert.That(op.PassiveMagnitude, Is.EqualTo(0.0), "haste is not speed");

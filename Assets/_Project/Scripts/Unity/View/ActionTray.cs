@@ -351,7 +351,7 @@ namespace NonaRoyale.Unity.View
 
             bool matchOn = !engine.MatchOver;
             bool canRoll = matchOn &&
-                           (engine.Phase == TurnPhase.AwaitingRoll || (engine.CanRollAgain && dice.Count == 0));
+                           (engine.Phase == TurnPhase.AwaitingRoll || (engine.CanRollAgain && !engine.DiceOwed));
             bool canEnd = matchOn && engine.Phase == TurnPhase.Action && !engine.MustSpendRoll;
 
             // Roll and End turn live on the turn button at the board's corner

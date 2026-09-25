@@ -36,8 +36,10 @@ namespace NonaRoyale.Core.Abilities
         ///
         /// Ten since the roster-wide +1 of 2026-09-16 (COMBAT_SYSTEMS §1.1):
         /// four collisions now, and the tank line moved to "above 7".
+        ///
+        /// Raised by 1 again on 2026-09-25 (designer, to shorten matches; COMBAT_SYSTEMS §1.1): now 11.
         /// </summary>
-        public const int MaxHealth = 10;
+        public const int MaxHealth = 11;
 
         /// <summary>
         /// ADR-0002 Amendment 4. He briefly sat at 1.5 for a pacing reason — a

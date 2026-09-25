@@ -51,13 +51,12 @@ namespace NonaRoyale.Core.Tests.Engine
         /// The pooled form is used deliberately: it clears every unspent die in
         /// one command, so nothing is left that could refuse the handover.
         /// </remarks>
-        private static void SpendRollAndEndTurn(GameEngine engine)
-        {
-            var mover = engine.CurrentPlayer.Operators.FirstOrDefault(o => !o.IsInYard);
-            if (mover != null) engine.Execute(new MoveCommand(mover.Id));
-
-            engine.Execute(new EndTurnCommand());
-        }
+        /// <remarks>
+        /// <b>Deploying on a 6, and re-rolling doubles when nothing can move, are
+        /// compulsory too (2026-09-25)</b>, so the helper pays whatever the
+        /// engine says is still owed before it asks to hand over.
+        /// </remarks>
+        private static void SpendRollAndEndTurn(GameEngine engine) => TurnKit.SpendRollAndEndTurn(engine);
 
         /// <summary>Rolls until the dice hand us what a test needs, ending turns in between.</summary>
         /// <remarks>
@@ -153,16 +152,30 @@ namespace NonaRoyale.Core.Tests.Engine
         [Test]
         public void ADoublesReroll_GrantsNoSecondEnergyEvent()
         {
-            RollUntil(r => r.IsDouble);
+            // A first roll of doubles without a 6, found by seed: every operator
+            // is still seated, so nothing can spend the dice and the re-roll is
+            // allowed. Not RollUntil: the turns it ends deploy on their 6s since
+            // 2026-09-25, and a runner on the board would owe the dice a move.
+            for (int seed = 0; seed < 500; seed++)
+            {
+                var match = MatchFactory.CreateAlphaMatch(new[] { PlayerColor.Red, PlayerColor.Blue }, seed);
+                var engine = match.Engine;
+                engine.Start();
 
-            // Doubles buy a fresh roll, not an escape from the one in hand: the
-            // engine refuses a re-roll while the dice could still be spent (§6).
-            // Every operator is in the yard here, so nothing can spend them and
-            // the re-roll is allowed.
-            var second = _engine.Execute(new RollDiceCommand());
+                var roll = First<DiceRolled>(engine.Execute(new RollDiceCommand())).Roll;
+                if (!roll.IsDouble || roll.Contains(6)) continue;
 
-            Assert.That(Has<DiceRolled>(second), Is.True);
-            Assert.That(Has<EnergyGranted>(second), Is.False);
+                // Doubles buy a fresh roll, not an escape from the one in hand:
+                // the engine refuses a re-roll while the dice could still be
+                // spent (§6).
+                var second = engine.Execute(new RollDiceCommand());
+
+                Assert.That(Has<DiceRolled>(second), Is.True);
+                Assert.That(Has<EnergyGranted>(second), Is.False);
+                return;
+            }
+
+            Assert.Fail("no seed under 500 opened on doubles without a 6");
         }
 
         // ── Deploy and move ──────────────────────────────────────────────
@@ -476,13 +489,17 @@ namespace NonaRoyale.Core.Tests.Engine
         [Test]
         public void EndingATurn_HandsOverAndBeginsTheNext()
         {
-            _engine.Execute(new RollDiceCommand());
+            // A roll that owes nothing with every operator seated: no 6 to
+            // deploy and no doubles to re-roll (2026-09-25).
+            RollUntil(r => !r.Contains(6) && !r.IsDouble);
+            var closing = _engine.CurrentPlayer.Color;
 
             var events = _engine.Execute(new EndTurnCommand());
 
             Assert.That(Has<TurnEnded>(events), Is.True);
             Assert.That(Has<TurnBegan>(events), Is.True);
-            Assert.That(_engine.CurrentPlayer.Color, Is.EqualTo(PlayerColor.Blue));
+            Assert.That(_engine.CurrentPlayer.Color,
+                Is.EqualTo(closing == PlayerColor.Red ? PlayerColor.Blue : PlayerColor.Red));
         }
 
         [Test]

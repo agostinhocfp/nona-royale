@@ -32,8 +32,11 @@ namespace NonaRoyale.Core.Abilities
     /// </remarks>
     public static class Fortuna
     {
-        /// <summary>Seven: the roster's common figure since the 2026-09-16 health pass.</summary>
-        public const int MaxHealth = 7;
+        /// <summary>
+        /// Seven: the roster's common figure since the 2026-09-16 health pass.
+        /// Raised by 1 again on 2026-09-25 (designer, to shorten matches; COMBAT_SYSTEMS §1.1): now 8.
+        /// </summary>
+        public const int MaxHealth = 8;
 
         /// <summary>
         /// One. <b>Do not raise it.</b> At 1.5× she banks money and races, and the

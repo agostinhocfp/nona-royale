@@ -89,7 +89,7 @@ namespace NonaRoyale.Core.Tests.Abilities
         {
             // 2026-09-21. Changing them is a deliberate act that also updates
             // §10.7.
-            Assert.That(Nuetu.MaxHealth, Is.EqualTo(7));
+            Assert.That(Nuetu.MaxHealth, Is.EqualTo(8)); // +1 on 2026-09-25
             Assert.That(Nuetu.Speed, Is.EqualTo(1.0));
             Assert.That(Nuetu.BioLinkBurdenTurns, Is.EqualTo(2));
 
