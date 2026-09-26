@@ -67,14 +67,15 @@ namespace NonaRoyale.Unity.View
     {
         /// <summary>
         /// What the bar claims from the bottom edge when it is wide (H1; it was
-        /// 196). Sized to the fullest state - an operator, three ability cards,
-        /// and a chosen ability's description over its aim and Cast - because
-        /// the band cannot change while a turn is being played.
+        /// 196). Sized to the fullest state - an operator with statuses and
+        /// traits, three ability cards, and a chosen ability's aim and Cast -
+        /// because the band cannot change while a turn is being played.
         /// </summary>
         /// <remarks>
-        /// 122 of usable height inside the row's padding. The three slots that
-        /// can fill it come to 96, 92 and 122, so the aim slot is what sets
-        /// this number.
+        /// 122 of usable height inside the row's padding. The slots that can
+        /// fill it come to 120 (operator), 92 (cards) and 96 (aim and Cast).
+        /// The aim slot set this number until G6b moved the ability's rules
+        /// onto its card.
         /// </remarks>
         public const float Height = 150f;
 
@@ -87,6 +88,12 @@ namespace NonaRoyale.Unity.View
 
         private const float AbilityNameSize = 15f;
         private const float AbilityMetaSize = 13f;
+
+        /// <summary>Two lines of the rules line on a wide card; the card's 92 units hold exactly that (G6b).</summary>
+        private const float RulesLineHeight = 32f;
+
+        /// <summary>A castable card's edge: cyan, but quieter than a chosen card's double edge.</summary>
+        private const float ReadyEdgeAlpha = 0.55f;
 
         /// <summary>The slot widths. Fixed, so nothing moves as the bar fills in (H1).</summary>
         private const float DiceWidth = 132f;
@@ -409,10 +416,19 @@ namespace NonaRoyale.Unity.View
                 return;
             }
 
-            var card = UiKit.Rect("operator", parent);
+            // A slot that holds the width, and the card laid out inside it
+            // (G6b, flag 7). The bar asks the slot for its size and the slot
+            // answers from its LayoutElement alone, so nothing the card holds
+            // can change what the bar gives it. As a direct child with its own
+            // layout group, the card was once seen laid out at almost no width
+            // in a build, drawing its icon and bar under the ability cards.
+            var slot = UiKit.Rect("operator", parent);
+            if (width >= 0f) UiKit.Fixed(slot, width);
+            else UiKit.Size(slot, flexibleWidth: 1f);
+
+            var card = UiKit.Rect("card", slot);
+            UiKit.Stretch(card);
             UiKit.Column(card, compact ? 3f : 6f);
-            if (width >= 0f) UiKit.Fixed(card, width);
-            else UiKit.Size(card, flexibleWidth: 1f);
 
             var seatColour = BoardLayout.ColourOf(op.Owner);
 
@@ -556,36 +572,52 @@ namespace NonaRoyale.Unity.View
                 AbilityCard(cards, op, abilities[i], i, engine);
         }
 
+        /// <summary>
+        /// One ability: its key and name, its cost, reach and cooldown worded
+        /// as the draft and the dossier word them, and — wide — its rules line
+        /// (G6b, flag 6).
+        /// </summary>
+        /// <remarks>
+        /// <b>Readiness is on the frame, not in a word.</b> A castable card
+        /// carries a faint cyan edge (the live register, ART_DIRECTION §8), a
+        /// chosen one the full cyan fill and double edge, and one that cannot
+        /// be cast the dimmed frame with the reason after its meta. The READY
+        /// word said what the frame already did.
+        ///
+        /// <b>The rules line lives on the card</b>, so a player reads what an
+        /// ability does before choosing it, not after. It is the same
+        /// <see cref="RulesText"/> line the draft and the dossier print, never
+        /// the flavour paragraph. Upright, a card is a third of a phone wide
+        /// and has no room for it; the aim line above the block carries the
+        /// armed ability's instead (MOBILE.md M3).
+        /// </remarks>
         private void AbilityCard(Transform parent, OperatorState op, AbilityDefinition ability, int index, Core.GameEngine engine)
         {
             bool chosen = _host.SelectedAbility != null && _host.SelectedAbility.Id == ability.Id;
             var availability = engine.CheckAbility(op, ability);
             bool usable = availability == AbilityAvailability.Ready;
 
-            string reach = ability.HasUnlimitedRange ? "any range"
-                : ability.Range == 0 ? "self"
-                : $"range {ability.Range}";
-
-            string state;
+            string reason;
             switch (availability)
             {
                 case AbilityAvailability.Ready:
-                    state = $"<color=#{UiTheme.Hex(UiTheme.Cyan)}>READY</color>";
+                    reason = null;
                     break;
                 case AbilityAvailability.OnCooldown:
                     int turns = engine.TurnsUntilReady(op, ability);
-                    state = turns == 1 ? "ready next turn" : $"ready in {turns} turns";
+                    reason = turns == 1 ? "ready next turn" : $"ready in {turns} turns";
                     break;
                 case AbilityAvailability.InsufficientEnergy:
-                    state = $"needs {ability.EnergyCost}e, have {engine.CurrentPlayer.Energy}";
+                    reason = $"needs {ability.EnergyCost}e, have {engine.CurrentPlayer.Energy}";
                     break;
                 default:
-                    state = ControlPanel.Explain(availability);
+                    reason = ControlPanel.Explain(availability);
                     break;
             }
 
             var button = UiKit.Button(parent, "", () => _host.ToggleAbility(ability), MarkDirty,
-                interactable: usable || chosen, selected: chosen);
+                interactable: usable || chosen, selected: chosen,
+                edge: usable ? UiTheme.WithAlpha(UiTheme.Cyan, ReadyEdgeAlpha) : (Color?)null);
             UiKit.Size(button, flexibleWidth: 1f);
 
             var card = (RectTransform)button.transform;
@@ -601,10 +633,17 @@ namespace NonaRoyale.Unity.View
             UiKit.Label(card,
                 $"{ScreenLayout.KeyMarkup($"<color=#{UiTheme.Hex(UiTheme.GoldBright)}>{index + 1}</color>  ")}<b>{ability.Name}</b>",
                 AbilityNameSize, textColour);
-            UiKit.Label(card,
-                $"<color=#{UiTheme.Hex(UiTheme.Cyan)}>{ability.EnergyCost}e</color> · {reach} · cd {ability.CooldownTurns}",
-                AbilityMetaSize, textColour);
-            UiKit.Label(card, state, AbilityMetaSize, usable ? UiTheme.Text : UiTheme.TextDim);
+
+            string meta = OperatorDossier.Meta(ability);
+            if (reason != null) meta += $"  <color=#{UiTheme.Hex(UiTheme.TextDim)}>· {reason}</color>";
+            UiKit.Label(card, meta, AbilityMetaSize, textColour);
+
+            if (_builtPortrait) return;
+
+            var rules = UiKit.Label(card, RulesMarkup.For(RulesText.For(ability), linked: false),
+                AbilityMetaSize, usable || chosen ? UiTheme.TextDim : UiTheme.TextOff, wrap: true);
+            rules.overflowMode = TextOverflowModes.Ellipsis;
+            UiKit.Size(rules, height: RulesLineHeight);
         }
 
         // ── Cast ─────────────────────────────────────────────────────────
@@ -673,14 +712,12 @@ namespace NonaRoyale.Unity.View
             UiKit.Column(box, 8f);
             UiKit.Fixed(box, width);
 
-            // What it does, then where it goes. The ability card carries the
-            // name, cost, reach and readiness; the prose was homeless once the
-            // abilities slot stopped explaining itself (H1).
-            var what = UiKit.Label(box, ability.Description, UiTheme.FontSmall, UiTheme.TextDim, wrap: true);
-            UiKit.Size(what, height: 40f);
-
+            // Where it goes. What it does is on its card now (G6b): the rules
+            // line there replaced the flavour paragraph that sat here, which
+            // ran to four lines in a two-line box.
             var aimLabel = UiKit.Label(box, AimText(ability), UiTheme.FontSmall, wrap: true);
-            UiKit.Size(aimLabel, height: 18f);
+            aimLabel.overflowMode = TextOverflowModes.Ellipsis;
+            UiKit.Size(aimLabel, height: 40f);
 
             var cast = UiKit.Button(box, $"<b>Cast</b>{ScreenLayout.KeyMarkup("  <size=70%>Enter</size>")}",
                 _host.Cast, MarkDirty, interactable: ready,

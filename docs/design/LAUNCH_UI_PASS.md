@@ -1,7 +1,7 @@
 # Nona Royale — Launch UI pass (G6)
 
 > Location in repo: `docs/design/LAUNCH_UI_PASS.md` · Project copy: `claude/LAUNCH_UI_PASS.md`
-> Status: **Open, 2026-09-26.** Audit from four desktop screenshots (title, setup, draft, in-match at round 36). **G6a (bug sweep) passed Play Mode.** G6b and G6c next; one decision open (18).
+> Status: **Open, 2026-09-26.** Audit from four desktop screenshots (title, setup, draft, in-match at round 36). **G6a (bug sweep) passed Play Mode. G6b (tray and rail) written and compile-checked, waiting on Play Mode.** G6c next; one decision open (18).
 > Related: `GUI_PHASE.md` (E–J, G3–G5), `HUD_PASS.md` (H1–H4: the contextual tray, the folded rail, the quiet board — G6b builds on it and does not undo it), `MOBILE.md` (upright layout — every change here must keep M3/M6 intact), `ART_DIRECTION.md` §3 and §8, ADR-0008
 
 ## Verdict
@@ -22,7 +22,7 @@ The chrome is about 80% of a shipping UI. The frame, type and palette are right.
 
 6. **Ability cards are empty boxes.** Three ~370-unit cards, text only in the top-left corner, no effect line. Add the one-line effect (the dossier's copy), readiness on the frame rather than a word, and a selected state. (HUD_PASS H1 already shows the chosen ability's description above the aim line; G6b decides whether the resting cards carry it too.)
 7. **The tray's operator block collapsed** to a shape and a red bar. No name, no health number, no statuses.
-8. **The rail wastes two-thirds of its height,** and the seat order (VIOLET, RED, BLUE, GREEN) matches neither turn order nor the board.
+8. **The rail wastes two-thirds of its height,** and the seat order (VIOLET, RED, BLUE, GREEN) matches neither turn order nor the board. *Revised in G6b:* the empty height costs nothing — the board is fitted to the screen's height, and the rail's width is reserved either way — so filling it would only undo HUD_PASS H2's folding. The order is fixed; the height stays quiet.
 9. **Draft cards are all framed in seat red at full strength.** Twelve red frames; red also means damage/reject. Rest = gold hairline, inspected = cyan, picked = seat colour.
 10. **Pool shapes are drawn in seat red,** so they read as "RED owns these". Neutral ivory in the pool; seat colour only on a pick.
 11. **Picked-by marker** is a ~10-unit diamond (Revú). Needs a seat chip; operators the picking seat already fielded should grey out.
@@ -75,3 +75,17 @@ Each increment ends with a Play Mode check (desktop and upright) and a commit.
     - History chips: UPKEEP, DEPLOY, EFFECT and DEBT read in full on the standing strip and the upright band; a utility cast (Cryo Field, Deal Again) shows its cost as "4e" in cyan; a damaging cast still shows "-n".
     - Upright (phone or a portrait Game view): the history band's chips and the rail band still fit.
 - 2026-09-26 — **G6a passed Play Mode.** Flag 19 withdrawn: shrinking the yards would not enlarge the board (see the flag).
+- 2026-09-26 — **G6b written: the tray and the rail (flags 6–8).** On HEAD `327d226`.
+  - **6, ability cards.** Wide, a card is the key and name, the meta, and the ability's `RulesText` line (two lines, ellipsis past that) — the same line the draft and the dossier print, never the flavour paragraph. Readiness moved onto the frame: a castable card has a faint cyan edge (55%), a chosen one keeps the cyan fill and double edge, one that can't be cast keeps the dimmed frame and puts the reason after its meta ("· ready in 2 turns", "· needs 5e, have 3"). The READY word is gone. The meta now uses `OperatorDossier.Meta` ("5e · r3 · cd 3"), so the tray, draft and dossier word it the same way. Upright cards drop the rules line; the aim line carries the armed ability's (MOBILE M3).
+  - The Cast slot lost the flavour paragraph (four lines in a two-line box) and shows the aim in two lines over the button. `ActionTray.Height` is unchanged; the operator slot (120) now sets it.
+  - **7, operator block.** The screenshot showed the card laid out at almost no width, its icon and health bar drawn under the first ability card and its name hidden. The cause wasn't found by reading: the card was a `Fixed` 300-unit child exactly like the dice box, which lays out correctly. The card is now a leaf slot holding the width, with the column stretched inside it, so the bar's answer comes from the slot's `LayoutElement` alone. **If the name and health still don't show between the dice and the cards, a Hierarchy look at `action_tray/content/operator` (its width and LayoutElement) is the next step.**
+  - **8, rail order.** `SquadRail.InRailOrder`: turn order rotated to start at the first human seat. The match's list starts wherever the seed's first turn fell, which is what put VIOLET above RED. No human seat: unchanged.
+  - Files: `ActionTray`, `SquadRail`. No core change.
+  - **Checked:** the view compiles against the 6000.6 DLLs, 0 warnings. Play Mode is the check.
+  - **Play Mode checklist:**
+    - Select an operator: the tray shows its icon, name, where it is, health bar and number, statuses and trait chips between the dice and the cards, nothing under the cards.
+    - Each card shows its rules line in two lines at most; long lines end in "…" without spilling past the card.
+    - A castable card has a thin cyan edge; one on cooldown or short of energy is dimmed with the reason after its meta; the chosen card is cyan-filled with a double edge.
+    - Choose a targeted ability: the Cast slot shows only the aim (two lines at most) and the Cast button.
+    - The rail lists your seat first, then the others in turn order; start several matches and the order stays anchored on you.
+    - Upright: the cards show name and meta only, and nothing overflows the block.

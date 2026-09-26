@@ -287,7 +287,7 @@ namespace NonaRoyale.Unity.View
         {
             var engine = match.Engine;
 
-            foreach (var seat in match.Players)
+            foreach (var seat in InRailOrder(match.Players))
             {
                 bool playing = !engine.MatchOver && seat.Color == engine.CurrentPlayer.Color;
                 bool cpu = _host.SeatTag(seat.Color) != null;
@@ -315,6 +315,32 @@ namespace NonaRoyale.Unity.View
 
                 UiKit.Space(_content, height: 8f);
             }
+        }
+
+        /// <summary>
+        /// Turn order, starting from your seat (G6b, flag 8).
+        /// </summary>
+        /// <remarks>
+        /// The match's player list is table order rotated so the seat the seed
+        /// drew opens (TurnOrder), so the rail used to start wherever the first
+        /// turn fell — VIOLET above RED one match, GREEN the next — and your
+        /// own squad moved about between matches. Rotating the same cycle to
+        /// the first human seat keeps you on top, as the upright band already
+        /// does, and still reads downwards as who plays after whom. With no
+        /// human seat the list is left as the match dealt it.
+        /// </remarks>
+        private IEnumerable<PlayerState> InRailOrder(IReadOnlyList<PlayerState> players)
+        {
+            int start = 0;
+            for (int i = 0; i < players.Count; i++)
+            {
+                if (_host.SeatTag(players[i].Color) != null) continue;
+                start = i;
+                break;
+            }
+
+            for (int i = 0; i < players.Count; i++)
+                yield return players[(start + i) % players.Count];
         }
 
         // ── The lying band ───────────────────────────────────────────────
