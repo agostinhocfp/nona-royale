@@ -1,5 +1,6 @@
 // Assets/_Project/Scripts/Unity/View/FxBurn.cs
 using System.Collections.Generic;
+using System.Globalization;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -43,8 +44,9 @@ namespace NonaRoyale.Unity.View
         /// <param name="sortingLayer">The piece's sorting layer, from its group.</param>
         /// <param name="sortingOrder">The piece's sorting order, from its group.</param>
         /// <param name="edge">The burning edge's colour.</param>
+        /// <param name="label">Who burns, for the development log line.</param>
         public static bool Spawn(Transform parent, IReadOnlyList<SpriteRenderer> parts, int sortingLayer,
-            int sortingOrder, Color edge, float seconds, MotionSettings motion)
+            int sortingOrder, Color edge, float seconds, MotionSettings motion, string label = null)
         {
             if (parts == null) return false;
 
@@ -59,6 +61,12 @@ namespace NonaRoyale.Unity.View
 
             var material = ShaderFx.Instance(ShaderFx.BurnLit);
             if (material == null) return false;
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            // One line per knockout, so a Play Mode check can tell "ran but
+            // too subtle" from "never ran".
+            Debug.Log($"[FxBurn] {label ?? parent.name}: {drawn.Count} parts over {seconds.ToString("0.00", CultureInfo.InvariantCulture)} s");
+#endif
 
             material.SetColor(ShaderFx.FadeBurnColor, edge);
             material.SetFloat(ShaderFx.FadeAmount, ShaderFx.FadeNone);
@@ -102,8 +110,11 @@ namespace NonaRoyale.Unity.View
             float rate = _motion != null ? _motion.Rate : 1f;
             _age += Time.deltaTime * rate;
 
+            // Eased in: the figure holds while the shards cover it, then burns
+            // faster as they clear. Starts at 0, not FadeNone, so no frame is spent
+            // with nothing happening.
             float t = Mathf.Clamp01(_age / _seconds);
-            _material.SetFloat(ShaderFx.FadeAmount, Mathf.Lerp(ShaderFx.FadeNone, ShaderFx.FadeAll, t));
+            _material.SetFloat(ShaderFx.FadeAmount, Mathf.Lerp(0f, ShaderFx.FadeAll, t * t));
 
             if (t >= 1f) Destroy(gameObject);
         }

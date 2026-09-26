@@ -41,9 +41,9 @@ Material:
     - _Alpha: 1
     - _CullingOption: 0
     - _FadeAmount: -0.1
-    - _FadeBurnGlow: 1.6
-    - _FadeBurnTransition: 0.06
-    - _FadeBurnWidth: 0.06
+    - _FadeBurnGlow: 2.2
+    - _FadeBurnTransition: 0.04
+    - _FadeBurnWidth: 0.1
     - _LitAmount: 1
     - _MyDstMode: 10
     - _MySrcMode: 5

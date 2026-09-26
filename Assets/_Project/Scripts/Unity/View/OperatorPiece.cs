@@ -191,6 +191,12 @@ namespace NonaRoyale.Unity.View
 
         private const float PopSeconds = 0.3f;
         private const float ShatterSeconds = 0.45f;
+
+        /// <summary>
+        /// The knockout's burn (G8c). Longer than the shards, so the figure is
+        /// still visibly burning once they have cleared it; the knockout waits for it.
+        /// </summary>
+        private const float BurnSeconds = 0.8f;
         private const int ShardCount = 9;
 
         private static Color SelectColour => UiTheme.Select;   // holo cyan, a live state
@@ -696,11 +702,14 @@ namespace NonaRoyale.Unity.View
             }
 
             // G8c: the figure burns away under the shards, from a copy taken
-            // before it hides. Without the effect's material, the shards alone.
-            FxBurn.Spawn(transform.parent, BurnParts(), GroupLayer, GroupOrder, colour, seconds, _motion);
+            // before it hides, with the edge in the seat colour run hot toward
+            // white. Without the effect's material, the shards alone, as before.
+            float burn = _motion != null ? _motion.Tween(BurnSeconds) : BurnSeconds;
+            bool burning = FxBurn.Spawn(transform.parent, BurnParts(), GroupLayer, GroupOrder,
+                Color.Lerp(colour, Color.white, 0.35f), burn, _motion, Operator.Name);
 
             _hidden = true;
-            _shardClock = seconds;
+            _shardClock = burning ? Mathf.Max(seconds, burn) : seconds;
             _path.Clear();
             _hopping = false;
             _hold = 0f;
