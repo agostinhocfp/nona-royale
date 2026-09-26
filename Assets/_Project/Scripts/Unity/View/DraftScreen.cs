@@ -52,6 +52,13 @@ namespace NonaRoyale.Unity.View
     /// the pool. The clock keeps running and stays in view while it is open
     /// (D4); a pick the clock makes for a human seat closes it.
     ///
+    /// <b>A player picks for their own seat</b> (G6c, decided 2026-09-26). With
+    /// one human seat there is nothing to choose, so the seat chooser's
+    /// prompt and its number keys only appear with two or more. PICK FOR CPUS
+    /// is the override: while it is on, the pointer may take any seat and the
+    /// CPUs wait, for testing or for setting up a matchup. Turning it off
+    /// hands the CPU seats back to their brains.
+    ///
     /// <b>CPU seats pick on their own</b> (BOTS.md decisions 6 and 7). In ALL
     /// PICK, one CPU pick lands every <see cref="CpuPickInterval"/> seconds,
     /// taking turns across the CPU seats; in SNAKE a CPU seat picks
@@ -162,6 +169,13 @@ namespace NonaRoyale.Unity.View
         private DraftState _draft;
         private PlayerColor _active = PlayerColor.None;
         private OperatorDefinition _focus;
+
+        /// <summary>
+        /// The override (G6c, flag 18): the pointer may pick for CPU seats too,
+        /// and while it is on the CPUs stop picking for themselves. Off at the
+        /// start of every draft.
+        /// </summary>
+        private bool _pickForCpus;
         private bool _leaveArmed;
         private float _hold = -1f;
         private bool _dirty;
@@ -178,6 +192,19 @@ namespace NonaRoyale.Unity.View
         private int _dossierPickCount;
 
         private readonly Dictionary<PlayerColor, BotBrain> _cpu = new Dictionary<PlayerColor, BotBrain>();
+
+        /// <summary>Each card's edge on the last grid build, for the focus state (G6c).</summary>
+        private readonly Dictionary<OperatorDefinition, CardEdge> _cardEdges = new Dictionary<OperatorDefinition, CardEdge>();
+
+        private sealed class CardEdge
+        {
+            public Image Image;
+            public Color Rest;
+        }
+
+        /// <summary>A shape in the pool: warm ivory, belonging to no seat (G6c, flag 10).</summary>
+        private static Color PoolShape => UiTheme.Text;
+
         private float _cpuClock;
         private int _cpuTurn;
 
@@ -219,6 +246,7 @@ namespace NonaRoyale.Unity.View
             _cpuClock = _draft.Mode == DraftMode.AllPick ? CpuFirstPick : CpuThink;
             _cpuTurn = 0;
 
+            _pickForCpus = false;
             _active = FirstHuman();
             _focus = null;
             _leaveArmed = false;
@@ -275,15 +303,43 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>
         /// The seat a card click picks for: the chosen seat in ALL PICK, the
-        /// seat on the clock in SNAKE. Never a CPU seat: the pointer is a human's.
+        /// seat on the clock in SNAKE. A CPU seat only under PICK FOR CPUS.
         /// </summary>
         private PlayerColor Picker
         {
             get
             {
                 var seat = _draft.Mode == DraftMode.AllPick ? _active : _draft.CurrentSeat;
-                return IsCpu(seat) ? PlayerColor.None : seat;
+                return Controllable(seat) ? seat : PlayerColor.None;
             }
+        }
+
+        /// <summary>Whether the pointer may pick for, choose, or clear this seat.</summary>
+        private bool Controllable(PlayerColor seat) =>
+            seat != PlayerColor.None && (!IsCpu(seat) || _pickForCpus);
+
+        /// <summary>How many seats the pointer can pick for. One means there is no seat to choose.</summary>
+        private int ControllableCount
+        {
+            get
+            {
+                int count = 0;
+                foreach (var seat in _draft.Seats) if (Controllable(seat)) count++;
+                return count;
+            }
+        }
+
+        /// <summary>Flips PICK FOR CPUS. Off hands the pointer back to a human seat and the CPU seats back to their brains.</summary>
+        private void TogglePickForCpus()
+        {
+            if (Locked || _cpu.Count == 0) return;
+
+            _pickForCpus = !_pickForCpus;
+
+            if (!_pickForCpus && IsCpu(_active)) _active = FirstHuman();
+            _cpuClock = _draft.Mode == DraftMode.AllPick ? CpuFirstPick : CpuThink;
+
+            MarkDirty();
         }
 
         private bool Locked => _leaveArmed || _hold >= 0f;
@@ -358,7 +414,7 @@ namespace NonaRoyale.Unity.View
 
         private void ClearSlot(PlayerColor seat, int slot)
         {
-            if (Locked || IsCpu(seat)) return;
+            if (Locked || !Controllable(seat)) return;
 
             if (_draft.Clear(seat, slot) == DraftRefusal.None) _active = seat;
             MarkDirty();
@@ -366,7 +422,7 @@ namespace NonaRoyale.Unity.View
 
         private void SetActive(PlayerColor seat)
         {
-            if (Locked || _draft.Mode != DraftMode.AllPick || IsCpu(seat)) return;
+            if (Locked || _draft.Mode != DraftMode.AllPick || !Controllable(seat)) return;
 
             _active = seat;
             MarkDirty();
@@ -383,7 +439,7 @@ namespace NonaRoyale.Unity.View
             for (int step = 1; step < seats.Count; step++)
             {
                 var next = seats[(start + step) % seats.Count];
-                if (IsCpu(next) || _draft.NextEmptySlot(next) < 0) continue;
+                if (!Controllable(next) || _draft.NextEmptySlot(next) < 0) continue;
 
                 _active = next;
                 return;
@@ -437,7 +493,7 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>UNDO takes back a human's pick only; a CPU would simply pick again (decision 7).</summary>
         private bool UndoAllowed =>
-            _draft.CanUndo() == DraftRefusal.None && !IsCpu(_draft.LastPickSeat);
+            _draft.CanUndo() == DraftRefusal.None && Controllable(_draft.LastPickSeat);
 
         private PlayerColor FirstHuman()
         {
@@ -463,7 +519,7 @@ namespace NonaRoyale.Unity.View
         /// <summary>Runs the CPU seats' clock and makes their picks when it is time.</summary>
         private void DriveCpus(float elapsed)
         {
-            if (_cpu.Count == 0 || _draft.IsComplete || _draft.IsTimeUp) return;
+            if (_cpu.Count == 0 || _pickForCpus || _draft.IsComplete || _draft.IsTimeUp) return;
 
             if (_draft.Mode == DraftMode.Snake)
             {
@@ -505,6 +561,7 @@ namespace NonaRoyale.Unity.View
             if (_focus == op) return;
             _focus = op;
             _detailDirty = true;
+            ApplyFocusEdges();
         }
 
         private void MarkDirty() => _dirty = true;
@@ -911,10 +968,12 @@ namespace NonaRoyale.Unity.View
                 // above already names the seat that is picking (M6).
                 if (upright) return;
 
-                string cpus = _cpu.Count > 0 ? " CPU seats pick on their own." : "";
-                UiKit.Caption(Content(_header, "hint", 22f),
-                    $"Choose a seat (click it or press 1–{_draft.Seats.Count}), then click operators. " +
-                    "Click a filled slot to clear it." + cpus,
+                // One line, and the seat half only when there is a seat to
+                // choose (G6c, flags 16 and 18).
+                string hint = ControllableCount > 1
+                    ? $"Choose a seat (click it or press 1–{_draft.Seats.Count}), then click operators. Click a filled slot to clear it."
+                    : "Click an operator to take it. Click a filled slot to clear it.";
+                UiKit.Caption(Content(_header, "hint", 22f), hint,
                     UiTheme.FontSmall, UiTheme.TextOff, TextAlignmentOptions.MidlineLeft);
                 return;
             }
@@ -950,8 +1009,10 @@ namespace NonaRoyale.Unity.View
                 if (_draft.IsComplete)
                     return "Every slot is filled. START deals now, or swap until the clock runs out.";
 
-                string who = _active == PlayerColor.None ? "The CPUs are" : $"{SeatWord(_active)} is";
-                return $"{who} picking · {_draft.PickCount} of {_draft.TotalPicks} slots filled";
+                string who = _active == PlayerColor.None ? "The CPUs are picking"
+                    : IsCpu(_active) ? $"Picking for {SeatWord(_active)} (CPU)"
+                    : $"{SeatWord(_active)} is picking";
+                return $"{who} · {_draft.PickCount} of {_draft.TotalPicks} slots filled";
             }
 
             if (_draft.IsComplete) return "The draft is complete. START deals the match.";
@@ -968,8 +1029,10 @@ namespace NonaRoyale.Unity.View
             Clear(_grid);
             FitGrid(_draft.Pool.Count);
 
+            _cardEdges.Clear();
             var picker = Picker;
             foreach (var op in _draft.Pool) Card(op, picker);
+            ApplyFocusEdges();
         }
 
         /// <summary>
@@ -1003,11 +1066,20 @@ namespace NonaRoyale.Unity.View
             if (Locked) refusal = DraftRefusal.Complete;
 
             bool open = refusal == DraftRefusal.None;
-            var seatColour = picker == PlayerColor.None ? UiTheme.Gold : UiTheme.Seat(picker);
 
-            var button = UiKit.Button(_grid, "", () => PickCard(op),
-                edge: open ? UiTheme.WithAlpha(seatColour, 0.9f) : UiTheme.Line);
+            // Colour on a card means something about that card (G6c, flags 9
+            // and 10). At rest every card has the gold hairline and a neutral
+            // shape; the card being read has a cyan edge (the live register);
+            // a card the picking seat already holds has that seat's edge. The
+            // picking seat's red used to frame all twelve, and red is also the
+            // damage and refusal colour.
+            var restEdge = refusal == DraftRefusal.AlreadyInSquad && picker != PlayerColor.None
+                ? UiTheme.WithAlpha(UiTheme.Seat(picker), 0.9f)
+                : UiTheme.Line;
+
+            var button = UiKit.Button(_grid, "", () => PickCard(op), edge: restEdge);
             button.name = "content_card";
+            RegisterEdge(op, button, restEdge);
 
             // Upright, focus is a tap and only a tap (M6): a sheet that opened
             // under a passing mouse would be unusable, and on a touch screen
@@ -1024,7 +1096,7 @@ namespace NonaRoyale.Unity.View
 
             if (ScreenLayout.IsPortrait)
             {
-                UprightCard(card, op, open, seatColour);
+                UprightCard(card, op, open);
                 return;
             }
 
@@ -1032,16 +1104,21 @@ namespace NonaRoyale.Unity.View
             column.childForceExpandHeight = false;
 
             // ── Shape, name, role, and who already holds it ──
+            // Every row pins its flexible height to 0 (G6c, flag 13). A row
+            // whose layout group force-expands its children reports itself as
+            // flexible, so the card handed its spare height out between the
+            // ability lines: a three-line kit spread wider than a four-line one
+            // and no two cards' baselines lined up.
             var top = UiKit.Rect("top", card);
-            UiKit.Size(top, height: 56f);
+            UiKit.Size(top, height: 56f, flexibleHeight: 0f);
             var topRow = UiKit.Row(top, 12f);
             topRow.childForceExpandHeight = false;
 
             var iconBox = UiKit.Rect("shape", top);
             UiKit.Fixed(iconBox, 52f, 52f);
             var portrait = OperatorArtLibrary.Portrait(op.Name);
-            if (portrait != null) PortraitIcon(iconBox, portrait, op, open, seatColour);
-            else ShapeIcon(iconBox, op, open, seatColour);
+            if (portrait != null) PortraitIcon(iconBox, portrait, op, open);
+            else ShapeIcon(iconBox, op, open);
 
             var names = UiKit.Rect("names", top);
             UiKit.Size(names, flexibleWidth: 1f);
@@ -1054,18 +1131,16 @@ namespace NonaRoyale.Unity.View
             role.characterSpacing = UiTheme.HeadingSpacing;
             UiKit.Size(role, height: 18f);
 
-            var holders = _draft.SeatsHolding(op);
-            if (holders.Count > 0)
-            {
-                var gems = UiKit.Rect("holders", top);
-                var gemRow = UiKit.Row(gems, 3f);
-                gemRow.childAlignment = TextAnchor.UpperRight;
-                foreach (var seat in holders) UiKit.Diamond(gems, UiTheme.Seat(seat), 10f, 15f);
-            }
+            HolderChips(top, op, TextAnchor.UpperRight, 11f);
 
-            // ── Numbers and traits ──
+            // ── Numbers ──
+            // No status chips here any more (G6c, flag 12). A status colour
+            // means "this is on the piece now" (lime HASTE is the colour of the
+            // haste trail on the board); on a draft card a passive is part of
+            // the kit, and the kit lines below already name every passive and
+            // aura with its tag.
             var stats = UiKit.Rect("stats", card);
-            UiKit.Size(stats, height: 22f);
+            UiKit.Size(stats, height: 22f, flexibleHeight: 0f);
             var statsRow = UiKit.Row(stats, 6f);
             statsRow.childForceExpandHeight = false;
 
@@ -1074,13 +1149,6 @@ namespace NonaRoyale.Unity.View
                 $"<color=#{UiTheme.Hex(UiTheme.TextDim)}>SPD</color> <b>{UiKit.Multiplier(op.BaseSpeed)}</b>",
                 UiTheme.FontSmall);
             UiKit.Size(numbers, flexibleWidth: 1f);
-
-            if (op.Passive.HasValue)
-                UiKit.Tag(stats, StatusPalette.Label(op.Passive.Value), StatusPalette.For(op.Passive.Value), 11f);
-            if (op.Passive2.HasValue)
-                UiKit.Tag(stats, StatusPalette.Label(op.Passive2.Value), StatusPalette.For(op.Passive2.Value), 11f);
-            if (op.Aura != null)
-                UiKit.Tag(stats, "AURA", UiTheme.GoldDeep, 11f);
 
             UiKit.Divider(card, vertical: false);
 
@@ -1096,7 +1164,7 @@ namespace NonaRoyale.Unity.View
             for (int i = 0; i < lines; i++)
             {
                 var line = UiKit.Rect("ability", card);
-                UiKit.Size(line, height: 22f);
+                UiKit.Size(line, height: 22f, flexibleHeight: 0f);
                 var lineRow = UiKit.Row(line, 8f);
                 lineRow.childForceExpandHeight = true;
 
@@ -1143,7 +1211,7 @@ namespace NonaRoyale.Unity.View
         /// is no room for three ability lines; they live on the sheet a tap
         /// opens (M6), along with the button that takes the operator.
         /// </summary>
-        private void UprightCard(RectTransform card, OperatorDefinition op, bool open, Color seatColour)
+        private void UprightCard(RectTransform card, OperatorDefinition op, bool open)
         {
             bool focused = _focus == op;
 
@@ -1154,8 +1222,8 @@ namespace NonaRoyale.Unity.View
             var iconBox = UiKit.Rect("shape", card);
             UiKit.Size(iconBox, height: 42f);
             var portrait = OperatorArtLibrary.Portrait(op.Name);
-            if (portrait != null) PortraitIcon(iconBox, portrait, op, open, seatColour);
-            else ShapeIcon(iconBox, op, open, seatColour);
+            if (portrait != null) PortraitIcon(iconBox, portrait, op, open);
+            else ShapeIcon(iconBox, op, open);
 
             var name = UiKit.Label(card, op.Name.ToUpperInvariant(), 14f,
                 open ? UiTheme.Text : UiTheme.TextDim, TextAlignmentOptions.Center, bold: true);
@@ -1172,12 +1240,11 @@ namespace NonaRoyale.Unity.View
             // when this is the card a tap has focused — the word that says a
             // second tap takes it.
             var foot = UiKit.Rect("foot", card);
-            UiKit.Size(foot, height: 14f);
+            UiKit.Size(foot, height: 14f, flexibleHeight: 0f);
             var footRow = UiKit.Row(foot, 3f);
             footRow.childAlignment = TextAnchor.MiddleCenter;
 
-            foreach (var seat in _draft.SeatsHolding(op))
-                UiKit.Diamond(foot, UiTheme.Seat(seat), 8f, 12f);
+            HolderChips(foot, op, TextAnchor.MiddleCenter, 9f);
 
             // The sheet carries the pick, so the tile only has to say which
             // card the sheet is showing (M6).
@@ -1186,31 +1253,75 @@ namespace NonaRoyale.Unity.View
                     TextAlignmentOptions.Center, bold: true);
         }
 
-        /// <summary>The operator's shape, sized by health and tinted for the picking seat.</summary>
-        private static void ShapeIcon(RectTransform box, OperatorDefinition op, bool open, Color seatColour)
+        /// <summary>
+        /// The operator's shape, sized by health, in the pool's neutral ivory
+        /// (G6c, flag 10). Drawn in the picking seat's colour, twelve red
+        /// shapes read as twelve operators RED already owned.
+        /// </summary>
+        private static void ShapeIcon(RectTransform box, OperatorDefinition op, bool open)
         {
             float iconSize = Mathf.Lerp(36f, 52f, Mathf.InverseLerp(0.52f, 0.84f, PieceShape.SizeFor(op.MaxHealth)));
-            var icon = UiKit.Icon(box, PieceShape.For(op.Name), open ? seatColour : UiTheme.PieceWaiting, iconSize);
+            var icon = UiKit.Icon(box, PieceShape.For(op.Name), open ? PoolShape : UiTheme.PieceWaiting, iconSize);
             Centre(icon, iconSize);
         }
 
         /// <summary>
         /// A rendered portrait, drawn as painted, with the shape as a small
-        /// seat-tinted pin in its corner (ART_HOOKUP.md, ART1). The pin keeps
-        /// the shape the board uses in view, so the card still teaches it.
+        /// pin in its corner (ART_HOOKUP.md, ART1). The pin keeps the shape the
+        /// board uses in view, so the card still teaches it. Neutral, like the
+        /// pool's shapes (G6c).
         /// </summary>
-        private static void PortraitIcon(RectTransform box, Sprite portrait, OperatorDefinition op, bool open, Color seatColour)
+        private static void PortraitIcon(RectTransform box, Sprite portrait, OperatorDefinition op, bool open)
         {
             var image = UiKit.Icon(box, portrait, open ? Color.white : UiTheme.PieceWaiting, 52f);
             Centre(image, 52f);
 
             const float pinSize = 18f;
-            var pin = UiKit.Icon(box, PieceShape.For(op.Name), open ? seatColour : UiTheme.PieceWaiting, pinSize);
+            var pin = UiKit.Icon(box, PieceShape.For(op.Name), open ? PoolShape : UiTheme.PieceWaiting, pinSize);
             var pinRect = (RectTransform)pin.transform;
             pinRect.anchorMin = pinRect.anchorMax = new Vector2(1f, 0f);
             pinRect.pivot = new Vector2(1f, 0f);
             pinRect.anchoredPosition = new Vector2(2f, -2f);
             pinRect.sizeDelta = new Vector2(pinSize, pinSize);
+        }
+
+        /// <summary>
+        /// The seats that already field this operator, as chips in their
+        /// colours with their initials (G6c, flag 11). They were 10-unit
+        /// diamonds, easy to miss on a card a player is deciding about.
+        /// </summary>
+        private void HolderChips(RectTransform parent, OperatorDefinition op, TextAnchor align, float size)
+        {
+            var holders = _draft.SeatsHolding(op);
+            if (holders.Count == 0) return;
+
+            var chips = UiKit.Rect("holders", parent);
+            var row = UiKit.Row(chips, 3f);
+            row.childAlignment = align;
+            row.childForceExpandHeight = false;
+
+            foreach (var seat in holders)
+                UiKit.Tag(chips, seat.ToString().Substring(0, 1), UiTheme.Seat(seat), size);
+        }
+
+        /// <summary>Remembers a card's edge and resting colour, so focus can repaint it without a rebuild.</summary>
+        private void RegisterEdge(OperatorDefinition op, Button button, Color rest)
+        {
+            var edge = button.transform.Find("edge");
+            var image = edge != null ? edge.GetComponent<Image>() : null;
+            if (image != null) _cardEdges[op] = new CardEdge { Image = image, Rest = rest };
+        }
+
+        /// <summary>
+        /// The card being read gets the cyan edge; every other card its
+        /// resting one. Hover focuses a card many times a second and only the
+        /// detail panel rebuilds for it, so the edges are repainted in place.
+        /// </summary>
+        private void ApplyFocusEdges()
+        {
+            foreach (var pair in _cardEdges)
+                if (pair.Value.Image != null)
+                    pair.Value.Image.color = pair.Key == _focus ? UiTheme.Cyan : pair.Value.Rest;
         }
 
         private static void Centre(Image image, float size)
@@ -1286,7 +1397,7 @@ namespace NonaRoyale.Unity.View
             UiKit.Column(slot, 0f).childForceExpandHeight = true;
 
             var button = UiKit.Button(slot, "", () => SetActive(seat), selected: picking,
-                interactable: allPick && !cpu && !Locked);
+                interactable: allPick && Controllable(seat) && !Locked);
             var tile = (RectTransform)button.transform;
 
             var column = UiKit.Column(tile, 2f, 5);
@@ -1335,7 +1446,7 @@ namespace NonaRoyale.Unity.View
                 return;
             }
 
-            bool clearable = _draft.CanClear(seat, slot) == DraftRefusal.None && !IsCpu(seat) && !Locked;
+            bool clearable = _draft.CanClear(seat, slot) == DraftRefusal.None && Controllable(seat) && !Locked;
 
             var button = UiKit.Button(parent, "", () => ClearSlot(seat, slot), MarkDirty,
                 interactable: clearable, tint: UiTheme.PanelInset);
@@ -1359,7 +1470,7 @@ namespace NonaRoyale.Unity.View
             UiKit.Column(slot, 0f).childForceExpandHeight = true;
 
             var button = UiKit.Button(slot, "", () => SetActive(seat), selected: picking,
-                interactable: allPick && !cpu && !Locked);
+                interactable: allPick && Controllable(seat) && !Locked);
             var row = (RectTransform)button.transform;
             var layout = UiKit.Row(row, 8f);
             layout.padding = new RectOffset(14, 10, 8, 8);
@@ -1377,7 +1488,9 @@ namespace NonaRoyale.Unity.View
             UiKit.Fixed(names, 150f);
             UiKit.Column(names, 0f).childAlignment = TextAnchor.MiddleLeft;
 
-            string key = allPick && !cpu && index < 4 ? $"  <size=70%><color=#{UiTheme.Hex(UiTheme.Gold)}>{index + 1}</color></size>" : "";
+            // The number key only where there is a seat to choose (G6c).
+            string key = allPick && Controllable(seat) && ControllableCount > 1 && index < 4
+                ? $"  <size=70%><color=#{UiTheme.Hex(UiTheme.Gold)}>{index + 1}</color></size>" : "";
             var name = UiKit.Label(names, seat.ToString().ToUpperInvariant() + key, UiTheme.FontBody,
                 UiTheme.Readable(colour), bold: true);
             UiKit.Size(name, height: 26f);
@@ -1406,7 +1519,7 @@ namespace NonaRoyale.Unity.View
             }
 
             // Only ALL PICK clears; a snake slot is a plain, hoverable label.
-            bool clearable = _draft.CanClear(seat, slot) == DraftRefusal.None && !IsCpu(seat) && !Locked;
+            bool clearable = _draft.CanClear(seat, slot) == DraftRefusal.None && Controllable(seat) && !Locked;
             var button = UiKit.Button(row, "", () => ClearSlot(seat, slot), interactable: clearable,
                 tint: UiTheme.PanelInset);
             UiKit.Fixed(button, SlotWidth);
@@ -1680,9 +1793,16 @@ namespace NonaRoyale.Unity.View
             bool allPick = _draft.Mode == DraftMode.AllPick;
 
             FooterButton("BACK", "Esc", RequestLeave, 180f, interactable: open);
-            FooterNote(allPick
-                ? "Picks are open to every seat. Two seats may field the same operator; one seat may not field it twice."
-                : "Snake order reverses each round. A pick that runs out of time is made at random.");
+
+            // The rules note is gone (G6c, flag 16): they belong on the setup
+            // screen, not under a running clock. The override takes its place
+            // when there is a CPU seat to pick for.
+            FooterSpace();
+            if (_cpu.Count > 0)
+                FooterButton(CpuToggleLabel(), "", TogglePickForCpus, 250f,
+                    _pickForCpus ? UiTheme.CyanDeep : (Color?)null, _pickForCpus ? UiTheme.Cyan : (Color?)null,
+                    open);
+            FooterSpace();
 
             FooterButton("RANDOM", "", RandomOne, 170f,
                 interactable: open && Picker != PlayerColor.None && _draft.CanPickAny(Picker) == DraftRefusal.None);
@@ -1740,6 +1860,10 @@ namespace NonaRoyale.Unity.View
                 UprightButton(bottom, "RANDOM REST", RandomRest, interactable: open && !_draft.IsComplete);
             }
 
+            if (_cpu.Count > 0)
+                UprightButton(bottom, CpuToggleLabel(), TogglePickForCpus,
+                    _pickForCpus ? UiTheme.CyanDeep : (Color?)null, _pickForCpus ? UiTheme.Cyan : (Color?)null, open);
+
             bool ready = open && _draft.IsComplete;
             var start = UprightButton(bottom, "START", StartMatch,
                 ready ? UiTheme.CyanDeep : (Color?)null, ready ? UiTheme.Cyan : (Color?)null, ready);
@@ -1776,6 +1900,15 @@ namespace NonaRoyale.Unity.View
             note.name = "content_note";
             UiKit.Size(note, flexibleWidth: 1f);
         }
+
+        /// <summary>Flexible room in the footer; named so a rebuild clears it.</summary>
+        private void FooterSpace() => UiKit.Space(_footer, flexible: true).name = "content_space";
+
+        /// <summary>The override's button, saying what it is set to.</summary>
+        /// <remarks>Upright it shares a row with up to two other buttons in 456 units, so it is shorter.</remarks>
+        private string CpuToggleLabel() =>
+            $"{(ScreenLayout.IsPortrait ? "PICK CPUS" : "PICK FOR CPUS")}  " +
+            $"<size=70%><color=#{UiTheme.Hex(_pickForCpus ? UiTheme.Cyan : UiTheme.TextDim)}>{(_pickForCpus ? "ON" : "OFF")}</color></size>";
 
         // ── Helpers ──────────────────────────────────────────────────────
 

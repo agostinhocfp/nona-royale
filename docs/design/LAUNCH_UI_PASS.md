@@ -1,7 +1,7 @@
 # Nona Royale — Launch UI pass (G6)
 
 > Location in repo: `docs/design/LAUNCH_UI_PASS.md` · Project copy: `claude/LAUNCH_UI_PASS.md`
-> Status: **Open, 2026-09-26.** Audit from four desktop screenshots (title, setup, draft, in-match at round 36). **G6a (bug sweep) and G6b (tray and rail) passed Play Mode; G6b's follow-up (card widths, the health number) written, waiting on Play Mode.** G6c next; no decisions open.
+> Status: **Open, 2026-09-26.** Audit from four desktop screenshots (title, setup, draft, in-match at round 36). **G6a, G6b and G6b's follow-up passed Play Mode. G6c (draft and setup) written and compile-checked, waiting on Play Mode.** No decisions open.
 > Related: `GUI_PHASE.md` (E–J, G3–G5), `HUD_PASS.md` (H1–H4: the contextual tray, the folded rail, the quiet board — G6b builds on it and does not undo it), `MOBILE.md` (upright layout — every change here must keep M3/M6 intact), `ART_DIRECTION.md` §3 and §8, ADR-0008
 
 ## Verdict
@@ -102,3 +102,29 @@ Each increment ends with a Play Mode check (desktop and upright) and a commit.
     - An operator in the yard: its cards are dimmed with no "out of play"; its card reads "waiting in the yard". A stunned operator: STUN tag, no per-card "stunned".
     - A dimmed card's cost and keywords are as faded as its words; a castable card is at full strength with the cyan edge.
     - An operator in its home column reads "in the home column, out of the fight".
+- 2026-09-26 — **G6b's follow-up passed Play Mode.** Designer, on the empty third slot: "we agreed to show all abilities, even passives." They are shown, as the gold chips on the operator card (OPERATOR_GUIDE §5a, 2026-09-21); the card row holds castable abilities only. Kept as is.
+- 2026-09-26 — **G6c written: the draft and setup (flags 9–18).** On HEAD `e829cd2` plus the uncommitted follow-up.
+  - **9, card frames.** At rest every card has the gold hairline. The card being read (hovered, or tapped upright) takes a cyan edge, repainted in place (`ApplyFocusEdges`) because hover only rebuilds the detail panel. A card the picking seat already holds takes that seat's edge, on top of its faded IN SQUAD state. The picking seat's colour no longer frames all twelve.
+  - **10, shapes.** Pool shapes and portrait pins are neutral ivory (`PoolShape` = `UiTheme.Text`); refused cards keep the grey.
+  - **11, holders.** Seat chips with the seat's initial on its colour (`HolderChips`), 11 pt wide and 9 pt upright, replacing the 10-unit diamonds.
+  - **12, tag palette.** The draft card's status chips are gone. A status colour means "this is on the piece now" (lime HASTE is also the board's haste trail), and the kit lines already name every passive and aura with its `passive` or `aura · r2` tag. `StatusPalette` is unchanged: in the match its hues are meaning, not decoration.
+  - **13, row rhythm.** The cause: a row whose layout group force-expands its children reports itself as flexible, so the card shared its spare height between the ability lines. Every card row now pins `flexibleHeight` to 0; the kit is top-aligned and three-line and four-line cards share baselines.
+  - **18, picking (decided: own seat, plus an override).** The pointer already never picked for CPU seats; what was wrong was the prompt. The seat-choosing hint and the number keys only appear with two or more controllable seats; with one, the hint reads "Click an operator to take it. Click a filled slot to clear it." **PICK FOR CPUS** (footer, off at the start of every draft) lets the pointer choose, pick for and clear CPU seats, and pauses the CPUs' own picking while it is on (`Controllable`, `TogglePickForCpus`). Turning it off hands the pointer back to the first human seat and the CPU seats back to their brains. The subtitle reads "Picking for BLUE (CPU)" while the pointer is on a CPU seat.
+  - **16, draft copy.** The footer's rules note is gone (the override's button takes its place when there is a CPU seat); the rules belong on setup.
+  - **14, setup seats.** Only a human seat takes the cyan selected state. A CPU seat keeps the resting frame, "CPU" in plain text and its style chip; an empty seat is an inset tile with dim text.
+  - **15, BACK.** New `ModalCard.SecondaryChoice`: 280 × 42, body type, centred under the primary. Setup's BACK uses it; the other cards are untouched.
+  - **16, setup copy.** One line per section wide (two upright): "Every seat for itself. First squad home wins." · "Click a seat to change who plays it. The chip sets a CPU's style." · "Everyone picks at once, 30 seconds. Empty slots fill at random." The draft's clock lengths now come from `DraftConfig.Default`, so a tuning change can't leave the card promising the old number.
+  - **17, seed.** Behind an ADVANCED row (SHOW/HIDE, remembered for the session): the seed, SHUFFLE, and one line on what it fixes.
+  - `PRESENTATION.md` §4.3 updated to match (card look, picking rule, seed).
+  - Files: `DraftScreen`, `SetupScreen`, `ModalCard`, `PRESENTATION.md`. No core change.
+  - **Checked:** the view compiles against the 6000.6 DLLs, 0 warnings, and the Unity EditMode tests compile against it. uGUI can't be previewed here; Play Mode is the check.
+  - **Play Mode checklist:**
+    - Draft, one human, three CPUs: every card has the gold hairline and an ivory shape; hovering a card turns its edge cyan and the previous one back; no red frames.
+    - A card RED holds shows RED's edge, IN SQUAD, faded. Cards held by other seats show their initials as coloured chips, top right.
+    - Sanity (four kit lines) and Nuetu (three) side by side: the lines sit at the same heights from the top; the extra space is at the bottom.
+    - No coloured HASTE/BURDEN/BALANCE/HOUSE/AURA chips on the cards; the kit lines show the passives and auras.
+    - The header hint has no "Choose a seat / 1–4"; the seat rows show no number key; CPU rows can't be clicked.
+    - PICK FOR CPUS: OFF by default. ON: the CPUs stop picking, clicking a CPU row makes it the picker ("Picking for BLUE (CPU)"), cards pick for it, its slots clear. OFF again: the pointer returns to RED and the CPUs resume.
+    - Two humans: the seat hint and number keys come back.
+    - Setup: RED (human) cyan; CPU seats in the plain frame with a readable style chip; an empty seat dims. BACK is a smaller button under DRAFT. Every note is one line. ADVANCED shows/hides the seed and SHUFFLE.
+    - Upright: the draft footer fits PICK CPUS; setup notes wrap to two lines without clipping; BACK fits.

@@ -1,6 +1,8 @@
 // Assets/_Project/Scripts/Unity/View/SetupScreen.cs
+using System.Globalization;
 using NonaRoyale.Core.Board;
 using NonaRoyale.Core.Bots;
+using NonaRoyale.Core.Draft;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -29,9 +31,16 @@ namespace NonaRoyale.Unity.View
     /// through the draft screen, so the confirm button reads DRAFT; RANDOM
     /// and ALPHA THREE deal at once.
     ///
-    /// <b>The seed is shown, not typed.</b> SHUFFLE draws a new one. Picking a
-    /// seed is the view's own business, not a rule; the dice it produces come
-    /// from the core.
+    /// <b>The seed is shown, not typed, and it is behind ADVANCED</b> (G6c,
+    /// flag 17). Every match draws a fresh one, so it only matters to someone
+    /// replaying a table; it no longer takes a section of the card from
+    /// everyone else. SHUFFLE draws a new one. Picking a seed is the view's own
+    /// business, not a rule; the dice it produces come from the core.
+    ///
+    /// <b>One short line per section</b> (G6c, flag 16). The notes were
+    /// two-line paragraphs ending in a lone word; the rules they carried are
+    /// the draft's and the table's, and each note now says only what the
+    /// section's choice does.
     ///
     /// Enter deals (or drafts); Esc goes back.
     /// </remarks>
@@ -46,6 +55,9 @@ namespace NonaRoyale.Unity.View
         private IMatchFlowHost _host;
         private MatchSettings _edit;
         private string _notice;
+
+        /// <summary>Whether the ADVANCED section (the seed) is open. Kept between openings in a session.</summary>
+        private bool _advanced;
 
         protected override float CardWidth => 700f;
 
@@ -111,7 +123,7 @@ namespace NonaRoyale.Unity.View
             var tables = ButtonRow("table");
             foreach (var mode in Tables) TableOption(tables, mode);
 
-            Note(TableNote(_edit.Table), UiTheme.TextNote, 38f);
+            Note(TableNote(_edit.Table), UiTheme.TextNote, NoteHeight);
 
             // ── Seats ──
             Gap(4f);
@@ -120,7 +132,7 @@ namespace NonaRoyale.Unity.View
             var seats = ButtonRow("seats", 124f);
             foreach (var seat in MatchSettings.AllSeats) SeatTile(seats, seat);
 
-            Note(_notice ?? SeatNote(), _notice != null ? UiTheme.Threat : UiTheme.TextNote, 38f);
+            Note(_notice ?? SeatNote(), _notice != null ? UiTheme.Threat : UiTheme.TextNote, NoteHeight);
 
             // ── Squads ──
             Gap(4f);
@@ -129,50 +141,63 @@ namespace NonaRoyale.Unity.View
             var squads = ButtonRow("squads");
             foreach (var mode in Modes) SquadOption(squads, mode);
 
-            Note(SquadNote(_edit.Squads), UiTheme.TextNote, 38f);
+            Note(SquadNote(_edit.Squads), UiTheme.TextNote, NoteHeight);
 
-            // ── Seed ──
+            // ── Advanced: the seed ──
             Gap(4f);
-            Heading("Seed");
+            var toggle = ButtonRow("advanced_toggle", 30f);
+            var advanced = UiKit.Button(toggle,
+                $"ADVANCED  <size=80%><color=#{UiTheme.Hex(UiTheme.TextDim)}>{(_advanced ? "HIDE" : "SHOW")}</color></size>",
+                () => _advanced = !_advanced, Rebuild, size: UiTheme.FontSmall, tint: UiTheme.Panel, edge: UiTheme.Line);
+            advanced.name = "advanced";
 
-            var seedRow = ButtonRow("seed", 44f);
-            var seedLabel = UiKit.Label(seedRow, $"<b>{_edit.Seed}</b>", UiTheme.FontLarge, UiTheme.Text,
-                TextAlignmentOptions.MidlineLeft);
-            UiKit.Size(seedLabel, flexibleWidth: 2f);
-
-            var shuffle = UiKit.Button(seedRow, "SHUFFLE", () =>
+            if (_advanced)
             {
-                _edit.Seed = Random.Range(1, 100000000);
-                _notice = null;
-            }, Rebuild, size: UiTheme.FontSmall);
-            UiKit.Size(shuffle, flexibleWidth: 1f);
+                var seedRow = ButtonRow("seed", 44f);
+                var seedLabel = UiKit.Label(seedRow,
+                    $"<color=#{UiTheme.Hex(UiTheme.TextDim)}>SEED</color>  <b>{_edit.Seed}</b>",
+                    UiTheme.FontLarge, UiTheme.Text, TextAlignmentOptions.MidlineLeft);
+                UiKit.Size(seedLabel, flexibleWidth: 2f);
 
-            Note("The seed fixes the dice, who plays first and, outside ALL PICK, any random picks. " +
-                 "A new match draws a fresh one.", UiTheme.TextNote, 38f);
+                var shuffle = UiKit.Button(seedRow, "SHUFFLE", () =>
+                {
+                    _edit.Seed = Random.Range(1, 100000000);
+                    _notice = null;
+                }, Rebuild, size: UiTheme.FontSmall);
+                UiKit.Size(shuffle, flexibleWidth: 1f);
+
+                Note("Fixes the dice and who plays first. Every new match draws a fresh one.",
+                    UiTheme.TextNote, NoteHeight);
+            }
 
             // ── Go ──
             Gap(10f);
 
             Choice(_edit.Squads.IsDraft() ? "DRAFT" : "DEAL", "Enter", Deal, UiTheme.CyanDeep, UiTheme.Cyan);
 
-            Choice(HasMatch ? "BACK TO THE MATCH" : "BACK", "Esc", Back);
+            // Under the primary, smaller (G6c, flag 15): it had DRAFT's size and weight.
+            SecondaryChoice(HasMatch ? "BACK TO THE MATCH" : "BACK", "Esc", Back);
         }
+
+        /// <summary>
+        /// One line of note wide: every note is written to fit it. Upright the
+        /// card is about 450 units wide, so the same line may take two.
+        /// </summary>
+        private static float NoteHeight => ScreenLayout.Pick(22f, 38f);
 
         private string SeatNote()
         {
             if (_edit.Table.IsTeams())
             {
                 return _edit.HumanCount == 0
-                    ? "No human seats: watch mode, two CPU sides."
-                    : "A seat and its partner cycle together — one player holds both. " +
-                      "The chip under a CPU side sets its style.";
+                    ? "No human sides: watch mode."
+                    : "Partners change together. The chip sets a CPU side's style.";
             }
 
             if (_edit.HumanCount == 0)
-                return "No human seats: watch mode. Esc pauses; hold Space to hurry the CPUs.";
+                return "No human seats: watch mode. Hold Space to hurry the CPUs.";
 
-            return "Click a seat: empty, human, CPU. The chip under a CPU sets its style. " +
-                   "Opposite seats make a fair two-player table.";
+            return "Click a seat to change who plays it. The chip sets a CPU's style.";
         }
 
         private static string TableNote(TableMode mode)
@@ -180,10 +205,9 @@ namespace NonaRoyale.Unity.View
             switch (mode)
             {
                 case TableMode.CrossedPairs:
-                    return "Two players, four seats. One holds Red and Green, the other Blue and Violet — " +
-                           "partners start opposite each other. A side wins when all six of its operators are home.";
+                    return "Two players, two seats each, partners opposite. A side wins with all six home.";
                 default:
-                    return "Every seat for itself: two to four players, first squad home wins.";
+                    return "Every seat for itself. First squad home wins.";
             }
         }
 
@@ -237,22 +261,31 @@ namespace NonaRoyale.Unity.View
             _edit.SetPersonality(partner.Value, _edit.PersonalityOf(seat));
         }
 
+        /// <remarks>
+        /// The clock lengths come from <see cref="DraftConfig"/>, so a tuning
+        /// change cannot leave the card promising the old number.
+        /// </remarks>
         private static string SquadNote(SquadMode mode)
         {
+            var draft = DraftConfig.Default;
+
             switch (mode)
             {
                 case SquadMode.AllPick:
-                    return "A shared 30-second draft: any seat picks at any time. Empty slots are filled at random when time runs out.";
+                    return $"Everyone picks at once, {Seconds(draft.AllPickSeconds)} seconds. Empty slots fill at random.";
                 case SquadMode.Snake:
-                    return "Picks in turn, reversing each round, 10 seconds a pick. A missed pick is made at random.";
+                    return $"Picks in turn, reversing each round, {Seconds(draft.SnakePickSeconds)} seconds a pick.";
                 case SquadMode.Random:
-                    return "Three distinct operators per seat, drawn from the whole roster by the seed.";
+                    return "Three operators per seat, drawn at random.";
                 case SquadMode.Alpha:
-                    return "Every seat plays Bouncer, Syla and Kurbyn: the measured baseline.";
+                    return "Every seat plays Bouncer, Syla and Kurbyn.";
                 default:
                     return "";
             }
         }
+
+        private static string Seconds(double value) =>
+            System.Math.Round(value).ToString("0", CultureInfo.InvariantCulture);
 
         /// <summary>A seat: its diamond, name and who plays it; a CPU seat adds its style chip.</summary>
         private void SeatTile(Transform row, PlayerColor seat)
@@ -261,7 +294,13 @@ namespace NonaRoyale.Unity.View
             bool cpu = on && _edit.KindOf(seat) == SeatKind.Cpu;
             var colour = UiTheme.Seat(seat);
 
-            var button = UiKit.Button(row, "", () => CycleSeat(seat), Rebuild, selected: on);
+            // Only a human seat takes the live cyan state (G6c, flag 14). All
+            // four tiles used to light up the same whenever they were playing,
+            // so a human seat and a CPU seat looked alike: now a CPU seat keeps
+            // the resting frame with its style chip, and an empty one dims.
+            bool human = on && !cpu;
+            var button = UiKit.Button(row, "", () => CycleSeat(seat), Rebuild, selected: human,
+                tint: on ? (Color?)null : UiTheme.PanelInset);
 
             var column = UiKit.Column((RectTransform)button.transform, 4f, 8);
             column.childAlignment = TextAnchor.MiddleCenter;
@@ -286,7 +325,7 @@ namespace NonaRoyale.Unity.View
                     kind += $" · {partner.Value.ToString().ToUpperInvariant()}";
             }
             var state = UiKit.Label(button.transform, kind, 11f,
-                on ? UiTheme.Cyan : UiTheme.TextOff, TextAlignmentOptions.Center, bold: cpu);
+                human ? UiTheme.Cyan : on ? UiTheme.Text : UiTheme.TextOff, TextAlignmentOptions.Center, bold: on);
             state.characterSpacing = UiTheme.HeadingSpacing * 0.5f;
             UiKit.Size(state, ScreenLayout.Pick(120f, 84f), 16f);
 

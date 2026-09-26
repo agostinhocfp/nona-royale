@@ -28,6 +28,10 @@ namespace NonaRoyale.Unity.View
     {
         protected const float ButtonHeight = 54f;
 
+        /// <summary>A secondary choice's size (G6c).</summary>
+        protected const float SecondaryHeight = 42f;
+        protected const float SecondaryWidth = 280f;
+
         /// <summary>What the card keeps clear of the screen's edges (M5).</summary>
         private const float Margin = 16f;
 
@@ -285,6 +289,24 @@ namespace NonaRoyale.Unity.View
 
             var button = UiKit.Button(slot, WithKey(label, key), press, Rebuild,
                 interactable: interactable, size: UiTheme.FontLarge, tint: fill, edge: edge);
+            return button;
+        }
+
+        /// <summary>
+        /// A way back or out, under the primary choice: narrower, shorter and
+        /// in body type, centred, so it never competes with the button the
+        /// screen exists for (G6c, flag 15).
+        /// </summary>
+        protected Button SecondaryChoice(string label, string key, System.Action press, bool interactable = true)
+        {
+            var slot = Slot("choice_secondary", SecondaryHeight);
+            var row = UiKit.Row(slot, 0f);
+            row.childAlignment = TextAnchor.MiddleCenter;
+            row.childForceExpandHeight = true;
+
+            var button = UiKit.Button(slot, WithKey(label, key), press, Rebuild,
+                interactable: interactable, size: UiTheme.FontBody);
+            UiKit.Fixed(button, SecondaryWidth);
             return button;
         }
 
