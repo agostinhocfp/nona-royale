@@ -66,6 +66,14 @@ namespace NonaRoyale.Core.Services
             return true;
         }
 
+        /// <summary>
+        /// Every seat on <paramref name="seat"/>'s side, the seat itself
+        /// included: one seat under free-for-all, both partners at a crossed
+        /// table. For the dev win (<c>GameEngine.DevForceWin</c>), which has to
+        /// send a whole side home for the side to win.
+        /// </summary>
+        public IReadOnlyList<PlayerColor> SideSeats(PlayerColor seat) => _teams.SeatsOn(seat);
+
         /// <summary>How many of a player's operators are home. For the HUD, not for rules.</summary>
         public int FinishedCount(PlayerState player)
         {

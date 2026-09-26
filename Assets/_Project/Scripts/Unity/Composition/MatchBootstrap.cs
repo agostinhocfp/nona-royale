@@ -1258,6 +1258,12 @@ namespace NonaRoyale.Unity.Composition
                 if (Input.GetKeyDown(KeyCode.F2)) useLegacyPanel = !useLegacyPanel;
                 if (Input.GetKeyDown(KeyCode.H)) showPieceHealth = !showPieceHealth;
                 if (Input.GetKeyDown(KeyCode.L)) showFullLog = !showFullLog;
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                // Dev only: Ctrl+Shift+Numpad 0 wins the match for the seat to
+                // play (G7). Compiled out of release builds.
+                if (DevWinPressed()) DevWin();
+#endif
             }
 
             // Driven every frame rather than on the keypress, so flipping the
@@ -1837,6 +1843,34 @@ namespace NonaRoyale.Unity.Composition
             !_match.Engine.MatchOver && !CpuTurn && op.Owner == _match.Engine.CurrentPlayer.Color;
 
         // ── Driving the engine ───────────────────────────────────────────
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        /// <summary>Ctrl+Shift+Numpad 0, either Ctrl and either Shift.</summary>
+        private static bool DevWinPressed() =>
+            Input.GetKeyDown(KeyCode.Keypad0)
+            && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+            && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift));
+
+        /// <summary>
+        /// <b>Development only.</b> Wins the match for the side to play, to reach
+        /// the results screen without playing a match out (LAUNCH_UI_PASS.md G7).
+        /// </summary>
+        /// <remarks>
+        /// The engine does the work (<c>GameEngine.DevForceWin</c>): it sends
+        /// the side home and ends the turn, and the win arrives as an ordinary
+        /// <c>GameWon</c>, so the end screen, the history and the toasts all
+        /// take their normal path. The view hands the events over, as it does
+        /// for any command.
+        /// </remarks>
+        private void DevWin()
+        {
+            if (_match == null || _match.Engine.MatchOver) return;
+
+            // Handle drops the selection once the match is over.
+            _log.Add($"[DEV] forced a win for {_match.Engine.CurrentPlayer?.Color}");
+            Handle(_match.Engine.DevForceWin(), immediate: false);
+        }
+#endif
 
         private void Send(ICommand command, OperatorState castBy = null, AbilityDefinition cast = null) =>
             Handle(_match.Engine.Execute(command), immediate: false, castBy, cast, command: command);

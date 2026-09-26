@@ -643,7 +643,17 @@ namespace NonaRoyale.Core
             // was. Placing the piece cannot change the winner, so running it
             // ahead of the win check is safe.
             EvaluatePityDeploy(events);
+            CloseTurn(events);
+        }
 
+        /// <summary>
+        /// The end of a turn once every rule has let it end: the turn machine's
+        /// report, interest, expiries, <see cref="TurnEnded"/>, then either the
+        /// win or the next turn. Shared by <see cref="EndTurn"/> and
+        /// <see cref="DevForceWin"/>.
+        /// </summary>
+        private void CloseTurn(List<IGameEvent> events)
+        {
             var report = _turns.EndTurn();
 
             // Before anything expires, as the turn machine ran it (§3.3). Only
@@ -666,6 +676,64 @@ namespace NonaRoyale.Core
             }
 
             BeginTurn(events);
+        }
+
+        /// <summary>
+        /// <b>Development only.</b> Sends every operator on the current
+        /// player's side HOME and closes the turn, so the match is won by that
+        /// side through the ordinary win check and <see cref="GameWon"/>.
+        /// </summary>
+        /// <remarks>
+        /// For reaching the results screen without playing a match out
+        /// (LAUNCH_UI_PASS.md, G7). The view binds it to a key in the editor
+        /// and development builds only; no production path calls it.
+        ///
+        /// <b>It is not a command.</b> Nothing about it is a rule a player can
+        /// invoke, so it is not in the command set, it does not raise
+        /// <see cref="Executed"/>, and a <c>ReplayRecorder</c> never sees it: a
+        /// replay of a match ended this way stops where the cheat was used.
+        ///
+        /// <b>The win is still the engine's.</b> It moves the pieces and ends
+        /// the turn; <see cref="WinConditions"/> decides the winner exactly as
+        /// it would after a real last move, including both partner seats at a
+        /// crossed table. Each operator that arrives is reported with
+        /// <see cref="OperatorReachedHome"/>, so the view walks the same path
+        /// it does for a real finish. Compulsory rolling and movement are not
+        /// checked: that is the point.
+        ///
+        /// Refused, with a <see cref="CommandRejected"/>, once the match is over
+        /// or between turns.
+        /// </remarks>
+        public IReadOnlyList<IGameEvent> DevForceWin()
+        {
+            var events = new List<IGameEvent>();
+
+            if (MatchOver || (Phase != TurnPhase.Action && Phase != TurnPhase.AwaitingRoll))
+            {
+                events.Add(new CommandRejected("dev win: no turn is being played"));
+                return events;
+            }
+
+            var side = _win.SideSeats(_turns.CurrentPlayer.Color);
+
+            foreach (var player in _turns.Players)
+            {
+                bool onSide = false;
+                foreach (var seat in side)
+                    if (seat == player.Color) onSide = true;
+                if (!onSide) continue;
+
+                foreach (var op in player.Operators)
+                {
+                    if (_win.HasFinished(op)) continue;
+
+                    op.MoveTo(_map.Profile.Journey);
+                    events.Add(new OperatorReachedHome(op));
+                }
+            }
+
+            CloseTurn(events);
+            return events;
         }
 
         /// <summary>
