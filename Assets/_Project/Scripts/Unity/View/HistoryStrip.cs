@@ -415,10 +415,18 @@ namespace NonaRoyale.Unity.View
             var colour = BoardLayout.ColourOf(item.Seat);
             _cardAccent.color = colour;
 
+            // A move, a deploy or an arrival with one line says it once (G7d):
+            // "Kurbyn moves" over "Kurbyn moves 7 cells" said it twice. The line
+            // becomes the title and the body goes. A cast keeps its name as the
+            // title, since its one line is what the cast did.
+            bool single = item.Lines.Count == 1 &&
+                          (item.Kind == HistoryKind.Move || item.Kind == HistoryKind.Deploy || item.Kind == HistoryKind.Home);
+
             _cardTitle.text =
-                $"<color=#{UiTheme.Hex(UiTheme.Readable(colour))}>{NonaRoyale.Core.Text.EventText.SeatName(item.Seat)}</color>  {item.Title}" +
+                $"<color=#{UiTheme.Hex(UiTheme.Readable(colour))}>{NonaRoyale.Core.Text.EventText.SeatName(item.Seat)}</color>  {(single ? item.Lines[0] : item.Title)}" +
                 $"  <size=75%><color=#{UiTheme.Hex(UiTheme.TextDim)}>round {item.Round}</color></size>";
 
+            _cardBody.gameObject.SetActive(!single);
             _cardBody.text = item.Lines.Count > 0 ? string.Join("\n", item.Lines) : "—";
 
             _cardOwner = chip;

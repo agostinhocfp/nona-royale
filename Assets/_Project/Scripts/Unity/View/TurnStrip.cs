@@ -53,6 +53,9 @@ namespace NonaRoyale.Unity.View
         private TMP_Text _seat;
         private TMP_Text _energy;
 
+        /// <summary>The energy block, faded out once the match is over (G7d): "ENERGY" hung there alone.</summary>
+        private CanvasGroup _energyGroup;
+
         // The playing seat's debt chip (§3.3), and what it last showed for
         // whom, so a figure pops only when it changed for the same seat.
         private TMP_Text _debt;
@@ -153,6 +156,7 @@ namespace NonaRoyale.Unity.View
             UiKit.Heading(energyBox, "Energy");
             BuildPips(energyBox, 11f, 17f);
             _energy = UiKit.Label(energyBox, "", UiTheme.FontBody, bold: true);
+            _energyGroup = energyBox.gameObject.AddComponent<CanvasGroup>();
 
             // The playing seat's debt, beside its pool (§3.3). Hidden at zero,
             // so it costs the prompt no width on a turn without one.
@@ -207,6 +211,7 @@ namespace NonaRoyale.Unity.View
             // cyan diamonds beside a number read as a pool on their own.
             BuildPips(energyBox, 8f, 13f);
             _energy = UiKit.Label(energyBox, "", UiTheme.FontSmall, bold: true);
+            _energyGroup = energyBox.gameObject.AddComponent<CanvasGroup>();
             _debt = DebtMark.Chip(energyBox, UiTheme.FontSmall, 20f);
 
             _round = UiKit.Label(top, "", 13f, UiTheme.Heading, TextAlignmentOptions.MidlineRight);
@@ -281,6 +286,9 @@ namespace NonaRoyale.Unity.View
 
             if (key == _shown) return;
             _shown = key;
+
+            // Faded rather than removed, so the bar's slots keep their widths.
+            if (_energyGroup != null) _energyGroup.alpha = engine.MatchOver ? 0f : 1f;
 
             _round.text = ScreenLayout.IsPortrait
                 ? $"<color=#{UiTheme.Hex(UiTheme.GoldBright)}>R{engine.Round}</color>"

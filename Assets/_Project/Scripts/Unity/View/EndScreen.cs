@@ -169,7 +169,10 @@ namespace NonaRoyale.Unity.View
             if (!human.HasValue) return round;
 
             bool won = engine.WinningSeats.Contains(human.Value);
-            var colour = won ? UiTheme.Cyan : UiTheme.Threat;
+            // Gold for the win, the brand's prestige colour; the loss in the
+            // danger red (G7d). Cyan means "selected" everywhere else, and amber
+            // means "aim here".
+            var colour = won ? UiTheme.GoldBright : UiTheme.Danger;
             return $"<b><color=#{UiTheme.Hex(colour)}>{(won ? "VICTORY" : "DEFEAT")}</color></b>  ·  {round}";
         }
 

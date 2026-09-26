@@ -118,9 +118,12 @@ namespace NonaRoyale.Unity.View
 
             float side = HistoryStrip.ReservedWidth;
 
+            // Wide, the log ends above the turn button in the board's corner
+            // instead of covering it (G7d): END TURN showed through it and
+            // could not be clicked while the log was open.
             _panel.offsetMin = new Vector2(
                 ScreenLayout.Pick(-side - Width, -ScreenLayout.Reference.x + 12f),
-                ActionTray.ReservedHeight + HistoryStrip.ReservedHeight);
+                ActionTray.ReservedHeight + HistoryStrip.ReservedHeight + ScreenLayout.Pick(TurnButton.WideClearance, 0f));
             _panel.offsetMax = new Vector2(ScreenLayout.Pick(-side, -12f),
                 -TurnStrip.ReservedHeight - SquadRail.ReservedHeight);
         }

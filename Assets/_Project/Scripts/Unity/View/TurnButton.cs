@@ -43,6 +43,12 @@ namespace NonaRoyale.Unity.View
         private const float ButtonHeight = 62f;
         private const float Gap = 14f;
 
+        /// <summary>
+        /// What the button takes above the tray on a wide screen, gap included:
+        /// the event log ends above it rather than covering it (G7d).
+        /// </summary>
+        public const float WideClearance = ButtonHeight + 2f * Gap;
+
         /// <summary>The slot the tray keeps open for it upright (M3).</summary>
         public const float UprightWidth = 168f;
 

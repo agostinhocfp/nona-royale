@@ -1,7 +1,7 @@
 # Nona Royale — Launch UI pass (G6)
 
 > Location in repo: `docs/design/LAUNCH_UI_PASS.md` · Project copy: `claude/LAUNCH_UI_PASS.md`
-> Status: **Open, 2026-09-26.** G6a–G6e and G7a passed Play Mode and are committed (G7a `049edcd`). **G7b committed (`064465d`, `f264265`, `d4861c8`). G7c (settings, glossary, a few words) written, waiting on Play Mode. G8 (All In 1 Sprite Shader): the pack is committed (`f75fd43`); G8a and G8c are committed (`634406e`); the burn wasn't noticeable in Play Mode, and G8c's follow-up makes it readable and logs each run. G8b withdrawn; G8e needs another technique.** Open: G7 captures still owed (settings pages, glossary tab, trait and keyword cards, history hover card, doubles callout).
+> Status: **Open, 2026-09-26.** G6a–G6e and G7a passed Play Mode and are committed (G7a `049edcd`). **G7b and G7c committed (G7c `65e87f0`). G7d (the log clears the turn button, and four small ones) written, waiting on Play Mode. G8 (All In 1 Sprite Shader): the pack is committed (`f75fd43`); G8a and G8c are committed (`634406e`); the burn wasn't noticeable in Play Mode, and G8c's follow-up makes it readable and logs each run. G8b withdrawn; G8e needs another technique.** Open: G7 captures still owed (settings pages, glossary tab, trait and keyword cards, history hover card, doubles callout).
 > Related: `GUI_PHASE.md` (E–J, G3–G5), `HUD_PASS.md` (H1–H4: the contextual tray, the folded rail, the quiet board — G6b builds on it and does not undo it), `MOBILE.md` (upright layout — every change here must keep M3/M6 intact), `ART_DIRECTION.md` §3 and §8, ADR-0008
 
 ## Verdict
@@ -383,3 +383,32 @@ Each increment ends with a Play Mode check (desktop and upright) and a commit.
     - Roll doubles: under the dice, "Doubles: you roll again after these." until they are spent, then "Doubles — roll again."
     - Click a passive chip (Lethe's Hastened): the rules line starts with a capital.
     - Title screen: the stamp sits inside the gold frame, bottom right, clear of the corner ornament.
+- 2026-09-26 — **G7c committed (`65e87f0`).** Five captures on the new build confirm G7a and G7b in place:
+  - results: VICTORY under the banner, standings order, no seed, the rematch note;
+  - pause: PAUSED shows, no footer, no grey wash;
+  - the log: by round, seat-coloured, in words;
+  - the ability peek, over its card;
+  - the STEALTH tag and the glossary scrollbar.
+  No refusal toast or keyword card was captured.
+- 2026-09-26 — **G7d audit and fixes.**
+  - **P1.**
+    1. With the log open on a wide screen, the log covers END TURN, which shows through faintly and can't be clicked. The log's bottom edge was the tray's top, and the turn button sits in the board's bottom-right corner, above the tray.
+    2. The glossary's new scrollbar sits on the right-aligned tags (STUN, SLOW…). The column had no room kept for it.
+  - **P2.**
+    3. After the match, the top bar shows a lone "ENERGY" heading beside nothing.
+    4. The history card repetition (G7c flag 10). "GREEN Revú moves" sits over "Revú moves 7 cells".
+    5. The results verdict is cyan (VICTORY) or amber (DEFEAT). Cyan means "selected" and amber means "aim here".
+  - **Fixed.**
+    - **1:** `TurnButton.WideClearance` (the button's height plus both gaps, 90). The wide log ends that far above the tray. Upright, the log still takes the board area, and the turn button lives in the tray's bottom row, so nothing changes there.
+    - **2:** `UiKit.ScrollColumn` keeps 12 extra units on the right of every scrolling column.
+    - **3:** the energy block fades to nothing while the match is over (a `CanvasGroup`, so the bar's slots keep their widths). Wide and upright.
+    - **4:** a move, deploy or arrival card with one line shows that line as its title, after the seat, and hides the body. A cast keeps its name as the title, since its one line is what the cast did. My call, not asked; it's easy to change back.
+    - **5:** VICTORY in bright gold, DEFEAT in danger red.
+  - Still open: G7c flag 11, a status row hanging off the board's edge. It wants a clamp against the board's screen rect, which `PieceHudLayer` does not have yet. It overlaps nothing but the frame.
+  - Files: `LogPanel`, `TurnButton`, `UiKit`, `TurnStrip`, `HistoryStrip`, `EndScreen`.
+  - **Checked:** core 958 passing. The view compiles with and without `DEVELOPMENT_BUILD`, 0 warnings.
+  - **Play Mode checklist:**
+    - Open the log (L) on your turn: it ends above END TURN, which stays clickable. Upright: the log still fills the board area.
+    - Glossary: the tags sit clear of the scrollbar. The roster list and dossier have a little more right margin.
+    - Win with Ctrl+Shift+Numpad 0: the top bar reads "RED WINS · ROUND n" with no ENERGY label. The results read VICTORY in gold. Lose on a CPU's turn: DEFEAT in red.
+    - Hover a MOVE chip: one line, "GREEN Revú moves 7 cells round 1", with no body. Hover a CAST chip: title "Kian · Blind Spot" and its lines below, as before.

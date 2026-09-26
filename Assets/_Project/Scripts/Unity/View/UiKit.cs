@@ -330,7 +330,11 @@ namespace NonaRoyale.Unity.View
             content.anchorMax = new Vector2(1f, 1f);
             content.pivot = new Vector2(0.5f, 1f);
             content.sizeDelta = Vector2.zero;
-            Column(content, spacing, padding).childForceExpandHeight = false;
+            var column = Column(content, spacing, padding);
+            column.childForceExpandHeight = false;
+
+            // Room for the scrollbar, so right-aligned tags do not sit on it (G7d).
+            column.padding.right += 12;
             content.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
             scroll.viewport = viewport;
