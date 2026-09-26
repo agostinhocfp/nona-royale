@@ -239,5 +239,15 @@ namespace NonaRoyale.Core.Tests.Text
             Assert.That(line.ToPlainText(), Is.EqualTo("5 Tech, Stun 3 turns"));
             Assert.That(line.Keywords, Is.EqualTo(new[] { Keywords.Damage(DamageType.Tech), Keywords.Status(StatusKind.Stun) }));
         }
+
+        [Test]
+        public void ABottomlessShield_IsWordsNotANumber()
+        {
+            string line = RulesText.For(NonaRoyale.Core.Abilities.Lethe.NanoCell).ToPlainText();
+
+            Assert.That(NonaRoyale.Core.Abilities.Lethe.NanoCellPool, Is.GreaterThanOrEqualTo(RulesText.BottomlessShield));
+            Assert.That(line, Does.Contain("Shield that absorbs every Normal and Tech hit"));
+            Assert.That(line, Does.Not.Contain("99"));
+        }
     }
 }

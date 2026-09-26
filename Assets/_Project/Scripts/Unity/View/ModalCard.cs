@@ -79,6 +79,13 @@ namespace NonaRoyale.Unity.View
         /// <summary>Whether the card gets the Deco panel frame. The title screen composes on the open scrim.</summary>
         protected virtual bool Framed => true;
 
+        /// <summary>
+        /// Canvas units kept clear above the card, for a screen with its own
+        /// furniture there: the title's wordmark on the settings pages (G7c).
+        /// The card centres in what is left, and scrolls if it still does not fit.
+        /// </summary>
+        protected virtual float ReservedAbove => 0f;
+
         /// <summary>Builds the scaffold once. Safe to call on every new match.</summary>
         protected void BuildOnce(RectTransform canvasRect, string name)
         {
@@ -152,10 +159,14 @@ namespace NonaRoyale.Unity.View
             // scrim's rect is still zero; the reference height is the floor
             // the scaler guarantees, so it is the right fallback.
             float screen = _root.rect.height > 1f ? _root.rect.height : ScreenLayout.Reference.y;
-            float available = Mathf.Max(120f, screen - 2f * Margin);
+            float above = Mathf.Max(0f, ReservedAbove);
+            float available = Mathf.Max(120f, screen - 2f * Margin - above);
             float wanted = LayoutUtility.GetPreferredHeight(_body);
 
             _card.sizeDelta = new Vector2(FittedWidth, Mathf.Min(wanted, available));
+
+            // Centred in the room below what is reserved (G7c).
+            _card.anchoredPosition = new Vector2(0f, -above * 0.5f);
 
             // Nothing to scroll is the common case, and a card that can be
             // dragged an inch when it all fits reads as broken.

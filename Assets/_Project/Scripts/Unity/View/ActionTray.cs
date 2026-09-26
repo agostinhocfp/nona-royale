@@ -429,6 +429,10 @@ namespace NonaRoyale.Unity.View
             // The top bar already says to move a piece; saying it twice is what
             // H1 exists to stop. Only the states the top bar does not cover
             // get a line here.
+            // Doubles with dice still to spend (G7c): the top bar says to move,
+            // and nothing said a second roll was coming until they were gone.
+            if (unspent > 0 && engine.CanRollAgain) return "Doubles: you roll again after these.";
+
             if (unspent > 0 && engine.MustSpendRoll) return "";
             if (canEnd) return unspent > 0 ? "No legal move." : "All spent.";
             return "";

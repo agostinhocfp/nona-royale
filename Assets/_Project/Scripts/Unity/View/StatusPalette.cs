@@ -89,7 +89,9 @@ namespace NonaRoyale.Unity.View
                 case StatusKind.Stun: return "STUN";
                 case StatusKind.Slow: return "SLOW";
                 case StatusKind.Bleed: return "BLEED";
-                case StatusKind.Stealth: return "HIDDEN";
+                // The status's own name (G7c): HIDDEN on the board and Stealth in
+                // the guide read as two different things.
+                case StatusKind.Stealth: return "STEALTH";
                 case StatusKind.Evasion: return "EVADE";
                 case StatusKind.Shield: return "SHIELD";
                 case StatusKind.Mark: return "MARKED";

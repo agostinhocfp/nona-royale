@@ -56,17 +56,19 @@ namespace NonaRoyale.Unity.View
         public static void Build(System.Func<string, RectTransform> slot, ISettingsHost host, System.Action rebuild,
             System.Action openSound, System.Action openDisplay)
         {
-            var sound = UiKit.ChoiceRow(slot("cycle"), "Sound", "", SoundSummary(host.Audio), !host.Audio.Muted,
-                openSound);
+            var sound = UiKit.ChoiceRow(slot("cycle"), "Sound", "", SoundSummary(host.Audio), openSound);
             UiKit.Size(sound, height: RowHeight);
 
-            var display = UiKit.ChoiceRow(slot("cycle"), "Display", "", host.Display.Summary(),
-                host.Display.Mode == ScreenMode.Windowed, openDisplay);
+            var display = UiKit.ChoiceRow(slot("cycle"), "Display", "", host.Display.Summary(), openDisplay);
             UiKit.Size(display, height: RowHeight);
 
             Row(slot, "Health above pieces", "H", host.ShowPieceHealth, v => host.ShowPieceHealth = v, rebuild);
             Row(slot, "Event log", "L", host.ShowFullLog, v => host.ShowFullLog = v, rebuild);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            // A developer's tool, not a player's setting (G7c): release builds
+            // have no dev panel to show.
             Row(slot, "Dev panel", "Tab", host.ShowDevPanel, v => host.ShowDevPanel = v, rebuild);
+#endif
             Row(slot, "Reduced motion", "", host.ReducedMotion, v => host.ReducedMotion = v, rebuild);
             Row(slot, "Lighting effects", "", host.LightingEffects, v => host.LightingEffects = v, rebuild);
             AnimationSpeedRow(slot, host, rebuild);
@@ -79,7 +81,7 @@ namespace NonaRoyale.Unity.View
             var speed = host.AnimationSpeed;
             var next = speed == AnimationSpeed.Normal ? AnimationSpeed.Fast : AnimationSpeed.Normal;
             var button = UiKit.ChoiceRow(slot("cycle"), "Animation speed", "", speed.ToString().ToUpperInvariant(),
-                speed != AnimationSpeed.Normal, () => { host.AnimationSpeed = next; rebuild(); });
+                () => { host.AnimationSpeed = next; rebuild(); });
             UiKit.Size(button, height: RowHeight);
         }
 
@@ -88,7 +90,7 @@ namespace NonaRoyale.Unity.View
         {
             var speed = host.CpuSpeed;
             var button = UiKit.ChoiceRow(slot("cycle"), "CPU speed", "hold Space", speed.ToString().ToUpperInvariant(),
-                speed != BotSpeed.Normal, () => { host.CpuSpeed = NextSpeed(speed); rebuild(); });
+                () => { host.CpuSpeed = NextSpeed(speed); rebuild(); }, keyHint: true);
             UiKit.Size(button, height: RowHeight);
         }
 
@@ -110,7 +112,7 @@ namespace NonaRoyale.Unity.View
             Volume(slot, "Voice", levels.Voice, v => levels.Voice = v, muted);
 
             var reset = UiKit.ChoiceRow(slot("cycle"), "Restore defaults", "", levels.IsDefault ? "DEFAULT" : "RESET",
-                false, () => { levels.Reset(); rebuild(); });
+                () => { levels.Reset(); rebuild(); });
             UiKit.Size(reset, height: SliderHeight);
         }
 
@@ -136,27 +138,34 @@ namespace NonaRoyale.Unity.View
             if (!ScreenLayout.FixedScreen)
             {
                 var mode = UiKit.ChoiceRow(slot("cycle"), "Screen mode", "", display.Summary(),
-                    display.Mode == ScreenMode.Fullscreen, () => { display.CycleMode(); rebuild(); });
+                    () => { display.CycleMode(); rebuild(); });
                 UiKit.Size(mode, height: RowHeight);
 
-                var resolution = UiKit.ChoiceRow(slot("cycle"), "Resolution", "windowed", display.ResolutionLabel(),
-                    display.Mode == ScreenMode.Windowed, () => { display.CycleResolution(); rebuild(); });
+                // The window's size: dimmed in fullscreen, where it does not
+                // apply, and saying so (G7c). The hint used to read "windowed"
+                // in warning gold whatever the mode, which looked like the
+                // current state.
+                bool windowed = display.Mode == ScreenMode.Windowed;
+                var resolution = UiKit.ChoiceRow(slot("cycle"), "Resolution", windowed ? "" : "windowed only",
+                    display.ResolutionLabel(), () => { display.CycleResolution(); rebuild(); }, active: windowed);
                 UiKit.Size(resolution, height: RowHeight);
             }
 
             Row(slot, "VSync", "", display.VSync, v => display.VSync = v, rebuild);
 
-            var cap = UiKit.ChoiceRow(slot("cycle"), "Frame cap", "VSync off", display.FrameCapLabel(),
-                !display.VSync, () => { display.CycleFrameCap(); rebuild(); });
+            // The same for the cap, which only applies without VSync.
+            var cap = UiKit.ChoiceRow(slot("cycle"), "Frame cap", display.VSync ? "needs VSync off" : "",
+                display.FrameCapLabel(), () => { display.CycleFrameCap(); rebuild(); }, active: !display.VSync);
             UiKit.Size(cap, height: RowHeight);
 
-            var camera = UiKit.ChoiceRow(slot("cycle"), "Board camera", "more board, tilted",
-                display.CameraLabel(), display.Camera == BoardCamera.Tilted,
-                () => { display.CycleCamera(); rebuild(); });
+            // What the other choice offers, only while it is the other one.
+            var camera = UiKit.ChoiceRow(slot("cycle"), "Board camera",
+                display.Camera == BoardCamera.Tilted ? "" : "tilted shows more board",
+                display.CameraLabel(), () => { display.CycleCamera(); rebuild(); });
             UiKit.Size(camera, height: RowHeight);
 
             var reset = UiKit.ChoiceRow(slot("cycle"), "Restore defaults", "", display.IsDefault ? "DEFAULT" : "RESET",
-                false, () => { display.Reset(); rebuild(); });
+                () => { display.Reset(); rebuild(); });
             UiKit.Size(reset, height: RowHeight);
         }
 

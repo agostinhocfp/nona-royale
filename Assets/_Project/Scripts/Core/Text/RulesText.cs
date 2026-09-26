@@ -45,6 +45,14 @@ namespace NonaRoyale.Core.Text
         private const string ModeGap = "\n";
         private const string ItemGap = ", ";
 
+        /// <summary>
+        /// A shield pool at least this deep is written as absorbing every
+        /// Normal and Tech hit, not as a number (G7c). Nano Cell's 99 is a
+        /// "never runs dry" value (<c>Lethe.NanoCellPool</c>), and "Shield 99"
+        /// read like a bug. A test keeps the two in step.
+        /// </summary>
+        public const int BottomlessShield = 99;
+
         // ── Abilities ────────────────────────────────────────────────────
 
         /// <summary>The rules line for one ability.</summary>
@@ -330,7 +338,11 @@ namespace NonaRoyale.Core.Text
                     return;
 
                 case StatusKind.Shield:
-                    line.Text(" ").Number(Whole(e.Magnitude)).Text(", ");
+                    if (Whole(e.Magnitude) >= BottomlessShield)
+                        line.Text(" that absorbs every ").Keyword("Normal", Keywords.Damage(DamageType.Normal))
+                            .Text(" and ").Keyword("Tech", Keywords.Damage(DamageType.Tech)).Text(" hit, ");
+                    else
+                        line.Text(" ").Number(Whole(e.Magnitude)).Text(", ");
                     Turns(line, e.Duration);
                     return;
 

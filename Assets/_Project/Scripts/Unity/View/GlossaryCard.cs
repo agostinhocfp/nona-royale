@@ -69,7 +69,7 @@ namespace NonaRoyale.Unity.View
 
             if (trait.Status.HasValue) PieceTag(card, trait.Status.Value);
 
-            var rules = UiKit.Label(card, RulesMarkup.For(trait.Line, linked: true),
+            var rules = UiKit.Label(card, RulesMarkup.For(trait.Line, linked: true, sentence: true),
                 UiTheme.FontBody, UiTheme.Text, wrap: true);
             KeywordLinks.Attach(rules, next => Show(host, next));
 

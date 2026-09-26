@@ -416,6 +416,10 @@ namespace NonaRoyale.Unity.Composition
             showPieceHealth = SettingsStore.Load(SettingsStore.PieceHealth, showPieceHealth);
             showFullLog = SettingsStore.Load(SettingsStore.FullLog, showFullLog);
             showDevPanel = SettingsStore.Load(SettingsStore.DevPanel, showDevPanel);
+#if !(UNITY_EDITOR || DEVELOPMENT_BUILD)
+            // No dev panel for players (G7c), whatever a development build saved.
+            showDevPanel = false;
+#endif
 
             cpuSpeed = SettingsStore.LoadSpeed(cpuSpeed);
             reducedMotion = SettingsStore.Load(SettingsStore.ReducedMotion, reducedMotion);
@@ -1259,7 +1263,9 @@ namespace NonaRoyale.Unity.Composition
             // is open rather than changing what it shows under the pointer.
             if (!paused)
             {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
                 if (Input.GetKeyDown(KeyCode.Tab)) showDevPanel = !showDevPanel;
+#endif
                 if (Input.GetKeyDown(KeyCode.F2)) useLegacyPanel = !useLegacyPanel;
                 if (Input.GetKeyDown(KeyCode.H)) showPieceHealth = !showPieceHealth;
                 if (Input.GetKeyDown(KeyCode.L)) showFullLog = !showFullLog;

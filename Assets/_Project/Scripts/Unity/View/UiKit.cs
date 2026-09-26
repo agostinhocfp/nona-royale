@@ -335,7 +335,41 @@ namespace NonaRoyale.Unity.View
 
             scroll.viewport = viewport;
             scroll.content = content;
+            Scrollbar(scroll, viewport);
             return content;
+        }
+
+        /// <summary>
+        /// A slim gold bar at a scrolling column's right edge, shown only when
+        /// there is more than fits (G7c). The glossary ran past its panel's
+        /// bottom edge with nothing to say that more was below.
+        /// </summary>
+        private static void Scrollbar(ScrollRect scroll, RectTransform viewport)
+        {
+            var bar = Rect("scrollbar", viewport);
+            bar.anchorMin = new Vector2(1f, 0f);
+            bar.anchorMax = new Vector2(1f, 1f);
+            bar.pivot = new Vector2(1f, 0.5f);
+            bar.sizeDelta = new Vector2(4f, -8f);
+            bar.anchoredPosition = Vector2.zero;
+            Fill(bar, UiTheme.WithAlpha(UiTheme.Line, 0.25f));
+
+            var area = Rect("sliding_area", bar);
+            Stretch(area);
+
+            var handle = Rect("handle", area);
+            Stretch(handle);
+            var knob = Fill(handle, UiTheme.WithAlpha(UiTheme.Gold, 0.75f));
+
+            var scrollbar = bar.gameObject.AddComponent<UnityEngine.UI.Scrollbar>();
+            scrollbar.direction = UnityEngine.UI.Scrollbar.Direction.BottomToTop;
+            scrollbar.handleRect = handle;
+            scrollbar.targetGraphic = knob;
+            scrollbar.transition = Selectable.Transition.None;
+            scrollbar.navigation = new Navigation { mode = Navigation.Mode.None };
+
+            scroll.verticalScrollbar = scrollbar;
+            scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
         }
 
         // ── Content ──────────────────────────────────────────────────────
@@ -558,11 +592,17 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>
         /// A setting as one wide button: its name, its key in gold, and an ON
-        /// or OFF chip (GUI increments H and J). Selected, so cyan, while on.
+        /// or OFF chip (GUI increments H and J).
         /// </summary>
+        /// <remarks>
+        /// <b>The chip carries the state, not the row</b> (G7c). The row used
+        /// to take the selected fill while on, so a page of settings read as a
+        /// page of focused buttons, and cyan fill means "selected" everywhere
+        /// else in the game. Now only the chip turns cyan.
+        /// </remarks>
         public static UnityEngine.UI.Button ToggleRow(Transform parent, string label, string key, bool on, Action press)
         {
-            var button = Button(parent, "", press, selected: on);
+            var button = Button(parent, "", press);
             var rect = (RectTransform)button.transform;
 
             var row = Row(rect, 10f);
@@ -669,29 +709,38 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>
         /// A setting with more than two values, as one wide button that cycles
-        /// them: its name, a hint in gold, and a chip naming the current value
-        /// (BOT3). Lit cyan when <paramref name="lit"/>.
+        /// them: its name, a hint, and a chip naming the current value (BOT3).
         /// </summary>
+        /// <remarks>
+        /// <b>A value is not a state</b> (G7c), so neither the row nor the chip
+        /// is lit: FULLSCREEN or TOP-DOWN is a choice, not "on". A key hint
+        /// ("hold Space") is gold like every key. A row whose setting does not
+        /// apply right now (the windowed size in fullscreen, the frame cap
+        /// under VSync) is dimmed as a whole, with a dim hint saying when it
+        /// does apply. It can still be cycled, ready for when it does.
+        /// </remarks>
+        /// <param name="active">Whether the setting applies now. False dims the row.</param>
+        /// <param name="keyHint">Whether the hint names a key (gold) rather than a condition (dim).</param>
         public static UnityEngine.UI.Button ChoiceRow(Transform parent, string label, string hint, string value,
-            bool lit, Action press)
+            Action press, bool active = true, bool keyHint = false)
         {
-            var button = Button(parent, "", press, selected: lit);
+            var button = Button(parent, "", press);
             var rect = (RectTransform)button.transform;
 
             var row = Row(rect, 10f);
             row.padding = new RectOffset(18, 14, 0, 0);
             row.childAlignment = TextAnchor.MiddleLeft;
 
-            var name = Label(rect, label, UiTheme.FontBody);
+            var name = Label(rect, label, UiTheme.FontBody, active ? UiTheme.Text : UiTheme.TextDim);
             Size(name, flexibleWidth: 1f);
 
             if (!string.IsNullOrEmpty(hint))
-                Label(rect, hint, 13f, UiTheme.Gold, TextAlignmentOptions.MidlineRight);
+                Label(rect, hint, 13f, keyHint ? UiTheme.Gold : UiTheme.TextDim, TextAlignmentOptions.MidlineRight);
 
             var chip = Rect("value", rect);
-            Sliced(chip, DecoSprites.ChipFill, lit ? UiTheme.Cyan : UiTheme.PanelInset);
+            Sliced(chip, DecoSprites.ChipFill, UiTheme.PanelInset);
             Fixed(chip, 96f, 24f);
-            Caption(chip, value, 13f, lit ? UiTheme.DieInk : UiTheme.Text,
+            Caption(chip, value, 13f, active ? UiTheme.Text : UiTheme.TextDim,
                 TextAlignmentOptions.Center).fontStyle = FontStyles.Bold;
 
             return button;

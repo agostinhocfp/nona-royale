@@ -109,7 +109,13 @@ namespace NonaRoyale.Unity.View
         private static float BandWidth => Mathf.Min(900f, ScreenLayout.Reference.x - 32f);
 
         /// <summary>The build stamp's box, and how far its corner sits off the screen's.</summary>
-        private const float StampWidth = 360f, StampHeight = 18f, StampInset = 22f;
+        private const float StampWidth = 360f, StampHeight = 18f;
+
+        /// <summary>
+        /// The stamp's corner, inside the backdrop's gilt frame and clear of its
+        /// corner fan (G7c): it used to sit on the hairline and run into the fan.
+        /// </summary>
+        private static Vector2 StampInset => new Vector2(ScreenLayout.Pick(64f, 34f), ScreenLayout.Pick(40f, 24f));
 
         /// <summary>
         /// Every menu button is the same width, whatever its word, so the row
@@ -143,6 +149,14 @@ namespace NonaRoyale.Unity.View
         protected override float ScrimAlpha => 0f;
 
         protected override bool Framed => false;
+
+        /// <summary>
+        /// The settings pages keep their card below the wordmark (G7c). The
+        /// main settings page is the tallest, and centred on the screen it
+        /// rode up under ROYALE.
+        /// </summary>
+        protected override float ReservedAbove =>
+            _page == Page.Main ? 0f : LockupTop + LockupHeight + 20f;
 
         public void Bind(RectTransform canvasRect, ITitleHost host)
         {
@@ -343,7 +357,7 @@ namespace NonaRoyale.Unity.View
             _stamp = UiKit.Rect("title_stamp", Root);
             _stamp.anchorMin = _stamp.anchorMax = _stamp.pivot = new Vector2(1f, 0f);
             _stamp.sizeDelta = new Vector2(StampWidth, StampHeight);
-            _stamp.anchoredPosition = new Vector2(-StampInset, StampInset);
+            _stamp.anchoredPosition = new Vector2(-StampInset.x, StampInset.y);
 
             UiKit.Caption(_stamp, "Prototype build · pieces and board drawn in code", 12f, UiTheme.TextDim,
                 TextAlignmentOptions.MidlineRight);
@@ -526,6 +540,7 @@ namespace NonaRoyale.Unity.View
         {
             Heading("Sound");
             SettingsRows.BuildSound(ColumnSlot, _host, Rebuild);
+            Note("Remembered between sessions.", UiTheme.TextNote);
             Gap(6f);
             Choice("BACK", "Esc", Back);
         }

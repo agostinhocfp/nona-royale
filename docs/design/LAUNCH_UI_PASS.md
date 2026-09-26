@@ -1,7 +1,7 @@
 # Nona Royale — Launch UI pass (G6)
 
 > Location in repo: `docs/design/LAUNCH_UI_PASS.md` · Project copy: `claude/LAUNCH_UI_PASS.md`
-> Status: **Open, 2026-09-26.** G6a–G6e and G7a passed Play Mode and are committed (G7a `049edcd`). **G7b-1 committed (`064465d`). G7b-2 (refusals in the player's words) and G7b-3 (the whole rules line one look away) written, waiting on Play Mode. G8 (All In 1 Sprite Shader): the pack is committed (`f75fd43`); G8a and G8c are committed (`634406e`); the burn wasn't noticeable in Play Mode, and G8c's follow-up makes it readable and logs each run. G8b withdrawn; G8e needs another technique.** Open: G7 captures still owed (settings pages, glossary tab, trait and keyword cards, history hover card, doubles callout).
+> Status: **Open, 2026-09-26.** G6a–G6e and G7a passed Play Mode and are committed (G7a `049edcd`). **G7b committed (`064465d`, `f264265`, `d4861c8`). G7c (settings, glossary, a few words) written, waiting on Play Mode. G8 (All In 1 Sprite Shader): the pack is committed (`f75fd43`); G8a and G8c are committed (`634406e`); the burn wasn't noticeable in Play Mode, and G8c's follow-up makes it readable and logs each run. G8b withdrawn; G8e needs another technique.** Open: G7 captures still owed (settings pages, glossary tab, trait and keyword cards, history hover card, doubles callout).
 > Related: `GUI_PHASE.md` (E–J, G3–G5), `HUD_PASS.md` (H1–H4: the contextual tray, the folded rail, the quiet board — G6b builds on it and does not undo it), `MOBILE.md` (upright layout — every change here must keep M3/M6 intact), `ART_DIRECTION.md` §3 and §8, ADR-0008
 
 ## Verdict
@@ -336,3 +336,50 @@ Each increment ends with a Play Mode check (desktop and upright) and a commit.
     - None of them shows an enum name, and none starts "Can't:". The log shows the same words in the refusal colour.
     - Aim a targeted ability: the Cast slot reads "Target: Kian 6/8" with Kian in his seat colour. Aim a cell ability: "Cell chosen — click another to change".
     - Upright or touch: tap a card to arm it. The peek appears above the block for about 4 seconds and doesn't come back until you arm a different ability.
+- 2026-09-26 — **G7b-2 and G7b-3 committed** (`f264265`, `d4861c8`).
+- 2026-09-26 — **G7c audit** from six captures at 2560×1440: a history hover card, a trait card (Lethe's Hastened), the glossary tab, and the settings, sound and display pages. Still owed: a keyword card, the log, a refusal toast, the ability peek, pause and results on the current build.
+  - **P0.**
+    1. The main settings page runs into the wordmark. "SETTINGS" sits on the ROYALE rules and the first row touches them. The card was centred on the screen, and at nine rows it is taller than the room under the lifted wordmark. The shorter sound and display pages happened to clear it.
+  - **P1.**
+    2. An ON setting fills its whole row cyan (Screen mode, VSync, Health above pieces, Lighting effects, Sound). A page of settings reads as a page of focused buttons, and cyan fill means "selected" everywhere else.
+    3. Condition hints read as the current state, in gold. "Resolution · windowed" shows in fullscreen, "Frame cap · VSync off" shows with VSync on, and "Board camera · more board, tilted" sits beside TOP-DOWN.
+    4. Dev panel (Tab) is in the player's settings.
+    5. The glossary runs past its panel's bottom edge (at Burdened) with nothing to say more is below.
+    6. Stealth's board tag reads HIDDEN, while the guide and glossary call it Stealth.
+    7. Nano Cell's rules line prints "Shield 99". The pool is a never-runs-dry value (`Lethe.NanoCellPool`); on a card it reads like a bug.
+    8. Doubles with dice still to spend ("Move 4 + 4") say nothing about the second roll that follows.
+  - **P2.**
+    9. The trait card's line starts lowercase ("always Hastened: …") and links its own title.
+    10. A move's history card repeats its title ("Kurbyn moves" over "Kurbyn moves 7 cells").
+    11. A BURDEN tag hangs off the board's right edge, over the frame.
+    12. The "Prototype build" stamp runs into the backdrop frame's corner fan.
+    13. The sound page lacks the "Remembered between sessions." note the others carry.
+- 2026-09-26 — **G7c written: flags 1–9, 12, 13.**
+  - **1.** `ModalCard.ReservedAbove` (new, default 0) keeps room above the card, which centres in what is left and scrolls if it still does not fit. `TitleScreen` reserves the wordmark's height plus 20 on every settings page.
+  - **2.** `UiKit.ToggleRow` no longer selects its row; only the ON chip is cyan. `UiKit.ChoiceRow` lost its `lit` flag: a value is a choice, not a state, so its chip is always the neutral inset.
+  - **3.** `ChoiceRow` takes `active` and `keyHint`.
+    - A row whose setting does not apply right now is dimmed as a whole, with a dim hint: Resolution in fullscreen reads "windowed only", and Frame cap under VSync reads "needs VSync off". It can still be cycled.
+    - Key hints ("hold Space") stay gold. Condition hints are dim.
+    - Board camera says "tilted shows more board" only while it is top-down.
+  - **4.** The Dev panel row, the Tab key and the saved dev-panel flag are editor and development builds only. A release build forces it off.
+  - **5.** `UiKit.ScrollColumn` adds a slim gold scrollbar at the right edge, auto-hidden when everything fits. It covers every scrolling column in the guide (roster list, dossier, glossary) and the draft.
+  - **6.** Stealth's tag reads STEALTH (`StatusPalette.Label`).
+  - **7.** `RulesText.BottomlessShield` (99): a shield at least that deep is written "Shield that absorbs every Normal and Tech hit, 2 turns". A new `RulesTextTests` case keeps `Lethe.NanoCellPool` at or above the threshold and the number out of the line.
+  - **8.** The tray's dice hint says "Doubles: you roll again after these." while doubled dice are still to spend (the engine's `CanRollAgain`).
+  - **9.** `RulesMarkup.For(..., sentence: true)` capitalises a line that stands alone. The trait card uses it. The self-link is left: it is harmless, and removing it means a special case in the linker.
+  - **12.** The stamp sits inside the frame, clear of the fan: 64 in and 40 up (34 and 24 upright).
+  - **13.** The sound page carries the note.
+  - Not done: 10 (history card repetition) and 11 (tag off the board's edge). 10 wants a decision on what a one-line card shows; 11 wants a look at `PieceHudLayer`'s clamping.
+  - Files: `UiKit`, `ISettingsHost`, `ModalCard`, `TitleScreen`, `MatchBootstrap`, `StatusPalette`, `RulesMarkup`, `GlossaryCard`, `ActionTray`, `RulesText`, `RulesTextTests`.
+  - **Checked:** core 958 passing. The view compiles with and without `DEVELOPMENT_BUILD`, 0 warnings, and the Unity edit-mode tests compile against it.
+  - **Play Mode checklist:**
+    - Title → Settings: the heading and the first row sit clearly below ROYALE. Sound and Display the same, the card never overlapping the wordmark. Resize the Game view shorter until the settings card scrolls rather than overlapping.
+    - No row is filled cyan. ON toggles show a cyan ON chip; OFF a dark chip; value rows a dark chip.
+    - Display in fullscreen: Resolution dimmed with "windowed only". VSync on: Frame cap dimmed with "needs VSync off". Turn VSync off: the cap brightens and its hint goes. Board camera top-down: "tilted shows more board"; tilted: no hint.
+    - In the editor the Dev panel row is there. In a release build (not Development) it and the Tab key are gone.
+    - Operators → Glossary: a thin gold bar at the right edge; scroll to the damage types and board terms. The roster list and the dossier show it only when they overflow.
+    - A stealthed operator's tag reads STEALTH.
+    - Lethe's Nano Cell card and its peek read "Shield that absorbs every Normal and Tech hit, 2 turns".
+    - Roll doubles: under the dice, "Doubles: you roll again after these." until they are spent, then "Doubles — roll again."
+    - Click a passive chip (Lethe's Hastened): the rules line starts with a capital.
+    - Title screen: the stamp sits inside the gold frame, bottom right, clear of the corner ornament.

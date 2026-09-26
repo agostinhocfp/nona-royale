@@ -28,14 +28,27 @@ namespace NonaRoyale.Unity.View
         /// where a <see cref="KeywordLinks"/> is listening — an underline that
         /// does nothing when tapped is a promise the screen breaks.
         /// </param>
-        public static string For(RulesLine line, bool linked)
+        /// <param name="sentence">
+        /// Start with a capital, for a line that stands alone rather than after
+        /// a label (a trait card, G7c). Rules lines are written as fragments.
+        /// </param>
+        public static string For(RulesLine line, bool linked, bool sentence = false)
         {
             if (line == null) return "";
 
             var text = new StringBuilder();
 
-            foreach (var run in line.Runs)
+            foreach (var source in line.Runs)
             {
+                var run = source;
+                if (sentence && run.Text.Length > 0)
+                {
+                    sentence = false;
+                    if (char.IsLower(run.Text[0]))
+                        run = new RulesRun(run.Kind, char.ToUpperInvariant(run.Text[0]) + run.Text.Substring(1),
+                            run.Keyword, run.Seat);
+                }
+
                 switch (run.Kind)
                 {
                     case RunKind.Number:
