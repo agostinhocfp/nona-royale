@@ -340,6 +340,9 @@ namespace NonaRoyale.Unity.View
 
         // ── Content ──────────────────────────────────────────────────────
 
+        /// <summary>How far, as a fraction of the type size, a single-line label may overhang its box above and below (G7a).</summary>
+        private const float LineSlack = 0.3f;
+
         /// <summary>A speed multiplier as the HUD prints it: "×1.5".</summary>
         /// <remarks>
         /// Always a point. A bare <c>{x:0.0}</c> formats with the player's
@@ -366,6 +369,21 @@ namespace NonaRoyale.Unity.View
             label.alignment = align;
             label.textWrappingMode = wrap ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
             label.overflowMode = wrap ? TextOverflowModes.Overflow : TextOverflowModes.Ellipsis;
+
+            // A single line gets vertical slack (G7a). In Ellipsis mode a line
+            // taller than its box draws nothing at all, and a box sized to the
+            // type (18-unit body text in an 18-unit row, 34-point Cinzel in 44
+            // units) is just short of the face's full line height. That was
+            // four bugs: the blank CPU chip and LOG button, the missing health
+            // number, and the pause menu's missing PAUSED. Negative top and
+            // bottom margins let the line overhang the box; the width still
+            // truncates with an ellipsis, and a centred line stays centred.
+            if (!wrap)
+            {
+                float slack = size * LineSlack;
+                label.margin = new Vector4(0f, -slack, 0f, -slack);
+            }
+
             label.text = text;
 
             // The data face carries every label; Heading overrides it with the

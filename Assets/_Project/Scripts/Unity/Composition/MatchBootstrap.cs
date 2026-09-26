@@ -1515,7 +1515,12 @@ namespace NonaRoyale.Unity.Composition
 
             if (_match.Engine.MatchOver) return;
 
-            if (Input.GetKeyDown(KeyCode.Space)) Host.Roll();
+            // Space rolls only when a roll is on offer, or when the board is
+            // busy and the roll may be due once it settles (G7a). Pressed with
+            // the dice spent, it used to send the roll anyway and toast the
+            // engine's refusal, "a second roll needs doubles and a remaining
+            // roll in the budget", at a player who was simply done.
+            if (Input.GetKeyDown(KeyCode.Space) && (Busy || RollOnOffer)) Host.Roll();
             if (Input.GetKeyDown(KeyCode.E)) Host.EndTurn();
 
             // Space and E buffer through Host while the board is busy; the rest wait for it.
@@ -2161,7 +2166,8 @@ namespace NonaRoyale.Unity.Composition
 
             if (batch.TurnBegan != null && !engine.MatchOver)
             {
-                _banner.Show(batch.TurnBegan.Player, engine.Round);
+                _banner.Show(batch.TurnBegan.Player, engine.Round,
+                    cpu: _bots != null && _bots.IsCpu(batch.TurnBegan.Player));
                 Sound(SoundCue.TurnStart);
             }
 
@@ -2248,6 +2254,21 @@ namespace NonaRoyale.Unity.Composition
 
         // Every intent below is ignored on a CPU's turn: the seat is not the pointer's to command.
         // Commands also wait for a busy board (MO1): Roll and End turn are kept briefly, the rest dropped.
+
+        /// <summary>
+        /// Whether a roll would be accepted now: the turn's opening roll, or a
+        /// doubles re-roll with nothing owed. The engine's answers, the same
+        /// ones the tray and the turn button read.
+        /// </summary>
+        private bool RollOnOffer
+        {
+            get
+            {
+                var engine = _match?.Engine;
+                if (engine == null || engine.MatchOver) return false;
+                return engine.Phase == TurnPhase.AwaitingRoll || (engine.CanRollAgain && !engine.DiceOwed);
+            }
+        }
 
         void IControlPanelHost.Roll()
         {

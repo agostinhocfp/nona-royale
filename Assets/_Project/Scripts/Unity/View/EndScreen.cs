@@ -92,8 +92,7 @@ namespace NonaRoyale.Unity.View
                     : winner.Value.ToString().ToUpperInvariant();
 
                 var colour = UiTheme.Readable(UiTheme.Seat(winner.Value));
-                Title($"{names} {(seats.Count > 1 ? "WIN" : "WINS")}",
-                    $"Round {engine.Round}  ·  seed {_host.Settings.Seed}", colour);
+                Title($"{names} {(seats.Count > 1 ? "WIN" : "WINS")}", Verdict(engine), colour);
             }
             else
             {
@@ -104,7 +103,7 @@ namespace NonaRoyale.Unity.View
             TableRow("header", null, null, "SEAT", 0, 0, 0, 0, 0, header: true);
 
             int rowIndex = 0;
-            foreach (var player in match.Players)
+            foreach (var player in Standings(match))
             {
                 int home = 0;
                 foreach (var op in player.Operators) if (engine.IsHome(op)) home++;
@@ -123,8 +122,6 @@ namespace NonaRoyale.Unity.View
                 rowIndex++;
             }
 
-            Note("Knockouts count for the seat whose operator caused them.", UiTheme.TextNote);
-
             // ── Next ──
             Gap(10f);
 
@@ -136,9 +133,65 @@ namespace NonaRoyale.Unity.View
             UiKit.Button(row, "MAIN MENU", () => { Close(); _host.MainMenu(); }, size: UiTheme.FontBody);
 
             Note(_host.Settings.Squads.IsDraft() || _host.Settings.Squads == SquadMode.Alpha
-                    ? "Same table and squads, next seed."
-                    : "Same table, next seed; squads are drawn again.",
+                    ? "Rematch: same table, same squads."
+                    : "Rematch: same table, squads drawn again.",
                 UiTheme.TextNote);
+        }
+
+        /// <summary>
+        /// The line under the banner: VICTORY or DEFEAT for the one player at
+        /// the table, and the round (G7a).
+        /// </summary>
+        /// <remarks>
+        /// "VIOLET WINS" names the winner but not what it means to the person
+        /// reading it. When every human seat is on one side there is one
+        /// player, and the screen says how it went for them. With no human
+        /// seat (watch mode), or humans on both sides (hot-seat), there is no
+        /// one "you", so it gives the round alone. The seed left this line: it
+        /// is on the setup screen's ADVANCED row for anyone replaying a table.
+        /// </remarks>
+        private string Verdict(Core.GameEngine engine)
+        {
+            string round = $"Round {engine.Round}";
+
+            PlayerColor? human = null;
+            foreach (var player in _host.Match.Players)
+            {
+                if (_host.Settings.IsCpu(player.Color)) continue;
+
+                // A second human seat on another side: no single player.
+                if (human.HasValue && engine.WinningSeats.Contains(player.Color) != engine.WinningSeats.Contains(human.Value))
+                    return round;
+
+                human = player.Color;
+            }
+
+            if (!human.HasValue) return round;
+
+            bool won = engine.WinningSeats.Contains(human.Value);
+            var colour = won ? UiTheme.Cyan : UiTheme.Threat;
+            return $"<b><color=#{UiTheme.Hex(colour)}>{(won ? "VICTORY" : "DEFEAT")}</color></b>  ·  {round}";
+        }
+
+        /// <summary>
+        /// The seats in standing order (G7a): the winning side first, then by
+        /// operators home, knockouts scored and operators lost, table order
+        /// breaking a tie. The rows used to come in turn order, which put the
+        /// winner second and the human anywhere.
+        /// </summary>
+        private static IEnumerable<PlayerState> Standings(Core.MatchFactory.Match match)
+        {
+            var engine = match.Engine;
+            var order = match.Players.ToList();
+
+            int Home(PlayerState p) => p.Operators.Count(engine.IsHome);
+
+            return order
+                .OrderByDescending(p => engine.WinningSeats.Contains(p.Color))
+                .ThenByDescending(Home)
+                .ThenByDescending(p => engine.KnockoutsScoredBy(p.Color))
+                .ThenBy(p => engine.OperatorsLostBy(p.Color))
+                .ThenBy(p => order.IndexOf(p));
         }
 
         /// <summary>One row of the tally: a seat diamond, its name, its squad's shapes and three numbers.</summary>
@@ -182,8 +235,10 @@ namespace NonaRoyale.Unity.View
 
             var homeCell = Cell(row, header ? "HOME" : $"{home}/{homeOf}", size, dim,
                 TextAlignmentOptions.Center, ScreenLayout.Pick(110f, 72f), 0f, header);
+            // Plain text like the other tallies (G7a): amber here read as the
+            // gold of the winner's plate, and amber means a threat elsewhere.
             var kosCell = Cell(row, header ? ScreenLayout.Pick("KNOCKOUTS", "KO") : kos.ToString(),
-                size, header ? dim : UiTheme.Threat,
+                size, dim,
                 TextAlignmentOptions.Center, ScreenLayout.Pick(130f, 62f), 0f, true);
             var lostCell = Cell(row, header ? "LOST" : lost.ToString(), size, header ? dim : UiTheme.TextDim,
                 TextAlignmentOptions.Center, ScreenLayout.Pick(90f, 56f), 0f, header);

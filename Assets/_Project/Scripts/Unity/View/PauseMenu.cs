@@ -256,7 +256,9 @@ namespace NonaRoyale.Unity.View
             Choice("SETTINGS", "", () => { _page = Page.Settings; _armed = null; Rebuild(); PageTransition(); });
             Destructive("menu", "MAIN MENU", "Back to the title. This match is lost.", () => { Close(); _host?.MainMenu(); });
 
-            Footer("Esc resumes");
+            // No "Esc resumes" footer (G7a): RESUME already carries the key,
+            // and the footer sat near-invisible at the bottom of the card.
+            Space(6f);
         }
 
         private void SettingsPage()
@@ -348,12 +350,6 @@ namespace NonaRoyale.Unity.View
                     TextAlignmentOptions.Center, wrap: true);
                 UiKit.Size(note, height: 20f);
             }
-        }
-
-        private void Footer(string text)
-        {
-            var footer = UiKit.Label(Content("footer"), text, 13f, UiTheme.TextOff, TextAlignmentOptions.Center);
-            UiKit.Size(footer, height: 18f);
         }
 
         private void Space(float height) => UiKit.Size(Content("space"), height: height);

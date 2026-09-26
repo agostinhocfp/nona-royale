@@ -308,9 +308,12 @@ namespace NonaRoyale.Unity.View
             var seatColour = BoardLayout.ColourOf(seat.Color);
 
             _accent.color = seatColour;
+            // "CPU to play", not the whole tag (G7a): "GREEN (CPU · BANKER)"
+            // ran past the 230-unit slot and printed "GREEN (CPU · BANK…".
+            // The style is on the rail's header beside the seat.
             string who = seatTag == null
                 ? "to play"
-                : $"<color=#{UiTheme.Hex(UiTheme.Cyan)}>({seatTag})</color>";
+                : $"<color=#{UiTheme.Hex(UiTheme.Cyan)}>CPU</color> to play";
             _seat.text = $"<color=#{UiTheme.Hex(UiTheme.Readable(seatColour))}>{seat.Color.ToString().ToUpperInvariant()}</color> <size=70%><color=#{UiTheme.Hex(UiTheme.TextDim)}>{who}</color></size>";
             _energy.text = $"{seat.Energy}<color=#{UiTheme.Hex(UiTheme.TextDim)}>/{engine.EnergyCap}</color>";
             ShowDebt(seat.Color, seat.Debt);

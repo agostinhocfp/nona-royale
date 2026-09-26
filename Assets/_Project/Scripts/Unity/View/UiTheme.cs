@@ -92,7 +92,13 @@ namespace NonaRoyale.Unity.View
         public static readonly Vector2 PanelShadowFarOffset = new Vector2(0f, -24f);
 
         /// <summary>A whisper of light at a panel's top edge, so the fill is not dead flat (U4).</summary>
-        public static readonly Color PanelSheen = WithAlpha(Color.white, 0.10f);
+        /// <remarks>
+        /// 4%, was 10% (G7a). The project blends in linear colour space, where
+        /// white at 10% over a near-black card reads as a grey wash rather than
+        /// a whisper; it went unnoticed only because the sheen was drawn at the
+        /// bottom of every card until G7a turned it the right way up.
+        /// </remarks>
+        public static readonly Color PanelSheen = WithAlpha(Color.white, 0.04f);
 
         public static readonly Color ButtonFill = Hex("231B20");
         public static readonly Color ButtonOff = Hex("120E11");

@@ -285,11 +285,17 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>Top-lit vertical falloff: full at the top texel, gone by two thirds down.</summary>
+        /// <remarks>
+        /// Measured down from the top (G7a). Texture rows count up from the
+        /// bottom, and this read <c>py</c> as distance from the top, so since
+        /// U4 every floating card was lit from below: the pause menu, the
+        /// results and the guide all washed to grey toward their bottom edge.
+        /// </remarks>
         private static Sprite BuildSheen(int size)
         {
             return Rasterize(2, size, (px, py) =>
             {
-                float t = Mathf.Clamp01(py / size / 0.66f);
+                float t = Mathf.Clamp01((size - py) / size / 0.66f);
                 return (1f - t) * (1f - t);
             }, HudPixelsPerUnit, Vector4.zero);
         }

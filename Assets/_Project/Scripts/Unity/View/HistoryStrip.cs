@@ -353,7 +353,7 @@ namespace NonaRoyale.Unity.View
             // the silhouette sits beside the value under it (G6a). The word
             // used to share the top line with the icon in 28 units, so UPKEEP
             // and DEPLOY printed over it as "PKEEP" and "EPLOY".
-            var word = UiKit.Label(chip, item.Word, 10f, UiTheme.TextDim, TextAlignmentOptions.Top, bold: true);
+            var word = UiKit.Label(chip, item.Word, 10f, UiTheme.TextDim, TextAlignmentOptions.Midline, bold: true);
             var wordRect = (RectTransform)word.transform;
             wordRect.anchorMin = new Vector2(0f, 1f);
             wordRect.anchorMax = new Vector2(1f, 1f);

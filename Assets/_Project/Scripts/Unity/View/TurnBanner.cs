@@ -57,7 +57,11 @@ namespace NonaRoyale.Unity.View
             _area.offsetMax = new Vector2(-right, -top - 8f);
         }
 
-        public void Show(PlayerColor seat, int round)
+        /// <param name="cpu">
+        /// A CPU seat's turn: the key hint says Space hurries it rather than
+        /// rolls, which is what Space does then (G7a).
+        /// </param>
+        public void Show(PlayerColor seat, int round, bool cpu = false)
         {
             if (_root == null) return;
 
@@ -66,7 +70,7 @@ namespace NonaRoyale.Unity.View
             _text.text =
                 $"<color=#{UiTheme.Hex(UiTheme.Readable(colour))}><b>{seat.ToString().ToUpperInvariant()}</b></color>'s turn" +
                 $"   <color=#{UiTheme.Hex(UiTheme.TextDim)}>round {round}" +
-                ScreenLayout.KeyMarkup("  ·  <b>Space</b> to roll") + "</color>";
+                ScreenLayout.KeyMarkup(cpu ? "  ·  hold <b>Space</b> to hurry" : "  ·  <b>Space</b> to roll") + "</color>";
 
             _fading = false;
             _root.gameObject.SetActive(true);
