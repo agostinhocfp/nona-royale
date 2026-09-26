@@ -1,5 +1,6 @@
 // Assets/_Project/Scripts/Unity/View/ActionTray.cs
 using NonaRoyale.Core.Abilities;
+using NonaRoyale.Core.Board;
 using NonaRoyale.Core.Model;
 using NonaRoyale.Core.Services;
 using NonaRoyale.Core.Text;
@@ -94,6 +95,12 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>A castable card's edge: cyan, but quieter than a chosen card's double edge.</summary>
         private const float ReadyEdgeAlpha = 0.55f;
+
+        /// <summary>How strongly a card that can't be cast shows its text.</summary>
+        private const float DimmedAlpha = 0.45f;
+
+        /// <summary>Ability slots in the row, filled or not. No operator has more than three abilities.</summary>
+        private const int CardSlots = 3;
 
         /// <summary>The slot widths. Fixed, so nothing moves as the bar fills in (H1).</summary>
         private const float DiceWidth = 132f;
@@ -443,10 +450,14 @@ namespace NonaRoyale.Unity.View
             UiKit.Size(name, flexibleWidth: 1f);
             UiKit.Label(name, op.Name, compact ? UiTheme.FontBody : UiTheme.FontLarge, bold: true);
 
+            // The one place the tray says why none of the cards can be cast
+            // when the reason is the operator's, not the ability's (G6b).
             string where = engine.IsHome(op) ? "home"
                 : engine.CanDeploy(op)
                     ? (ScreenLayout.Touch ? "ready to deploy — tap it" : "ready to deploy — click it")
                 : op.IsInYard ? "waiting in the yard"
+                : _host.Match.Map.CellAt(op.Owner, op.Progress).Kind == CellKind.HomeColumn
+                    ? "in the home column, out of the fight"
                 : "on the board";
             UiKit.Label(name, where, compact ? 12f : UiTheme.FontSmall, UiTheme.TextDim);
 
@@ -465,7 +476,12 @@ namespace NonaRoyale.Unity.View
             _barOperator = op;
             _barFraction = fraction;
 
-            UiKit.Label(health, $"<b>{op.Health}</b>/{op.MaxHealth}", compact ? UiTheme.FontSmall : UiTheme.FontBody);
+            // Overflow, not Ellipsis: body text is taller than the 18-unit row,
+            // and an Ellipsis label whose line does not fit its height draws
+            // nothing, which is why the number never showed (G6b). "8/8" is
+            // too short to spill sideways.
+            UiKit.Label(health, $"<b>{op.Health}</b>/{op.MaxHealth}", compact ? UiTheme.FontSmall : UiTheme.FontBody)
+                .overflowMode = TextOverflowModes.Overflow;
 
             // No "no statuses" line: an empty row says the same thing without
             // spending a line on it (H1).
@@ -570,6 +586,26 @@ namespace NonaRoyale.Unity.View
 
             for (int i = 0; i < abilities.Count; i++)
                 AbilityCard(cards, op, abilities[i], i, engine);
+
+            // Three slots whoever is selected, so a card keeps its place and
+            // width from one operator to the next (H1's stable geometry). A
+            // two-ability kit leaves the third slot empty instead of stretching
+            // its cards across it.
+            for (int i = abilities.Count; i < CardSlots; i++)
+                EqualShare(UiKit.Rect("empty_card", cards));
+        }
+
+        /// <summary>
+        /// An equal share of the row, whatever the child holds (G6b). A card's
+        /// preferred width is its longest line unwrapped, so cards sized by
+        /// content came out 150 and 600 wide side by side; with no preferred
+        /// width every card is given the same share of the room.
+        /// </summary>
+        private static void EqualShare(Component child)
+        {
+            var element = UiKit.Size(child, flexibleWidth: 1f);
+            element.minWidth = 0f;
+            element.preferredWidth = 0f;
         }
 
         /// <summary>
@@ -610,6 +646,13 @@ namespace NonaRoyale.Unity.View
                 case AbilityAvailability.InsufficientEnergy:
                     reason = $"needs {ability.EnergyCost}e, have {engine.CurrentPlayer.Energy}";
                     break;
+                case AbilityAvailability.CasterOutOfPlay:
+                case AbilityAvailability.CasterStunned:
+                    // The operator's state, not the ability's: the operator
+                    // card says it once ("waiting in the yard", the STUN tag)
+                    // rather than every card repeating "out of play" (G6b).
+                    reason = null;
+                    break;
                 default:
                     reason = ControlPanel.Explain(availability);
                     break;
@@ -618,32 +661,45 @@ namespace NonaRoyale.Unity.View
             var button = UiKit.Button(parent, "", () => _host.ToggleAbility(ability), MarkDirty,
                 interactable: usable || chosen, selected: chosen,
                 edge: usable ? UiTheme.WithAlpha(UiTheme.Cyan, ReadyEdgeAlpha) : (Color?)null);
-            UiKit.Size(button, flexibleWidth: 1f);
+            EqualShare(button);
 
             var card = (RectTransform)button.transform;
             var column = UiKit.Column(card, 3f, 8);
             column.padding.top = 10;
             column.childAlignment = TextAnchor.UpperLeft;
 
-            var textColour = usable || chosen ? UiTheme.Text : UiTheme.TextOff;
+            // A card that can't be cast is dimmed as a whole, keyword colours
+            // included, rather than greying the plain text and leaving the cyan
+            // cost and the coloured keywords at full strength (G6b).
+            bool live = usable || chosen;
+            var textColour = UiTheme.Text;
 
             // Smaller than body text (feedback 2026-09-15): three names side by
             // side read as a row of buttons, not a row of headlines. The number
             // is a keyboard shortcut, so it goes when there is no keyboard.
-            UiKit.Label(card,
+            var title = UiKit.Label(card,
                 $"{ScreenLayout.KeyMarkup($"<color=#{UiTheme.Hex(UiTheme.GoldBright)}>{index + 1}</color>  ")}<b>{ability.Name}</b>",
                 AbilityNameSize, textColour);
+            Dim(title, live);
 
             string meta = OperatorDossier.Meta(ability);
             if (reason != null) meta += $"  <color=#{UiTheme.Hex(UiTheme.TextDim)}>· {reason}</color>";
-            UiKit.Label(card, meta, AbilityMetaSize, textColour);
+            Dim(UiKit.Label(card, meta, AbilityMetaSize, textColour), live);
 
             if (_builtPortrait) return;
 
             var rules = UiKit.Label(card, RulesMarkup.For(RulesText.For(ability), linked: false),
-                AbilityMetaSize, usable || chosen ? UiTheme.TextDim : UiTheme.TextOff, wrap: true);
+                AbilityMetaSize, UiTheme.TextDim, wrap: true);
             rules.overflowMode = TextOverflowModes.Ellipsis;
             UiKit.Size(rules, height: RulesLineHeight);
+            Dim(rules, live);
+        }
+
+        /// <summary>Fades a label, rich-text colours and all, when its card can't be cast.</summary>
+        private static void Dim(Component label, bool live)
+        {
+            if (live) return;
+            label.gameObject.AddComponent<CanvasGroup>().alpha = DimmedAlpha;
         }
 
         // ── Cast ─────────────────────────────────────────────────────────

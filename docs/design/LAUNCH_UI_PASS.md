@@ -1,7 +1,7 @@
 # Nona Royale — Launch UI pass (G6)
 
 > Location in repo: `docs/design/LAUNCH_UI_PASS.md` · Project copy: `claude/LAUNCH_UI_PASS.md`
-> Status: **Open, 2026-09-26.** Audit from four desktop screenshots (title, setup, draft, in-match at round 36). **G6a (bug sweep) passed Play Mode. G6b (tray and rail) written and compile-checked, waiting on Play Mode.** G6c next; one decision open (18).
+> Status: **Open, 2026-09-26.** Audit from four desktop screenshots (title, setup, draft, in-match at round 36). **G6a (bug sweep) and G6b (tray and rail) passed Play Mode; G6b's follow-up (card widths, the health number) written, waiting on Play Mode.** G6c next; no decisions open.
 > Related: `GUI_PHASE.md` (E–J, G3–G5), `HUD_PASS.md` (H1–H4: the contextual tray, the folded rail, the quiet board — G6b builds on it and does not undo it), `MOBILE.md` (upright layout — every change here must keep M3/M6 intact), `ART_DIRECTION.md` §3 and §8, ADR-0008
 
 ## Verdict
@@ -35,7 +35,7 @@ The chrome is about 80% of a shipping UI. The frame, type and palette are right.
 
 16. **Instruction paragraphs on every screen** (four helper lines on setup, two on the draft header, a rules line in the draft footer), with widows ("table.", "one."). One short line per section at most, balanced wraps; rules move to tooltips or the Operators screen.
 17. **The seed is a primary field.** Move it behind an ADVANCED disclosure; replays still need it.
-18. **Draft header with one human:** "Choose a seat (1–4)" lets the human fill CPU squads. Noise unless it's hot-seat.
+18. **Draft header with one human:** "Choose a seat (1–4)" lets the human fill CPU squads. Noise unless it's hot-seat. *Decided 2026-09-26 (picker): own seat, plus an override.* A human picks only for their own seat by default; CPUs pick theirs; with two or more humans the seat chooser returns for them; a small toggle lets a player pick for CPU seats too (testing, setting up matchups).
 
 ### P2 — decisions, not bugs
 
@@ -50,7 +50,7 @@ The chrome is about 80% of a shipping UI. The frame, type and palette are right.
 | G6a | Bug sweep | 1–5 |
 | G6b | Tray and rail | 6–8 |
 | G6c | Draft and setup | 9–18 |
-| — | Decision first | 18 (hot-seat or not) |
+| — | Decided | 18: own seat, plus an override |
 
 Each increment ends with a Play Mode check (desktop and upright) and a commit.
 
@@ -89,3 +89,16 @@ Each increment ends with a Play Mode check (desktop and upright) and a commit.
     - Choose a targeted ability: the Cast slot shows only the aim (two lines at most) and the Cast button.
     - The rail lists your seat first, then the others in turn order; start several matches and the order stays anchored on you.
     - Upright: the cards show name and meta only, and nothing overflows the block.
+- 2026-09-26 — **G6b passed Play Mode** (designer: "much has been improved"). The operator card now shows in full, so the leaf slot did its job. Two captures (Lethe and Syla selected, in the yard) showed what was left, and **G6b's follow-up** fixes it in `ActionTray`:
+  - **Cards came out unequal** — Nano Cell 150 wide beside a 600-wide Eris' Exploit, Syla's three all different. A card's preferred width is its longest line unwrapped, and the row lerps between preferred widths before it shares out the rest. Cards now declare no preferred width (`EqualShare`), so each gets the same share.
+  - **Three slots always.** A two-ability kit (Lethe) leaves the third slot empty instead of stretching its cards across it, so a card keeps its place and width from one operator to the next (H1's stable geometry).
+  - **The health number never showed.** Same failure as G6a's blank chips: an 18-unit body-text label in an 18-unit row, in Ellipsis mode, draws nothing. It is now Overflow. The other short rows were checked (rail heads, draft role/name/foot, pause footer, dossier role) and fit.
+  - **"· out of play" on every card** of an operator in the yard. Operator-wide reasons (out of play, stunned) are no longer repeated per card; the operator card says it once ("waiting in the yard", the STUN tag), and now also says "in the home column, out of the fight" where it used to say "on the board".
+  - **Dimmed cards kept bright keywords.** A card that can't be cast now fades as a whole (a `CanvasGroup` at 45% on its text), so the cyan cost and the coloured keywords fade with the plain words.
+  - Noted, not changed: the operator card's health bar is `Lerp(Danger, seat colour)`, so RED's full bar reads as the danger colour. Worth a look when the bars get a proper palette.
+  - **Play Mode checklist:**
+    - Syla, Lethe, Fortuna in turn: the three card slots keep the same width and place; Lethe's third slot is empty.
+    - The operator card shows the health number beside the bar ("8/8").
+    - An operator in the yard: its cards are dimmed with no "out of play"; its card reads "waiting in the yard". A stunned operator: STUN tag, no per-card "stunned".
+    - A dimmed card's cost and keywords are as faded as its words; a castable card is at full strength with the cyan edge.
+    - An operator in its home column reads "in the home column, out of the fight".
