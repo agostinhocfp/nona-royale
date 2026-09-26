@@ -1260,9 +1260,11 @@ namespace NonaRoyale.Unity.Composition
                 if (Input.GetKeyDown(KeyCode.L)) showFullLog = !showFullLog;
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-                // Dev only: Ctrl+Shift+Numpad 0 wins the match for the seat to
-                // play (G7). Compiled out of release builds.
-                if (DevWinPressed()) DevWin();
+                // Dev only, compiled out of release builds. Ctrl+Shift+Numpad 0
+                // wins the match for the seat to play (G7); Ctrl+Shift+Numpad 9
+                // knocks out everyone on the track (G8c).
+                if (DevChord(KeyCode.Keypad0)) DevWin();
+                if (DevChord(KeyCode.Keypad9)) DevKnockOut();
 #endif
             }
 
@@ -1850,9 +1852,9 @@ namespace NonaRoyale.Unity.Composition
         // ── Driving the engine ───────────────────────────────────────────
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        /// <summary>Ctrl+Shift+Numpad 0, either Ctrl and either Shift.</summary>
-        private static bool DevWinPressed() =>
-            Input.GetKeyDown(KeyCode.Keypad0)
+        /// <summary>Ctrl+Shift+<paramref name="key"/>, either Ctrl and either Shift.</summary>
+        private static bool DevChord(KeyCode key) =>
+            Input.GetKeyDown(key)
             && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
             && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift));
 
@@ -1874,6 +1876,26 @@ namespace NonaRoyale.Unity.Composition
             // Handle drops the selection once the match is over.
             _log.Add($"[DEV] forced a win for {_match.Engine.CurrentPlayer?.Color}");
             Handle(_match.Engine.DevForceWin(), immediate: false);
+        }
+
+        /// <summary>
+        /// <b>Development only.</b> Knocks out every operator on the track, every
+        /// seat's, so knockouts (G8c's burn) can be watched on demand.
+        /// </summary>
+        /// <remarks>
+        /// The engine does the work (<c>GameEngine.DevKnockOutTrack</c>): each
+        /// goes through the ordinary neutralize path to its yard, and the view
+        /// gets plain <c>OperatorNeutralized</c> events. So the shatter, the burn,
+        /// the sound, the voice lines, the history and the return to the yard all
+        /// take their normal path. The turn goes on. With nobody on the track,
+        /// the engine refuses and the refusal shows as any other would.
+        /// </remarks>
+        private void DevKnockOut()
+        {
+            if (_match == null || _match.Engine.MatchOver) return;
+
+            _log.Add("[DEV] knocked out everyone on the track");
+            Handle(_match.Engine.DevKnockOutTrack(), immediate: false);
         }
 #endif
 

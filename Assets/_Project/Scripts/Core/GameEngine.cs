@@ -48,6 +48,9 @@ namespace NonaRoyale.Core
         /// </remarks>
         public const string ExecuteCause = "execute";
 
+        /// <summary>The cause on a knockout from <see cref="DevKnockOutTrack"/>. Development only.</summary>
+        public const string DevCause = "dev";
+
         private readonly IReadOnlyList<OperatorState> _operators;
         private readonly IReadOnlyDictionary<int, AbilityDefinition> _abilityBook;
 
@@ -733,6 +736,63 @@ namespace NonaRoyale.Core
             }
 
             CloseTurn(events);
+            return events;
+        }
+
+        /// <summary>
+        /// <b>Development only.</b> Knocks out every operator on the outer
+        /// track, every seat's, through the ordinary neutralize path. Each
+        /// goes back to its yard at full health, which is the game's respawn.
+        /// </summary>
+        /// <remarks>
+        /// For watching knockouts on demand (LAUNCH_UI_PASS.md, G8c's burn).
+        /// The view binds it to Ctrl+Shift+Numpad 9 in the editor and
+        /// development builds only; no production path calls it.
+        ///
+        /// <b>It is not a command</b>, for the reasons <see cref="DevForceWin"/>
+        /// gives: not in the command set, no <see cref="Executed"/>, invisible
+        /// to a replay.
+        ///
+        /// <b>Everything else is a real knockout.</b> Each operator goes through
+        /// <see cref="Neutralize"/> with <see cref="DevCause"/> and no killer.
+        /// So a mark still pays out, a riding charge still learns its death
+        /// cell, statuses and cooldowns clear, and the match stats count the
+        /// loss. No killer means no bounty and no credit. Operators in a
+        /// home column or already home are out of the fight, and are left alone.
+        ///
+        /// The turn is not ended. Refused, with a <see cref="CommandRejected"/>,
+        /// once the match is over, between turns, or with nobody on the track.
+        /// </remarks>
+        public IReadOnlyList<IGameEvent> DevKnockOutTrack()
+        {
+            var events = new List<IGameEvent>();
+
+            if (MatchOver || (Phase != TurnPhase.Action && Phase != TurnPhase.AwaitingRoll))
+            {
+                events.Add(new CommandRejected("dev knockout: no turn is being played"));
+                return events;
+            }
+
+            // Collected first: a mark payout or a charge can change the board
+            // while the list is being walked.
+            var victims = new List<OperatorState>();
+            foreach (var op in _operators)
+                if (_map.IsOnOuterTrack(op.Progress)) victims.Add(op);
+
+            if (victims.Count == 0)
+            {
+                events.Add(new CommandRejected("dev knockout: nobody is on the track"));
+                return events;
+            }
+
+            foreach (var op in victims)
+            {
+                // An earlier knockout in this batch cannot move a later victim
+                // off the track today; checked anyway, so it never yards twice.
+                if (!_map.IsOnOuterTrack(op.Progress)) continue;
+                Neutralize(op, DevCause, null, events);
+            }
+
             return events;
         }
 

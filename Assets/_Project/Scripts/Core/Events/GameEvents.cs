@@ -462,7 +462,7 @@ namespace NonaRoyale.Core.Events
         /// <summary>The seat the knockout counts for, or null (see <c>NeutralizeOutcome.CreditedTo</c>).</summary>
         public PlayerColor? CreditedTo { get; }
 
-        /// <summary>"bleed", "mark", "collision", "ability", "execute", "self", or null.</summary>
+        /// <summary>"bleed", "mark", "collision", "ability", "execute", "self", "dev" (development only), or null.</summary>
         public string Cause { get; }
 
         public override string ToString() =>

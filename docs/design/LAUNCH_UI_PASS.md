@@ -1,7 +1,7 @@
 # Nona Royale — Launch UI pass (G6)
 
 > Location in repo: `docs/design/LAUNCH_UI_PASS.md` · Project copy: `claude/LAUNCH_UI_PASS.md`
-> Status: **Open, 2026-09-26.** G6a–G6e and G7a passed Play Mode and are committed (G7a `049edcd`). **G7b proposed, waiting on a go. G8 (All In 1 Sprite Shader): the pack is committed (`f75fd43`); G8a (`ShaderFx`, the Fx materials) and G8c (the burn-dissolve knockout) are written and wait on Play Mode. G8b withdrawn; G8e needs another technique.** Open: G7 captures still owed (settings pages, glossary tab, trait and keyword cards, history hover card, doubles callout).
+> Status: **Open, 2026-09-26.** G6a–G6e and G7a passed Play Mode and are committed (G7a `049edcd`). **G7b proposed, waiting on a go. G8 (All In 1 Sprite Shader): the pack is committed (`f75fd43`); G8a and G8c are committed (`634406e`); the burn wasn't noticeable in Play Mode, and G8c's follow-up makes it readable and logs each run. G8b withdrawn; G8e needs another technique.** Open: G7 captures still owed (settings pages, glossary tab, trait and keyword cards, history hover card, doubles callout).
 > Related: `GUI_PHASE.md` (E–J, G3–G5), `HUD_PASS.md` (H1–H4: the contextual tray, the folded rail, the quiet board — G6b builds on it and does not undo it), `MOBILE.md` (upright layout — every change here must keep M3/M6 intact), `ART_DIRECTION.md` §3 and §8, ADR-0008
 
 ## Verdict
@@ -223,3 +223,37 @@ Each increment ends with a Play Mode check (desktop and upright) and a commit.
     - An evasive (faded) operator knocked out: the copy starts at its faded alpha.
     - Remove or rename `BurnLit.mat` and knock out an operator: one warning, and the knockout is the old shatter alone. Put it back.
     - Build a player (Development Build is fine) and repeat one knockout. The burn must show there too. This is the keyword-stripping check.
+- 2026-09-26 — **G8a–c committed (`634406e`). In Play Mode the burn wasn't noticeable** (designer: "not sure I noticed anything new").
+  - **What the log says.** `Logs/Editor.log` has no `[ShaderFx]` warning, so `BurnLit` loaded and its shader runs. It can't say whether a burn spawned, because nothing logged one. Every operator in that match was a rig (the `[Rig]` lines: kurbyn, revu, kian, sanity, syla, javi, nuetu). So each knockout burned a folded figure about 60 px tall. It lasted 0.45 s, the same as the shards, with nine shards flying out over it. The first 10% of that time was spent between `_FadeAmount` −0.1 and 0, where nothing shows. The effect probably ran, and at that size and speed it couldn't be seen.
+- 2026-09-26 — **G8c's follow-up: a burn you can see, and proof that it ran.**
+  - **Longer than the shards.** The burn lasts 0.8 s (`OperatorPiece.BurnSeconds`, shortened by Reduced motion's tween like everything else). The knockout waits for whichever is longer, the shards or the burn (`_shardClock`), so the piece returns to its yard only once the burn is done. Each knockout gets 0.35 s longer. That's the cost, and a knockout is the biggest beat in a turn.
+  - **Eased in, from 0.** `_FadeAmount` runs 0 → 1 on t², so the figure holds while the shards cover it, then burns faster as they clear. No frames are lost below 0.
+  - **A hotter edge.** The edge colour is the seat colour 35% of the way to white. In `BurnLit.mat`: burn width 0.06 → 0.1, transition 0.06 → 0.04, glow 1.6 → 2.2.
+  - **A log line per knockout** (editor and development builds only): `[FxBurn] <operator>: <n> parts over 0.80 s`.
+  - Files: `OperatorPiece`, `FxBurn`, `Fx/BurnLit.mat`. No core change.
+  - **Checked:** the view compiles against the 6000.6 modules with 0 warnings, both with and without `DEVELOPMENT_BUILD`.
+  - **Play Mode checklist:**
+    - Every knockout prints one `[FxBurn]` line in the console. If none appears, the burn never spawned. Report that; it's a different bug from "too subtle".
+    - At normal speed, after the shards clear, the folded figure visibly eats away from a bright seat-coloured edge. It's gone before the piece pops back in its yard.
+    - To see it in detail, pause right as a hit lands (Ctrl+Shift+P) and step frame by frame with Ctrl+Alt+P. There should be no black silhouette, no pink, and no part burning somewhere other than where it stood.
+    - A knockout now feels a beat longer. If it drags, `BurnSeconds` is the knob. Above 0.45 s the burn still outlasts the shards; below about 0.6 s the ease-in leaves little burn visible after they clear.
+- 2026-09-26 — **Dev tooling: Ctrl+Shift+Numpad 9 knocks out everyone on the track** (designer's request and pick: every seat's operators on the outer track, back to their yards). Written to test G8c's burn on demand.
+  - **Core:** `GameEngine.DevKnockOutTrack()` sends every operator on the outer track (`PathMap.IsOnOuterTrack`) through the ordinary `Neutralize` path. It uses the new `GameEngine.DevCause` ("dev") and no killer. So each one goes to its yard at full health (the game's respawn), with statuses and cooldowns cleared. A mark still pays out and a riding charge still learns its death cell. There is no bounty and no credit, but the match stats count the loss, so a match tested this way shows those losses on its results screen. Operators in a home column or already home are out of the fight and are left alone. The turn is not ended. Like `DevForceWin` it is not a command: no `Executed`, invisible to a replay. It is refused before the first turn, after the match, and with nobody on the track.
+  - **View:** `MatchBootstrap` reads the chord (either Ctrl, either Shift, Numpad 9) where it reads the dev win, while nothing is paused. It hands the events to `Handle`, so the shatter, the burn, the sound, the voice lines, the history, the refusal toast and the return to the yard all take their normal path. A `[DEV]` line goes in the log. The two chords now share `DevChord(KeyCode)`. Everything is inside `#if UNITY_EDITOR || DEVELOPMENT_BUILD`. I checked that a release compile doesn't reference `DevKnockOutTrack` and a development compile does.
+  - **Tests:** `DevKnockOutTrackTests` (8):
+    - everyone on the track goes to the yard at full health, reported with `DevCause`;
+    - yard and home-column operators are untouched;
+    - no bounty and no credit, but the loss is counted;
+    - the turn goes on;
+    - it works mid-turn after a roll;
+    - it is refused with nobody on the track;
+    - it is refused before the first turn and after the match;
+    - it raises no `Executed`.
+    Core total 939, all passing.
+  - Files: `GameEngine`, `GameEvents` (the cause list's doc comment), `MatchBootstrap`, `DevKnockOutTrackTests` (new; Unity writes its `.meta`). `FxBurn` and `OperatorPiece` are unchanged in this step.
+  - **Checked:** the view compiles against the fresh core with 0 warnings, both with and without `DEVELOPMENT_BUILD`.
+  - **Play Mode checklist:**
+    - In a match with pieces out, Ctrl+Shift+Numpad 9 knocks out every piece on the track at once. Each one burns (one `[FxBurn]` console line each), the shards fly, and each piece reappears in its own yard. The turn pill and the dice don't change.
+    - The history shows each knockout, and no seat collects a bounty.
+    - With nobody on the track, pressing it shows a refusal toast and nothing else happens.
+    - With the pause menu or a card open, it does nothing.
