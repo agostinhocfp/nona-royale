@@ -1,12 +1,15 @@
 // Assets/_Project/Scripts/Unity/View/LogPanel.cs
+using NonaRoyale.Core.Board;
+using NonaRoyale.Core.Text;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace NonaRoyale.Unity.View
 {
     /// <summary>
-    /// The full text log, as an overlay beside the history strip. L opens and
-    /// closes it (GUI increments F and F2).
+    /// The full event log, as an overlay beside the history strip. L opens and
+    /// closes it (GUI increments F and F2; rebuilt in G7b).
     /// </summary>
     /// <remarks>
     /// <b>An overlay, not a column.</b> It started as a 360-unit column that
@@ -14,6 +17,12 @@ namespace NonaRoyale.Unity.View
     /// took that job, and this became the "everything, in words" view. It
     /// takes no width from the board when closed, and when open it covers the
     /// board's edge rather than shrinking it.
+    ///
+    /// <b>In the player's words, by round, newest first</b> (G7b). It reads
+    /// <see cref="MatchLog"/>, whose lines are <see cref="EventText"/>'s, not
+    /// the engine's own strings. Each round opens with a heading; inside it,
+    /// the newest turn comes first, and each turn reads top to bottom as it
+    /// happened, under the seat's name in its colour.
     ///
     /// <b>Refusals are the loudest lines.</b> A refused command is how a player
     /// learns a rule the screen did not teach, so it is tinted.
@@ -23,7 +32,9 @@ namespace NonaRoyale.Unity.View
     public sealed class LogPanel : MonoBehaviour
     {
         public const float Width = 380f;
-        private const int Lines = 80;
+
+        /// <summary>How many turns are drawn. The log keeps more; this is what is worth scrolling.</summary>
+        private const int ShownTurns = 16;
 
         /// <summary>Whether the log is open. MatchBootstrap drives it from its inspector flag and L.</summary>
         public bool Expanded { get; set; }
@@ -31,21 +42,20 @@ namespace NonaRoyale.Unity.View
         /// <summary>Called when the panel's close button is pressed.</summary>
         public System.Action CloseRequested { get; set; }
 
-        private IControlPanelHost _host;
+        private MatchLog _log;
         private RectTransform _panel;
         private RectTransform _content;
         private ScrollRect _scroll;
         private bool _dirty;
-        private int _shownCount = -1;
-        private string _shownLast;
+        private int _shownVersion = -1;
         private int _placedLayout = -1;
 
-        public void Bind(RectTransform canvasRect, IControlPanelHost host)
+        public void Bind(RectTransform canvasRect, MatchLog log)
         {
-            _host = host;
+            _log = log;
             if (_panel == null) Build(canvasRect);
 
-            _shownCount = -1;
+            _shownVersion = -1;
             _dirty = true;
         }
 
@@ -135,23 +145,18 @@ namespace NonaRoyale.Unity.View
                 }
             }
 
-            if (!_dirty || !Expanded) return;
+            if (!_dirty || !Expanded || _log == null) return;
             _dirty = false;
 
-            var log = _host?.Log;
-            if (log == null) return;
-
             // Selection changes mark the whole HUD dirty; the log only changes
-            // when an event arrives.
-            string last = log.Count > 0 ? log[log.Count - 1] : null;
-            if (log.Count == _shownCount && last == _shownLast) return;
+            // when a batch settles.
+            if (_log.Version == _shownVersion) return;
 
-            _shownCount = log.Count;
-            _shownLast = last;
-            Rebuild(log);
+            _shownVersion = _log.Version;
+            Rebuild();
         }
 
-        private void Rebuild(System.Collections.Generic.IReadOnlyList<string> log)
+        private void Rebuild()
         {
             for (int i = _content.childCount - 1; i >= 0; i--)
             {
@@ -160,17 +165,66 @@ namespace NonaRoyale.Unity.View
                 Destroy(child);
             }
 
-            for (int i = log.Count - 1, n = 0; i >= 0 && n < Lines; i--, n++)
-            {
-                string line = log[i];
-                bool rejected = line.StartsWith("rejected:", System.StringComparison.Ordinal);
+            var turns = _log.Turns;
+            int round = -1;
 
-                var colour = rejected ? UiTheme.Reject : n == 0 ? UiTheme.Text : UiTheme.TextDim;
-                var label = UiKit.Label(_content, line, UiTheme.FontSmall, colour, wrap: true);
-                label.richText = false;
+            for (int i = turns.Count - 1, shown = 0; i >= 0 && shown < ShownTurns; i--, shown++)
+            {
+                var turn = turns[i];
+
+                if (turn.Round != round)
+                {
+                    round = turn.Round;
+                    RoundHeading(round, first: shown == 0);
+                }
+
+                if (turn.Seat != PlayerColor.None)
+                {
+                    var heading = UiKit.Label(_content, RulesMarkup.For(EventText.TurnHeading(turn.Seat), linked: false),
+                        UiTheme.FontSmall, UiTheme.Text, bold: true);
+                    // Overflow, so the vertical slack a single line gets (G7a) is not
+                    // needed: in a column it would pull the next line up into this one.
+                    heading.overflowMode = TextOverflowModes.Overflow;
+                    heading.margin = Vector4.zero;
+                }
+
+                // The turn in play reads at full strength; older ones recede.
+                var colour = i == turns.Count - 1 ? UiTheme.Text : UiTheme.TextDim;
+
+                foreach (var line in turn.Lines)
+                {
+                    var label = UiKit.Label(_content, line.Markup, UiTheme.FontSmall,
+                        line.Refusal ? UiTheme.Reject : colour, wrap: true);
+                    label.margin = new Vector4(12f, 0f, 0f, 0f);
+                }
+
+                if (turn.Lines.Count == 0 && turn.Seat != PlayerColor.None)
+                {
+                    var quiet = UiKit.Label(_content, "nothing yet", UiTheme.FontSmall, UiTheme.TextDim);
+                    quiet.overflowMode = TextOverflowModes.Overflow;
+                    quiet.margin = new Vector4(12f, 0f, 0f, 0f);
+                    quiet.fontStyle = FontStyles.Italic;
+                }
             }
 
             _scroll.verticalNormalizedPosition = 1f;
+        }
+
+        /// <summary>"ROUND 3" in gold, with a little air above it unless it opens the list.</summary>
+        private void RoundHeading(int round, bool first)
+        {
+            if (!first)
+            {
+                var gap = UiKit.Rect("gap", _content);
+                UiKit.Size(gap, height: 8f);
+            }
+
+            var label = UiKit.Label(_content,
+                "ROUND " + round.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                UiTheme.FontSmall, UiTheme.Gold, bold: true);
+            label.characterSpacing = 6f;
+            label.overflowMode = TextOverflowModes.Overflow;
+            label.margin = Vector4.zero;
         }
     }
 }

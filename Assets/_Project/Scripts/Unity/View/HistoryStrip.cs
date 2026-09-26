@@ -416,7 +416,7 @@ namespace NonaRoyale.Unity.View
             _cardAccent.color = colour;
 
             _cardTitle.text =
-                $"<color=#{UiTheme.Hex(UiTheme.Readable(colour))}>{item.Seat}</color>  {item.Title}" +
+                $"<color=#{UiTheme.Hex(UiTheme.Readable(colour))}>{NonaRoyale.Core.Text.EventText.SeatName(item.Seat)}</color>  {item.Title}" +
                 $"  <size=75%><color=#{UiTheme.Hex(UiTheme.TextDim)}>round {item.Round}</color></size>";
 
             _cardBody.text = item.Lines.Count > 0 ? string.Join("\n", item.Lines) : "—";

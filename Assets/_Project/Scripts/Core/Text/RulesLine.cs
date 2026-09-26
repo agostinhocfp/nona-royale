@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using NonaRoyale.Core.Board;
 
 namespace NonaRoyale.Core.Text
 {
@@ -15,7 +16,13 @@ namespace NonaRoyale.Core.Text
         Number = 1,
 
         /// <summary>A term with a glossary entry: a status, a damage type, a board word.</summary>
-        Keyword = 2
+        Keyword = 2,
+
+        /// <summary>
+        /// A name that belongs to a seat: an operator's, or the seat's own
+        /// (G7b). The view draws it in that seat's colour.
+        /// </summary>
+        Named = 3
     }
 
     /// <summary>
@@ -24,11 +31,12 @@ namespace NonaRoyale.Core.Text
     /// </summary>
     public readonly struct RulesRun
     {
-        public RulesRun(RunKind kind, string text, string keyword = null)
+        public RulesRun(RunKind kind, string text, string keyword = null, PlayerColor seat = PlayerColor.None)
         {
             Kind = kind;
             Text = text ?? "";
             Keyword = keyword;
+            Seat = seat;
         }
 
         public RunKind Kind { get; }
@@ -38,6 +46,9 @@ namespace NonaRoyale.Core.Text
 
         /// <summary>The glossary id a <see cref="RunKind.Keyword"/> run links to; null otherwise.</summary>
         public string Keyword { get; }
+
+        /// <summary>The seat a <see cref="RunKind.Named"/> run belongs to; <see cref="PlayerColor.None"/> otherwise.</summary>
+        public PlayerColor Seat { get; }
 
         public override string ToString() => Text;
     }
@@ -106,6 +117,13 @@ namespace NonaRoyale.Core.Text
         public RulesLine Keyword(string text, string keyword)
         {
             _runs.Add(new RulesRun(RunKind.Keyword, text, keyword));
+            return this;
+        }
+
+        /// <summary>A name drawn in its seat's colour: an operator's, or the seat's own.</summary>
+        public RulesLine Named(string text, PlayerColor seat)
+        {
+            _runs.Add(new RulesRun(RunKind.Named, text, null, seat));
             return this;
         }
 

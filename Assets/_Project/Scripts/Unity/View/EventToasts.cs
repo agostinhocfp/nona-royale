@@ -1,5 +1,6 @@
 // Assets/_Project/Scripts/Unity/View/EventToasts.cs
 using System.Collections.Generic;
+using NonaRoyale.Core.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -78,8 +79,9 @@ namespace NonaRoyale.Unity.View
         {
             if (_root == null || batch == null) return;
 
+            // The same words the event log uses (G7b).
             foreach (var reason in batch.Rejections)
-                Push($"Can't do that: {reason}", UiTheme.Reject);
+                Push(RulesMarkup.For(EventText.Refusal(reason), linked: false), UiTheme.Reject);
 
             foreach (var item in batch.Items)
             {
@@ -91,7 +93,7 @@ namespace NonaRoyale.Unity.View
                     : $"   <color=#{UiTheme.Hex(item.ValueColour)}><b>{item.Value}</b></color>";
                 string knockout = item.Knockout ? $"   <color=#{UiTheme.Hex(UiTheme.Danger)}><b>KO</b></color>" : "";
 
-                Push($"<color=#{UiTheme.Hex(UiTheme.Readable(seat))}>{item.Seat}</color>  {item.Title}{value}{knockout}", seat);
+                Push($"<color=#{UiTheme.Hex(UiTheme.Readable(seat))}>{EventText.SeatName(item.Seat)}</color>  {item.Title}{value}{knockout}", seat);
             }
         }
 

@@ -1,6 +1,7 @@
 // Assets/_Project/Scripts/Unity/View/RulesMarkup.cs
 using System;
 using System.Text;
+using NonaRoyale.Core.Board;
 using NonaRoyale.Core.Model;
 using NonaRoyale.Core.Text;
 using UnityEngine;
@@ -47,6 +48,12 @@ namespace NonaRoyale.Unity.View
                         if (linked) text.Append("<link=\"").Append(run.Keyword).Append("\"><u>");
                         text.Append("<color=#").Append(colour).Append('>').Append(Escape(run.Text)).Append("</color>");
                         if (linked) text.Append("</u></link>");
+                        break;
+
+                    // A name in its seat's colour (G7b): the operator's owner, or the seat itself.
+                    case RunKind.Named when run.Seat != PlayerColor.None:
+                        text.Append("<color=#").Append(UiTheme.Hex(UiTheme.Readable(BoardLayout.ColourOf(run.Seat))))
+                            .Append('>').Append(Escape(run.Text)).Append("</color>");
                         break;
 
                     default:

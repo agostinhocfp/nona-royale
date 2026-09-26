@@ -1,7 +1,7 @@
 # Nona Royale — Launch UI pass (G6)
 
 > Location in repo: `docs/design/LAUNCH_UI_PASS.md` · Project copy: `claude/LAUNCH_UI_PASS.md`
-> Status: **Open, 2026-09-26.** G6a–G6e and G7a passed Play Mode and are committed (G7a `049edcd`). **G7b proposed, waiting on a go. G8 (All In 1 Sprite Shader): the pack is committed (`f75fd43`); G8a and G8c are committed (`634406e`); the burn wasn't noticeable in Play Mode, and G8c's follow-up makes it readable and logs each run. G8b withdrawn; G8e needs another technique.** Open: G7 captures still owed (settings pages, glossary tab, trait and keyword cards, history hover card, doubles callout).
+> Status: **Open, 2026-09-26.** G6a–G6e and G7a passed Play Mode and are committed (G7a `049edcd`). **G7b-1 (events in the player's words) written, waiting on Play Mode; G7b-2 (refusal wording) and G7b-3 (full rules on an ability card) follow. G8 (All In 1 Sprite Shader): the pack is committed (`f75fd43`); G8a and G8c are committed (`634406e`); the burn wasn't noticeable in Play Mode, and G8c's follow-up makes it readable and logs each run. G8b withdrawn; G8e needs another technique.** Open: G7 captures still owed (settings pages, glossary tab, trait and keyword cards, history hover card, doubles callout).
 > Related: `GUI_PHASE.md` (E–J, G3–G5), `HUD_PASS.md` (H1–H4: the contextual tray, the folded rail, the quiet board — G6b builds on it and does not undo it), `MOBILE.md` (upright layout — every change here must keep M3/M6 intact), `ART_DIRECTION.md` §3 and §8, ADR-0008
 
 ## Verdict
@@ -257,3 +257,37 @@ Each increment ends with a Play Mode check (desktop and upright) and a commit.
     - The history shows each knockout, and no seat collects a bounty.
     - With nobody on the track, pressing it shows a refusal toast and nothing else happens.
     - With the pause menu or a card open, it does nothing.
+- 2026-09-26 — **G7b go (designer's pick over G8d and G8f). Split into three increments:** G7b-1 events in the player's words (flag 4); G7b-2 refusals in the player's words (flag 5), which rewrites the engine's reason strings and the tests that pin them; G7b-3 the whole rules line on hover or tap of an ability card (flag 9).
+- 2026-09-26 — **G7b-1 written: every event in the player's words, in the log, the history cards and the toasts.**
+  - **Core: `Text/EventText.cs` (new).** One line per event, as a `RulesLine`, for all 41 event types. It never uses the events' own `ToString`, which stays as the developer's text for the dev panel and the tests that read it. There are no board coordinates and no progress numbers. For example:
+    - "Kian moves 5 cells", not "Kian 8 -> 13";
+    - "RED gains 2 energy", not "Red +2 energy (burned 0)";
+    - "Kurbyn deploys", not "Kurbyn deploys to Track[39]".
+
+    Each damage cause is named: from Bleed, in a collision, from a table, a critical hit, and so on. Knockouts use the guide's word ("is neutralized", "neutralized outright" for an execute). Seats are written as the screen writes them ("RED"). `TurnBegan` and `TurnEnded` have no line; the log shows them as headings (`EventText.TurnHeading`). Refusals get one shared wording: "Can't: …" (`EventText.Refusal`).
+  - **`RunKind.Named` (new) in `RulesLine`:** a name carries its seat (`RulesRun.Seat`), so the view draws every operator and seat name in that seat's colour. Two operators with the same name on different seats (two Fortunas, for example) now read apart. `RulesMarkup` draws it with `UiTheme.Readable` of the seat colour, the way the rail and the toasts already tint seat names.
+  - **Tests: `EventTextTests` (12).**
+    - Every `IGameEvent` type in the core has words (checked by reflection), so a new event without them fails.
+    - Eight whole bot matches (2 and 4 seats) push every event they emit through the writer. None of the output may be unwritten, contain "->", "Track[" or "burned 0", or be empty.
+    - Wording tests cover names as seat runs, seats, cells, dice, damage, knockouts, statuses, turn headings, a side's win and refusals.
+    - Core total 951, all passing. `RulesMarkupTests` gains a named-run test (Unity test assembly; it compiles here, and Unity runs it).
+  - **View: the event log is rebuilt** (`LogPanel` rewritten, new `View/MatchLog.cs`).
+    - It reads `MatchLog`, which is fed where the history strip is (`ShowHistory`, when a batch settles), so a line never runs ahead of the board.
+    - Newest first, grouped by round under a gold "ROUND n" heading. Inside a round, the newest turn comes first. Each turn reads top to bottom under "RED's turn" in the seat's colour. The turn in play is at full strength, older turns are dimmed, and refusals are tinted.
+    - Sixteen turns are shown, forty-eight kept.
+    - A CPU's refusals stay out, as they do from the toasts.
+    - The raw engine lines, and the `[DEV]`, `[CPU]` and `[clock]` notes, stay in `_log` for the dev panel only.
+  - **History cards and toasts:**
+    - `HistoryFeed.Describe` writes each card line from `EventText`. The hand-written move and energy lines, and the fallback to `ToString`, are gone.
+    - Seat names on cards, dividers and toasts are upper-case (`EventText.SeatName`).
+    - A refusal toast uses the log's wording.
+  - Files: `RulesLine`, `EventText` (new), `EventTextTests` (new), `RulesMarkup`, `RulesMarkupTests`, `MatchLog` (new), `LogPanel`, `HistoryFeed`, `HistoryStrip`, `EventToasts`, `MatchBootstrap`. Unity writes the three new files' `.meta` files.
+  - **Checked:** the view compiles against the fresh core, with and without `DEVELOPMENT_BUILD`, 0 warnings. The Unity edit-mode tests compile against it. A 4-seat bot match was read through end to end: the lines read as plain English and names disambiguate by colour.
+  - **Play Mode checklist:**
+    - L opens the log. At the top is "ROUND n", then the current seat's turn in its colour, then its lines as they happened. Earlier turns sit below, dimmer, and earlier rounds below those.
+    - No line in the log shows "->", "Track[", "burned 0" or a bracketed roll like "[1,1]". Rolls read "rolled 3 and 5" or "rolled double 1s: doubles, roll again".
+    - Operator names are in their seat's colour everywhere: log, history hover card, toasts. Two operators with the same name on different seats show different colours.
+    - Hover a history chip: the card's lines are the same words as the log's, with values bright and statuses in their board colours.
+    - Make an illegal move (end the turn before rolling, say): the toast and the log both read "Can't: …" in the refusal colour. A CPU's refusals appear in neither.
+    - Start a new match: the log is empty. Upright: the log still fills the board area and scrolls.
+    - Look for text that overlaps vertically in the log. Its headings opt out of the single-line slack (G7a), so this is the thing to watch.

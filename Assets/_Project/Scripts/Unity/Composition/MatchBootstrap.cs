@@ -164,6 +164,9 @@ namespace NonaRoyale.Unity.Composition
         private readonly List<OperatorPiece> _pieces = new List<OperatorPiece>();
         private readonly List<string> _log = new List<string>();
 
+        /// <summary>The match in the player's words, for the event log (G7b). <see cref="_log"/> keeps the raw lines for the dev panel.</summary>
+        private readonly MatchLog _matchLog = new MatchLog();
+
         private OperatorState _selectedOperator;
         private OperatorState _selectedTarget;
         private CellRef? _selectedCell;
@@ -546,6 +549,7 @@ namespace NonaRoyale.Unity.Composition
 
             _pieces.Clear();
             _log.Clear();
+            _matchLog.Clear();
             _match = null;
             _bots = null;
             SetHovered(null);
@@ -619,6 +623,7 @@ namespace NonaRoyale.Unity.Composition
 
             _pieces.Clear();
             _log.Clear();
+            _matchLog.Clear();
             SetHovered(null);
             _selectedOperator = null;
             _selectedTarget = null;
@@ -736,7 +741,7 @@ namespace NonaRoyale.Unity.Composition
             _tray = GetComponent<ActionTray>() ?? gameObject.AddComponent<ActionTray>();
             _tray.Bind(hud, this);
             _logPanel = GetComponent<LogPanel>() ?? gameObject.AddComponent<LogPanel>();
-            _logPanel.Bind(hud, this);
+            _logPanel.Bind(hud, _matchLog);
             _logPanel.CloseRequested = () => showFullLog = false;
             _history = GetComponent<HistoryStrip>() ?? gameObject.AddComponent<HistoryStrip>();
             _history.Bind(hud);
@@ -2183,6 +2188,9 @@ namespace NonaRoyale.Unity.Composition
 
             if (_history != null) _history.Add(batch);
             if (_toasts != null) _toasts.Show(batch);
+
+            _matchLog.Add(events, engine.Round, refusals: !fromBot);
+            if (_logPanel != null) _logPanel.MarkDirty();
 
             if (_banner == null) return;
 

@@ -4,6 +4,7 @@ using NonaRoyale.Core.Abilities;
 using NonaRoyale.Core.Board;
 using NonaRoyale.Core.Events;
 using NonaRoyale.Core.Model;
+using NonaRoyale.Core.Text;
 using UnityEngine;
 
 namespace NonaRoyale.Unity.View
@@ -140,7 +141,7 @@ namespace NonaRoyale.Unity.View
                             Kind = HistoryKind.Divider,
                             Seat = began.Player,
                             Round = round,
-                            Title = $"{began.Player} — turn {began.TurnIndex}",
+                            Title = $"{EventText.SeatName(began.Player)} — turn {began.TurnIndex}",
                         });
                         break;
 
@@ -153,7 +154,7 @@ namespace NonaRoyale.Unity.View
                             Round = round,
                             Word = "WIN",
                             Value = "",
-                            Title = $"{won.Winner} wins the match",
+                            Title = EventText.For(won).ToPlainText(),
                             Toast = true,
                         });
                         break;
@@ -250,7 +251,7 @@ namespace NonaRoyale.Unity.View
                 // A turn closed by the end-turn command has nothing else in its
                 // segment, and the interest would otherwise vanish from the
                 // strip (§3.3). Quiet: no toast, the chip and its card only.
-                item = New(HistoryKind.Upkeep, null, round, "DEBT", $"{debt.Player}'s debt grows");
+                item = New(HistoryKind.Upkeep, null, round, "DEBT", $"{EventText.SeatName(debt.Player)}'s debt grows");
                 item.Seat = debt.Player;
                 item.Value = DebtMark.Roman(debt.Owed);
                 item.ValueColour = UiTheme.Debt;
@@ -286,7 +287,7 @@ namespace NonaRoyale.Unity.View
 
             Tally(segment, out int damage, out int heal, out bool knockout);
 
-            var item = New(HistoryKind.Upkeep, FirstSubject(segment), round, "UPKEEP", $"{seat} — start of turn");
+            var item = New(HistoryKind.Upkeep, FirstSubject(segment), round, "UPKEEP", $"{EventText.SeatName(seat)} — start of turn");
             item.Seat = seat;
             item.Value = damage > 0 ? $"-{damage}" : heal > 0 ? $"+{heal}" : "";
             item.ValueColour = damage > 0 ? DamageColour : HealColour;
@@ -346,34 +347,28 @@ namespace NonaRoyale.Unity.View
             return null;
         }
 
-        /// <summary>The hover card's lines: the events a player cares about, in order.</summary>
+        /// <summary>
+        /// The hover card's lines: the events a player cares about, in order,
+        /// in <see cref="EventText"/>'s words (G7b), as markup. Names carry
+        /// their seat's colour, so two operators of one name on different seats
+        /// read apart.
+        /// </summary>
         private static void Describe(List<IGameEvent> segment, List<string> lines)
         {
             foreach (var e in segment)
             {
                 switch (e)
                 {
+                    // On screen already (the dice) or bookkeeping (the refill,
+                    // an expiry): the event log has them.
                     case DiceRolled _:
                     case EnergyGranted _:
                     case StatusExpired _:
                         continue;
 
-                    case EnergySpent spent:
-                        lines.Add($"spends {spent.Amount} energy ({spent.Remaining} left)");
-                        continue;
-
-                    case OperatorMoved moved:
-                        int cells = moved.To - moved.From;
-                        if (moved.Bounced)
-                            lines.Add($"{moved.Operator.Name} is bounced back from {moved.AttemptedTo - moved.From} cells");
-                        else if (cells > 0)
-                            lines.Add($"{moved.Operator.Name} moves {cells} cells");
-                        else
-                            lines.Add($"{moved.Operator.Name} is placed on {moved.Cell}");
-                        continue;
-
                     default:
-                        lines.Add(e.ToString());
+                        var line = EventText.For(e);
+                        if (line != null) lines.Add(RulesMarkup.For(line, linked: false));
                         continue;
                 }
             }

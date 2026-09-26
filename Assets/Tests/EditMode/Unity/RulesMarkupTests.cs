@@ -46,6 +46,15 @@ namespace NonaRoyale.Unity.Tests.View
         }
 
         [Test]
+        public void ANamedRun_WearsItsSeatsColour()
+        {
+            var line = new RulesLine().Named("Kian", NonaRoyale.Core.Board.PlayerColor.Blue).Text(" moves");
+            string hex = UiTheme.Hex(UiTheme.Readable(BoardLayout.ColourOf(NonaRoyale.Core.Board.PlayerColor.Blue)));
+
+            Assert.That(RulesMarkup.For(line, linked: false), Is.EqualTo("<color=#" + hex + ">Kian</color> moves"));
+        }
+
+        [Test]
         public void Numbers_AreBold()
         {
             Assert.That(RulesMarkup.For(BioLinkRage, linked: false), Does.Contain(">3</color></b>"));
