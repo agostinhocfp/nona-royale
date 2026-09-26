@@ -173,7 +173,7 @@ namespace NonaRoyale.Unity.View
 
             var numbers = UiKit.Label(names,
                 $"<color=#{UiTheme.Hex(UiTheme.TextDim)}>HEALTH</color> <b>{op.MaxHealth}</b>     " +
-                $"<color=#{UiTheme.Hex(UiTheme.TextDim)}>SPEED</color> <b>×{op.BaseSpeed:0.0}</b>",
+                $"<color=#{UiTheme.Hex(UiTheme.TextDim)}>SPEED</color> <b>{UiKit.Multiplier(op.BaseSpeed)}</b>",
                 UiTheme.FontSmall);
             UiKit.Size(numbers, height: 22f);
         }

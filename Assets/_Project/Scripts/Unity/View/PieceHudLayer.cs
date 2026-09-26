@@ -43,8 +43,10 @@ namespace NonaRoyale.Unity.View
     /// way to the yard (<c>OperatorState.RestoreHealth</c>), so a yard label
     /// always reads full and says nothing three stacked corner labels are
     /// worth; a passive on a benched operator decides nothing until it deploys.
-    /// Operators that reached home still show theirs; whether that is clutter
-    /// is a stranger-test finding, not a guess to make here.
+    /// <b>Nor do operators that reached HOME</b> (G6a). They are out of the
+    /// fight for good, so their health and passives decide nothing, and every
+    /// finished piece shares the one vault: three seats' labels and tags piled
+    /// up on the busiest spot on the board.
     ///
     /// Nothing here is a raycast target (ADR-0008 consequence 9). Labels sit
     /// over the board, and a label that swallowed a click would re-aim a cell
@@ -59,6 +61,9 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>Canvas units between the readouts of stacked pieces: a label's width plus a gap.</summary>
         private const float StackSpacing = 68f;
+
+        /// <summary>Canvas units between the status rows of stacked pieces: a tag's height plus a gap.</summary>
+        private const float StackRowSpacing = TagHeight + 3f;
 
         /// <summary>Health switch. MatchBootstrap drives it from its inspector flag and the H key.</summary>
         public bool Visible { get; set; } = true;
@@ -88,6 +93,12 @@ namespace NonaRoyale.Unity.View
 
             /// <summary>Canvas units to shift this piece's readouts sideways, when it shares a cell.</summary>
             public float StackShift;
+
+            /// <summary>Which line its status row takes under a shared cell: 0 alone, else its place in the stack.</summary>
+            public int StackRow;
+
+            /// <summary>Finished: at HOME, out of play, and so without readouts.</summary>
+            public bool Retired;
         }
 
         private readonly List<Entry> _entries = new List<Entry>();
@@ -210,6 +221,12 @@ namespace NonaRoyale.Unity.View
         /// but a health label is wider than that, so two labels on one cell
         /// printed on top of each other ("9/6/6"). Readouts are spread by a
         /// label's width instead, centred on the cell.
+        ///
+        /// Status rows also step down a line each (G6a). A row is as wide as
+        /// its words: one BALANCE tag is wider than the label spacing, so two
+        /// rows spread only sideways printed "BALANCE" over "…LANCE". Lines
+        /// cannot collide whatever the words, and each row still leans
+        /// toward its own piece.
         /// </remarks>
         public void SetStack(OperatorPiece piece, int index, int count)
         {
@@ -217,6 +234,14 @@ namespace NonaRoyale.Unity.View
             if (entry == null) return;
 
             entry.StackShift = count <= 1 ? 0f : (index - (count - 1) * 0.5f) * StackSpacing;
+            entry.StackRow = count <= 1 ? 0 : index;
+        }
+
+        /// <summary>Marks a piece as finished (at HOME), which hides its readouts.</summary>
+        public void SetRetired(OperatorPiece piece, bool retired)
+        {
+            var entry = _entries.Find(e => ReferenceEquals(e.Piece, piece));
+            if (entry != null) entry.Retired = retired;
         }
 
         private static bool SameAs(List<StatusKind> shown, IReadOnlyList<StatusKind> next, int count)
@@ -376,7 +401,7 @@ namespace NonaRoyale.Unity.View
                 // The label follows the piece, not the engine (MO2): a hit's
                 // number and the label change together, and a shattered piece
                 // shows nothing until it is seated again.
-                bool standing = !entry.Piece.Seated && !entry.Piece.IsHidden;
+                bool standing = !entry.Piece.Seated && !entry.Piece.IsHidden && !entry.Retired;
 
                 // A piece at full health says nothing (H3). Eight readouts over
                 // eight untouched pieces was most of the board's clutter, and
@@ -422,7 +447,7 @@ namespace NonaRoyale.Unity.View
 
                 if (showStatuses)
                     entry.StatusRect.anchoredPosition = ToCanvas(camera, centre - BoardTilt.ScreenUp * _worldOffset)
-                                                        + new Vector2(entry.StackShift, 0f);
+                                                        + new Vector2(entry.StackShift, -entry.StackRow * StackRowSpacing);
             }
         }
 

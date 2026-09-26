@@ -1,6 +1,5 @@
 // Assets/_Project/Scripts/Unity/View/HistoryFeed.cs
 using System.Collections.Generic;
-using System.Text;
 using NonaRoyale.Core.Abilities;
 using NonaRoyale.Core.Board;
 using NonaRoyale.Core.Events;
@@ -196,8 +195,17 @@ namespace NonaRoyale.Unity.View
             if (cast != null && castBy != null)
             {
                 item = New(HistoryKind.Cast, castBy, round, "CAST", $"{castBy.Name} · {cast.Name}");
-                item.Value = damage > 0 ? $"-{damage}" : heal > 0 ? $"+{heal}" : Initials(cast.Name);
-                item.ValueColour = damage > 0 ? DamageColour : heal > 0 ? HealColour : UiTheme.GoldBright;
+
+                // A cast with no number to show reads what it cost, in the
+                // energy colour, the way the cards print costs (G6a). Initials
+                // ("ZD" for Zero-Day) had to be decoded; the name is on the
+                // hover card either way.
+                int spent = 0;
+                foreach (var e in segment)
+                    if (e is EnergySpent paid && paid.Player == castBy.Owner) spent += paid.Amount;
+
+                item.Value = damage > 0 ? $"-{damage}" : heal > 0 ? $"+{heal}" : spent > 0 ? $"{spent}e" : "";
+                item.ValueColour = damage > 0 ? DamageColour : heal > 0 ? HealColour : UiTheme.Cyan;
                 item.Toast = true;
             }
             else if (moved != null && collided)
@@ -369,32 +377,6 @@ namespace NonaRoyale.Unity.View
                         continue;
                 }
             }
-        }
-
-        /// <summary>"Velvet Rope" to "VR", "Zero-Day" to "ZD".</summary>
-        public static string Initials(string name)
-        {
-            var text = new StringBuilder(2);
-            bool start = true;
-
-            foreach (char c in name)
-            {
-                if (c == ' ' || c == '-')
-                {
-                    start = true;
-                    continue;
-                }
-
-                if (start && char.IsLetter(c))
-                {
-                    text.Append(char.ToUpperInvariant(c));
-                    if (text.Length == 2) break;
-                }
-
-                start = false;
-            }
-
-            return text.Length > 0 ? text.ToString() : "?";
         }
     }
 }

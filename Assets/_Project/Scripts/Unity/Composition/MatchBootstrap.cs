@@ -2934,6 +2934,11 @@ namespace NonaRoyale.Unity.Composition
             {
                 var cell = _match.Map.CellAt(piece.Operator.Owner, piece.Operator.Progress);
 
+                // Every seat's HOME is drawn at the one vault (BoardLayout.PositionOf),
+                // so finished pieces fan as one stack, whoever owns them (G6a).
+                // Keyed by owner, three seats' finished pieces stood on one spot.
+                if (cell.Kind == CellKind.Home) cell = CellRef.Home(PlayerColor.Red);
+
                 if (!byCell.TryGetValue(cell, out var list))
                 {
                     list = new List<OperatorPiece>();
@@ -2982,6 +2987,7 @@ namespace NonaRoyale.Unity.Composition
 
                         // Yard pieces show no readouts, so only stacks on the track spread.
                         _pieceHud.SetStack(piece, i, pair.Value.Count);
+                        _pieceHud.SetRetired(piece, pair.Key.Kind == CellKind.Home);
                     }
                 }
             }

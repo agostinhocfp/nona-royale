@@ -47,6 +47,10 @@ namespace NonaRoyale.Unity.View
 
         private const float ChipHeight = 58f;
         private const float ChipWidth = 64f;
+
+        /// <summary>A chip's word line and its silhouette, in canvas units (G6a).</summary>
+        private const float WordLine = 12f;
+        private const float IconSize = 18f;
         private const int MaxEntries = 90;
         private const float CardWidth = 330f;
 
@@ -345,38 +349,41 @@ namespace NonaRoyale.Unity.View
             stripe.sizeDelta = new Vector2(3f, -10f);
             stripe.anchoredPosition = Vector2.zero;
 
-            // Who acted: the piece's own silhouette.
+            // The word runs across the chip's full width on its own line, and
+            // the silhouette sits beside the value under it (G6a). The word
+            // used to share the top line with the icon in 28 units, so UPKEEP
+            // and DEPLOY printed over it as "PKEEP" and "EPLOY".
+            var word = UiKit.Label(chip, item.Word, 10f, UiTheme.TextDim, TextAlignmentOptions.Top, bold: true);
+            var wordRect = (RectTransform)word.transform;
+            wordRect.anchorMin = new Vector2(0f, 1f);
+            wordRect.anchorMax = new Vector2(1f, 1f);
+            wordRect.pivot = new Vector2(0.5f, 1f);
+            wordRect.offsetMin = new Vector2(5f, -WordLine - 4f);
+            wordRect.offsetMax = new Vector2(-4f, -4f);
+            word.overflowMode = TextOverflowModes.Overflow;
+
+            // Who acted: the piece's own silhouette, left of the value.
             var icon = UiKit.Rect("icon", chip);
             var image = icon.gameObject.AddComponent<Image>();
             image.sprite = item.Actor != null ? PieceShape.For(item.Actor) : Primitives.Disc;
             image.color = item.Kind == HistoryKind.Win ? UiTheme.GoldBright : seatColour;
             image.preserveAspect = true;
             image.raycastTarget = false;
-            icon.anchorMin = new Vector2(0f, 1f);
+            icon.anchorMin = Vector2.zero;
             icon.anchorMax = new Vector2(0f, 1f);
-            icon.pivot = new Vector2(0f, 1f);
-            icon.sizeDelta = new Vector2(22f, 22f);
-            icon.anchoredPosition = new Vector2(8f, -5f);
-
-            var word = UiKit.Label(chip, item.Word, 10f, UiTheme.TextDim, TextAlignmentOptions.TopRight, bold: true);
-            var wordRect = (RectTransform)word.transform;
-            wordRect.anchorMin = new Vector2(0f, 1f);
-            wordRect.anchorMax = new Vector2(1f, 1f);
-            wordRect.pivot = new Vector2(0.5f, 1f);
-            wordRect.offsetMin = new Vector2(30f, -20f);
-            wordRect.offsetMax = new Vector2(-5f, -6f);
-            word.overflowMode = TextOverflowModes.Overflow;
+            icon.pivot = new Vector2(0f, 0.5f);
+            icon.offsetMin = new Vector2(7f, 4f);
+            icon.offsetMax = new Vector2(7f + IconSize, -WordLine - 6f);
 
             string value = item.Value;
             if (item.Knockout) value += $" <size=65%><color=#{UiTheme.Hex(UiTheme.Danger)}>KO</color></size>";
 
-            var mark = UiKit.Label(chip, value, 20f, item.ValueColour, TextAlignmentOptions.Bottom, bold: true);
+            var mark = UiKit.Label(chip, value, 20f, item.ValueColour, TextAlignmentOptions.Center, bold: true);
             var markRect = (RectTransform)mark.transform;
             markRect.anchorMin = Vector2.zero;
-            markRect.anchorMax = new Vector2(1f, 0f);
-            markRect.pivot = new Vector2(0.5f, 0f);
-            markRect.offsetMin = new Vector2(4f, 4f);
-            markRect.offsetMax = new Vector2(-4f, 30f);
+            markRect.anchorMax = Vector2.one;
+            markRect.offsetMin = new Vector2(7f + IconSize, 4f);
+            markRect.offsetMax = new Vector2(-3f, -WordLine - 6f);
             mark.overflowMode = TextOverflowModes.Overflow;
 
             var hover = chip.gameObject.AddComponent<HistoryChip>();

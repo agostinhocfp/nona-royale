@@ -644,31 +644,42 @@ namespace NonaRoyale.Unity.View
                 underline.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
             }
 
-            UiKit.Size(header, height: 34f);
-            var row = UiKit.Row(header, 8f);
-            row.padding = new RectOffset(8, 8, 0, 0);
+            // Two lines, so nothing is cut at the rail's 220 units (G6a). One
+            // line held the name, the CPU tag, a PLAYING word, the home count
+            // and the pool, and printed "RED P…  home 2/3 …". PLAYING is gone:
+            // the gilt plate already marks the seat to play, and so do the
+            // top bar and the turn pill.
+            UiKit.Size(header, height: 48f);
+            var column = UiKit.Column(header, 0f);
+            column.padding = new RectOffset(8, 8, 5, 5);
+            column.childAlignment = TextAnchor.MiddleLeft;
+
+            var top = UiKit.Rect("name_line", header);
+            UiKit.Size(top, height: 22f);
+            var row = UiKit.Row(top, 8f);
             row.childAlignment = TextAnchor.MiddleLeft;
 
-            UiKit.Diamond(header, colour, playing ? 11f : 8f, playing ? 17f : 12f);
+            UiKit.Diamond(top, colour, playing ? 11f : 8f, playing ? 17f : 12f);
 
             int home = 0;
             foreach (var op in seat.Operators) if (engine.IsHome(op)) home++;
 
             string tag = _host.SeatTag(seat.Color);
-            var name = UiKit.Label(header,
+            var name = UiKit.Label(top,
                 $"<color=#{UiTheme.Hex(UiTheme.Readable(colour))}>{seat.Color.ToString().ToUpperInvariant()}</color>" +
-                (tag != null ? $" <size=62%><color=#{UiTheme.Hex(UiTheme.Cyan)}>{tag}</color></size>" : "") +
-                (playing ? $"  <size=75%><color=#{UiTheme.Hex(UiTheme.GoldBright)}>PLAYING</color></size>" : ""),
+                (tag != null ? $" <size=62%><color=#{UiTheme.Hex(UiTheme.Cyan)}>{tag}</color></size>" : ""),
                 UiTheme.FontBody, bold: true);
             UiKit.Size(name, flexibleWidth: 1f);
 
-            UiKit.Label(header,
-                $"<color=#{UiTheme.Hex(UiTheme.TextDim)}>home</color> {home}/{seat.Operators.Count}   " +
-                $"<color=#{UiTheme.Hex(UiTheme.Cyan)}>{seat.Energy}</color><color=#{UiTheme.Hex(UiTheme.TextDim)}>/{cap}e</color>",
-                UiTheme.FontSmall, align: TextAlignmentOptions.MidlineRight);
+            var facts = UiKit.Label(header,
+                $"<color=#{UiTheme.Hex(UiTheme.TextDim)}>home</color> {home}/{seat.Operators.Count}" +
+                $"<color=#{UiTheme.Hex(UiTheme.TextDim)}>  ·  energy</color> " +
+                $"<color=#{UiTheme.Hex(UiTheme.Cyan)}>{seat.Energy}</color><color=#{UiTheme.Hex(UiTheme.TextDim)}>/{cap}</color>",
+                UiTheme.FontTiny + 1f);
+            UiKit.Size(facts, height: 16f);
 
-            // Beside the pool it is paid from (§3.3), and absent while nothing is owed.
-            DebtChip(header, seat, UiTheme.FontSmall, 22f);
+            // Beside the name, on the pool's seat (§3.3), and absent while nothing is owed.
+            DebtChip(top, seat, UiTheme.FontSmall, 20f);
         }
 
         /// <summary>

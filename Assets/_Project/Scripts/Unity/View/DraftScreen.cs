@@ -1071,7 +1071,7 @@ namespace NonaRoyale.Unity.View
 
             var numbers = UiKit.Label(stats,
                 $"<color=#{UiTheme.Hex(UiTheme.TextDim)}>HP</color> <b>{op.MaxHealth}</b>   " +
-                $"<color=#{UiTheme.Hex(UiTheme.TextDim)}>SPD</color> <b>×{op.BaseSpeed:0.0}</b>",
+                $"<color=#{UiTheme.Hex(UiTheme.TextDim)}>SPD</color> <b>{UiKit.Multiplier(op.BaseSpeed)}</b>",
                 UiTheme.FontSmall);
             UiKit.Size(numbers, flexibleWidth: 1f);
 
@@ -1165,7 +1165,7 @@ namespace NonaRoyale.Unity.View
 
             UiKit.Size(UiKit.Label(card,
                 $"<color=#{UiTheme.Hex(UiTheme.TextDim)}>HP</color> <b>{op.MaxHealth}</b>  " +
-                $"<color=#{UiTheme.Hex(UiTheme.TextDim)}>SPD</color> <b>×{op.BaseSpeed:0.0}</b>",
+                $"<color=#{UiTheme.Hex(UiTheme.TextDim)}>SPD</color> <b>{UiKit.Multiplier(op.BaseSpeed)}</b>",
                 11f, UiTheme.Text, TextAlignmentOptions.Center), height: 14f);
 
             // Who already holds it, as seat diamonds along the bottom, and —
@@ -1546,7 +1546,7 @@ namespace NonaRoyale.Unity.View
                 UiKit.Fixed(full, 150f);
             }
 
-            Paragraph("traits", $"{op.MaxHealth} health  ·  speed ×{op.BaseSpeed:0.0}", UiTheme.TextDim, UiTheme.FontSmall);
+            Paragraph("traits", $"{op.MaxHealth} health  ·  speed {UiKit.Multiplier(op.BaseSpeed)}", UiTheme.TextDim, UiTheme.FontSmall);
 
             // The kit as rules, not flavour (OPERATOR_GUIDE.md OG3): the
             // generated line is what a player picking against a clock needs,

@@ -1,5 +1,6 @@
 // Assets/_Project/Scripts/Unity/View/UiKit.cs
 using System;
+using System.Globalization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -338,6 +339,17 @@ namespace NonaRoyale.Unity.View
         }
 
         // ── Content ──────────────────────────────────────────────────────
+
+        /// <summary>A speed multiplier as the HUD prints it: "×1.5".</summary>
+        /// <remarks>
+        /// Always a point. A bare <c>{x:0.0}</c> formats with the player's
+        /// culture, so a Portuguese machine printed "×1,5" in an English UI
+        /// (G6a). Any fractional number shown to the player goes through the
+        /// invariant culture, the way the core's rules text already does.
+        /// </remarks>
+        public static string Multiplier(double value) =>
+            "×" + value.ToString("0.0", CultureInfo.InvariantCulture);
+
 
         public static TMP_Text Label(
             Transform parent, string text, float size = UiTheme.FontBody, Color? colour = null,
@@ -760,7 +772,14 @@ namespace NonaRoyale.Unity.View
 
             // The caption ignores layout, so a button can also hold laid-out
             // content of its own (the squad rail's rows do).
-            var label = Caption(rect, text, size, interactable ? UiTheme.Text : UiTheme.TextOff, align, 8f);
+            // Inset left and right only. An 8-unit inset on all four sides left
+            // a 26-unit chip a 10-unit text box, and an Ellipsis label whose
+            // first line does not fit its height draws nothing at all: that was
+            // the blank CPU style chip on setup and the blank LOG button (G6a).
+            var label = Caption(rect, text, size, interactable ? UiTheme.Text : UiTheme.TextOff, align);
+            var labelRect = (RectTransform)label.transform;
+            labelRect.offsetMin = new Vector2(8f, 0f);
+            labelRect.offsetMax = new Vector2(-8f, 0f);
             label.textWrappingMode = TextWrappingModes.NoWrap;
             Decoration((RectTransform)label.transform);
 
