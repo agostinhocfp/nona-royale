@@ -60,6 +60,12 @@ namespace NonaRoyale.Unity.View
     /// read "rolling"; once it lets go, the faces pop in. The roller flies to
     /// <see cref="DiceFaces"/>.
     ///
+    /// <b>The whole rules line is one look away</b> (G7b-3). A card has room
+    /// for two lines of it and ends longer ones in "…". Hovering a card opens
+    /// a peek above the bar with the ability's name and its whole line. On a
+    /// touch screen, or upright where the cards carry no rules line, the peek
+    /// shows the armed ability's, since a tap arms rather than hovers.
+    ///
     /// Its left and right edges follow whatever the side panels reserve, and
     /// the composition root sets them through <see cref="SetInsets"/>. The
     /// background blocks board clicks.
@@ -144,6 +150,19 @@ namespace NonaRoyale.Unity.View
         // The operator card's last bar fill, so a hit or a heal glides from
         // the old value instead of snapping (UI_MOTION.md U2). One card shows
         // one operator at a time, so a single remembered fraction is enough.
+        // The peek above the bar (G7b-3).
+        private RectTransform _peek;
+        private TMP_Text _peekTitle;
+        private TMP_Text _peekBody;
+        private RectTransform _peekOwner;
+        private readonly Vector3[] _corners = new Vector3[4];
+        private const float PeekWidth = 380f;
+
+        /// <summary>How long the armed ability's peek stays up on touch, before it gets out of the aim's way.</summary>
+        private const float ArmedPeekSeconds = 4f;
+        private float _peekHideAt = -1f;
+        private int _peekArmedId = -1;
+
         private OperatorState _barOperator;
         private float _barFraction = -1f;
 
@@ -218,8 +237,15 @@ namespace NonaRoyale.Unity.View
                 _dirty = true;
             }
 
+            if (_peekHideAt > 0f && Time.unscaledTime >= _peekHideAt)
+            {
+                _peekHideAt = -1f;
+                HidePeek(null);
+            }
+
             if (_tray.gameObject.activeSelf != Visible)
             {
+                if (!Visible) HidePeek(null);
                 _tray.gameObject.SetActive(Visible);
                 if (Visible) _dirty = true;
             }
@@ -232,6 +258,10 @@ namespace NonaRoyale.Unity.View
 
         private void Rebuild()
         {
+            // The card a hover peek hangs from is about to go. The armed
+            // ability's peek has no card and runs on its own clock.
+            if (_peekOwner != null) HidePeek(null);
+
             for (int i = _content.childCount - 1; i >= 0; i--)
             {
                 var child = _content.GetChild(i).gameObject;
@@ -244,6 +274,19 @@ namespace NonaRoyale.Unity.View
 
             if (_builtPortrait) RebuildUpright();
             else RebuildWide();
+
+            // No hover to open it on a touch screen, and no rules line on an
+            // upright card: the armed ability's line is shown instead, once per
+            // arming and for a few seconds, so it never sits over the cells
+            // the player is about to tap.
+            var armed = _host.SelectedAbility;
+            if (armed == null) _peekArmedId = -1;
+            else if ((ScreenLayout.Touch || _builtPortrait) && armed.Id != _peekArmedId)
+            {
+                _peekArmedId = armed.Id;
+                ShowPeek(armed, null);
+                _peekHideAt = Time.unscaledTime + ArmedPeekSeconds;
+            }
         }
 
         private void RebuildWide()
@@ -686,6 +729,11 @@ namespace NonaRoyale.Unity.View
             if (reason != null) meta += $"  <color=#{UiTheme.Hex(UiTheme.TextDim)}>· {reason}</color>";
             Dim(UiKit.Label(card, meta, AbilityMetaSize, textColour), live);
 
+            // Hover opens the whole line above the bar (G7b-3). Not on a touch
+            // screen, where a tap enters and leaves at once and arms instead.
+            if (!ScreenLayout.Touch)
+                HoverRelay.On(button, () => ShowPeek(ability, card), () => HidePeek(card));
+
             if (_builtPortrait) return;
 
             var rules = UiKit.Label(card, RulesMarkup.For(RulesText.For(ability), linked: false),
@@ -702,6 +750,79 @@ namespace NonaRoyale.Unity.View
             label.gameObject.AddComponent<CanvasGroup>().alpha = DimmedAlpha;
         }
 
+        // ── The peek (G7b-3) ─────────────────────────────────────────────
+
+        /// <summary>
+        /// Opens the peek with <paramref name="ability"/>'s name and whole rules
+        /// line, above <paramref name="card"/>, or centred over the bar when
+        /// there is no card to hang it from.
+        /// </summary>
+        private void ShowPeek(AbilityDefinition ability, RectTransform card)
+        {
+            if (ability == null || _canvas == null) return;
+            if (_peek == null) BuildPeek();
+
+            _peekTitle.text = $"<b>{ability.Name}</b>  <size=85%><color=#{UiTheme.Hex(UiTheme.TextDim)}>{OperatorDossier.Meta(ability)}</color></size>";
+            _peekBody.text = RulesMarkup.For(RulesText.For(ability), linked: false);
+
+            _peekOwner = card;
+            _peekHideAt = -1f;
+            _peek.gameObject.SetActive(true);
+            _peek.SetAsLastSibling();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_peek);
+
+            // Above the bar's top edge, over the card, kept on screen. World
+            // units are pixels on this canvas, as the history card assumes.
+            _tray.GetWorldCorners(_corners);
+            float top = _corners[1].y;
+            float x = (_corners[0].x + _corners[3].x) * 0.5f;
+
+            if (card != null)
+            {
+                card.GetWorldCorners(_corners);
+                x = (_corners[0].x + _corners[3].x) * 0.5f;
+            }
+
+            float halfWidth = _peek.rect.width * _canvas.lossyScale.x * 0.5f;
+            x = Mathf.Clamp(x, halfWidth + 4f, Screen.width - halfWidth - 4f);
+            _peek.position = new Vector3(x, top + 8f, 0f);
+        }
+
+        /// <summary>Closes the peek, unless it now belongs to another card (a late exit).</summary>
+        private void HidePeek(RectTransform card)
+        {
+            if (_peek == null) return;
+            if (card != null && !ReferenceEquals(card, _peekOwner)) return;
+
+            _peekOwner = null;
+            _peek.gameObject.SetActive(false);
+        }
+
+        private void BuildPeek()
+        {
+            _peek = UiKit.Rect("ability_peek", _canvas);
+            _peek.anchorMin = _peek.anchorMax = new Vector2(0.5f, 0f);
+            _peek.pivot = new Vector2(0.5f, 0f);
+            _peek.sizeDelta = new Vector2(Mathf.Min(PeekWidth, ScreenLayout.Reference.x - 24f), 0f);
+            UiKit.Panel(_peek, blocksPointer: false);
+
+            var column = UiKit.Column(_peek, 4f, 16);
+            column.padding.left = 20;
+            column.padding.right = 20;
+            _peek.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            // Wrapped labels: no single-line slack to pull them into each other.
+            _peekTitle = UiKit.Label(_peek, "", UiTheme.FontBody, wrap: true);
+            _peekBody = UiKit.Label(_peek, "", UiTheme.FontSmall, UiTheme.Text, wrap: true);
+
+            // It must never take the pointer from the card under it.
+            var group = _peek.gameObject.AddComponent<CanvasGroup>();
+            group.blocksRaycasts = false;
+            group.interactable = false;
+
+            _peek.gameObject.SetActive(false);
+        }
+
         // ── Cast ─────────────────────────────────────────────────────────
 
         /// <summary>
@@ -715,8 +836,9 @@ namespace NonaRoyale.Unity.View
             if (ability.RequiresTarget)
             {
                 var target = _host.SelectedTarget;
+                // The name in its seat's colour, not "Blue Kian" (G7b).
                 if (target != null)
-                    return $"Target: <b>{target.Owner} {target.Name}</b> {target.Health}/{target.MaxHealth}";
+                    return $"Target: <b>{RulesMarkup.For(new RulesLine().Named(target.Name, target.Owner), linked: false)}</b> {target.Health}/{target.MaxHealth}";
 
                 return _host.CastTargets().Count == 0
                     ? "Nothing in reach."
@@ -725,10 +847,12 @@ namespace NonaRoyale.Unity.View
 
             if (ability.RequiresCell)
             {
+                // The board marks the chosen cell; its index ("Track[39]") means
+                // nothing to a player (G7b).
                 if (_host.SelectedCell != null)
                     return touch
-                        ? $"Cell <b>{_host.SelectedCell.Value}</b> — tap another to change."
-                        : $"Cell <b>{_host.SelectedCell.Value}</b> — click another to change.";
+                        ? "Cell chosen — tap another to change."
+                        : "Cell chosen — click another to change.";
 
                 return touch ? "Tap a highlighted cell." : "Click a highlighted cell.";
             }

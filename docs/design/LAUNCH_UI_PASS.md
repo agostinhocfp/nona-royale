@@ -1,7 +1,7 @@
 # Nona Royale — Launch UI pass (G6)
 
 > Location in repo: `docs/design/LAUNCH_UI_PASS.md` · Project copy: `claude/LAUNCH_UI_PASS.md`
-> Status: **Open, 2026-09-26.** G6a–G6e and G7a passed Play Mode and are committed (G7a `049edcd`). **G7b-1 (events in the player's words) written, waiting on Play Mode; G7b-2 (refusal wording) and G7b-3 (full rules on an ability card) follow. G8 (All In 1 Sprite Shader): the pack is committed (`f75fd43`); G8a and G8c are committed (`634406e`); the burn wasn't noticeable in Play Mode, and G8c's follow-up makes it readable and logs each run. G8b withdrawn; G8e needs another technique.** Open: G7 captures still owed (settings pages, glossary tab, trait and keyword cards, history hover card, doubles callout).
+> Status: **Open, 2026-09-26.** G6a–G6e and G7a passed Play Mode and are committed (G7a `049edcd`). **G7b-1 committed (`064465d`). G7b-2 (refusals in the player's words) and G7b-3 (the whole rules line one look away) written, waiting on Play Mode. G8 (All In 1 Sprite Shader): the pack is committed (`f75fd43`); G8a and G8c are committed (`634406e`); the burn wasn't noticeable in Play Mode, and G8c's follow-up makes it readable and logs each run. G8b withdrawn; G8e needs another technique.** Open: G7 captures still owed (settings pages, glossary tab, trait and keyword cards, history hover card, doubles callout).
 > Related: `GUI_PHASE.md` (E–J, G3–G5), `HUD_PASS.md` (H1–H4: the contextual tray, the folded rail, the quiet board — G6b builds on it and does not undo it), `MOBILE.md` (upright layout — every change here must keep M3/M6 intact), `ART_DIRECTION.md` §3 and §8, ADR-0008
 
 ## Verdict
@@ -291,3 +291,48 @@ Each increment ends with a Play Mode check (desktop and upright) and a commit.
     - Make an illegal move (end the turn before rolling, say): the toast and the log both read "Can't: …" in the refusal colour. A CPU's refusals appear in neither.
     - Start a new match: the log is empty. Upright: the log still fills the board area and scrolls.
     - Look for text that overlaps vertically in the log. Its headings opt out of the single-line slack (G7a), so this is the thing to watch.
+- 2026-09-26 — **G7b-1 committed (`064465d`).**
+- 2026-09-26 — **G7b-2 written: refusals in the player's words (flag 5).**
+  - **Every reason the engine gives is rewritten at the source,** as a short sentence that starts with a capital and says what to do where there is something to do. For example:
+    - "Use your roll: an operator can still move with it", which was "you must use your roll: an operator can still move with it";
+    - "No more rolls this turn: only doubles roll again", which was "a second roll needs doubles and a remaining roll in the budget";
+    - "There's no unused 5 in this roll";
+    - "A 1 moves Kian nowhere at its current speed";
+    - "Kian isn't yours";
+    - "That ability isn't available" and "That target is no longer on the board", which replace the id messages.
+    All 27 sites in `GameEngine` are covered, including `DeployRefusal`, `CashRefusal` and `FindOwnedOperator`. The dev refusals are capitalised and keep their "Dev …:" prefix.
+  - **Refused casts no longer print an enum name.** Before, the engine wrote `"{ability}: {resolution.Refusal}"`, which reads "Blind Spot: IllegalTarget". The new `Text/RefusalText.cs` words every `AbilityRefusal` and every `TargetingVerdict`:
+    - "Blind Spot is recharging: ready in 2 turns";
+    - "Blind Spot costs 5 energy; you have 3";
+    - "… needs a target: click an operator";
+    - "… needs a cell: click the board";
+    - "Blind Spot: out of range";
+    - "…: that operator is on a safe cell";
+    - "…: you can't aim backwards from a safe cell";
+    - and so on.
+    The turns left and the energy held are passed in by the engine; the text reads nothing itself.
+  - **`EventText.Refusal`** shows the reason as it is, now that the reasons are sentences. The "Can't: " prefix is gone, and the refusal colour says the rest.
+  - Tests:
+    - `RefusalTextTests` (6): no refusal or verdict reads as its enum name, and every verdict has its own words. Cooldown, energy, missing-pick and bad-target wording are pinned.
+    - Two assertions in `GameEngineTests` follow "Roll first".
+    - The other pinned substrings ("yard", "no dice left", "deploy", "roll again", "ability") still hold.
+    - Core total 957, all passing.
+  - Files: `GameEngine`, `RefusalText` (new), `EventText`, `RefusalTextTests` (new), `EventTextTests`, `GameEngineTests`. No view change.
+- 2026-09-26 — **G7b-3 written: the whole rules line one look away (flag 9), and two notation leaks in the aim line.**
+  - **The peek.** Hovering an ability card opens a panel above the bar, over that card, with the ability's name, its meta and its whole `RulesText` line. The card itself keeps two lines and "…". The panel is built once, kept on screen, and never takes the pointer. It closes on exit and on any rebuild of the bar. A late exit from a card the pointer already left can't close the panel another card just opened.
+  - **Touch and upright** have no hover, and an upright card carries no rules line. There, arming an ability shows its peek once, centred over the bar, for 4 seconds, then gets out of the way of the cells being aimed at. Arming another ability shows that one.
+  - **Aim line leaks fixed.**
+    - The target reads "Target: Kian 6/8" with the name in its seat's colour, where it used to read "Blue Kian".
+    - A chosen cell reads "Cell chosen — click another to change". It used to print the cell's engine name ("Track[39]"); the board already marks it.
+  - Files: `ActionTray`.
+  - **Checked:** the view compiles against the fresh core with and without `DEVELOPMENT_BUILD`, 0 warnings.
+  - **Play Mode checklist:**
+    - Desktop: hover each of the three ability cards. A panel opens above the bar over that card, with the name, the "5e · r3 · cd 3" meta and the whole rules line, and no "…". Move between cards: it follows without flicker. Leave: it closes. Click a card to arm it: the panel closes with the rebuild.
+    - A long line (Blind Spot, Vendetta) that ends in "…" on its card reads in full in the panel.
+    - Try refused things and read the toasts:
+      - end the turn before rolling: "Roll first: a turn can't be skipped";
+      - cast out of range or at a stealthed enemy: "…: out of range" or "…: that operator is in Stealth";
+      - roll again with dice still to spend: "Use the dice you rolled before rolling again".
+    - None of them shows an enum name, and none starts "Can't:". The log shows the same words in the refusal colour.
+    - Aim a targeted ability: the Cast slot reads "Target: Kian 6/8" with Kian in his seat colour. Aim a cell ability: "Cell chosen — click another to change".
+    - Upright or touch: tap a card to arm it. The peek appears above the block for about 4 seconds and doesn't come back until you arm a different ability.
