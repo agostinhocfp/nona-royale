@@ -1,7 +1,7 @@
 # Nona Royale — Launch UI pass (G6)
 
 > Location in repo: `docs/design/LAUNCH_UI_PASS.md` · Project copy: `claude/LAUNCH_UI_PASS.md`
-> Status: **Open, 2026-09-26.** Audit from four desktop screenshots (title, setup, draft, in-match at round 36). **G6a (bug sweep) written and compile-checked, waiting on Play Mode.** G6b and G6c next; two decisions open (18, 19).
+> Status: **Open, 2026-09-26.** Audit from four desktop screenshots (title, setup, draft, in-match at round 36). **G6a (bug sweep) passed Play Mode.** G6b and G6c next; one decision open (18).
 > Related: `GUI_PHASE.md` (E–J, G3–G5), `HUD_PASS.md` (H1–H4: the contextual tray, the folded rail, the quiet board — G6b builds on it and does not undo it), `MOBILE.md` (upright layout — every change here must keep M3/M6 intact), `ART_DIRECTION.md` §3 and §8, ADR-0008
 
 ## Verdict
@@ -39,7 +39,7 @@ The chrome is about 80% of a shipping UI. The frame, type and palette are right.
 
 ### P2 — decisions, not bugs
 
-19. **Board scale.** Figures stand ~50 units tall at 1080p; the four yards take about half the board. `TableDiameter` is view-only, so shrinking the yards and refitting the camera would enlarge the play space without touching locked geometry.
+19. **Board scale — withdrawn as written (2026-09-26).** The flag proposed shrinking the yard tables to enlarge the play space. That is wrong: the cross already spans the board's full width and height, the yards sit inside its corners, and the camera fits the board to the height between the top bar and the tray. Smaller yards free no room and nothing gets bigger. Cells are about 57 px at 1080p, so figures are not undersized there. The real levers, if it ever needs one: the tilted board camera (`BoardCamera.Tilted`, already built, about 1.45× the flat view's area; the default is TopDown), the figure's size within its cell, and the tray and top bar heights.
 20. Title is flat; the board behind setup is tilted. Pick one for the menus.
 21. Release build: drop "Development Build" and the "Prototype build · pieces and board drawn in code" footer.
 
@@ -50,7 +50,7 @@ The chrome is about 80% of a shipping UI. The frame, type and palette are right.
 | G6a | Bug sweep | 1–5 |
 | G6b | Tray and rail | 6–8 |
 | G6c | Draft and setup | 9–18 |
-| — | Decisions first | 18 (hot-seat or not), 19 (board scale) |
+| — | Decision first | 18 (hot-seat or not) |
 
 Each increment ends with a Play Mode check (desktop and upright) and a commit.
 
@@ -74,3 +74,4 @@ Each increment ends with a Play Mode check (desktop and upright) and a commit.
     - Two pieces with statuses on one track cell: their tag rows sit on separate lines.
     - History chips: UPKEEP, DEPLOY, EFFECT and DEBT read in full on the standing strip and the upright band; a utility cast (Cryo Field, Deal Again) shows its cost as "4e" in cyan; a damaging cast still shows "-n".
     - Upright (phone or a portrait Game view): the history band's chips and the rail band still fit.
+- 2026-09-26 — **G6a passed Play Mode.** Flag 19 withdrawn: shrinking the yards would not enlarge the board (see the flag).
