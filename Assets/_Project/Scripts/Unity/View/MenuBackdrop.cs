@@ -7,9 +7,9 @@ namespace NonaRoyale.Unity.View
     /// <summary>
     /// What the menus sit on when there is no match: a dark room lit from
     /// below by a warm pool, a faint Deco sunburst rising out of it, haze in
-    /// the light, a spotlight that sweeps across it now and then, film grain,
-    /// a vignette, and one gilt hairline framing the screen
-    /// (LAUNCH_UI_PASS.md, G6d and G6e).
+    /// the light, a spotlight that sweeps across it now and then, a vignette,
+    /// and one gilt hairline framing the screen (LAUNCH_UI_PASS.md, G6d and
+    /// G6e).
     /// </summary>
     /// <remarks>
     /// <b>It replaces the empty board</b> behind the title, setup, draft and
@@ -26,25 +26,27 @@ namespace NonaRoyale.Unity.View
     ///
     /// <b>Drawn in code, like the rest of the chrome.</b> The pool reuses
     /// <see cref="DecoSprites.Glow"/> and the haze <see cref="BoardArt.Haze"/>;
-    /// the sunburst, the beam, the vignette and the grain are rasterised once
-    /// here. All of it is quiet by design: gold at 7% for the rays and 10% for
+    /// the sunburst, the beam and the vignette are rasterised once here. All of it is quiet by design: gold at 7% for the rays and 10% for
     /// the pool, so the wordmark and the cards stay the brightest things on
     /// screen (ART_DIRECTION §3's gold budget, G3's "stop the gold
     /// performing").
     ///
-    /// <b>Three things keep it from reading as a flat digital gradient</b>
-    /// (G6e). <i>Grain:</i> a tiled white-noise texture of sparse light
-    /// specks, re-dealt a dozen times a second like film. It only lifts, since
-    /// a UI layer cannot darken a near-black it sits on, so the specks are
-    /// cubed to keep the average lift near one percent. <i>Haze:</i> three
+    /// <b>Two things give the light some life</b> (G6e). <i>Haze:</i> three
     /// slow puffs over the pool on the board lighting's loop (G3), so the light
     /// has something to fall through. <i>A beam:</i> every
     /// <see cref="SweepCycle"/> seconds a soft wedge of warm light swings
     /// across the sunburst from its origin, like a spotlight crossing a Deco
     /// ceiling, and fades out at either end.
     ///
-    /// <b>Reduced motion stills it all:</b> the grain holds one frame, the
-    /// haze sits at home at its base strength, and the beam does not run.
+    /// <b>No film grain</b> (G6e, removed after Play Mode). It was meant to
+    /// sit at a few percent, but the project renders in linear colour space,
+    /// where a low-alpha white over near-black lands several times brighter
+    /// than the same number suggests: the screen came out as static. The
+    /// designer preferred the clean, minimal backdrop, so it went rather than
+    /// being tuned down. The same linear lift is why every alpha here is small.
+    ///
+    /// <b>Reduced motion stills it all:</b> the haze sits at home at its base
+    /// strength and the beam does not run.
     /// Nothing else here moves. Time is unscaled, so the menus never depend
     /// on what the pause menu last did to the clock.
     ///
@@ -61,20 +63,6 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>Rays across the half circle the sunburst fans through.</summary>
         private const int RayCount = 36;
-
-        // ── Grain (G6e) ──────────────────────────────────────────────────
-
-        /// <summary>The grain tile's side, in texels. White noise tiles seamlessly at any size.</summary>
-        private const int GrainSize = 128;
-
-        /// <summary>Canvas units per grain texel: fine enough to read as grain, not as a pattern.</summary>
-        private const float GrainTexel = 1.5f;
-
-        /// <summary>The strongest a speck gets. The texture's alpha is the noise cubed, so most specks are far fainter.</summary>
-        private const float GrainAlpha = 0.06f;
-
-        /// <summary>How often the grain is re-dealt, per second.</summary>
-        private const float GrainRate = 12f;
 
         // ── Haze (G6e) ───────────────────────────────────────────────────
 
@@ -110,18 +98,14 @@ namespace NonaRoyale.Unity.View
         private static Sprite _rays;
         private static Sprite _beamSprite;
         private static Sprite _vignette;
-        private static Texture2D _grainTexture;
 
         private RectTransform _root;
         private RectTransform _frame;
         private RectTransform _beam;
         private Image _beamImage;
-        private RawImage _grain;
         private readonly RectTransform[] _puffs = new RectTransform[3];
         private readonly Image[] _puffImages = new Image[3];
 
-        private readonly System.Random _grainDeal = new System.Random();
-        private float _nextGrain;
         private int _placedVersion = -1;
         private Vector2 _placedSize = new Vector2(-1f, -1f);
 
@@ -184,15 +168,6 @@ namespace NonaRoyale.Unity.View
             UiKit.Stretch(vignette);
             UiKit.Fill(vignette, UiTheme.WithAlpha(Color.black, VignetteAlpha)).sprite = Vignette;
 
-            // Grain over everything but the frame, the way film grain lies
-            // over the whole picture.
-            var grain = UiKit.Rect("grain", _root);
-            UiKit.Stretch(grain);
-            _grain = grain.gameObject.AddComponent<RawImage>();
-            _grain.texture = GrainTexture;
-            _grain.color = UiTheme.WithAlpha(Color.white, GrainAlpha);
-            _grain.raycastTarget = false;
-
             // One gilt hairline framing the screen, with the corner fans the
             // floating cards carry.
             _frame = UiKit.Rect("frame", _root);
@@ -212,7 +187,6 @@ namespace NonaRoyale.Unity.View
 
             Drift(time, reduced);
             Sweep(time, reduced);
-            Deal(time, reduced);
         }
 
         private void LateUpdate()
@@ -222,7 +196,7 @@ namespace NonaRoyale.Unity.View
             if (_placedVersion != ScreenLayout.Version || _root.rect.size != _placedSize) Place();
         }
 
-        /// <summary>Insets the frame for the screen's shape, and sizes the beam and the grain to the screen.</summary>
+        /// <summary>Insets the frame for the screen's shape, and sizes the beam and the haze to the screen.</summary>
         private void Place()
         {
             _placedVersion = ScreenLayout.Version;
@@ -238,15 +212,6 @@ namespace NonaRoyale.Unity.View
             float puffScale = ScreenLayout.Pick(1f, 0.6f);
             for (int i = 0; i < _puffs.Length; i++)
                 if (_puffs[i] != null) _puffs[i].sizeDelta = Puffs[i].size * puffScale;
-
-            if (_grain != null)
-            {
-                var uv = _grain.uvRect;
-                uv.size = new Vector2(
-                    _placedSize.x / (GrainSize * GrainTexel),
-                    _placedSize.y / (GrainSize * GrainTexel));
-                _grain.uvRect = uv;
-            }
         }
 
         /// <summary>
@@ -307,21 +272,6 @@ namespace NonaRoyale.Unity.View
             _beamImage.color = UiTheme.WithAlpha(UiTheme.GoldBright, BeamAlpha * Mathf.Sin(Mathf.PI * t));
         }
 
-        /// <summary>
-        /// Re-deals the grain by jumping the tile to a new offset, as film
-        /// grain changes every frame. Held still under Reduced motion.
-        /// </summary>
-        private void Deal(float time, bool reduced)
-        {
-            if (_grain == null || reduced || time < _nextGrain) return;
-
-            _nextGrain = time + 1f / GrainRate;
-
-            var uv = _grain.uvRect;
-            uv.position = new Vector2((float)_grainDeal.NextDouble(), (float)_grainDeal.NextDouble());
-            _grain.uvRect = uv;
-        }
-
         // ── Sprites ──────────────────────────────────────────────────────
 
         /// <summary>
@@ -336,9 +286,6 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>Clear in the middle, dark at the corners, stretched to the screen.</summary>
         private static Sprite Vignette => _vignette != null ? _vignette : (_vignette = BuildVignette(256));
-
-        /// <summary>White specks on clear, repeating: the noise cubed, so most texels are nearly clear.</summary>
-        private static Texture2D GrainTexture => _grainTexture != null ? _grainTexture : (_grainTexture = BuildGrain(GrainSize));
 
         private static Sprite BuildRays(int width, int height)
         {
@@ -394,31 +341,6 @@ namespace NonaRoyale.Unity.View
                 float v = (py - half) / half;
                 return Smooth(0.55f, 1.35f, Mathf.Sqrt(u * u + v * v));
             }, 100f, Vector4.zero);
-        }
-
-        private static Texture2D BuildGrain(int size)
-        {
-            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
-            {
-                // Point, so a speck stays a speck; Repeat, so the tile and its
-                // re-dealt offsets wrap.
-                filterMode = FilterMode.Point,
-                wrapMode = TextureWrapMode.Repeat,
-            };
-
-            var pixels = new Color32[size * size];
-            for (int y = 0; y < size; y++)
-            {
-                for (int x = 0; x < size; x++)
-                {
-                    float n = BoardArt.Hash(x, y, 6011);
-                    pixels[y * size + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(n * n * n * 255f));
-                }
-            }
-
-            texture.SetPixels32(pixels);
-            texture.Apply(false, true);
-            return texture;
         }
 
         private static float Smooth(float from, float to, float x)

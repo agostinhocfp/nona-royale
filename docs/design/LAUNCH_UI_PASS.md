@@ -1,7 +1,7 @@
 # Nona Royale — Launch UI pass (G6)
 
 > Location in repo: `docs/design/LAUNCH_UI_PASS.md` · Project copy: `claude/LAUNCH_UI_PASS.md`
-> Status: **Open, 2026-09-26.** Audit from four desktop screenshots (title, setup, draft, in-match at round 36). **G6a–G6d passed Play Mode. G6e (grain, haze, beam on the backdrop) written and compile-checked, waiting on Play Mode.** No decisions open.
+> Status: **Open, 2026-09-26.** Audit from four desktop screenshots (title, setup, draft, in-match at round 36). **G6a–G6e passed Play Mode; the film grain was removed after it.** No decisions open.
 > Related: `GUI_PHASE.md` (E–J, G3–G5), `HUD_PASS.md` (H1–H4: the contextual tray, the folded rail, the quiet board — G6b builds on it and does not undo it), `MOBILE.md` (upright layout — every change here must keep M3/M6 intact), `ART_DIRECTION.md` §3 and §8, ADR-0008
 
 ## Verdict
@@ -162,3 +162,4 @@ Each increment ends with a Play Mode check (desktop and upright) and a commit.
     - Settings → Reduced motion on: grain frozen, haze still, no beam. Off again: all three resume.
     - The wordmark and buttons are still the brightest things on screen; nothing distracts from PLAY.
     - Upright: the haze fits the screen, the beam reaches the top, the grain stays fine.
+- 2026-09-26 — **G6e in Play Mode: the grain came out as static and was removed** (designer: keep it clean and minimalist unless it's barely noticeable). The cause is the colour space: the project renders in linear (ADR-0010), where a 6% white over near-black lands several times brighter than it reads in an sRGB preview. The numpy previews blended in sRGB, so every low-alpha layer here is stronger on screen than it looked in them; the haze is too, and is the first thing to halve if it reads as smudges. Removed rather than tuned down: the grain constants, texture, layer and re-deal are gone from `MenuBackdrop`; haze and beam stay. **Rule for future previews: blend in linear, or treat sRGB previews as a lower bound on brightness.**
