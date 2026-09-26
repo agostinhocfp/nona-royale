@@ -163,7 +163,7 @@ namespace NonaRoyale.Core.Tests.Text
         [Test]
         public void ARefusalSaysSo()
         {
-            Assert.That(Plain(new CommandRejected("roll first")), Is.EqualTo("Can't: roll first"));
+            Assert.That(Plain(new CommandRejected("Roll first")), Is.EqualTo("Roll first"));
         }
     }
 }

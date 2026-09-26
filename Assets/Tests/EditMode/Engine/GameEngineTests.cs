@@ -107,7 +107,7 @@ namespace NonaRoyale.Core.Tests.Engine
         {
             var events = _engine.Execute(new DeployCommand(Op(PlayerColor.Red, "Syla").Id));
 
-            Assert.That(First<CommandRejected>(events).Reason, Is.EqualTo("roll first"));
+            Assert.That(First<CommandRejected>(events).Reason, Is.EqualTo("Roll first"));
         }
 
         [Test]
@@ -535,7 +535,7 @@ namespace NonaRoyale.Core.Tests.Engine
 
             var events = _engine.Execute(new EndTurnCommand());
 
-            Assert.That(First<CommandRejected>(events).Reason, Does.Contain("roll first"));
+            Assert.That(First<CommandRejected>(events).Reason, Does.Contain("Roll first"));
             Assert.That(_engine.CurrentPlayer.Color, Is.EqualTo(PlayerColor.Red), "the turn did not hand over");
         }
 

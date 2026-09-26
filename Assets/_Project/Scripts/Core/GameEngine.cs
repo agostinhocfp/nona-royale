@@ -10,6 +10,7 @@ using NonaRoyale.Core.Events;
 using NonaRoyale.Core.Model;
 using NonaRoyale.Core.Rng;
 using NonaRoyale.Core.Services;
+using NonaRoyale.Core.Text;
 
 
 namespace NonaRoyale.Core
@@ -370,7 +371,7 @@ namespace NonaRoyale.Core
         {
             if (MatchOver)
             {
-                events.Add(new CommandRejected("the match is over"));
+                events.Add(new CommandRejected("The match is over"));
                 return;
             }
 
@@ -382,7 +383,7 @@ namespace NonaRoyale.Core
             else if (command is UseAbilityCommand ability) UseAbility(ability, events);
             else if (command is CashDieCommand cash) CashDie(cash, events);
             else if (command is EndTurnCommand) EndTurn(events);
-            else events.Add(new CommandRejected($"unknown command {command.GetType().Name}"));
+            else events.Add(new CommandRejected($"Unknown command {command.GetType().Name}"));
         }
 
         // ── Turn flow ────────────────────────────────────────────────────
@@ -555,8 +556,7 @@ namespace NonaRoyale.Core
         {
             if (_hasRolled && !_turns.CanRollAgain)
             {
-                events.Add(new CommandRejected(
-                    "a second roll needs doubles and a remaining roll in the budget"));
+                events.Add(new CommandRejected("No more rolls this turn: only doubles roll again"));
                 return;
             }
 
@@ -566,7 +566,7 @@ namespace NonaRoyale.Core
             // dodge compulsory movement exists to close (§6).
             if (_hasRolled && HasLegalMove())
             {
-                events.Add(new CommandRejected("spend the dice you are holding before rolling again"));
+                events.Add(new CommandRejected("Use the dice you rolled before rolling again"));
                 return;
             }
 
@@ -575,7 +575,7 @@ namespace NonaRoyale.Core
             if (_hasRolled && MustDeploy)
             {
                 events.Add(new CommandRejected(
-                    $"deploy with your {_movement.DeployFace} before rolling again"));
+                    $"Use your {_movement.DeployFace} to deploy before rolling again"));
                 return;
             }
 
@@ -609,7 +609,7 @@ namespace NonaRoyale.Core
             // board position.
             if (Phase == TurnPhase.AwaitingRoll)
             {
-                events.Add(new CommandRejected("roll first: a turn cannot be skipped"));
+                events.Add(new CommandRejected("Roll first: a turn can't be skipped"));
                 return;
             }
 
@@ -618,8 +618,7 @@ namespace NonaRoyale.Core
             // forfeit, and a turn must always be endable or the match deadlocks.
             if (HasLegalMove())
             {
-                events.Add(new CommandRejected(
-                    "you must use your roll: an operator can still move with it"));
+                events.Add(new CommandRejected("Use your roll: an operator can still move with it"));
                 return;
             }
 
@@ -628,7 +627,7 @@ namespace NonaRoyale.Core
             if (MustDeploy)
             {
                 events.Add(new CommandRejected(
-                    $"you must use your {_movement.DeployFace}: an operator is waiting to deploy"));
+                    $"Use your {_movement.DeployFace}: an operator is waiting to deploy"));
                 return;
             }
 
@@ -636,7 +635,7 @@ namespace NonaRoyale.Core
             // nothing and is taken.
             if (MustRollAgain)
             {
-                events.Add(new CommandRejected("doubles: roll again, nothing on the board can move"));
+                events.Add(new CommandRejected("You rolled doubles: roll again, nothing on the board can move"));
                 return;
             }
 
@@ -713,7 +712,7 @@ namespace NonaRoyale.Core
 
             if (MatchOver || (Phase != TurnPhase.Action && Phase != TurnPhase.AwaitingRoll))
             {
-                events.Add(new CommandRejected("dev win: no turn is being played"));
+                events.Add(new CommandRejected("Dev win: no turn is being played"));
                 return events;
             }
 
@@ -769,7 +768,7 @@ namespace NonaRoyale.Core
 
             if (MatchOver || (Phase != TurnPhase.Action && Phase != TurnPhase.AwaitingRoll))
             {
-                events.Add(new CommandRejected("dev knockout: no turn is being played"));
+                events.Add(new CommandRejected("Dev knockout: no turn is being played"));
                 return events;
             }
 
@@ -781,7 +780,7 @@ namespace NonaRoyale.Core
 
             if (victims.Count == 0)
             {
-                events.Add(new CommandRejected("dev knockout: nobody is on the track"));
+                events.Add(new CommandRejected("Dev knockout: nobody is on the track"));
                 return events;
             }
 
@@ -902,12 +901,12 @@ namespace NonaRoyale.Core
         /// </remarks>
         private string DeployRefusal(OperatorState op)
         {
-            if (_turns.Phase != TurnPhase.Action) return "roll first";
-            if (op.Owner != _turns.CurrentPlayer.Color) return $"{op.Name} is not yours to command";
+            if (_turns.Phase != TurnPhase.Action) return "Roll first";
+            if (op.Owner != _turns.CurrentPlayer.Color) return $"{op.Name} isn't yours";
             if (!op.IsInYard) return $"{op.Name} is already on the board";
 
             int face = _movement.DeployFace;
-            if (!_unspentDice.Contains(face)) return $"deploying needs an unspent {face}";
+            if (!_unspentDice.Contains(face)) return $"Deploying needs an unused {face}";
 
             return null;
         }
@@ -952,19 +951,19 @@ namespace NonaRoyale.Core
         /// </summary>
         private string CashRefusal(OperatorState op, int face)
         {
-            if (_turns.Phase != TurnPhase.Action) return "roll first";
-            if (op.Owner != _turns.CurrentPlayer.Color) return $"{op.Name} is not yours to command";
-            if (!_statuses.Has(op, StatusKind.HouseEdge)) return $"{op.Name} cannot cash a die";
-            if (_cashedThisTurn) return "the house takes one die a turn";
-            if (op.IsInYard) return $"{op.Name} is in the yard";
+            if (_turns.Phase != TurnPhase.Action) return "Roll first";
+            if (op.Owner != _turns.CurrentPlayer.Color) return $"{op.Name} isn't yours";
+            if (!_statuses.Has(op, StatusKind.HouseEdge)) return $"{op.Name} can't cash dice";
+            if (_cashedThisTurn) return "The house takes only one die a turn";
+            if (op.IsInYard) return $"{op.Name} is still in the yard";
             if (_win.HasFinished(op)) return $"{op.Name} is already home";
-            if (_statuses.IsStunned(op)) return $"{op.Name} is stunned";
-            if (!_unspentDice.Contains(face)) return $"no unspent die showing {face}";
+            if (_statuses.IsStunned(op)) return $"{op.Name} is stunned this turn";
+            if (!_unspentDice.Contains(face)) return $"There's no unused {face} in this roll";
 
             // The die she cashes is a die she could have moved. Without this a
             // die with no legal consumer — one a heavy slow floors to nowhere —
             // would turn into money instead of being forfeit (§6.1).
-            if (CellsFor(op, face, out _, out _) <= 0) return $"{face} moves {op.Name} nowhere at its current speed";
+            if (CellsFor(op, face, out _, out _) <= 0) return $"A {face} moves {op.Name} nowhere at its current speed";
 
             return null;
         }
@@ -989,13 +988,13 @@ namespace NonaRoyale.Core
 
             if (_unspentDice.Count == 0)
             {
-                events.Add(new CommandRejected("this roll has no dice left to spend"));
+                events.Add(new CommandRejected("This roll has no dice left to spend"));
                 return;
             }
 
             if (op.IsInYard)
             {
-                events.Add(new CommandRejected($"{op.Name} is in the yard"));
+                events.Add(new CommandRejected($"{op.Name} is still in the yard"));
                 return;
             }
 
@@ -1007,7 +1006,7 @@ namespace NonaRoyale.Core
 
             if (_statuses.IsStunned(op))
             {
-                events.Add(new CommandRejected($"{op.Name} is stunned"));
+                events.Add(new CommandRejected($"{op.Name} is stunned this turn"));
                 return;
             }
 
@@ -1021,7 +1020,7 @@ namespace NonaRoyale.Core
             {
                 if (!_unspentDice.Contains(command.DieFace.Value))
                 {
-                    events.Add(new CommandRejected($"no unspent die showing {command.DieFace.Value}"));
+                    events.Add(new CommandRejected($"There's no unused {command.DieFace.Value} in this roll"));
                     return;
                 }
 
@@ -1043,7 +1042,7 @@ namespace NonaRoyale.Core
             if (cells <= 0)
             {
                 events.Add(new CommandRejected(
-                    $"{pips} moves {op.Name} nowhere at its current speed"));
+                    $"A {pips} moves {op.Name} nowhere at its current speed"));
                 return;
             }
 
@@ -1168,7 +1167,7 @@ namespace NonaRoyale.Core
 
             if (!_abilityBook.TryGetValue(command.AbilityId, out var ability))
             {
-                events.Add(new CommandRejected($"no ability with id {command.AbilityId}"));
+                events.Add(new CommandRejected("That ability isn't available"));
                 return;
             }
 
@@ -1178,7 +1177,7 @@ namespace NonaRoyale.Core
                 target = FindOperator(command.TargetOperatorId.Value);
                 if (target == null)
                 {
-                    events.Add(new CommandRejected($"no operator with id {command.TargetOperatorId}"));
+                    events.Add(new CommandRejected("That target is no longer on the board"));
                     return;
                 }
             }
@@ -1190,7 +1189,7 @@ namespace NonaRoyale.Core
             if (diceNeeded > _unspentDice.Count)
             {
                 events.Add(new CommandRejected(
-                    $"{ability.Name}: the roll is not holding {diceNeeded} unspent dice"));
+                    $"{ability.Name} needs {diceNeeded} unused dice"));
                 return;
             }
 
@@ -1201,7 +1200,11 @@ namespace NonaRoyale.Core
 
             if (!resolution.Approved)
             {
-                events.Add(new CommandRejected($"{ability.Name}: {resolution.Refusal}"));
+                // In the player's words (G7b-2): the enums were made reasons so
+                // the screen could explain itself, and this is the explanation.
+                events.Add(new CommandRejected(RefusalText.Ability(
+                    ability, caster, resolution.Refusal, resolution.TargetingVerdict,
+                    _abilities.TurnsUntilReady(caster, ability), energyBefore)));
                 return;
             }
 
@@ -2035,7 +2038,7 @@ namespace NonaRoyale.Core
         {
             if (_turns.Phase == TurnPhase.Action) return true;
 
-            events.Add(new CommandRejected("roll first"));
+            events.Add(new CommandRejected("Roll first"));
             return false;
         }
 
@@ -2065,13 +2068,13 @@ namespace NonaRoyale.Core
 
             if (op == null)
             {
-                events.Add(new CommandRejected($"no operator with id {id}"));
+                events.Add(new CommandRejected("That operator is no longer on the board"));
                 return null;
             }
 
             if (op.Owner != _turns.CurrentPlayer.Color)
             {
-                events.Add(new CommandRejected($"{op.Name} is not yours to command"));
+                events.Add(new CommandRejected($"{op.Name} isn't yours"));
                 return null;
             }
 

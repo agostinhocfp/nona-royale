@@ -59,9 +59,13 @@ namespace NonaRoyale.Core.Text
         public static RulesLine TurnHeading(PlayerColor seat) =>
             new RulesLine().Named(SeatName(seat), seat).Text("'s turn");
 
-        /// <summary>A refused command, as the log and the toast show it.</summary>
+        /// <summary>
+        /// A refused command, as the log and the toast show it. The engine's
+        /// reasons are whole sentences in the player's words (G7b-2), so this
+        /// adds nothing; the refusal colour says the rest.
+        /// </summary>
         public static RulesLine Refusal(string reason) =>
-            new RulesLine().Text("Can't: ").Text(reason ?? "not now");
+            new RulesLine().Text(string.IsNullOrWhiteSpace(reason) ? "Not now" : reason);
 
         /// <summary>
         /// The player's line for an event, or null for the ones that are
