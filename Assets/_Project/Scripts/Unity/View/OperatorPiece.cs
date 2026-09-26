@@ -647,7 +647,8 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
-        /// A knockout: the figure breaks into shards in its seat colour and is
+        /// A knockout: the figure breaks into shards in its seat colour, a copy
+        /// of it burns away under them (G8c, <see cref="FxBurn"/>), and it is
         /// hidden until <see cref="Reappear"/>. A standing rigged figure folds
         /// first and shatters as the fold ends (LB5c).
         /// </summary>
@@ -694,6 +695,10 @@ namespace NonaRoyale.Unity.View
                     seconds, _motion);
             }
 
+            // G8c: the figure burns away under the shards, from a copy taken
+            // before it hides. Without the effect's material, the shards alone.
+            FxBurn.Spawn(transform.parent, BurnParts(), GroupLayer, GroupOrder, colour, seconds, _motion);
+
             _hidden = true;
             _shardClock = seconds;
             _path.Clear();
@@ -701,6 +706,23 @@ namespace NonaRoyale.Unity.View
             _hold = 0f;
             _animator?.Stop();
             Draw();
+        }
+
+        /// <summary>
+        /// What the knockout burns: every part of a rig; otherwise the body,
+        /// with the procedural pawn's outline and a hit flash still on it.
+        /// The pin and the ground markings just go, as before.
+        /// </summary>
+        private IReadOnlyList<SpriteRenderer> BurnParts()
+        {
+            if (RigActive) return _rig.Parts;
+            if (_body == null) return null;
+
+            var parts = new List<SpriteRenderer>(3);
+            if (_outline != null && _outline.enabled) parts.Add(_outline);
+            parts.Add(_body);
+            if (_flashOverlay != null && _flashOverlay.enabled) parts.Add(_flashOverlay);
+            return parts;
         }
 
         /// <summary>Shows a hidden piece again, snapped to <paramref name="position"/>, with a small pop.</summary>

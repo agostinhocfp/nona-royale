@@ -1,4 +1,5 @@
 // Assets/_Project/Scripts/Unity/View/Figures/Rig/RigView.cs
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace NonaRoyale.Unity.View
@@ -80,6 +81,12 @@ namespace NonaRoyale.Unity.View
         }
 
         public RigArt Art => _art;
+
+        /// <summary>
+        /// The part renderers in draw order, for an effect that copies the
+        /// figure (G8c's burn). Read them; don't change them.
+        /// </summary>
+        public IReadOnlyList<SpriteRenderer> Parts => _sprites;
 
         public RigFacingArt Current => _art.Facing(_facesLeft);
 
