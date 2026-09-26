@@ -49,6 +49,7 @@ namespace NonaRoyale.Unity.View
         private RectTransform _canvasRect;
         private RectTransform _root;
         private RectTransform _matchLayer;
+        private RectTransform _backdropLayer;
         private Canvas _canvas;
         private CanvasScaler _scaler;
 
@@ -67,6 +68,20 @@ namespace NonaRoyale.Unity.View
             {
                 if (_root == null) Build();
                 return _matchLayer;
+            }
+        }
+
+        /// <summary>
+        /// A full-canvas layer under everything else, edge to edge rather than
+        /// inset to the safe area, for the menu backdrop (G6d). It sits behind
+        /// the safe-area root, so every card and the match HUD draw over it.
+        /// </summary>
+        public RectTransform BackdropLayer
+        {
+            get
+            {
+                if (_root == null) Build();
+                return _backdropLayer;
             }
         }
 
@@ -147,6 +162,15 @@ namespace NonaRoyale.Unity.View
             }
 
             _canvasRect = (RectTransform)go.transform;
+
+            // First child of the canvas, so it draws under the safe-area root.
+            var backdrop = new GameObject("backdrop", typeof(RectTransform));
+            _backdropLayer = (RectTransform)backdrop.transform;
+            _backdropLayer.SetParent(_canvasRect, false);
+            _backdropLayer.anchorMin = Vector2.zero;
+            _backdropLayer.anchorMax = Vector2.one;
+            _backdropLayer.offsetMin = Vector2.zero;
+            _backdropLayer.offsetMax = Vector2.zero;
 
             var safe = new GameObject("safe_area", typeof(RectTransform));
             _root = (RectTransform)safe.transform;

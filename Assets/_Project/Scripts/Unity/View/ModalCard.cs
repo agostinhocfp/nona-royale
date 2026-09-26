@@ -39,6 +39,7 @@ namespace NonaRoyale.Unity.View
         private static int Padding => (int)ScreenLayout.Pick(36f, 20f);
 
         private RectTransform _root;
+        private Image _scrim;
         private RectTransform _card;
         private RectTransform _viewport;
         private RectTransform _body;
@@ -85,7 +86,7 @@ namespace NonaRoyale.Unity.View
 
             _root = UiKit.Rect(name, canvasRect);
             UiKit.Stretch(_root);
-            UiKit.Fill(_root, UiTheme.WithAlpha(UiTheme.Obsidian, ScrimAlpha), blocksPointer: true);
+            _scrim = UiKit.Fill(_root, UiTheme.WithAlpha(UiTheme.Obsidian, ScrimAlpha), blocksPointer: true);
 
             _card = UiKit.Rect("card", _root);
             _card.anchorMin = new Vector2(0.5f, 0.5f);
@@ -168,6 +169,10 @@ namespace NonaRoyale.Unity.View
 
             _closing = false;
             _fader.blocksRaycasts = true;
+
+            // Read again on every opening: a card can sit over a match or over
+            // the menu backdrop, and wants a different scrim for each (G6d).
+            if (_scrim != null) _scrim.color = UiTheme.WithAlpha(UiTheme.Obsidian, ScrimAlpha);
             _root.gameObject.SetActive(true);
             _root.SetAsLastSibling();
             Rebuild();

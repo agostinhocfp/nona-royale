@@ -61,8 +61,10 @@ namespace NonaRoyale.Unity.View
 
         protected override float CardWidth => 700f;
 
-        // Over an empty table at first launch; the board shows faintly through.
-        protected override float ScrimAlpha => 0.72f;
+        // Over a match it darkens the board so the card reads. Over the menu
+        // backdrop there is nothing to quieten, so it only settles the room
+        // a step behind the card (G6d).
+        protected override float ScrimAlpha => HasMatch ? 0.72f : 0.30f;
 
         /// <summary>Whether BACK returns to a match (otherwise it returns to the title).</summary>
         private bool HasMatch => _host?.Match != null;

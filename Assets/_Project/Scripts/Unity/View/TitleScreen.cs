@@ -22,24 +22,23 @@ namespace NonaRoyale.Unity.View
     }
 
     /// <summary>
-    /// The title screen: the wordmark over the board, and PLAY, OPERATORS,
-    /// SETTINGS, QUIT (GUI increment J; laid out by VISUAL_PASS.md V3b;
-    /// OPERATORS since OPERATOR_GUIDE.md OG2).
+    /// The title screen: the wordmark, and PLAY, OPERATORS, SETTINGS, QUIT,
+    /// on the menu backdrop (GUI increment J; VISUAL_PASS.md V3b; OPERATORS
+    /// since OPERATOR_GUIDE.md OG2; recomposed by LAUNCH_UI_PASS.md G6d).
     /// </summary>
     /// <remarks>
-    /// <b>No card, and no column.</b> V3's mockup review found that a centred
-    /// 520-wide stack of wordmark and buttons covers the board almost entirely,
-    /// whatever is behind it. So the main page composes into two bands hung off
-    /// the scrim instead: the wordmark pinned to the top, the buttons in one
-    /// horizontal row along the bottom, and the board left whole between them.
-    /// The scrim is light (0.20) because there is now something worth seeing
-    /// through it.
+    /// <b>No board behind it any more</b> (G6d). V3b hung the wordmark from the
+    /// top edge and the buttons from the bottom so the empty board could show
+    /// whole between them; the designer found that board unpremium, and the
+    /// screen now sits on <see cref="MenuBackdrop"/>. With nothing to frame,
+    /// the two bands close up into one composition around the middle of the
+    /// screen: the wordmark just above centre in its glow, the buttons just
+    /// below, the sunburst rising behind both. There is no scrim to speak of:
+    /// the backdrop is the scene.
     ///
-    /// <b>The title is the one flat screen.</b> Every other menu keeps the
-    /// tilted salon; here the board lies straight down, the way it did before
-    /// the room existed, which is the composition the bands were laid out for.
-    /// <c>MatchBootstrap.FrameCamera</c> owns that, and <see cref="RoomBackdrop"/>
-    /// takes itself off screen under a flat camera without being told.
+    /// <b>Settings pages lift the wordmark back to the top edge,</b> where it
+    /// sat before, because their card is centred and would otherwise run into
+    /// it. It glides between the two places rather than jumping.
     ///
     /// <b>The bands are not the card.</b> The settings pages still build into
     /// <see cref="ModalCard"/>'s centred column, so a page swap fades and
@@ -55,8 +54,17 @@ namespace NonaRoyale.Unity.View
     /// </remarks>
     public sealed class TitleScreen : ModalCard
     {
-        /// <summary>Top of the screen to the top of the wordmark, canvas units.</summary>
+        /// <summary>Top of the screen to the top of the wordmark on the settings pages, canvas units.</summary>
         private static float LockupTop => ScreenLayout.Pick(68f, 44f);
+
+        /// <summary>The main page: the centre of the screen to the bottom of the wordmark (G6d).</summary>
+        private static float LockupLift => ScreenLayout.Pick(56f, 70f);
+
+        /// <summary>The main page: the centre of the screen to the top of the menu row (G6d).</summary>
+        private static float MenuDrop => ScreenLayout.Pick(64f, 40f);
+
+        /// <summary>The wordmark's height: NONA, the gap, ROYALE.</summary>
+        private static float LockupHeight => NonaHeight + LockupSpacing + RoyaleHeight;
 
         /// <summary>Bottom of the screen to the bottom of the menu row.</summary>
         private static float MenuBottom => ScreenLayout.Pick(56f, 36f);
@@ -123,14 +131,16 @@ namespace NonaRoyale.Unity.View
         private RectTransform _glow;
         private RectTransform _stamp;
 
+        /// <summary>The screen height the bands were last placed for.</summary>
+        private float _placedHeight = -1f;
+
         protected override float CardWidth => 520f;
 
         /// <summary>
-        /// Light (V3b). The board is whole behind the lockup now, so the scrim
-        /// only has to keep type legible; at 0.45 it was hiding the one thing
-        /// the layout exists to show.
+        /// None (G6d). The title always sits on the menu backdrop, which is
+        /// composed for the type; the scrim is kept only to catch the pointer.
         /// </summary>
-        protected override float ScrimAlpha => 0.20f;
+        protected override float ScrimAlpha => 0f;
 
         protected override bool Framed => false;
 
@@ -162,8 +172,9 @@ namespace NonaRoyale.Unity.View
             // Put back where they belong first: the bands outlive every rebuild,
             // and SlideIn reads its destination off the rect, so a slide started
             // over an interrupted one would settle short and stay there.
-            _lockup.anchoredPosition = new Vector2(0f, -LockupTop);
-            _menu.anchoredPosition = new Vector2(0f, MenuBottom);
+            StopTweens(_lockup);
+            StopTweens(_menu);
+            PlaceBands(animate: false);
 
             UiTween.SlideIn(_lockup, new Vector2(0f, 26f), 0.34f);
             UiTween.SlideIn(_menu, new Vector2(0f, -22f), 0.34f);
@@ -222,25 +233,87 @@ namespace NonaRoyale.Unity.View
         private void PlaceFurniture()
         {
             if (_glow != null)
-            {
                 _glow.sizeDelta = ScreenLayout.IsPortrait ? new Vector2(640f, 430f) : new Vector2(1200f, 720f);
-                _glow.anchoredPosition = new Vector2(0f, -(LockupTop + ScreenLayout.Pick(56f, 40f)));
-            }
 
-            if (_lockup != null)
-            {
-                _lockup.sizeDelta = new Vector2(BandWidth, 0f);
-                _lockup.anchoredPosition = new Vector2(0f, -LockupTop);
-            }
+            if (_lockup != null) _lockup.sizeDelta = new Vector2(BandWidth, 0f);
+            if (_menu != null) _menu.sizeDelta = new Vector2(BandWidth, 0f);
 
-            if (_menu != null)
-            {
-                _menu.sizeDelta = new Vector2(BandWidth, 0f);
-                _menu.anchoredPosition = new Vector2(0f, MenuBottom);
-            }
+            PlaceBands(animate: true);
 
             // Upright the bottom corner is the menu stack's, not spare space.
             if (_stamp != null) _stamp.gameObject.SetActive(!ScreenLayout.IsPortrait);
+        }
+
+        /// <summary>
+        /// Where the wordmark, its glow and the menu go for the current page
+        /// (G6d). The main page closes up around the centre; the settings pages
+        /// put the wordmark back at the top edge, clear of their card.
+        /// </summary>
+        /// <remarks>
+        /// Everything hangs off the screen's centre, top edges down, so the
+        /// wordmark can glide between its two places: a slide between rects
+        /// anchored to different points would have to convert positions first.
+        /// The settings position is worked out from the screen's height, and
+        /// <see cref="LateUpdate"/> places again when that height changes.
+        /// </remarks>
+        /// <param name="animate">Glide the wordmark from where it was, when it moves.</param>
+        private void PlaceBands(bool animate)
+        {
+            if (_lockup == null || _menu == null) return;
+
+            bool main = _page == Page.Main;
+            float half = Root.rect.height * 0.5f;
+            _placedHeight = Root.rect.height;
+
+            // The wordmark, by its top edge.
+            float top = main ? LockupLift + LockupHeight : half - LockupTop;
+            var from = _lockup.anchoredPosition;
+            Anchor(_lockup, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 1f));
+            _lockup.anchoredPosition = new Vector2(0f, top);
+
+            if (animate && from != _lockup.anchoredPosition)
+            {
+                StopTweens(_lockup);
+                UiTween.SlideIn(_lockup, from - _lockup.anchoredPosition, 0.3f);
+            }
+
+            // The menu row keeps its bottom edge still, so the armed QUIT's
+            // warning grows up into the gap rather than pushing the row down.
+            Anchor(_menu, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0f));
+            _menu.anchoredPosition = new Vector2(0f, -(MenuDrop + MenuHeight));
+
+            if (_glow != null)
+            {
+                Anchor(_glow, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f));
+                _glow.anchoredPosition = new Vector2(0f, top - LockupHeight * 0.5f);
+            }
+        }
+
+        /// <summary>Stops the slides still running on a band, so a new one starts from a settled place.</summary>
+        private static void StopTweens(Component target)
+        {
+            foreach (var tween in target.GetComponents<UiTween>())
+            {
+                // Disabled at once: Destroy lands at the end of the frame, and
+                // a tween left enabled would still write this frame.
+                tween.enabled = false;
+                tween.Stop();
+            }
+        }
+
+        /// <summary>Places again when the screen's height changes under a settings page (G6d).</summary>
+        protected override void LateUpdate()
+        {
+            base.LateUpdate();
+
+            if (IsOpen && _lockup != null && !Mathf.Approximately(Root.rect.height, _placedHeight))
+                PlaceBands(animate: false);
+        }
+
+        private static void Anchor(RectTransform rect, Vector2 anchor, Vector2 pivot)
+        {
+            rect.anchorMin = rect.anchorMax = anchor;
+            rect.pivot = pivot;
         }
 
         /// <summary>

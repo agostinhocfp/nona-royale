@@ -1,7 +1,7 @@
 # Nona Royale — Launch UI pass (G6)
 
 > Location in repo: `docs/design/LAUNCH_UI_PASS.md` · Project copy: `claude/LAUNCH_UI_PASS.md`
-> Status: **Open, 2026-09-26.** Audit from four desktop screenshots (title, setup, draft, in-match at round 36). **G6a, G6b and G6b's follow-up passed Play Mode. G6c (draft and setup) written and compile-checked, waiting on Play Mode.** No decisions open.
+> Status: **Open, 2026-09-26.** Audit from four desktop screenshots (title, setup, draft, in-match at round 36). **G6a–G6d passed Play Mode. G6e (grain, haze, beam on the backdrop) written and compile-checked, waiting on Play Mode.** No decisions open.
 > Related: `GUI_PHASE.md` (E–J, G3–G5), `HUD_PASS.md` (H1–H4: the contextual tray, the folded rail, the quiet board — G6b builds on it and does not undo it), `MOBILE.md` (upright layout — every change here must keep M3/M6 intact), `ART_DIRECTION.md` §3 and §8, ADR-0008
 
 ## Verdict
@@ -40,8 +40,8 @@ The chrome is about 80% of a shipping UI. The frame, type and palette are right.
 ### P2 — decisions, not bugs
 
 19. **Board scale — withdrawn as written (2026-09-26).** The flag proposed shrinking the yard tables to enlarge the play space. That is wrong: the cross already spans the board's full width and height, the yards sit inside its corners, and the camera fits the board to the height between the top bar and the tray. Smaller yards free no room and nothing gets bigger. Cells are about 57 px at 1080p, so figures are not undersized there. The real levers, if it ever needs one: the tilted board camera (`BoardCamera.Tilted`, already built, about 1.45× the flat view's area; the default is TopDown), the figure's size within its cell, and the tray and top bar heights.
-20. Title is flat; the board behind setup is tilted. Pick one for the menus.
-21. Release build: drop "Development Build" and the "Prototype build · pieces and board drawn in code" footer.
+20. Title is flat; the board behind setup is tilted. Pick one for the menus. *Superseded 2026-09-26:* the designer asked for no board behind the menus at all ("it doesn't look premium"); see G6d.
+21. Release build: drop "Development Build" and the "Prototype build · pieces and board drawn in code" footer. *2026-09-26: the "Prototype build" stamp stays for now (designer).*
 
 ## Plan
 
@@ -128,3 +128,37 @@ Each increment ends with a Play Mode check (desktop and upright) and a commit.
     - Two humans: the seat hint and number keys come back.
     - Setup: RED (human) cyan; CPU seats in the plain frame with a readable style chip; an empty seat dims. BACK is a smaller button under DRAFT. Every note is one line. ADVANCED shows/hides the seed and SHUFFLE.
     - Upright: the draft footer fits PICK CPUS; setup notes wrap to two lines without clipping; BACK fits.
+- 2026-09-26 — **G6c passed Play Mode.**
+- 2026-09-26 — **G6d written: the menu backdrop (flag 20).** Designer: remove the board from the title and setup screens; "it doesn't look premium". The "Prototype build" stamp stays for now.
+  - **New `View/MenuBackdrop.cs`:** a full-canvas UI layer under everything (`HudRoot.BackdropLayer`, first child of the canvas, edge to edge rather than inset to the safe area). Obsidian base; a warm pool centred on the bottom edge (`DecoSprites.Glow`, GoldBright 10%); a half sunburst rising out of it (36 soft rays, every other at half strength, gold 7%, fading out before the top where the title's glow sits); a vignette (black 85% at the corners); one gilt hairline 28 units in (14 upright) with the corner fans. The sunburst and the vignette are rasterised once and cached. Static. Previewed in numpy before writing; concentric arcs were tried in the preview and dropped (they read as a radar).
+  - **When:** `MatchBootstrap.Update` shows it whenever there is no match, so the title, setup, draft and guide sit on it; set directly too at Start, in `ShowTitle` and at the deal, so no frame shows the board. A card over a match (pause, NEW MATCH, results) keeps the match behind it. The empty room is still built underneath, because the first deal wants it; the backdrop is opaque over it.
+  - **Title recomposed.** With no board to frame, the bands close up around the centre: the wordmark's bottom edge 56 above centre (70 upright), its glow behind it, the menu row's top 64 below (40 upright), bottom edge held so the armed QUIT's warning grows into the gap. The settings pages move the wordmark back to the top edge, clear of their centred card, gliding there (everything hangs off the centre so the slide needs no conversion; placed again if the screen height changes). The title's scrim is 0 — the backdrop is the scene.
+  - **Scrims per opening.** `ModalCard` re-reads `ScrimAlpha` on every `Show`, so a card can differ over a match and over the backdrop. Setup: 0.72 over a match, 0.30 over the backdrop.
+  - `TitleScreen.ReservedTop`/`ReservedBottom` still feed the title's camera framing; the board they framed is now covered, so they only keep the room's framing stable.
+  - Files: `MenuBackdrop` (new; Unity makes its `.meta` on focus), `HudRoot`, `MatchBootstrap`, `ModalCard`, `SetupScreen`, `TitleScreen`. No core change.
+  - **Checked:** the view compiles against the 6000.6 DLLs, 0 warnings. Play Mode is the check.
+  - **Play Mode checklist:**
+    - Launch: the title shows the dark room, the warm pool and rays from the bottom, the gilt frame, and no board, from the first frame.
+    - The wordmark sits just above centre, the four buttons just below; arming QUIT shows "Leaves the game." above the row without moving it.
+    - SETTINGS: the wordmark glides up to the top edge and the card sits clear of it; BACK glides it down again. Sound and Display pages the same.
+    - PLAY: setup sits on the backdrop with a light scrim; the draft sits on it too; no board anywhere.
+    - DEAL: the board and HUD appear, the backdrop is gone. Pause → NEW MATCH: setup shows the match behind it, darkened as before.
+    - MAIN MENU from a match: the backdrop returns with no frame of board.
+    - Upright: the frame hugs the screen at 14 units, the wordmark and the stacked menu both fit, the backdrop reaches under the camera cut-out.
+- 2026-09-26 — **G6d passed Play Mode** (designer: "awesome"). Asked what the style is called: an Art Deco sunburst (sunray motif) in a low-key, vignetted noir light — "Deco noir".
+- 2026-09-26 — **G6e written: grain, haze and a beam on the backdrop,** all in `MenuBackdrop`, so the gradients stop reading as digital. The asset packs were considered first: the MagusVFX and sound packs are for play, not a static backdrop; All In 1 Sprite Shader's Shine could have made the sweep, but the backdrop is UI under URP and the three effects are a few dozen lines in code, so nothing was bought for this.
+  - **Grain:** a 128-texel white-noise tile (`BoardArt.Hash`, point-filtered, repeating) on a `RawImage` over everything but the frame, 1.5 canvas units a texel, alpha = noise³ × 6%. A UI layer can only lift a near-black, so the specks are cubed to keep the average lift near 1%; a flat 3.5% layer was tried in the preview and washed the blacks out. Re-dealt 12 times a second by jumping the tile's offset, like film.
+  - **Haze:** three puffs of `BoardArt.Haze` over the pool (warm white at 6%), on the board lighting's loop — a 46 s Lissajous drift of 5% of their size, a slow turn and a ±25% breath (`SceneLighting.Drift`, G3). 60% size upright.
+  - **Beam:** a soft wedge of GoldBright (4° spread, 6% peak) pivoting on the sunburst's origin. Every 20 s it sweeps from 75° one side to 75° the other over 7 s, eased, its light rising and falling with the sweep so neither end snaps. Dark for the rest of the cycle. It lights the haze as it passes, which is the point.
+  - **Reduced motion:** the grain holds one frame, the haze sits at home at its base strength, the beam does not run. Unscaled time throughout.
+  - Layer order, bottom up: base, pool, haze, rays, beam, vignette, grain, frame. Sizes follow the screen (`Place` runs again when the layout version or the canvas size changes).
+  - Previewed in numpy before writing (grain level, beam strength).
+  - Files: `MenuBackdrop`. No core change.
+  - **Checked:** the view compiles against the 6000.6 DLLs, 0 warnings. Play Mode is the check.
+  - **Play Mode checklist:**
+    - Up close the backdrop has a fine, living grain; at arm's length the blacks still read black, not grey.
+    - Haze drifts slowly in the warm pool; nothing about it pulses fast.
+    - About every 20 s a soft beam sweeps across the sunburst from one side to the other and fades at both ends; between sweeps it is gone.
+    - Settings → Reduced motion on: grain frozen, haze still, no beam. Off again: all three resume.
+    - The wordmark and buttons are still the brightest things on screen; nothing distracts from PLAY.
+    - Upright: the haze fits the screen, the beam reaches the top, the grain stays fine.

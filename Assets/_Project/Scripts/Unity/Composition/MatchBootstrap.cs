@@ -289,6 +289,9 @@ namespace NonaRoyale.Unity.Composition
         private RoomBackdrop _room;
         private TableBody _tableBody;
 
+        /// <summary>What the menus sit on when there is no match (G6d). Replaces the empty board there.</summary>
+        private MenuBackdrop _menuBackdrop;
+
         /// <summary>Light that answers play: selection, casts, knockouts, HOME (LT2).</summary>
         private EventLights _eventLights;
 
@@ -387,6 +390,11 @@ namespace NonaRoyale.Unity.Composition
 
             _hudRoot = GetComponent<HudRoot>() ?? gameObject.AddComponent<HudRoot>();
             BindScreens();
+
+            // Under every card, and up whenever there is no match (G6d).
+            _menuBackdrop = Ensure<MenuBackdrop>();
+            _menuBackdrop.Build(_hudRoot.BackdropLayer);
+            _menuBackdrop.Visible = _match == null;
 
             if (skipSetup)
             {
@@ -520,6 +528,9 @@ namespace NonaRoyale.Unity.Composition
             _title.Open();
             TearDownMatch();
             ShowEmptyTable();
+
+            // Set here as well as in Update, so no frame shows the board.
+            if (_menuBackdrop != null) _menuBackdrop.Visible = true;
         }
 
         /// <summary>
@@ -710,6 +721,7 @@ namespace NonaRoyale.Unity.Composition
             // are rebuilt, since the pieces they tracked were just destroyed.
             _hudRoot = GetComponent<HudRoot>() ?? gameObject.AddComponent<HudRoot>();
             _hudRoot.MatchLayerVisible = true;
+            if (_menuBackdrop != null) _menuBackdrop.Visible = false;
             var hud = _hudRoot.MatchLayer;
 
             _pieceHud = GetComponent<PieceHudLayer>() ?? gameObject.AddComponent<PieceHudLayer>();
@@ -1230,6 +1242,11 @@ namespace NonaRoyale.Unity.Composition
             // A menu backdrop, so it is up whenever a card is. RoomBackdrop
             // holds it off when the camera could not be tilted.
             if (_room != null) _room.Visible = CurrentScreen != AppScreen.Match;
+
+            // No match, no board behind the menus: the title, setup, draft and
+            // guide sit on the backdrop instead (G6d). A card over a match
+            // (pause, NEW MATCH, results) keeps the match behind it.
+            if (_menuBackdrop != null) _menuBackdrop.Visible = _match == null;
 
             bool paused = ModalOpen;
 
