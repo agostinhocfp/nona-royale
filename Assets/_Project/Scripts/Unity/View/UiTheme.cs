@@ -373,6 +373,15 @@ namespace NonaRoyale.Unity.View
         /// <summary>The Deco medallion's face (BS3): black lacquer, a shade under the tiles.</summary>
         public static readonly Color DecoMedallionFace = Hex("0D0A0C");
 
+        /// <summary>The Deco tables' felt (BS4): brighter than Classic's, so each table owns its seat colour.</summary>
+        public const float DecoFeltBrightness = 0.8f;
+
+        /// <summary>The Deco table's centre compass: gilt, between shade and light.</summary>
+        public static readonly Color DecoTableEmblem = Color.Lerp(DecoGilt, DecoGiltLight, 0.55f);
+
+        /// <summary>The tint for a painted, greyscale chair: its seat, lifted a little toward white.</summary>
+        public static Color DecoChairTint(Color seat) => Color.Lerp(seat, Color.white, 0.15f);
+
         /// <summary>A seat colour darkened to a tile face, keeping <paramref name="keep"/> of it.</summary>
         public static Color DecoSeatFace(Color seat, float keep) =>
             new Color(seat.r * keep, seat.g * keep, seat.b * keep, 1f);

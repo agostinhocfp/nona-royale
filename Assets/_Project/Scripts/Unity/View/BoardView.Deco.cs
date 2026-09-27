@@ -35,6 +35,14 @@ namespace NonaRoyale.Unity.View
     /// moment leaves the centre (D2). The arrival light
     /// (<c>EventLights.VaultSwell</c>) is a light, not board art, and stays.
     ///
+    /// <b>Tables in their seat's colour, rimmed in gilt</b> (BS4). Brighter
+    /// felt than Classic's, a heavy bevelled gilt rim with an engraved line
+    /// inside it, a gilt compass at the centre, and a chair under each seat
+    /// once <c>yard_chair</c> exists (D3: until then, Classic's seat marks).
+    /// Classic's dotted ring, arc, dealer's spot and felt chips are not
+    /// drawn: the target's tables are quieter, and chips come back as props
+    /// in BS6.
+    ///
     /// <b>Readability is the constraint.</b> Highlights, reach and targets
     /// draw on the Default layer, above the whole board layer, so they
     /// always land on top of the tiles; the tiles are held dark enough that
@@ -166,6 +174,75 @@ namespace NonaRoyale.Unity.View
             float emblem = diameter * DecoEmblemOfMedallion;
             if (emblemArt != null) SlotSprite("medallion_emblem", emblemArt, at, emblem, Color.white, VaultBossOrder);
             else Sprite("medallion_emblem", DecoBoardArt.MedallionEmblem, at, emblem, Color.white, VaultBossOrder);
+        }
+
+        /// <summary>The table's centre emblem, and the diameter of the gilt ring round it, in cell spacings.</summary>
+        public const float DecoTableEmblemSize = 1.25f;
+        public const float DecoTableEmblemRing = 1.5f;
+
+        /// <summary>A chair, in cell spacings: a little wider than the seated figure it holds.</summary>
+        public const float DecoChairSize = 0.95f;
+
+        /// <summary>
+        /// The painted felt's diameter, as a fraction of the table's: to just
+        /// under the rim's outer edge, so the rim covers the felt's edge.
+        /// </summary>
+        private const float DecoFeltOfTable = 0.9f;
+
+        /// <summary>
+        /// The z rotation, in degrees, that turns a chair drawn facing down
+        /// (seat toward the sprite's bottom, back to its top) so that its seat
+        /// faces the table's centre from a seat at <paramref name="seatAngle"/>
+        /// (degrees counter-clockwise from east, <see cref="BoardLayout.SeatAngle"/>).
+        /// </summary>
+        public static float DecoChairRotation(float seatAngle) => seatAngle - 90f;
+
+        /// <summary>A Deco yard table (BS4): shadow, felt, rim, emblem, and chairs or seat marks.</summary>
+        private void DrawDecoTable(BoardLayout layout, PlayerColor seat, int seats)
+        {
+            float spacing = layout.Spacing;
+            var at = layout.PositionOf(CellRef.Yard(seat));
+            float diameter = layout.TableDiameter;
+            var seatColour = UiTheme.Seat(seat);
+
+            Sprite($"felt_shadow_{seat}", BoardArt.SoftDisc, at + new Vector3(0.1f, -0.22f, 0f) * spacing,
+                diameter * 1.06f, UiTheme.Shadow, FeltShadowOrder);
+
+            var feltArt = BoardSprites.Get(BoardSprites.TableFelt);
+            var felt = UiTheme.DecoSeatFace(seatColour, UiTheme.DecoFeltBrightness);
+            if (feltArt != null) SlotSprite($"felt_{seat}", feltArt, at, diameter * DecoFeltOfTable, felt, FeltOrder);
+            else Sprite($"felt_{seat}", BoardArt.Felt, at, diameter, felt, FeltOrder);
+
+            // The centre: a gilt compass in a thin engraved ring (the home cells' ring, drawn larger).
+            Sprite($"felt_emblem_ring_{seat}", DecoBoardArt.CellRing, at,
+                DecoTableEmblemRing * spacing / (2f * DecoBoardArt.CellRingRadius), UiTheme.DecoHomeRing, FeltTrimOrder);
+            var emblemArt = BoardSprites.Get(BoardSprites.TableEmblem);
+            if (emblemArt != null)
+                SlotSprite($"felt_emblem_{seat}", emblemArt, at, DecoTableEmblemSize * spacing, Color.white, FeltTrimOrder);
+            else
+                Sprite($"felt_emblem_{seat}", DecoBoardArt.Compass, at, DecoTableEmblemSize * spacing,
+                    UiTheme.DecoTableEmblem, FeltTrimOrder);
+
+            // A chair under every seat once the art exists (D3); Classic's marks until then.
+            var chairArt = BoardSprites.Get(BoardSprites.Chair);
+            for (int i = 0; i < seats; i++)
+            {
+                var place = layout.YardSeat(seat, i);
+                if (chairArt != null)
+                {
+                    var chair = SlotSprite($"chair_{seat}_{i}", chairArt, place, DecoChairSize * spacing,
+                        UiTheme.DecoChairTint(seatColour), SeatMarkOrder);
+                    chair.transform.rotation = Quaternion.Euler(0f, 0f, DecoChairRotation(BoardLayout.SeatAngle(i)));
+                }
+                else
+                {
+                    Sprite($"seat_{seat}_{i}", Primitives.Disc, place, 0.46f * spacing, UiTheme.SeatMark, SeatMarkOrder);
+                }
+            }
+
+            var rimArt = BoardSprites.Get(BoardSprites.TableRim);
+            if (rimArt != null) SlotSprite($"rim_{seat}", rimArt, at, diameter, Color.white, RimOrder);
+            else Sprite($"rim_{seat}", DecoBoardArt.TableRim, at, diameter, Color.white, RimOrder);
         }
 
         /// <summary>

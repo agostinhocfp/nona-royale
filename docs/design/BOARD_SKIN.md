@@ -1,9 +1,9 @@
 # Nona Royale — Board skin (BS-series)
 
 > Location in repo: `docs/design/BOARD_SKIN.md` · Project copy: `claude/BOARD_SKIN.md`
-> Status: **Open, 2026-09-27.** BS0, BS1 and BS2 accepted. BS3 (the Deco centre) written, waiting on Play Mode and commit.
+> Status: **Open, 2026-09-27.** BS0–BS3 accepted. BS4 (the Deco tables) written, waiting on Play Mode and commit.
 > Design: `claude/HANDOFF_board_skin.md` (the code route). Sister: `claude/HANDOFF_board_assets.md` (the sprite route); its §1 table is the contract, copied below.
-> Target: `docs/art/VISUAL_TARGET.png`. Acceptance for every increment is a Play Mode screenshot of the board beside it.
+> Target: `docs/art/VISUAL_TARGET.png`, **the simple version since 2026-09-27** (steel frame, no props); the first, ornate one is `docs/art/VISUAL_TARGET_ORNATE.png`, for materials only. Acceptance for every increment is a Play Mode screenshot of the board beside it.
 > Baseline: `docs/art/BASELINE_BS0.png` (Classic, flat, 2560×1440, 2026-09-27).
 > Related: `ART_DIRECTION.md` v6 §2.2, §3, §6.1, §10 ref 5 · `LAUNCH_UI_PASS.md` · ADR-0010 (URP 2D, linear)
 
@@ -59,6 +59,29 @@ Files go in `Assets/_Project/Art/Resources/Art/Board/`, as PNG, named exactly af
 **Route changes** (a code-first row flipping to sprite-first after a checkpoint) are logged here and in the handoff's status table.
 
 ## Log
+
+- 2026-09-27 — **BS4 written: the Deco tables.** On HEAD `8b84b23`.
+  - **On Deco, `Build` draws `DrawDecoTable` for each seat instead of `DrawTable`;** Classic's tables are untouched (D4).
+  - **Felt** in the seat's colour at 80 % (`UiTheme.DecoFeltBrightness`; Classic's is 62 %), so each table owns its jewel tone as the target's do. It reuses `BoardArt.Felt` (vignette, a highlight toward the light, fibre, or the painted `board_felt`). A filled `yard_table_felt` replaces it, tinted with the same colour and drawn at 90 % of the table so the rim covers its edge.
+  - **The rim** (`DecoBoardArt.TableRim`, 512 px, colours baked): a stepped inner lip, a dark groove, a rounded gilt bead lit from the upper left with one glint at 128°, and a dark outer edge; inside it, a faint engraved gilt line on the felt at 79 % of the radius. `yard_table_rim` replaces it.
+  - **The centre:** a gilt compass (the start cells' `DecoBoardArt.Compass`, tinted `UiTheme.DecoTableEmblem`, 1.25 spacings) in the home cells' engraved ring drawn at 1.5 spacings. `yard_table_emblem` replaces the compass.
+  - **Chairs (D3):** with `yard_chair` filled, one chair per seat at `BoardLayout.YardSeat`, under the seated figure, turned so its seat faces the table (`BoardView.DecoChairRotation` = seat angle − 90°, for art drawn facing down) and tinted `UiTheme.DecoChairTint` (the seat colour, 15 % toward white). Empty slot: Classic's seat marks, as D3 says.
+  - **Not drawn on Deco:** Classic's dotted ring, arc, dealer's spot and felt chips. The target's tables are quieter, and the simple target drops chips altogether.
+  - **Tests.** `DecoTableTests` (new), 3: a turned chair faces the centre from all eight seats; the centre ring clears every chair and every chair stays inside the felt's gilt line, which stays inside the rim; chairs never overlap even with a squad of eight. All pass offline.
+  - **Checks.** Cloud compile on the device's tree: core 969/969; Core, Unity (with and without `DEVELOPMENT_BUILD`), EditorTools and EditTests build with 0 warnings. 39 EditMode tests pass offline; 3 need Unity.
+  - **Deviation from the target, for when the chair art is made:** the target's chairs are large curved armchairs *around the outside* of the rim, and its pawns stand on the felt. Ours sit under the seated figures at `YardSeat` (55 % of the radius, on the felt), because the figures sit there and moving them changes shared geometry (`BoardLayout.SeatRadius`, Classic too). The yard block leaves only half a spacing outside the rim, so a ring outside would not fit either. The `yard_chair` prompt should ask for a compact armchair seen from above, not the target's sofa arcs.
+  - **Play Mode checklist:**
+    - Deco: four tables in their seat colours with a heavy gilt rim and a gilt compass; no dotted ring, arc, spot or chips. Classic: unchanged.
+    - Seated figures read on the brighter felt at phone size, in all four colours (Revú on red, ART §5.1); standing up leaves a readable seat mark.
+    - The rim's glint sits at the upper left on all four tables, flat and tilted; the rim doesn't shimmer when the tilted camera settles.
+    - The felt's gilt line never runs under a seated figure's face.
+    - Watch for: the felt too bright against the tiles (`DecoFeltBrightness`); the rim too loud for the gold budget; the compass fighting a seated figure.
+
+- 2026-09-27 — **The target is replaced by its simple version** (designer; picker, recommended option). `VISUAL_TARGET_UPDATED_SIMPLE.png` became `VISUAL_TARGET.png`; the first one is `VISUAL_TARGET_ORNATE.png`. The board, the tables and the chairs are the same; the frame is dark steel instead of gilt; the candles, plants, instrument and chips are gone. **Consequences:** BS6 (props) is **parked** and the four `prop_*` slots with it (kept in code, harmless when empty); BS5's warm light no longer hangs on candle sprites; the frame (open item) is steel, which stops it spending the gold budget. New in the simple target and not yet planned: each yard block is a dark panel edged in its seat's colour, with gilt corner ornaments. It joins the gap table as row 10. `ART_DIRECTION.md` §10 ref 5 and its status history updated.
+
+- 2026-09-27 — **BS3 accepted** (designer: all green). **Its code landed inside `8b84b23`**, whose message names only BS2: the working tree held BS3 when it was committed. `DecoCentreTests` was left out of that commit and goes in with BS4.
+
+- 2026-09-27 — **A stale `.git/index.lock`** was left by a read-only `git diff` from the device shell (the LFS filter isn't installed there, so git died holding the lock), the gotcha `HANDOFF_launch_ui.md` §2 warns of. It was moved to `Temp/stale_index.lock` (the device shell can't delete) before it could block a commit. Rule kept: never `git diff` from the device.
 
 - 2026-09-27 — **BS3 written: the Deco centre (D2).** On the uncommitted BS1 + BS2 tree.
   - **On Deco, `Build` draws `DrawDecoCentre` instead of `DrawVault`;** Classic keeps its vault untouched (D4). No glow on Deco: the win moment leaves the centre (D2). `EventLights.VaultSwell`, the arrival light, is a light and not board art, so it still swells at the centre.
@@ -116,8 +139,9 @@ Files go in `Assets/_Project/Art/Resources/Art/Board/`, as PNG, named exactly af
   | 5 | Tables | Seat felt, heavy gilt rim, emblem, a ring of armchairs | Tinted felt, dotted ring, arc, spot and a strong rim. **The closest element to the target.** No chairs; seat marks invisible | BS4 |
   | 6 | Weight | Drop shadows under everything raised | The cross's shadow vanishes into the black table; nothing else casts one | BS5 |
   | 7 | Light | Candle pools at the corners, gilt catching light | One hot pool at the vault; the arm pools barely show | BS5 |
-  | 8 | Props | Candles, chips, plants, instrument | None beyond the felt's chips | BS6 |
-  | 9 | Table and frame | Gilt frame, rails, tray | Black carpet, the oxblood rail as a thin red line | Open (D4 note) |
+  | 8 | Props | Candles, chips, plants, instrument (ornate only; none in the simple target) | None beyond the felt's chips | BS6, parked |
+  | 9 | Table and frame | Gilt frame, rails, tray (ornate); **dark steel frame** (simple target, from 2026-09-27) | Black carpet, the oxblood rail as a thin red line | Open (D4 note) |
+  | 10 | Yard blocks (simple target) | A dark panel per yard, edged in its seat's colour, gilt corner ornaments | Bare carpet | Not yet planned |
 
 - 2026-09-27 — **BS1 written: the sprite slots.** On HEAD `64f6a21`. Nothing on screen changes: nothing reads a slot yet, and the folder is empty.
   - **`View/BoardSprites.cs` (new).** The contract in code: one constant per slot and `Slots`, a list of `BoardSlot` (name, painted size, tinted or not). `Get(slot)` loads `Resources/Art/Board/<slot>` as a `Sprite`, caches it (a cached null means "looked, empty"; a sprite the editor destroyed is looked up again), and returns null for an empty slot, so the caller keeps its procedural surface. `Has`, `Filled`, `TryGetSlot`, `IsSlot`. A name outside the contract **throws**, because a misspelt slot in code would otherwise look empty forever. `UnitScale(sprite)` returns the scale that draws a sprite one unit across from its bounds, so BS2+ never depend on pixels-per-unit being right. If a file is in the folder but not imported as a sprite, one warning says so instead of the slot silently staying procedural. The cache clears on entering Play Mode (`SubsystemRegistration`), so "restart Play Mode to see a new file" holds even if domain reload is turned off later.

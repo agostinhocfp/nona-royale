@@ -155,7 +155,11 @@ namespace NonaRoyale.Unity.View
             if (Skin == BoardSkin.Deco) DrawDecoTrack(map, layout);
             else DrawTrack(map, layout);
 
-            foreach (var seat in Seats) DrawTable(layout, seat, seatsPerTable);
+            foreach (var seat in Seats)
+            {
+                if (Skin == BoardSkin.Deco) DrawDecoTable(layout, seat, seatsPerTable);
+                else DrawTable(layout, seat, seatsPerTable);
+            }
 
             if (Skin == BoardSkin.Deco) DrawDecoCentre(layout);
             else DrawVault(layout);

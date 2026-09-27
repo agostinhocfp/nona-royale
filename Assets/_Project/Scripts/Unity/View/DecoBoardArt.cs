@@ -7,8 +7,9 @@ namespace NonaRoyale.Unity.View
     /// <summary>
     /// The Deco skin's procedural board art: the cells (board skin BS2) — a
     /// tile face, its trim (bevel and gilt edge), a gilt ring for the home
-    /// columns and a compass for the start cells — and the centre (BS3) — the
-    /// medallion, its emblem and the four corner wedges. Built once.
+    /// columns and a compass for the start cells — the centre (BS3) — the
+    /// medallion, its emblem and the four corner wedges — and the tables'
+    /// heavy gilt rim (BS4). Built once.
     /// </summary>
     /// <remarks>
     /// <b>The fallback, not the ceiling.</b> Each piece has a sprite slot in
@@ -38,6 +39,18 @@ namespace NonaRoyale.Unity.View
         /// <summary>The texture size of the centre's sprites (BS3), in pixels: drawn larger than a cell.</summary>
         public const int CentreSize = 256;
 
+        /// <summary>The texture size of the table rim (BS4): a table is five spacings across.</summary>
+        public const int TableSize = 512;
+
+        /// <summary>
+        /// The table rim's inner edge, as a fraction of the table's radius. The
+        /// felt runs a little under it, so no seam shows where they meet.
+        /// </summary>
+        public const float RimInner = 0.855f;
+
+        /// <summary>The engraved gilt line on the felt, inside the rim, as a fraction of the radius.</summary>
+        public const float FeltLine = 0.79f;
+
         /// <summary>The brightness the tile's face is painted at, 0 to 1.</summary>
         public const float FaceValue = 0.72f;
 
@@ -50,12 +63,15 @@ namespace NonaRoyale.Unity.View
         /// <summary>The gilt edge's width, in pixels of <see cref="Size"/>.</summary>
         private const float EdgeWidth = 3.2f;
 
+        /// <summary>The engraved ring's radius, as a fraction of its sprite's width.</summary>
+        public const float CellRingRadius = 0.31f;
+
         /// <summary>Where the home column's ring sits and how thick it is, in pixels.</summary>
-        private const float RingRadius = 0.31f * Size;
+        private const float RingRadius = CellRingRadius * Size;
         private const float RingWidth = 2.6f;
 
         private static Sprite _body, _trimGilt, _trimCyan, _ring, _compass;
-        private static Sprite _medallion, _medallionEmblem, _wedge;
+        private static Sprite _medallion, _medallionEmblem, _wedge, _tableRim;
 
         /// <summary>A square tile's face, edge to edge, greyscale, with a faint tinted bevel.</summary>
         public static Sprite TileBody => _body != null ? _body : (_body = Raster("deco_tile_body", BodyAt));
@@ -362,6 +378,72 @@ namespace NonaRoyale.Unity.View
             var colour = Color.Lerp(UiTheme.DecoGilt * 0.55f, UiTheme.DecoGiltLight, k);
             colour = Color.Lerp(colour, UiTheme.DecoGilt * 0.35f, 0.5f * Line(Mathf.Abs(s) / perPixel, 0.9f));
             colour.a = alpha;
+            return colour;
+        }
+
+        // ── The tables (BS4) ───────────────────────────────────────────
+
+        /// <summary>
+        /// A heavy gilt ring for a yard table, lit from the upper left: a
+        /// stepped inner lip, a rounded bead with one glint, and a dark outer
+        /// edge; plus an engraved gilt line on the felt just inside it. The
+        /// centre is transparent.
+        /// </summary>
+        public static Sprite TableRim => _tableRim != null ? _tableRim
+            : (_tableRim = Raster("deco_table_rim", TableRimAt, TableSize));
+
+        private static Color TableRimAt(float px, float py)
+        {
+            float half = TableSize * 0.5f;
+            float dx = (px - half) / half;
+            float dy = (py - half) / half;
+            float r = Mathf.Sqrt(dx * dx + dy * dy);
+
+            float inv = 1f / Mathf.Max(r, 0.0001f);
+            float facing = (-0.6f * dx + 0.8f * dy) * inv;
+
+            // The felt's engraved line: thin, and faint enough to stay under the figures.
+            float line = 0.55f * Line(Mathf.Abs(r - FeltLine) * half, 1.4f);
+
+            float outer = 1f - 1.5f / half;
+            float ring = Cover((r - outer) * half) * Cover((RimInner - r) * half);
+            if (ring <= 0f && line <= 0f) return new Color(UiTheme.DecoGilt.r, UiTheme.DecoGilt.g, UiTheme.DecoGilt.b, 0f);
+
+            Color colour;
+            if (r < RimInner + 0.5f / half)
+            {
+                colour = UiTheme.DecoGiltLight;
+            }
+            else
+            {
+                float t = Mathf.Clamp01((r - RimInner) / (outer - RimInner));
+
+                // A stepped lip (the inner fifth), then the bead.
+                float k;
+                if (t < 0.22f)
+                {
+                    k = 0.35f + 0.25f * facing;
+                }
+                else
+                {
+                    float u = (t - 0.22f) / 0.78f;
+                    float bead = Mathf.Pow(Mathf.Sin(Mathf.PI * u), 0.6f);
+                    k = 0.25f + 0.5f * bead + 0.3f * facing * bead;
+
+                    // One glint on the bead, facing the light.
+                    float angle = Mathf.Atan2(dy, dx) * Mathf.Rad2Deg;
+                    float off = Mathf.DeltaAngle(angle, 128f);
+                    k += 0.4f * Mathf.Exp(-(off * off) / (2f * 16f * 16f)) * bead;
+                }
+
+                colour = Color.Lerp(UiTheme.DecoGilt * 0.4f, UiTheme.DecoGiltLight, Mathf.Clamp01(k));
+
+                // A dark groove where the lip meets the bead, and a dark outer edge.
+                colour = Color.Lerp(colour, Color.black, 0.55f * Line(Mathf.Abs(t - 0.22f) * (outer - RimInner) * half, 1.3f));
+                colour = Color.Lerp(colour, Color.black, 0.5f * Line((outer - r) * half, 2f));
+            }
+
+            colour.a = Mathf.Max(ring, line);
             return colour;
         }
 
