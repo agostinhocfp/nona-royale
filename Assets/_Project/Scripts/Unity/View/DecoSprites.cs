@@ -121,6 +121,46 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         public static Sprite PanelSheen => _panelSheen != null ? _panelSheen : (_panelSheen = BuildSheen(64));
 
+        // ── Match bars (G9b) ────────────────────────────────────────────
+
+        private static Sprite _leatherAlong, _leatherUp, _falloffDown, _falloffRight, _wellShade, _wellShadeChip;
+
+        /// <summary>Where across the rail its highlight sits, from the lit side (0) to the far side (1).</summary>
+        private const float LeatherHighlightAt = 0.35f;
+
+        /// <summary>The rail's darkest grey, a fraction of its tint.</summary>
+        private const float LeatherShadowGrey = 0.2f;
+
+        /// <summary>A well's inner shadow at the top edge, and its lit bottom lip.</summary>
+        private const float WellShadowAlpha = 0.65f;
+        private const float WellLipAlpha = 0.12f;
+
+        /// <summary>
+        /// A padded leather rail running along x: a tube lit from above, its
+        /// highlight a third of the way down, dark again at the far side.
+        /// Grey, so the tint is the leather at its highlight. Stretched simple.
+        /// </summary>
+        public static Sprite LeatherAlong => _leatherAlong != null ? _leatherAlong : (_leatherAlong = BuildLeather(true));
+
+        /// <summary>The same rail running along y, lit from the left.</summary>
+        public static Sprite LeatherUp => _leatherUp != null ? _leatherUp : (_leatherUp = BuildLeather(false));
+
+        /// <summary>Alpha falling from full at the top to nothing at the foot. Flip it for the other way.</summary>
+        public static Sprite FalloffDown => _falloffDown != null ? _falloffDown : (_falloffDown = BuildFalloff(true));
+
+        /// <summary>Alpha falling from full at the left to nothing at the right.</summary>
+        public static Sprite FalloffRight => _falloffRight != null ? _falloffRight : (_falloffRight = BuildFalloff(false));
+
+        /// <summary>
+        /// A well's shading over <see cref="ButtonFill"/>: a soft shadow inside
+        /// the top edge and a thin catch of light on the bottom lip. Colour
+        /// baked in; draw it white. Sliced like the fill.
+        /// </summary>
+        public static Sprite WellShade => _wellShade != null ? _wellShade : (_wellShade = BuildWellShade(6));
+
+        /// <summary>The same shading over <see cref="ChipFill"/>, for bars.</summary>
+        public static Sprite WellShadeChip => _wellShadeChip != null ? _wellShadeChip : (_wellShadeChip = BuildWellShade(4));
+
         // ── Board (world space) ─────────────────────────────────────────
 
         private static Sprite _tileInlay, _ringThin, _glow;
@@ -212,6 +252,63 @@ namespace NonaRoyale.Unity.View
                 // Full along the top and the cuts, gone two units below them.
                 float fade = Mathf.Clamp01((up - (half - cut - 2f)) / 2f);
                 return band * fade;
+            }, HudPixelsPerUnit, new Vector4(border, border, border, border));
+        }
+
+        private static Sprite BuildLeather(bool horizontal)
+        {
+            const int across = 30;
+            const int along = 2;
+
+            return RasterizeShaded(horizontal ? along : across, horizontal ? across : along, (px, py) =>
+            {
+                // 0 at the lit side (the top, or the left), 1 at the far side.
+                float t = horizontal ? (across - py) / across : px / across;
+                float k = Mathf.Clamp01(0.5f + 0.5f * Mathf.Cos((t - LeatherHighlightAt) * Mathf.PI * 1.6f));
+                float grey = Mathf.Lerp(LeatherShadowGrey, 1f, k);
+                return new Color(grey, grey, grey, 1f);
+            }, HudPixelsPerUnit, Vector4.zero);
+        }
+
+        private static Sprite BuildFalloff(bool vertical)
+        {
+            const int length = 32;
+
+            return Rasterize(vertical ? 2 : length, vertical ? length : 2, (px, py) =>
+            {
+                float t = vertical ? (length - py) / length : px / length;
+                return (1f - t) * (1f - t);
+            }, HudPixelsPerUnit, Vector4.zero);
+        }
+
+        /// <summary>
+        /// The inside of a recess, cut like <see cref="Chamfer"/> with the same
+        /// border: shadow falling from the top edge over the top border, a
+        /// one-unit light on the bottom edge, nothing in between.
+        /// </summary>
+        private static Sprite BuildWellShade(int cut)
+        {
+            int border = cut + 3;
+            int size = border * 2 + 2;
+            float half = size * 0.5f;
+            float reach = border - 1f;
+
+            return RasterizeShaded(size, size, (px, py) =>
+            {
+                float x = Mathf.Abs(px - half);
+                float y = Mathf.Abs(py - half);
+                float box = Mathf.Max(x - half, y - half);
+                float corner = (x + y - (2f * half - cut)) / Mathf.Sqrt(2f);
+                float inside = Coverage(Mathf.Max(box, corner));
+
+                // Rows count up from the bottom.
+                float shadow = Mathf.Clamp01(1f - (size - py) / reach);
+                shadow *= shadow * WellShadowAlpha;
+                float lip = Line(Mathf.Abs(py - 1f), 1f) * WellLipAlpha;
+
+                return shadow >= lip
+                    ? new Color(0f, 0f, 0f, shadow * inside)
+                    : new Color(1f, 1f, 1f, lip * inside);
             }, HudPixelsPerUnit, new Vector4(border, border, border, border));
         }
 

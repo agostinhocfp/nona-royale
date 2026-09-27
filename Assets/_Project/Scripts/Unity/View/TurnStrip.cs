@@ -124,7 +124,8 @@ namespace NonaRoyale.Unity.View
             _rect.pivot = new Vector2(0.5f, 1f);
             _rect.sizeDelta = new Vector2(0f, ReservedHeight);
             _rect.anchoredPosition = Vector2.zero;
-            UiKit.Dock(_rect, false, RectTransform.Edge.Bottom);
+            // Upright the squad band sits under the bar, so its edge is a seam, not the table's (G9b).
+            UiKit.Dock(_rect, false, RectTransform.Edge.Bottom, rail: !_builtPortrait);
 
             if (_builtPortrait) BuildUpright();
             else BuildWide();

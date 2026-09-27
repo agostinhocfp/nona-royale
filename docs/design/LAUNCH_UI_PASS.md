@@ -467,3 +467,25 @@ Each increment ends with a Play Mode check (desktop and upright) and a commit.
     - Trait chips on the tray card: a thin lip, not a fat one.
     - Stacks: the settings rows, the rail's rows and the menus show each lip clear of the next plate.
     - Tuning knobs, all in `UiTheme`'s Plate block: `PlateFaceFoot` (shading), `PlateLipShade`, `PlateRim` alpha, and the two shadows. `UiPlate.MaxDepth` sets the height.
+- 2026-09-27 — **G9b: the match bars become furniture**. This is the second half of the physicality pick; G9a did the plates.
+  - **Lacquer** (`UiGradient`, new, a vertex-colour `BaseMeshEffect`): every docked bar — the top bar, the squad rail, the history strip and the tray — shades from `UiTheme.BarTop` (211819) at its top to `BarFoot` (0A0708) at its foot, both at 97%. Before, it was one flat `Panel` fill.
+  - **The padded rail** (`UiKit.Rail`, drawn by `UiKit.Dock` along the edge that faces the board):
+    - Oxblood leather, 10 units thick (`UiKit.RailWidth`). It is a tube lit from above, or from the left on a side bar: `DecoSprites.LeatherAlong`/`LeatherUp`, grey baked from 20% to full, tinted `UiTheme.Leather` (6A2F3B).
+    - 3 units of the rail lie inside the bar (`RailInside`). The other 7 overhang onto the table's margin, which the camera already leaves at about 6% of the height, so the bars' content loses almost no room.
+    - A brass bead (`UiTheme.Bead`, gold at 80%) runs where the rail meets the bar. It replaces the old gilt hairline.
+    - The rail casts a short shadow under itself and a 10-unit shade onto its bar, strongest against the bead (`DecoSprites.FalloffDown`/`FalloffRight`, flipped as the edge needs).
+    - Only an edge that faces the board gets a rail. Upright, the top bar over the squad band and the tray under the history band are seams, so those keep the hairline (`Dock(…, rail: false)`).
+    - In landscape the side bars' rails stop where they meet the tray's rail (`railTrim`), instead of running on beside the tray.
+  - **Wells** (`UiKit.Well`, `DecoSprites.WellShade`/`WellShadeChip`): a dark chamfered recess (`UiTheme.Well`, 080607) with an inner shadow falling from its top edge and a one-unit catch of light on its bottom lip.
+    - The dice sit in one, centred, so the dice roller now lands exactly on them. A live die stands in it as a plate with a lip and shadow. A spent or waiting slot is only its mark on the well's floor, with no tile.
+    - `UiKit.Bar` recesses any bar 8 units or taller: the tray's health bar becomes a slot with the fill set 2 units inside. The fill hangs off an inset rect, so it never goes to negative width. The rail's 4- and 5-unit bars stay flat.
+  - Files: `UiGradient` (new, with meta), `UiKit`, `DecoSprites`, `UiTheme`, `TurnStrip`, `ActionTray`, `SquadRail`, `HistoryStrip`.
+  - **Checked:** core 958 passing. The view and the Unity edit-mode tests compile with and without `DEVELOPMENT_BUILD`, 0 warnings.
+  - **Play Mode checklist:**
+    - Wide: the top bar has a padded oxblood rail along its bottom edge. So do the squad rail (its right edge), the history strip (its left edge) and the tray (its top edge). Each rail has a thin brass bead on the bar side and a soft shade under it on the bar. The rails frame the board like a table's edge.
+    - The four corners where the rails meet: the side rails should stop at the tray's rail, and the top bar's rail should cross over the side rails' tops. If a join looks wrong, screenshot it: overlaps and draw order are the likely fixes.
+    - Things near the rails: the turn banner or pill under the top bar, the turn button at the board's corner, and the piece tags at the board's edge should all read over or clear of the 7-unit overhang.
+    - The bars read darker at the foot than at the top; the top bar reads lit.
+    - Tray: the dice sit centred in a dark recess, and live dice stand up in it with a small shadow. A roll's dice fly in and land on the slots. The health bar is a recessed slot with the fill inside it, and it still glides on damage.
+    - Upright: no leather between the top bar and the squad band, or between the history band and the tray. The squad band's bottom edge and the history band's top edge have rails.
+    - Knobs: `UiTheme` has `BarTop`/`BarFoot`, `Leather`, `Bead`, `RailShade`/`RailDrop` and `Well`; `UiKit` has `RailWidth` and `RailInside`.

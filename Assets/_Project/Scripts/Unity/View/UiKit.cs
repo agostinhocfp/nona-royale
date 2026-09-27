@@ -102,22 +102,144 @@ namespace NonaRoyale.Unity.View
 
         // ── Panels ───────────────────────────────────────────────────────
 
+        /// <summary>How thick a match bar's leather rail is (G9b).</summary>
+        public const float RailWidth = 10f;
+
         /// <summary>
-        /// A panel docked to a screen edge: a dark field with one gilt
-        /// hairline along <paramref name="rule"/> (G3; it was a double rule
-        /// with a diamond at its middle).
+        /// How much of the rail lies inside its bar. The rest overhangs toward
+        /// the board, onto the table's margin (the camera leaves about 6% of
+        /// the height there), so it costs the bar's content almost no room.
+        /// </summary>
+        public const float RailInside = 3f;
+
+        /// <summary>How far the rail's shade reaches into its bar.</summary>
+        private const float RailShadeDepth = 10f;
+
+        /// <summary>How far the rail's own shadow falls under it.</summary>
+        private const float RailDropOffset = 2.5f;
+
+        /// <summary>
+        /// A bar docked to a screen edge: a lacquered field and, along
+        /// <paramref name="rule"/>, the edge that faces the board, a padded
+        /// leather rail (G9b).
         /// </summary>
         /// <remarks>
-        /// Flat, deliberately. G5 gave the field a translucency ramp so the
-        /// room would show through its board-facing edge, and it was removed:
-        /// FrameCamera reserves the screen edges and fits the board inside
-        /// them, so a dock has void behind it, not board. There was nothing
-        /// to see through to.
+        /// <b>Opaque, deliberately.</b> G5 gave the field a translucency ramp so
+        /// the room would show through its board-facing edge, and it was
+        /// removed: FrameCamera reserves the screen edges and fits the board
+        /// inside them, so a dock has void behind it, not board. The G9b
+        /// gradient is lacquer, not translucency: lit at the top, near black
+        /// at the foot.
+        ///
+        /// <b>The rail marks the table's edge</b>, so only an edge that faces
+        /// the board gets one. A seam between two bars (upright, the top bar
+        /// over the squad band and the tray under the history band) passes
+        /// <paramref name="rail"/> false and keeps the gilt hairline.
+        /// <paramref name="railTrim"/> shortens the rail at its start (its
+        /// bottom, for a side bar), so a side bar's rail stops where it meets
+        /// the tray's instead of running on beside the tray.
         /// </remarks>
-        public static void Dock(RectTransform rect, bool blocksPointer, RectTransform.Edge rule)
+        public static void Dock(RectTransform rect, bool blocksPointer, RectTransform.Edge rule,
+            bool rail = true, float railTrim = 0f)
         {
-            Fill(rect, UiTheme.Panel, blocksPointer);
-            EdgeRule(rect, rule, UiTheme.Line);
+            var field = Fill(rect, Color.white, blocksPointer);
+            UiGradient.Attach(field, UiTheme.BarTop, UiTheme.BarFoot);
+
+            if (rail) Rail(rect, rule, railTrim);
+            else EdgeRule(rect, rule, UiTheme.Line);
+        }
+
+        /// <summary>
+        /// The padded rail along one edge of a bar: its shade on the bar, the
+        /// leather, and a brass bead where they meet, drawn in that order.
+        /// </summary>
+        private static void Rail(RectTransform rect, RectTransform.Edge edge, float trim)
+        {
+            Vector2 anchorMin, anchorMax, outward;
+            switch (edge)
+            {
+                case RectTransform.Edge.Top:
+                    anchorMin = new Vector2(0f, 1f); anchorMax = Vector2.one; outward = Vector2.up;
+                    break;
+                case RectTransform.Edge.Bottom:
+                    anchorMin = Vector2.zero; anchorMax = new Vector2(1f, 0f); outward = Vector2.down;
+                    break;
+                case RectTransform.Edge.Left:
+                    anchorMin = Vector2.zero; anchorMax = new Vector2(0f, 1f); outward = Vector2.left;
+                    break;
+                default:
+                    anchorMin = new Vector2(1f, 0f); anchorMax = Vector2.one; outward = Vector2.right;
+                    break;
+            }
+
+            bool horizontal = outward.x == 0f;
+            float bead = RailInside + DecoSprites.HairlineWidth;
+
+            // The shade on the bar, strongest against the bead. The falloff
+            // sprites run from the top and from the left; flip for the others.
+            var shade = RailStrip(rect, "rail_shade", anchorMin, anchorMax, outward,
+                -(bead + RailShadeDepth * 0.5f), RailShadeDepth, trim,
+                horizontal ? DecoSprites.FalloffDown : DecoSprites.FalloffRight, UiTheme.RailShade);
+            if (edge == RectTransform.Edge.Bottom) shade.rectTransform.localScale = new Vector3(1f, -1f, 1f);
+            if (edge == RectTransform.Edge.Right) shade.rectTransform.localScale = new Vector3(-1f, 1f, 1f);
+
+            var leather = RailStrip(rect, "rail", anchorMin, anchorMax, outward,
+                RailWidth * 0.5f - RailInside, RailWidth, trim,
+                horizontal ? DecoSprites.LeatherAlong : DecoSprites.LeatherUp, UiTheme.Leather);
+            var drop = leather.gameObject.AddComponent<Shadow>();
+            drop.effectColor = UiTheme.RailDrop;
+            drop.effectDistance = new Vector2(0f, -RailDropOffset);
+
+            RailStrip(rect, "bead", anchorMin, anchorMax, outward,
+                -(RailInside + DecoSprites.HairlineWidth * 0.5f), DecoSprites.RuleBox, trim,
+                horizontal ? DecoSprites.RuleAlong : DecoSprites.RuleUp, UiTheme.Bead);
+        }
+
+        /// <summary>
+        /// A strip along one edge of <paramref name="parent"/>: <paramref name="thickness"/>
+        /// across, centred <paramref name="centre"/> units out from the edge
+        /// (negative is inside), and as long as the edge less
+        /// <paramref name="trim"/> at its start.
+        /// </summary>
+        private static Image RailStrip(RectTransform parent, string name, Vector2 anchorMin, Vector2 anchorMax,
+            Vector2 outward, float centre, float thickness, float trim, Sprite sprite, Color colour)
+        {
+            var strip = Rect(name, parent);
+            Decoration(strip);
+            strip.anchorMin = anchorMin;
+            strip.anchorMax = anchorMax;
+            strip.pivot = new Vector2(0.5f, 0.5f);
+
+            bool horizontal = outward.x == 0f;
+            strip.sizeDelta = horizontal ? new Vector2(-trim, thickness) : new Vector2(thickness, -trim);
+            strip.anchoredPosition = outward * centre +
+                                     (horizontal ? new Vector2(trim * 0.5f, 0f) : new Vector2(0f, trim * 0.5f));
+
+            var image = Fill(strip, colour);
+            image.sprite = sprite;
+            return image;
+        }
+
+        /// <summary>
+        /// Sinks <paramref name="rect"/> into its surface (G9b): a dark
+        /// chamfered recess behind its children, shaded from the top edge
+        /// with a catch of light on the bottom lip. The recess reaches
+        /// <paramref name="bleedX"/> and <paramref name="bleedY"/> past the
+        /// rect, so what sits in it has a margin.
+        /// </summary>
+        public static RectTransform Well(RectTransform rect, float bleedX, float bleedY)
+        {
+            var well = Rect("well", rect);
+            well.SetAsFirstSibling();
+            Decoration(well);
+            well.anchorMin = Vector2.zero;
+            well.anchorMax = Vector2.one;
+            well.offsetMin = new Vector2(-bleedX, -bleedY);
+            well.offsetMax = new Vector2(bleedX, bleedY);
+
+            Sliced(well, DecoSprites.ButtonFill, UiTheme.Well);
+            Overlay(well, DecoSprites.WellShade, Color.white, "shade");
+            return well;
         }
 
         /// <summary>
@@ -473,15 +595,43 @@ namespace NonaRoyale.Unity.View
             return image;
         }
 
+        /// <summary>A bar at least this tall is a slot the fill sits down in (G9b).</summary>
+        private const float RecessedBarHeight = 8f;
+
+        /// <summary>How far a recessed bar's fill sits inside its slot.</summary>
+        private const float RecessedBarInset = 2f;
+
         /// <summary>A horizontal bar filled to <paramref name="fraction"/>. Returns the fill, for <see cref="TweenBar"/>.</summary>
+        /// <remarks>
+        /// A bar tall enough to show it (the tray's health bar) is recessed
+        /// (G9b): a dark chamfered slot shaded from its top, the fill a chip
+        /// set inside it. The fill hangs off an inset inner rect, so at zero
+        /// its width is zero rather than negative. Thin bars (the rail's) stay
+        /// flat: a 4-unit slot has no room to show a recess.
+        /// </remarks>
         public static RectTransform Bar(Transform parent, float fraction, Color fill, float width, float height)
         {
             var back = Rect("bar", parent);
-            Fill(back, UiTheme.Track);
             Size(back, width, height);
 
-            var front = Rect("fill", back);
-            Fill(front, fill);
+            bool recessed = height >= RecessedBarHeight;
+            var holder = back;
+            if (recessed)
+            {
+                Sliced(back, DecoSprites.ChipFill, UiTheme.Well);
+                Overlay(back, DecoSprites.WellShadeChip, Color.white, "shade");
+
+                holder = Rect("slot", back);
+                Stretch(holder, RecessedBarInset);
+            }
+            else
+            {
+                Fill(back, UiTheme.Track);
+            }
+
+            var front = Rect("fill", holder);
+            if (recessed) Sliced(front, DecoSprites.ChipFill, fill);
+            else Fill(front, fill);
             front.anchorMin = Vector2.zero;
             front.anchorMax = new Vector2(Mathf.Clamp01(fraction), 1f);
             front.offsetMin = Vector2.zero;

@@ -115,6 +115,9 @@ namespace NonaRoyale.Unity.View
 
         private const float DieSize = 52f;
 
+        /// <summary>How far the dice well reaches above and below the dice (G9b).</summary>
+        private const float DieWellBleed = 5f;
+
         /// <summary>Upright row heights.</summary>
         private const float UprightAimHeight = 18f;
         private const float UprightTopHeight = 78f;
@@ -200,7 +203,8 @@ namespace NonaRoyale.Unity.View
             _tray.pivot = new Vector2(0.5f, 0f);
             _tray.offsetMin = new Vector2(_insetLeft, 0f);
             _tray.offsetMax = new Vector2(-_insetRight, ReservedHeight);
-            UiKit.Dock(_tray, true, RectTransform.Edge.Top);
+            // Upright the history band sits over the tray, so its edge is a seam, not the table's (G9b).
+            UiKit.Dock(_tray, true, RectTransform.Edge.Top, rail: !_builtPortrait);
 
             _content = UiKit.Rect("content", _tray);
             UiKit.Stretch(_content);
@@ -372,9 +376,11 @@ namespace NonaRoyale.Unity.View
             UiKit.Column(box, 8f);
             UiKit.Fixed(box, width);
 
+            // The dice sit in a well (G9b), centred, so the roller also lands on them.
             var faces = UiKit.Rect("faces", box);
-            UiKit.Row(faces, 8f);
+            UiKit.Row(faces, 8f).childAlignment = TextAnchor.MiddleCenter;
             UiKit.Size(faces, height: DieSize);
+            UiKit.Well(faces, 0f, DieWellBleed);
             DiceFaces = faces;
 
             var dice = engine.UnspentDice;
@@ -438,12 +444,18 @@ namespace NonaRoyale.Unity.View
             return "";
         }
 
-        /// <summary>An ivory die with a brass edge; a spent slot is a dim inset with no edge (G7f).</summary>
+        /// <summary>
+        /// An ivory die with a brass edge, standing in the well as a plate
+        /// (G9b). A spent or waiting slot is only its mark on the well's floor.
+        /// </summary>
         private static RectTransform Die(Transform parent, string face, bool live)
         {
             var die = UiKit.Rect("die", parent);
-            UiKit.Sliced(die, DecoSprites.ButtonFill, live ? UiTheme.DieFace : UiTheme.PanelInset);
-            if (live) UiKit.Overlay(die, DecoSprites.ButtonEdge, UiTheme.Gold);
+            if (live)
+            {
+                UiPlate.Attach(UiKit.Sliced(die, DecoSprites.ButtonFill, UiTheme.DieFace));
+                UiKit.Overlay(die, DecoSprites.ButtonEdge, UiTheme.Gold);
+            }
             UiKit.Size(die, DieSize, DieSize);
             UiKit.Caption(die, face, 30f, live ? UiTheme.DieInk : UiTheme.TextOff,
                 TextAlignmentOptions.Center).fontStyle = FontStyles.Bold;

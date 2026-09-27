@@ -51,6 +51,12 @@ namespace NonaRoyale.Unity.View
     /// shadow on the table, a warm light along the top edge, and it sinks
     /// when pressed (<see cref="UiPlate"/>). The values are the Plate* block.
     ///
+    /// <b>The match bars are furniture</b> (G9b). The top bar, the squad rail,
+    /// the history strip and the tray are lacquered (<see cref="BarTop"/> to
+    /// <see cref="BarFoot"/>), and where one meets the board it has a padded
+    /// oxblood leather rail (<see cref="Leather"/>) with a brass bead, like
+    /// the rail of a gaming table. The dice and the health bar sit in wells.
+    ///
     /// Static values, not a ScriptableObject (decided 2026-09-15): the HUD is
     /// built from code and caches colours when it builds, so Inspector tuning
     /// would not show live without extra plumbing.
@@ -128,6 +134,27 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         public static readonly Color ButtonFill = Hex("352A31");
         public static readonly Color ButtonOff = Hex("120E11");
+
+        // ── Match bars (G9b) ──
+
+        /// <summary>A match bar's lacquer: lit at the top, near black at the foot.</summary>
+        public static readonly Color BarTop = WithAlpha(Hex("211819"), 0.97f);
+        public static readonly Color BarFoot = WithAlpha(Hex("0A0708"), 0.97f);
+
+        /// <summary>The padded rail's oxblood at its highlight; the sprite shades it down to near black.</summary>
+        public static readonly Color Leather = Hex("6A2F3B");
+
+        /// <summary>The rail's own shadow, a few units under it.</summary>
+        public static readonly Color RailDrop = WithAlpha(Color.black, 0.45f);
+
+        /// <summary>The shade the rail casts onto its bar, strongest against the bead.</summary>
+        public static readonly Color RailShade = WithAlpha(Color.black, 0.45f);
+
+        /// <summary>The brass bead between the rail and the bar.</summary>
+        public static readonly Color Bead = WithAlpha(Gold, 0.8f);
+
+        /// <summary>A recess in a bar or a card: darker than anything around it.</summary>
+        public static readonly Color Well = Hex("080607");
 
         // ── Plates (G9a) ──
 
