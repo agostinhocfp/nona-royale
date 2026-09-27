@@ -8,8 +8,8 @@ namespace NonaRoyale.Unity.View
     /// The Deco skin's procedural board art: the cells (board skin BS2) — a
     /// tile face, its trim (bevel and gilt edge), a gilt ring for the home
     /// columns and a compass for the start cells — the centre (BS3) — the
-    /// medallion, its emblem and the four corner wedges — and the tables'
-    /// heavy gilt rim (BS4). Built once.
+    /// medallion, its emblem and the four corner wedges — the tables' heavy
+    /// gilt rim (BS4), and the tiles' soft drop shadow (BS5). Built once.
     /// </summary>
     /// <remarks>
     /// <b>The fallback, not the ceiling.</b> Each piece has a sprite slot in
@@ -46,7 +46,7 @@ namespace NonaRoyale.Unity.View
         /// The table rim's inner edge, as a fraction of the table's radius. The
         /// felt runs a little under it, so no seam shows where they meet.
         /// </summary>
-        public const float RimInner = 0.855f;
+        public const float RimInner = 0.87f;
 
         /// <summary>The engraved gilt line on the felt, inside the rim, as a fraction of the radius.</summary>
         public const float FeltLine = 0.79f;
@@ -71,7 +71,14 @@ namespace NonaRoyale.Unity.View
         private const float RingWidth = 2.6f;
 
         private static Sprite _body, _trimGilt, _trimCyan, _ring, _compass;
-        private static Sprite _medallion, _medallionEmblem, _wedge, _tableRim;
+        private static Sprite _medallion, _medallionEmblem, _wedge, _tableRim, _tileShadow, _facetA, _facetB;
+
+        /// <summary>
+        /// How far the tile shadow's sprite reaches past the tile, as a
+        /// fraction of the sprite: it is drawn <see cref="TileShadowScale"/>
+        /// times the tile, and the soft falloff lives in that margin.
+        /// </summary>
+        public const float TileShadowScale = 1.3f;
 
         /// <summary>A square tile's face, edge to edge, greyscale, with a faint tinted bevel.</summary>
         public static Sprite TileBody => _body != null ? _body : (_body = Raster("deco_tile_body", BodyAt));
@@ -242,9 +249,9 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         public const float WedgeFrom = 0.42f;
         public const float WedgeWaistAt = 0.72f;
-        public const float WedgeWaistHalfWidth = 0.07f;
+        public const float WedgeWaistHalfWidth = 0.05f;
         public const float WedgeWidestAt = 1.3f;
-        public const float WedgeHalfWidth = 0.2f;
+        public const float WedgeHalfWidth = 0.13f;
         public const float WedgeTo = 2.05f;
 
         /// <summary>
@@ -433,7 +440,7 @@ namespace NonaRoyale.Unity.View
                     // One glint on the bead, facing the light.
                     float angle = Mathf.Atan2(dy, dx) * Mathf.Rad2Deg;
                     float off = Mathf.DeltaAngle(angle, 128f);
-                    k += 0.4f * Mathf.Exp(-(off * off) / (2f * 16f * 16f)) * bead;
+                    k += 0.25f * Mathf.Exp(-(off * off) / (2f * 16f * 16f)) * bead;
                 }
 
                 colour = Color.Lerp(UiTheme.DecoGilt * 0.4f, UiTheme.DecoGiltLight, Mathf.Clamp01(k));
@@ -445,6 +452,86 @@ namespace NonaRoyale.Unity.View
 
             colour.a = Mathf.Max(ring, line);
             return colour;
+        }
+
+        // ── Weight (BS5) ───────────────────────────────────────────────
+
+        /// <summary>
+        /// A tile's soft drop shadow: the tile's chamfered square, solid to its
+        /// edge and fading out over the margin around it. White, so the caller's
+        /// colour sets its darkness. Drawn <see cref="TileShadowScale"/> times
+        /// the tile and offset down and right, away from the light.
+        /// </summary>
+        public static Sprite TileShadow => _tileShadow != null ? _tileShadow
+            : (_tileShadow = Raster("deco_tile_shadow", TileShadowAt, 64));
+
+        private static Color TileShadowAt(float px, float py)
+        {
+            const int size = 64;
+            float half = size * 0.5f;
+            float tileHalf = half / TileShadowScale;
+            float blur = half - tileHalf;
+
+            float x = Mathf.Abs(px - half);
+            float y = Mathf.Abs(py - half);
+            float box = Mathf.Max(x, y) - tileHalf;
+            float corner = (x + y - (2f * tileHalf - tileHalf * 0.11f)) / Mathf.Sqrt(2f);
+            float d = Mathf.Max(box, corner);
+
+            // Solid a little inside the edge, gone by the sprite's border.
+            float t = Mathf.Clamp01((d + blur * 0.35f) / (blur * 1.35f));
+            float alpha = 1f - t * t * (3f - 2f * t);
+            return new Color(1f, 1f, 1f, alpha);
+        }
+
+        // ── Corner facets (BS6) ────────────────────────────────────────
+
+        /// <summary>
+        /// How far the corner facets reach in from the cross's inner corner
+        /// along each edge, in spacings. They fill the corner of the centre
+        /// square's empty corner cell, split by the wedge's diagonal.
+        /// </summary>
+        public const float FacetLeg = 0.55f;
+
+        /// <summary>
+        /// One corner facet, in white for the seat tint: the half of the
+        /// corner triangle on the far side of the diagonal from the board's
+        /// centre, toward the arm above it (<paramref name="upper"/>) or the
+        /// arm beside it. The sprite covers the empty corner cell, from 0.5 to
+        /// 1.5 spacings out on both axes, for the up-right corner; the code
+        /// turns it with the wedge.
+        /// </summary>
+        public static Sprite CornerFacet(bool upper)
+        {
+            if (upper) return _facetA != null ? _facetA : (_facetA = Raster("deco_facet_upper", (x, y) => FacetAt(x, y, true), 64));
+            return _facetB != null ? _facetB : (_facetB = Raster("deco_facet_side", (x, y) => FacetAt(x, y, false), 64));
+        }
+
+        /// <summary>True inside a facet, at (x, y) spacings from the board's centre, for the up-right corner.</summary>
+        public static bool InFacet(float x, float y, bool upper)
+        {
+            if (x > 1.5f || y > 1.5f) return false;
+            if (x + y < 3f - FacetLeg) return false;
+            return upper ? y >= x : x >= y;
+        }
+
+        private static Color FacetAt(float px, float py, bool upper)
+        {
+            const int size = 64;
+            float perPixel = 1f / size;
+            float x = 0.5f + px * perPixel;
+            float y = 0.5f + py * perPixel;
+
+            // Antialiased against the triangle's long edge and the diagonal.
+            float edge = ((3f - FacetLeg) - (x + y)) / Mathf.Sqrt(2f) / perPixel;
+            float split = (upper ? x - y : y - x) / Mathf.Sqrt(2f) / perPixel;
+            float outer = (Mathf.Max(x, y) - 1.5f) / perPixel;
+            float alpha = Cover(Mathf.Max(Mathf.Max(edge, split), outer));
+
+            // Lit toward the corner, where the light off the gilt edge falls.
+            float depth = Mathf.Clamp01(((x + y) - (3f - FacetLeg)) / FacetLeg);
+            float lum = upper ? 0.8f + 0.2f * depth : 0.6f + 0.2f * depth;
+            return Grey(lum, alpha);
         }
 
         // ── Geometry ────────────────────────────────────────────────────

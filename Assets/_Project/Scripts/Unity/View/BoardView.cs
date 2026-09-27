@@ -148,6 +148,10 @@ namespace NonaRoyale.Unity.View
             _shine = GetComponent<PoweredShine>() ?? gameObject.AddComponent<PoweredShine>();
             _shine.Clear();
 
+            // The Deco skin's gilt sheen (BS5) forgets the old rims the same way.
+            _sheen = GetComponent<GiltSheen>() ?? gameObject.AddComponent<GiltSheen>();
+            _sheen.Clear();
+
             _drawn.Clear();
             _layer = SceneLighting.BoardLayerId;
 

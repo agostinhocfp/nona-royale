@@ -1,7 +1,7 @@
 # Nona Royale — Board skin (BS-series)
 
 > Location in repo: `docs/design/BOARD_SKIN.md` · Project copy: `claude/BOARD_SKIN.md`
-> Status: **Open, 2026-09-27.** BS0–BS3 accepted. BS4 (the Deco tables) written, waiting on Play Mode and commit.
+> Status: **Open, 2026-09-27.** BS0–BS5 accepted; the BS5 checkpoint is read (`docs/art/CHECKPOINT_BS5.png`). BS6 (the tune pass) written, waiting on Play Mode and commit, with BS5, in one commit. Next: BS7 yard panels, then BS8 the steel frame.
 > Design: `claude/HANDOFF_board_skin.md` (the code route). Sister: `claude/HANDOFF_board_assets.md` (the sprite route); its §1 table is the contract, copied below.
 > Target: `docs/art/VISUAL_TARGET.png`, **the simple version since 2026-09-27** (steel frame, no props); the first, ornate one is `docs/art/VISUAL_TARGET_ORNATE.png`, for materials only. Acceptance for every increment is a Play Mode screenshot of the board beside it.
 > Baseline: `docs/art/BASELINE_BS0.png` (Classic, flat, 2560×1440, 2026-09-27).
@@ -59,6 +59,43 @@ Files go in `Assets/_Project/Art/Resources/Art/Board/`, as PNG, named exactly af
 **Route changes** (a code-first row flipping to sprite-first after a checkpoint) are logged here and in the handoff's status table.
 
 ## Log
+
+- 2026-09-27 — **BS6 written: the tune pass** (the checkpoint's first pick). On the uncommitted BS5 tree; the two go in one commit.
+  - **A gilt lattice between the tiles.** Per arm: the two lines between its three lanes, the line across its mouth between the last two home cells, and one line across every gap between rows, each 0.04 spacings wide down the middle of the 0.14 gap, in dark gilt (`UiTheme.DecoLattice`), with a light-gilt rivet (0.075) wherever a row line crosses a lane line (`UiTheme.DecoRivet`). The arm's outer edges are the cross's own gilt edge, so they aren't doubled. Drawn at the lanes' order (−24), under the tiles' shadows (−23), so each tile's shadow falls across the lattice as it should. `BoardView.DecoLatticeSegments` / `DecoLatticeRivets` give the geometry in spacings for any arm length: 32 lines and 40 rivets on the standard board.
+  - **Calmer tables.** Felt 0.8 → 0.66 of the seat colour (`UiTheme.DecoFeltBrightness`); rim thinner (inner edge 0.855 → 0.87 of the radius, still inside the felt's 0.875 so no seam), its glint 0.4 → 0.25, and the whole rim dimmed through `UiTheme.DecoRimTint` (80 %), a tint rather than new art, so it tunes without rebuilding.
+  - **Slimmer, darker wedges.** Waist 0.07 → 0.05, widest 0.2 → 0.13 (all four clearance tests still pass), tinted 82 % (`UiTheme.DecoWedgeTint`), so the four read as spikes rather than one gold X and the medallion stops looking small beside them.
+  - **Corner facets.** Each inner corner gets two small triangles filling the corner of the centre square's empty corner cell, split by the wedge's diagonal, each in the colour of the arm it faces (60 % of the seat, `UiTheme.DecoFacetFace`), shaded lighter toward the corner, under the wedge and its shadow. The seat for each side is found from the layout (the home column pointing that way), not assumed. `DecoBoardArt.CornerFacet(upper)`, 64 px.
+  - **Tests.** `DecoLatticeTests` (new), 4, on the Standard and the Compact board: every lattice line runs straight down a gap and never touches a cell; every rivet clears every cell; the standard board has the expected 32 lines and 40 rivets; the facets, in all four turns, never enter a cell. All pass offline. `DecoCentreTests` still pass with the slimmer wedges.
+  - **Checks.** Cloud compile on the device's tree: core 969/969; Core, Unity (with and without `DEVELOPMENT_BUILD`), EditorTools and EditTests build with 0 warnings. 47 EditMode tests pass offline; 3 need Unity.
+  - **Play Mode checklist:**
+    - Deco: the cross reads as one latticed panel — a thin gilt line in every gap, rivets at the crossings, the tiles' shadows across it. Classic: unchanged.
+    - The tables no longer out-shout the path: deeper felt, a thinner, dimmer rim.
+    - The centre: four slim darker spikes, a coloured facet pair at each inner corner in the two neighbouring seats' colours (red and violet at the top right on the standard seating).
+    - Highlights, reach and targets still sit clearly on top; the lattice never runs under a piece's feet in a way that reads as a cell edge.
+    - Watch for: the lattice too bright against the tile edges (`DecoLattice`), rivets too prominent at phone size (`DecoRivetSize`), the felt now too dark (`DecoFeltBrightness`).
+
+- 2026-09-27 — **The BS5 checkpoint** (designer's screenshot, `docs/art/CHECKPOINT_BS5.png`, Deco, flat, wide, beside `VISUAL_TARGET.png`). Read:
+  - **Landed:** the path reads as tiles with gilt edges; the home columns read in their colours with their rings; the start cell's compass reads; figures read on every tile kind.
+  - **Off:** the gaps between tiles are black where the target has a gilt lattice with rivets; the table rims and bright felt are the loudest thing on the board; the wedges read as one heavy gold X and make the medallion look small; the yards are empty black around the tables; the oxblood rail is still Classic's.
+  - **No contract row flips to sprite-first.** Code is close enough on cells, centre and rims once tuned; the sprite-first rows stay as they were (chair, emblems).
+  - **The medallion stays grid-sized** for now: the fault reads as the wedges' weight, not the medallion's size, and BS6 fixes that first.
+  - **Order picked** (picker, recommended option): **BS6 the tune pass**, then **BS7 yard panels** (gap row 10), then **BS8 the steel frame** (the open item).
+
+- 2026-09-27 — **BS5 written: weight and a moving light.** On HEAD `9e979f3`.
+  - **Tile shadows.** Every Deco tile casts a soft drop shadow (`DecoBoardArt.TileShadow`, 64 px: the tile's chamfered square, solid to just inside its edge and fading over a margin, drawn 1.3× the tile), offset 6 % right and 9 % down of a tile, away from the key light, at 70 % black (`UiTheme.DecoTileShadow`). It lands on the floor between the cells, at the safe glows' order (−23), under the tile. Drawn for painted tiles too: the contract says art never bakes a shadow, so the code draws them all.
+  - **Wedge shadows.** Each corner wedge casts a crisp copy of itself at 55 % black (`UiTheme.DecoWedgeShadow`), 0.03 right and 0.05 down, under the wedge (−15). The medallion and the tables already had theirs (BS3, and Classic's felt shadow).
+  - **The gilt sheen** (`View/GiltSheen.cs`, new). A slow band of light crosses the table rims, the medallion and the four wedges together, once every 9 s, taking 1.8 s. One shared instance of `ShineLit` for all of them, so one `_ShineLocation` write a frame; the 2D lights still reach them. **Deliberately slow and rare,** so it is never read as `PoweredShine`'s quick glint, which means "powered". Off with Lighting effects or under Reduced motion (`GiltSheen.Active`, set beside `PoweredShine.Active` in `MatchBootstrap`), parked off every sprite when off. `BoardView.Build` clears it with `_shine` (plumbing only; Classic adds nothing to it).
+  - **No light pools.** The plan had warm Light2D pools at the tables' corners with candle sprites; the simple target has no candles and its light is even, so they are dropped. Everything that gives weight is painted, so the board still reads finished with the lighting off.
+  - **Tests.** `GiltSheenTests` (new), 4: the band crosses during the sweep, is parked for the rest of the period, repeats every period, and stays slow and rare. `DecoBoardArtTests` now checks every Deco sprite, the centre and table art included, at its own size.
+  - **Checks.** Cloud compile on the device's tree: core 969/969; Core, Unity (with and without `DEVELOPMENT_BUILD`), EditorTools and EditTests build with 0 warnings. 43 EditMode tests pass offline; 3 need Unity.
+  - **Cost.** One extra quad per tile (76 on the standard board) and four per centre; the sheen is one material and one float a frame. No tiled sprites, so the G9c vertex trap doesn't apply.
+  - **Play Mode checklist:**
+    - Deco: every tile sits on a soft shadow down and right; the wedges cast a crisp one; the board looks lifted off the floor. Classic: unchanged.
+    - Watch 10 s: a slow sheen crosses the four rims, the medallion and the wedges together, then rests. The safe cells' quick glint still runs in turn, and the two never read as one thing.
+    - Lighting effects off, or Reduced motion on: no sheen and no glint; the shadows stay.
+    - Tilted camera and upright phone: the shadows don't smear or crawl.
+    - Watch for: the shadows too heavy in the gaps (`UiTheme.DecoTileShadow`); the sheen too bright or too frequent (`GiltSheen.Period`, and the band in `ShineLit.mat`).
+  - **The checkpoint (BOARD_SKIN plan, after BS5).** With BS1–BS5 in, the board surface is done in code. **Owed before any further board work:** a Play Mode screenshot of the Deco board (flat, wide) beside `VISUAL_TARGET.png`. That comparison decides which rows of the contract flip to sprite-first, whether the medallion stays grid-sized, and what the yard panels (gap row 10) and the steel frame (open item) need.
 
 - 2026-09-27 — **BS4 written: the Deco tables.** On HEAD `8b84b23`.
   - **On Deco, `Build` draws `DrawDecoTable` for each seat instead of `DrawTable`;** Classic's tables are untouched (D4).

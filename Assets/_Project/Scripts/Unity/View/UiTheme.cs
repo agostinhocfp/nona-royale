@@ -373,14 +373,37 @@ namespace NonaRoyale.Unity.View
         /// <summary>The Deco medallion's face (BS3): black lacquer, a shade under the tiles.</summary>
         public static readonly Color DecoMedallionFace = Hex("0D0A0C");
 
-        /// <summary>The Deco tables' felt (BS4): brighter than Classic's, so each table owns its seat colour.</summary>
-        public const float DecoFeltBrightness = 0.8f;
+        /// <summary>
+        /// The Deco tables' felt (BS4): the seat colour, deeper than a tile
+        /// face. 0.8 in BS4 made the tables the loudest thing on the board
+        /// (BS5 checkpoint); 0.66 keeps them the seat's own jewel tone.
+        /// </summary>
+        public const float DecoFeltBrightness = 0.66f;
+
+        /// <summary>The Deco table rim's tint (BS6): the baked gilt, dimmed so the rims sit under the path.</summary>
+        public static readonly Color DecoRimTint = new Color(0.8f, 0.8f, 0.8f, 1f);
+
+        /// <summary>The corner wedges' tint (BS6): darker gilt, so the four read as spikes, not a gold X.</summary>
+        public static readonly Color DecoWedgeTint = new Color(0.82f, 0.82f, 0.82f, 1f);
+
+        /// <summary>The gilt lattice between the Deco tiles, and its rivets (BS6).</summary>
+        public static readonly Color DecoLattice = WithAlpha(Color.Lerp(DecoGilt, Brass, 0.3f), 0.85f);
+        public static readonly Color DecoRivet = WithAlpha(DecoGiltLight, 0.9f);
+
+        /// <summary>How much of its arm's seat colour a corner facet keeps (BS6).</summary>
+        public const float DecoFacetFace = 0.6f;
 
         /// <summary>The Deco table's centre compass: gilt, between shade and light.</summary>
         public static readonly Color DecoTableEmblem = Color.Lerp(DecoGilt, DecoGiltLight, 0.55f);
 
         /// <summary>The tint for a painted, greyscale chair: its seat, lifted a little toward white.</summary>
         public static Color DecoChairTint(Color seat) => Color.Lerp(seat, Color.white, 0.15f);
+
+        /// <summary>A Deco tile's soft drop shadow (BS5): dark enough to lift the tile off the near-black floor.</summary>
+        public static readonly Color DecoTileShadow = WithAlpha(Color.black, 0.7f);
+
+        /// <summary>The corner wedges' crisp shadow (BS5).</summary>
+        public static readonly Color DecoWedgeShadow = WithAlpha(Color.black, 0.55f);
 
         /// <summary>A seat colour darkened to a tile face, keeping <paramref name="keep"/> of it.</summary>
         public static Color DecoSeatFace(Color seat, float keep) =>

@@ -33,11 +33,20 @@ namespace NonaRoyale.Unity.Tests.View
         [Test]
         public void EverySprite_IsOneUnitAcross_AndMipmapped()
         {
-            foreach (var sprite in new[] { DecoBoardArt.TileBody, DecoBoardArt.TrimGilt, DecoBoardArt.TrimCyan, DecoBoardArt.CellRing, DecoBoardArt.Compass })
+            var sprites = new[]
+            {
+                (DecoBoardArt.TileBody, DecoBoardArt.Size), (DecoBoardArt.TrimGilt, DecoBoardArt.Size),
+                (DecoBoardArt.TrimCyan, DecoBoardArt.Size), (DecoBoardArt.CellRing, DecoBoardArt.Size),
+                (DecoBoardArt.Compass, DecoBoardArt.Size), (DecoBoardArt.TileShadow, 64),
+                (DecoBoardArt.Medallion, DecoBoardArt.CentreSize), (DecoBoardArt.MedallionEmblem, DecoBoardArt.CentreSize),
+                (DecoBoardArt.CornerWedge, DecoBoardArt.CentreSize), (DecoBoardArt.TableRim, DecoBoardArt.TableSize),
+            };
+
+            foreach (var (sprite, size) in sprites)
             {
                 Assert.IsNotNull(sprite);
                 Assert.AreEqual(1f, sprite.bounds.size.x, 1e-4f, sprite.name);
-                Assert.AreEqual(DecoBoardArt.Size, sprite.texture.width, sprite.name);
+                Assert.AreEqual(size, sprite.texture.width, sprite.name);
                 Assert.Greater(sprite.texture.mipmapCount, 1, sprite.name);
             }
         }

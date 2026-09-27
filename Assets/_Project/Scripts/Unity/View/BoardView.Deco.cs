@@ -43,6 +43,25 @@ namespace NonaRoyale.Unity.View
     /// drawn: the target's tables are quieter, and chips come back as props
     /// in BS6.
     ///
+    /// <b>Weight and a moving light</b> (BS5). Every tile casts a soft drop
+    /// shadow down and to the right, away from the key light, onto the floor
+    /// between the cells; the wedges cast a crisp one, as the medallion and
+    /// the tables already do. A slow sheen passes over the big gilt — the
+    /// rims, the medallion and the wedges — every few seconds
+    /// (<see cref="GiltSheen"/>), off with Lighting effects or under Reduced
+    /// motion. Everything that gives weight is painted, so the board still
+    /// reads finished with the lighting off. No light pools: the simple
+    /// target has no candles, and its light is even.
+    ///
+    /// <b>Tuned against the target</b> (BS6, the BS5 checkpoint). A gilt
+    /// lattice runs in the gaps between the tiles with a rivet at each
+    /// crossing, as the target's cross is one latticed panel rather than
+    /// loose tiles on black; the tiles' shadows fall across it. The table
+    /// rims are thinner, dimmer and glint less, and the felt deeper, so the
+    /// tables stop being the loudest thing on the board. The wedges are
+    /// slimmer and darker, and each inner corner carries two small facets in
+    /// the colours of the two arms it joins, as the target's do.
+    ///
     /// <b>Readability is the constraint.</b> Highlights, reach and targets
     /// draw on the Default layer, above the whole board layer, so they
     /// always land on top of the tiles; the tiles are held dark enough that
@@ -50,6 +69,92 @@ namespace NonaRoyale.Unity.View
     /// </remarks>
     public sealed partial class BoardView
     {
+        /// <summary>The lattice's line width and its rivets' diameter, in spacings. Both sit inside the 0.14 gap.</summary>
+        public const float DecoLatticeWidth = 0.04f;
+        public const float DecoRivetSize = 0.075f;
+
+        /// <summary>
+        /// The lattice between the tiles, in spacings from the board's
+        /// centre, for a board whose arms are <paramref name="armLength"/>
+        /// cells long (BS6). Per arm: the two lines between its three lanes,
+        /// the line across the arm's mouth between the last two home cells,
+        /// and one line across every gap between rows. The arm's outer edges
+        /// are the cross's own gilt edge, so they are not repeated. Every
+        /// line runs down the middle of a gap.
+        /// </summary>
+        public static List<(Vector2 from, Vector2 to)> DecoLatticeSegments(int armLength)
+        {
+            var segments = new List<(Vector2 from, Vector2 to)>();
+            float near = 1.5f;
+            float far = armLength + 1.5f;
+
+            for (int k = 0; k < 4; k++)
+            {
+                void Add(Vector2 a, Vector2 b) => segments.Add((Turn(a, k), Turn(b, k)));
+
+                Add(new Vector2(-0.5f, near), new Vector2(-0.5f, far));
+                Add(new Vector2(0.5f, near), new Vector2(0.5f, far));
+                Add(new Vector2(-0.5f, near), new Vector2(0.5f, near));
+                for (int row = 1; row < armLength; row++)
+                    Add(new Vector2(-1.5f, near + row), new Vector2(1.5f, near + row));
+            }
+
+            return segments;
+        }
+
+        /// <summary>The lattice's rivets: where the lines between rows cross the lines between lanes.</summary>
+        public static List<Vector2> DecoLatticeRivets(int armLength)
+        {
+            var rivets = new List<Vector2>();
+            for (int k = 0; k < 4; k++)
+                for (int row = 1; row < armLength; row++)
+                {
+                    rivets.Add(Turn(new Vector2(-0.5f, 1.5f + row), k));
+                    rivets.Add(Turn(new Vector2(0.5f, 1.5f + row), k));
+                }
+            return rivets;
+        }
+
+        /// <summary><paramref name="v"/> turned a quarter counter-clockwise <paramref name="quarters"/> times.</summary>
+        private static Vector2 Turn(Vector2 v, int quarters)
+        {
+            for (int q = 0; q < quarters; q++) v = new Vector2(-v.y, v.x);
+            return v;
+        }
+
+        /// <summary>The gilt lattice and its rivets, under the tiles' shadows (BS6).</summary>
+        private void DrawDecoLattice(BoardLayout layout)
+        {
+            var centre = layout.HomeGoalPosition;
+            float spacing = layout.Spacing;
+            float width = DecoLatticeWidth * spacing;
+            int i = 0;
+
+            foreach (var (from, to) in DecoLatticeSegments(layout.ArmLength))
+            {
+                var a = centre + (Vector3)(from * spacing);
+                var b = centre + (Vector3)(to * spacing);
+                var line = Sprite($"lattice_{i++}", BoardArt.Solid, (a + b) * 0.5f, 1f, UiTheme.DecoLattice, LaneOrder);
+                line.transform.localScale = new Vector3(Mathf.Abs(b.x - a.x) + width, Mathf.Abs(b.y - a.y) + width, 1f);
+            }
+
+            i = 0;
+            foreach (var rivet in DecoLatticeRivets(layout.ArmLength))
+            {
+                Sprite($"rivet_{i++}", Primitives.Disc, centre + (Vector3)(rivet * spacing), DecoRivetSize * spacing,
+                    UiTheme.DecoRivet, LaneOrder);
+            }
+        }
+
+        /// <summary>The slow sheen over the big gilt (BS5). Cleared and refilled by every build.</summary>
+        private GiltSheen _sheen;
+
+        /// <summary>A tile's drop shadow, in tile sizes: down and right, away from the key light.</summary>
+        private static readonly Vector3 DecoTileShadowOffset = new Vector3(0.06f, -0.09f, 0f);
+
+        /// <summary>The wedges' shadow, in cell spacings: crisp, close under them.</summary>
+        private static readonly Vector3 DecoWedgeShadowOffset = new Vector3(0.03f, -0.05f, 0f);
+
         /// <summary>The start cell's compass, as a fraction of the cell.</summary>
         private const float DecoEmblemSize = 0.72f;
 
@@ -61,6 +166,8 @@ namespace NonaRoyale.Unity.View
 
             var starts = new Dictionary<int, PlayerColor>();
             foreach (var seat in Seats) starts[map.StartTrackIndex(seat)] = seat;
+
+            DrawDecoLattice(layout);
 
             var trackArt = BoardSprites.Get(BoardSprites.CellTrack);
             var homeArt = BoardSprites.Get(BoardSprites.CellHome);
@@ -129,6 +236,30 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
+        /// The seat whose home column runs up the arm in <paramref name="direction"/>
+        /// from the board's centre, found from the layout rather than assumed.
+        /// </summary>
+        private static PlayerColor SeatOfArm(BoardLayout layout, Vector3 direction)
+        {
+            var centre = layout.HomeGoalPosition;
+            var best = Seats[0];
+            float bestDot = float.MinValue;
+
+            foreach (var seat in Seats)
+            {
+                var toColumn = (layout.PositionOf(CellRef.HomeColumn(seat, 0)) - centre).normalized;
+                float dot = Vector3.Dot(toColumn, direction);
+                if (dot > bestDot)
+                {
+                    bestDot = dot;
+                    best = seat;
+                }
+            }
+
+            return best;
+        }
+
+        /// <summary>
         /// The medallion's diameter: as large as it can be while leaving a
         /// clear gap before the inner edge of each home column's last cell,
         /// which sits one spacing from the centre. 1.05 spacings on every
@@ -156,10 +287,27 @@ namespace NonaRoyale.Unity.View
                 var turn = Quaternion.Euler(0f, 0f, 90f * k);
                 var offset = turn * new Vector3(0.5f, 0.5f, 0f) * span;
 
-                var wedge = wedgeArt != null
-                    ? SlotSprite($"wedge_{k}", wedgeArt, at + offset, span, Color.white, VaultOrder)
-                    : Sprite($"wedge_{k}", DecoBoardArt.CornerWedge, at + offset, span, Color.white, VaultOrder);
+                var wedgeSprite = wedgeArt != null ? wedgeArt : DecoBoardArt.CornerWedge;
+                float wedgeSize = wedgeArt != null ? span * BoardSprites.UnitScale(wedgeArt) : span;
+
+                var shadow = Sprite($"wedge_shadow_{k}", wedgeSprite, at + offset + DecoWedgeShadowOffset * spacing,
+                    wedgeSize, UiTheme.DecoWedgeShadow, VaultGlowOrder);
+                shadow.transform.rotation = turn;
+
+                var wedge = Sprite($"wedge_{k}", wedgeSprite, at + offset, wedgeSize, UiTheme.DecoWedgeTint, VaultOrder);
                 wedge.transform.rotation = turn;
+                _sheen.Add(wedge);
+
+                // The two facets at this inner corner, in the colours of the arms it joins (BS6).
+                var facetAt = at + turn * new Vector3(1f, 1f, 0f) * spacing;
+                var upperArm = turn * Vector3.up;
+                var sideArm = turn * Vector3.right;
+                var upper = Sprite($"facet_upper_{k}", DecoBoardArt.CornerFacet(true), facetAt, spacing,
+                    UiTheme.DecoSeatFace(UiTheme.Seat(SeatOfArm(layout, upperArm)), UiTheme.DecoFacetFace), InlayOrder);
+                upper.transform.rotation = turn;
+                var side = Sprite($"facet_side_{k}", DecoBoardArt.CornerFacet(false), facetAt, spacing,
+                    UiTheme.DecoSeatFace(UiTheme.Seat(SeatOfArm(layout, sideArm)), UiTheme.DecoFacetFace), InlayOrder);
+                side.transform.rotation = turn;
             }
 
             // Under the wedges' bases and the disc: the medallion stands proud of the floor.
@@ -167,8 +315,9 @@ namespace NonaRoyale.Unity.View
                 diameter * 1.06f, UiTheme.Shadow, VaultGlowOrder);
 
             var discArt = BoardSprites.Get(BoardSprites.Medallion);
-            if (discArt != null) SlotSprite("medallion", discArt, at, diameter, Color.white, VaultTrimOrder);
-            else Sprite("medallion", DecoBoardArt.Medallion, at, diameter, Color.white, VaultTrimOrder);
+            _sheen.Add(discArt != null
+                ? SlotSprite("medallion", discArt, at, diameter, Color.white, VaultTrimOrder)
+                : Sprite("medallion", DecoBoardArt.Medallion, at, diameter, Color.white, VaultTrimOrder));
 
             var emblemArt = BoardSprites.Get(BoardSprites.MedallionEmblem);
             float emblem = diameter * DecoEmblemOfMedallion;
@@ -241,8 +390,9 @@ namespace NonaRoyale.Unity.View
             }
 
             var rimArt = BoardSprites.Get(BoardSprites.TableRim);
-            if (rimArt != null) SlotSprite($"rim_{seat}", rimArt, at, diameter, Color.white, RimOrder);
-            else Sprite($"rim_{seat}", DecoBoardArt.TableRim, at, diameter, Color.white, RimOrder);
+            _sheen.Add(rimArt != null
+                ? SlotSprite($"rim_{seat}", rimArt, at, diameter, UiTheme.DecoRimTint, RimOrder)
+                : Sprite($"rim_{seat}", DecoBoardArt.TableRim, at, diameter, UiTheme.DecoRimTint, RimOrder));
         }
 
         /// <summary>
@@ -261,6 +411,10 @@ namespace NonaRoyale.Unity.View
         private SpriteRenderer DecoTile(string name, Vector3 at, float size, Color face, Sprite trim,
             Sprite art, bool tinted, bool needTrim)
         {
+            // The code draws every shadow (the contract: art never bakes one), under the tile.
+            Sprite(name + "_shadow", DecoBoardArt.TileShadow, at + DecoTileShadowOffset * size,
+                size * DecoBoardArt.TileShadowScale, UiTheme.DecoTileShadow, PowerGlowOrder);
+
             if (art != null)
             {
                 SlotSprite(name, art, at, size, tinted ? face : Color.white, CellOrder);
