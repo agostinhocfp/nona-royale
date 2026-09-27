@@ -783,6 +783,13 @@ namespace NonaRoyale.Unity.View
             UiKit.Panel(_seatPanel, blocksPointer: true, fans: false);
             // No size fitter: the side column sizes it from its own column's preferred height.
             UiKit.Column(_seatPanel, 8f, 14);
+            // Pinned, as the upright strip is. Its heading and seat rows
+            // force-expand, so unpinned the column counted the panel as
+            // flexible 5 (four seats) against the detail's 1 and handed it most of
+            // whatever height the detail left over. That height changes with every
+            // card hovered, so the seat rows stretched and the detail's top
+            // edge moved as the pointer crossed the pool.
+            UiKit.Size(_seatPanel, flexibleHeight: 0f);
 
             _detail = UiKit.Rect("detail", side);
             UiKit.Panel(_detail, blocksPointer: true);
@@ -1640,13 +1647,13 @@ namespace NonaRoyale.Unity.View
                 return;
             }
 
-            var headingSlot = Content(_detail, "heading", 22f);
+            var headingSlot = DetailSlot("heading", 22f);
             UiKit.Column(headingSlot, 0f).childForceExpandHeight = true;
             UiKit.Heading(headingSlot, OperatorCopy.Role(op.Name));
 
             // The name, and — wide — the way into the full dossier beside it,
             // where a long kit cannot push it off the bottom of the panel.
-            var nameRow = Content(_detail, "name", 34f);
+            var nameRow = DetailSlot("name", 34f);
             UiKit.Row(nameRow, 8f).childForceExpandHeight = true;
 
             var title = UiKit.Label(nameRow, op.Name.ToUpperInvariant(), 28f, UiTheme.GoldBright, bold: true);
@@ -1664,7 +1671,7 @@ namespace NonaRoyale.Unity.View
             // The kit as rules, not flavour (OPERATOR_GUIDE.md OG3): the
             // generated line is what a player picking against a clock needs,
             // and the flavour waits in the full dossier.
-            var kit = Content(_detail, "kit");
+            var kit = DetailSlot("kit");
             UiKit.Column(kit, 2f).childForceExpandHeight = false;
             OperatorDossier.Build(kit, op, ShowKeyword, compact: true);
 
@@ -1676,10 +1683,25 @@ namespace NonaRoyale.Unity.View
             LayoutRebuilder.ForceRebuildLayoutImmediate(_detail);
         }
 
+        /// <summary>
+        /// A detail row held at the height it needs. The heading and name rows
+        /// force-expand their labels, and so do the kit's ability rows, so
+        /// unpinned they shared out the panel's spare height — a share that
+        /// changed with every operator hovered and slid the name and the kit
+        /// up and down. Pinned, a short kit leaves its spare height empty at
+        /// the bottom.
+        /// </summary>
+        private RectTransform DetailSlot(string name, float height = -1f)
+        {
+            var slot = Content(_detail, name, height);
+            UiKit.Size(slot, flexibleHeight: 0f);
+            return slot;
+        }
+
         /// <summary>Wrapped text that takes the height it needs.</summary>
         private void Paragraph(string name, string text, Color colour, float size)
         {
-            var slot = Content(_detail, name);
+            var slot = DetailSlot(name);
             UiKit.Column(slot, 0f);
             UiKit.Label(slot, text, size, colour, wrap: true);
         }
