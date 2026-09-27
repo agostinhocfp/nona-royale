@@ -88,6 +88,13 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         public IReadOnlyList<SpriteRenderer> Parts => _sprites;
 
+        /// <summary>
+        /// Each part's white silhouette renderer, in the same order as
+        /// <see cref="Parts"/>, for an effect that rims the figure (G8d).
+        /// Read them; don't change them.
+        /// </summary>
+        public IReadOnlyList<SpriteRenderer> Silhouettes => _flashes;
+
         public RigFacingArt Current => _art.Facing(_facesLeft);
 
         public bool FacesLeft

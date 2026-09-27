@@ -34,6 +34,11 @@ namespace NonaRoyale.Unity.View
         /// <summary>Burn-dissolve for lit sprites: <c>FADE_ON</c> on <c>AllIn1Urp2dRenderer</c> (G8c).</summary>
         public const string BurnLit = "BurnLit";
 
+        /// <summary>A travelling glint for lit sprites: <c>SHINE_ON</c> on <c>AllIn1Urp2dRenderer</c> (G8f).</summary>
+        public const string ShineLit = "ShineLit";
+
+        public static readonly int ShineLocation = Shader.PropertyToID("_ShineLocation");
+
         public static readonly int FadeAmount = Shader.PropertyToID("_FadeAmount");
         public static readonly int FadeBurnColor = Shader.PropertyToID("_FadeBurnColor");
 

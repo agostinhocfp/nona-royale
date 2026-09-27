@@ -48,6 +48,22 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
+        /// When an aimed tell's line or drop reaches its aim, in unhurried
+        /// seconds from the start, so the target can flare as it lands (G8f).
+        /// </summary>
+        public float Arrival
+        {
+            get
+            {
+                float k = _motion != null ? _motion.Tween(1f) : 1f;
+                return (ReachDelay + ReachSeconds) * k;
+            }
+        }
+
+        /// <summary>How long an aimed tell lingers on its aim once it arrives, in unhurried seconds.</summary>
+        public float Linger => LingerSeconds * (_motion != null ? _motion.Tween(1f) : 1f);
+
+        /// <summary>
         /// Plays the tell and returns how long it runs, in unhurried seconds
         /// (the same clock the presentation queue holds on).
         /// </summary>

@@ -114,6 +114,7 @@ namespace NonaRoyale.Unity.View
         };
 
         private readonly List<GameObject> _drawn = new List<GameObject>();
+        private PoweredShine _shine;
         private int? _layer;
 
         /// <param name="seatsPerTable">Seats drawn at each table: the largest squad.</param>
@@ -121,6 +122,10 @@ namespace NonaRoyale.Unity.View
         {
             foreach (var go in _drawn)
                 if (go != null) Destroy(go);
+
+            // The powered cells' glint (G8f) forgets the old inlays with them.
+            _shine = GetComponent<PoweredShine>() ?? gameObject.AddComponent<PoweredShine>();
+            _shine.Clear();
 
             _drawn.Clear();
             _layer = SceneLighting.BoardLayerId;
@@ -266,13 +271,13 @@ namespace NonaRoyale.Unity.View
                 if (starts.TryGetValue(i, out var owner))
                 {
                     var tint = UiTheme.Seat(owner);
-                    Tile($"start_{owner}", at, cell,
+                    _shine.Add(Tile($"start_{owner}", at, cell,
                         UiTheme.WithAlpha(Color.Lerp(UiTheme.CellWhisper, tint, 0.3f), 0.45f),
-                        UiTheme.WithAlpha(tint, UiTheme.StartInlayAlpha));
+                        UiTheme.WithAlpha(tint, UiTheme.StartInlayAlpha)));
                 }
                 else
                 {
-                    Tile($"safe_{i}", at, cell, UiTheme.CellWhisper, UiTheme.SafeInlay);
+                    _shine.Add(Tile($"safe_{i}", at, cell, UiTheme.CellWhisper, UiTheme.SafeInlay));
                 }
             }
 
@@ -285,10 +290,14 @@ namespace NonaRoyale.Unity.View
                 {
                     float t = depth / Mathf.Max(1f, profile.HomeColumnLength - 1f);
 
-                    Tile($"home_{seat}_{depth}",
-                        layout.PositionOf(CellRef.HomeColumn(seat, depth)), cell,
+                    var home = CellRef.HomeColumn(seat, depth);
+                    var inlay = Tile($"home_{seat}_{depth}",
+                        layout.PositionOf(home), cell,
                         UiTheme.WithAlpha(tint, Mathf.Lerp(UiTheme.HomeWashNear, UiTheme.HomeWashFar, t)),
                         UiTheme.WithAlpha(tint, Mathf.Lerp(UiTheme.HomeInlayNear, UiTheme.HomeInlayFar, t)));
+
+                    // The column's mouth is safe too, so it glints with the start cells (G8f).
+                    if (map.IsSafe(home)) _shine.Add(inlay);
                 }
             }
         }
@@ -351,10 +360,11 @@ namespace NonaRoyale.Unity.View
         // ── Renderers ────────────────────────────────────────────────────
 
         /// <summary>A whispered cell: a faint square and its inlay.</summary>
-        private void Tile(string name, Vector3 at, float size, Color fill, Color inlay)
+        /// <summary>A cell: its wash and its inlay. Returns the inlay, for the powered glint.</summary>
+        private SpriteRenderer Tile(string name, Vector3 at, float size, Color fill, Color inlay)
         {
             Sprite(name, Primitives.Square, at, size, fill, CellOrder);
-            Sprite(name + "_inlay", DecoSprites.TileInlay, at, size, inlay, InlayOrder);
+            return Sprite(name + "_inlay", DecoSprites.TileInlay, at, size, inlay, InlayOrder);
         }
 
         /// <summary>A sprite one world unit across, scaled to <paramref name="size"/>.</summary>

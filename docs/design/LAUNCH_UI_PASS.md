@@ -546,3 +546,45 @@ Each increment ends with a Play Mode check (desktop and upright) and a commit.
     - Over a match or two: Collisions, Knocked out, Safe cells, Doubles, Abilities and The home column each appear once, when they first happen to a person's seat.
     - **No more tips** closes the card, and Settings shows Tips off.
     - A CPU-only table shows no tips. Upright, the card spans the width above the history band and does not cover the tray.
+- 2026-09-27 — **G8d: a rim on the chosen piece** (designer: "4 then 3", G8 polish and then screen transitions; G8d first, then G8f).
+  - **Colour, a correction to the G8 plan.** The plan said a seat-colour outline. It is cyan instead, `UiTheme.Select`, because cyan means selected everywhere else, including this piece's own floor glow and halo, and the seat's colour is already on its base. The piece your cast is aimed at (`PieceMark.Target`) gets an amber rim (`UiTheme.Threat`), the same as its ring. A candidate target keeps only its faint ring, since rimming every candidate would be noise.
+  - **How** (`View/FigureRim`, new, plain C# owned by the piece): the figure's white silhouettes are drawn eight times, nudged 0.05 cells outward (`OperatorPiece.RimCells`, about 3 px at 1080p), just behind the figure inside its sorting group. The figure covers every copy except the ring round its outside.
+  - **Why not the pack's `OUTBASE_ON`:** it traces each sprite's alpha inside its own quad, so tightly cropped parts lose the outline at the quad edge, and a rig would draw an outline round every part, seams included.
+  - **What it copies:**
+    - A rig: each part's flash silhouette, shown when the part is (`RigView.Silhouettes`, new).
+    - A render: its flash silhouette, or the render itself if there is no silhouette.
+    - The code-drawn pawn: its own body.
+    - The copies are children of the silhouettes, so they follow every pose, facing, squash, hop and pop. Each frame they copy the sprite, flips and visibility, and take the piece's alpha, so an evasive fade fades the rim too.
+    - They are rebuilt when the figure changes (pose swap, rig in or out) and hidden with the piece at a knockout. The burn copy (G8c) doesn't include them.
+    - Order 3, under the parts; order 2 for the pawn, under its dark outline.
+  - Files: `FigureRim` (new, with meta), `OperatorPiece`, `RigView`.
+  - **Checked:** core 969 passing. The view and the Unity edit-mode tests compile with and without `DEVELOPMENT_BUILD`, 0 warnings.
+  - **Play Mode checklist:**
+    - Select one of your pieces: a thin cyan rim round the whole figure, as well as the floor glow and halo. Try a rig (it idles and turns), a render and a pawn. There should be no rim lines inside a rig, between its parts.
+    - Walk it: the rim moves with the hop and the squash. Seat it in the yard: the rim follows the seated figure.
+    - Arm a target ability and choose an enemy: an amber rim on the one chosen; the other candidates keep only their rings.
+    - Knock the piece out (Ctrl+Shift+Numpad 9): no rim left behind, and none in the burn. After it reappears, select it again and the rim is back.
+    - An evasive piece (faded): its rim is faded too.
+- 2026-09-27 — **G8f: powered cells glint, casts flare the rims.** This closes G8. G8e, the wordmark shine, stays parked: the wordmark is TMP, which the pack can't draw.
+  - **Powered cells** (`View/PoweredShine`, new; `Art/Resources/Art/Fx/ShineLit.mat`, new, hand-written YAML):
+    - A diagonal band of cool light crosses each safe cell's inlay in turn: the four start cells and the four home-column mouths, taken from `PathMap.IsSafe`, so the set follows the rules.
+    - The glint goes clockwise round the board, one lap per 3.4 s, the powered lights' own breathing period. Each cell's sweep takes 0.7 s.
+    - The shine is the pack's `SHINE_ON` on the lit 2D shader. One instance per inlay, so the band lights only the inlay's pixels and the 2D lights still reach them. `_ShineLocation` is driven from code; outside a cell's sweep it is parked off the sprite.
+    - Quiet when Lighting effects is off or under Reduced motion. The composition root pushes `PoweredShine.Active` every frame, as it does `UiTween.ReducedMotion`.
+    - No material, or a shader that can't run: the inlays keep their default material and nothing else changes.
+    - `BoardView.Tile` now returns the inlay. The board clears the glint's instances before every rebuild.
+    - Also on the title's empty table.
+  - **Cast flares** (`OperatorPiece.Flare`, `CastTell.Arrival`/`Linger`):
+    - The caster's rim (G8d) swells cyan with the tell's sweep, for the whole tell.
+    - The target's rim swells as the line lands and holds through its linger: amber for an enemy, cyan for an ally, from `TeamMap.AreEnemies`.
+    - At its peak the flare runs halfway to white. A piece with no mark fades its rim in and out; a selected one keeps its rim and brightens.
+    - It plays for every cast, CPU casts included, so a CPU's target reads before the hit.
+    - It runs on the motion rate. A colour change isn't movement, so Reduced motion keeps it.
+  - Files: `PoweredShine` (new, with meta), `Fx/ShineLit.mat` (new, with meta), `ShaderFx`, `BoardView`, `OperatorPiece`, `CastTell`, `MatchBootstrap`.
+  - **Checked:** core 969 passing. The view and the Unity edit-mode tests compile with and without `DEVELOPMENT_BUILD`, 0 warnings. The shine's location maths was read from the pack's 2D fragment pass: the projection is (u+v)/2, so a rotation of 0 gives the diagonal band, and −0.25 to 1.25 carries it fully across.
+  - **Play Mode checklist:**
+    - Match or title table: a soft diagonal glint crosses each start cell and each home-column mouth in turn, going clockwise, about one lap every three and a half seconds. The other cells never glint.
+    - Settings → Lighting effects off, or Reduced motion on: the glints stop. Turn it back on and they resume.
+    - Cast at an enemy (yours or a CPU's): the caster's rim flares cyan with the sweep, then the target flares amber as the line lands. A heal or shield on an ally flares the ally cyan. A cell or no-aim cast flares only the caster.
+    - The caster's selected rim is still there after the flare.
+    - Watch the Console for a `[ShaderFx]` warning about `ShineLit`. If one appears, the material didn't load and the cells simply don't glint.

@@ -1327,6 +1327,9 @@ namespace NonaRoyale.Unity.Composition
                 _pieceHud.SetFocus(_hovered != null ? _hovered.Operator : null, _selectedOperator);
             }
 
+            // The powered cells' glint (G8f) goes quiet with the lighting and under reduced motion.
+            PoweredShine.Active = lightingEffects && !reducedMotion;
+
             // Before the pause check: the switch lives on the pause menu.
             if (_lighting != null)
             {
@@ -2153,6 +2156,15 @@ namespace NonaRoyale.Unity.Composition
                         caster.transform.position,
                         target != null ? target.transform.position : (Vector3?)null,
                         cell.HasValue ? _layout.PositionOf(cell.Value) : (Vector3?)null);
+
+                    // G8f: the caster's rim flares with the sweep; the target's
+                    // as the line lands, amber for an enemy, cyan for an ally.
+                    caster.Flare(UiTheme.Select, 0f, hold);
+                    if (target != null && target != caster)
+                    {
+                        bool enemy = _match.Teams.AreEnemies(caster.Operator.Owner, target.Operator.Owner);
+                        target.Flare(enemy ? UiTheme.Threat : UiTheme.Select, _tells.Arrival, _tells.Linger + 0.25f);
+                    }
                     // The ability's own tell if it has one, else the generic sweep or drop (AU3).
                     if (_audio == null ||
                         !_audio.PlaySignature(AbilitySounds.SlugOf(use.AbilityId), SignatureMoment.Tell,

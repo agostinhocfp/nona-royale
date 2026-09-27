@@ -202,6 +202,26 @@ namespace NonaRoyale.Unity.View
         private static Color SelectColour => UiTheme.Select;   // holo cyan, a live state
         private static Color TargetColour => UiTheme.Threat;   // amber, a warning
 
+        /// <summary>
+        /// How far the rim (G8d) stands off the figure, in cells: about three
+        /// pixels at 1080p, enough to read on a crowded cell and no more.
+        /// </summary>
+        private const float RimCells = 0.05f;
+
+        /// <summary>The rim draws just behind the figure: under a rig's or a render's parts (4 up), under the pawn's outline (3).</summary>
+        private int RimOrder => _rendered ? 3 : 2;
+
+        private readonly FigureRim _rim = new FigureRim();
+        private Color? _rimColour;
+
+        /// <summary>A cast's flare on the rim (G8f): its colour, the wait before it, and its length.</summary>
+        private Color _flareColour;
+        private float _flareDelay;
+        private float _flareLeft;
+        private float _flareLength;
+        private bool _rimDirty = true;
+        private float _rimWidth;
+
         private readonly Queue<Vector3> _path = new Queue<Vector3>();
 
         /// <summary>Everything that stands up under the tilt (V1b). The ground markings stay on the root.</summary>
@@ -448,6 +468,7 @@ namespace NonaRoyale.Unity.View
 
             _baseScale = cellSize * PieceShape.SizeFor(op) * FigureScale;
             transform.localScale = Vector3.one * _baseScale;
+            _rimWidth = RimCells * cellSize / Mathf.Max(1e-5f, _baseScale);
             _ground = transform.position;
             _target = _ground;
 
@@ -536,6 +557,9 @@ namespace NonaRoyale.Unity.View
 
             ShowRig(rig, seated);
 
+            // A new figure: the rim is copied from it afresh (G8d).
+            _rimDirty = true;
+
             // The halo sits over the head; a seated figure's head is lower.
             _halo.transform.localPosition = new Vector3(0f, _layout.HeadY, 0f);
 
@@ -574,6 +598,10 @@ namespace NonaRoyale.Unity.View
 
             bool target = (marks & PieceMark.Target) != 0;
             bool targetable = (marks & PieceMark.Targetable) != 0;
+
+            // G8d: the chosen piece is rimmed, cyan for yours, amber for the
+            // one your cast is aimed at. A candidate target keeps only its ring.
+            _rimColour = selected ? SelectColour : target ? TargetColour : (Color?)null;
             _targetRing.enabled = target || targetable;
             _targetRing.color = UiTheme.WithAlpha(TargetColour, target ? 1f : 0.45f);
             _targetRing.transform.localScale = Vector3.one * (target ? 1.15f : 1f);
@@ -946,6 +974,7 @@ namespace NonaRoyale.Unity.View
 
             AnimateMarks(delta);
             AnimateFlash(delta);
+            AnimateRim(rated);
 
             _land = Mathf.Max(0f, _land - rated * 10f);
             if (_pop >= 0f)
@@ -972,6 +1001,83 @@ namespace NonaRoyale.Unity.View
             }
 
             Draw();
+        }
+
+        /// <summary>
+        /// Flares the rim (G8f): after <paramref name="delay"/> it swells in
+        /// <paramref name="colour"/>, runs hot toward white at its peak, and
+        /// goes back to what the marks ask for over <paramref name="seconds"/>.
+        /// The caster flares cyan with the tell's sweep; the target amber as
+        /// the line lands.
+        /// </summary>
+        public void Flare(Color colour, float delay, float seconds)
+        {
+            _flareColour = colour;
+            _flareDelay = Mathf.Max(0f, delay);
+            _flareLength = Mathf.Max(0.01f, seconds);
+            _flareLeft = _flareLength;
+        }
+
+        /// <summary>
+        /// Keeps the rim (G8d) on the figure while it is wanted: built from the
+        /// figure showing now, synced every frame, hidden otherwise. A flare
+        /// (G8f) shows it too, over whatever the marks say.
+        /// </summary>
+        private void AnimateRim(float rated)
+        {
+            float flare = 0f;
+            if (_flareLeft > 0f)
+            {
+                if (_flareDelay > 0f) _flareDelay -= rated;
+                else
+                {
+                    _flareLeft = Mathf.Max(0f, _flareLeft - rated);
+                    flare = Mathf.Sin((1f - _flareLeft / _flareLength) * Mathf.PI);
+                }
+            }
+
+            bool flaring = flare > 0f;
+            if ((!_rimColour.HasValue && !flaring) || _hidden || _body == null)
+            {
+                _rim.Hide();
+                return;
+            }
+
+            var colour = flaring
+                ? Color.Lerp(_flareColour, Color.white, 0.5f * flare)
+                : _rimColour.Value;
+
+            // A piece with no mark of its own fades its rim in and out with the flare.
+            float strength = flaring && !_rimColour.HasValue ? flare : 1f;
+
+            if (_rimDirty)
+            {
+                if (!_rim.Build(RimSources(), transform, _rimWidth, RimOrder, colour)) return;
+                _rimDirty = false;
+            }
+
+            _rim.Sync(colour, _alpha * strength);
+        }
+
+        /// <summary>What the rim copies: every rig part's silhouette, a render's silhouette, or the pawn itself.</summary>
+        private IEnumerable<FigureRim.Source> RimSources()
+        {
+            if (RigActive)
+            {
+                var parts = _rig.Parts;
+                var silhouettes = _rig.Silhouettes;
+                for (int i = 0; i < parts.Count && i < silhouettes.Count; i++)
+                    yield return new FigureRim.Source(silhouettes[i], parts[i]);
+            }
+            else if (_rendered)
+            {
+                // No silhouette (an unreadable texture): the render itself, tinted, still gives its shape.
+                yield return new FigureRim.Source(_flashOverlay.sprite != null ? _flashOverlay : _body, _body);
+            }
+            else
+            {
+                yield return new FigureRim.Source(_body, _body);
+            }
         }
 
         private void AnimateFlash(float delta)
