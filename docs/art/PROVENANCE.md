@@ -29,4 +29,5 @@
 ## To record
 
 - The image tool and plan behind Luka's concept sheet (`ART_PROMPTS.md`).
+- The image tool and plan behind `docs/art/VISUAL_TARGET.png` (2026-09-27). A reference, not a shipped asset, but it counts for the AI-content disclosure if any of it is traced or reused.
 - Steam's AI-content disclosure, checked at submission time.
