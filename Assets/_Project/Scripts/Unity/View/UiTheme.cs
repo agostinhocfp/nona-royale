@@ -393,14 +393,38 @@ namespace NonaRoyale.Unity.View
         /// <summary>How much of its arm's seat colour a corner facet keeps (BS6).</summary>
         public const float DecoFacetFace = 0.6f;
 
+        /// <summary>A Deco yard panel's lacquer (BS7), a shade over the board's black.</summary>
+        public static readonly Color DecoYardFloor = Hex("100C0F");
+
+        /// <summary>How far the yard panel's lacquer leans toward its seat colour (BS7).</summary>
+        public const float DecoYardWarmth = 0.08f;
+
+        /// <summary>How much of the seat colour the yard panel's band keeps (BS7).</summary>
+        public const float DecoYardBand = 0.75f;
+
+        /// <summary>The yard panel's gilt frame and corners (BS7), a little under full so the table's rim leads.</summary>
+        public static readonly Color DecoYardGilt = new Color(0.85f, 0.85f, 0.85f, 1f);
+
+        /// <summary>A yard panel's fill: the lacquer, leaning a little toward its seat.</summary>
+        public static Color DecoYardFill(Color seat)
+        {
+            var fill = Color.Lerp(DecoYardFloor, seat, DecoYardWarmth);
+            fill.a = 1f;
+            return fill;
+        }
+
         /// <summary>The Deco table's centre compass: gilt, between shade and light.</summary>
         public static readonly Color DecoTableEmblem = Color.Lerp(DecoGilt, DecoGiltLight, 0.55f);
 
         /// <summary>The tint for a painted, greyscale chair: its seat, lifted a little toward white.</summary>
         public static Color DecoChairTint(Color seat) => Color.Lerp(seat, Color.white, 0.15f);
 
-        /// <summary>A Deco tile's soft drop shadow (BS5): dark enough to lift the tile off the near-black floor.</summary>
-        public static readonly Color DecoTileShadow = WithAlpha(Color.black, 0.7f);
+        /// <summary>
+        /// A Deco tile's soft drop shadow (BS5). 0.7 in BS5; 0.5 since BS7, with
+        /// a shorter offset and a softer bevel, when the designer asked for the
+        /// cells a little less raised.
+        /// </summary>
+        public static readonly Color DecoTileShadow = WithAlpha(Color.black, 0.5f);
 
         /// <summary>The corner wedges' crisp shadow (BS5).</summary>
         public static readonly Color DecoWedgeShadow = WithAlpha(Color.black, 0.55f);

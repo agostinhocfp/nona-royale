@@ -1,7 +1,7 @@
 # Nona Royale — Board skin (BS-series)
 
 > Location in repo: `docs/design/BOARD_SKIN.md` · Project copy: `claude/BOARD_SKIN.md`
-> Status: **Open, 2026-09-27.** BS0–BS5 accepted; the BS5 checkpoint is read (`docs/art/CHECKPOINT_BS5.png`). BS6 (the tune pass) written, waiting on Play Mode and commit, with BS5, in one commit. Next: BS7 yard panels, then BS8 the steel frame.
+> Status: **Open, 2026-09-27.** BS0–BS6 accepted (checkpoint: `docs/art/CHECKPOINT_BS5.png`). BS7 (yard panels, and the cells lowered) written, waiting on Play Mode and commit. Next: BS8 the steel frame.
 > Design: `claude/HANDOFF_board_skin.md` (the code route). Sister: `claude/HANDOFF_board_assets.md` (the sprite route); its §1 table is the contract, copied below.
 > Target: `docs/art/VISUAL_TARGET.png`, **the simple version since 2026-09-27** (steel frame, no props); the first, ornate one is `docs/art/VISUAL_TARGET_ORNATE.png`, for materials only. Acceptance for every increment is a Play Mode screenshot of the board beside it.
 > Baseline: `docs/art/BASELINE_BS0.png` (Classic, flat, 2560×1440, 2026-09-27).
@@ -59,6 +59,19 @@ Files go in `Assets/_Project/Art/Resources/Art/Board/`, as PNG, named exactly af
 **Route changes** (a code-first row flipping to sprite-first after a checkpoint) are logged here and in the handoff's status table.
 
 ## Log
+
+- 2026-09-27 — **BS7 written: the yard panels, and the cells a little lower.** On HEAD `340fd12`.
+  - **The cells lowered** (designer: "reduce the cells' elevation just a bit"), about a third off every cue: the trim's bevel light 0.26/0.18 → 0.18/0.12 and shade 0.5/0.4 → 0.34/0.27; the bevel 9 → 7 px of 128; the face's own bevel softened (0.95/0.45/0.88/0.52 → 0.88/0.55/0.84/0.6); the drop shadow 70 → 50 % (`UiTheme.DecoTileShadow`) at a shorter offset (6 %/9 % → 4 %/6 % of a tile). The gilt edge is unchanged, so the tiles still read as tiles.
+  - **A panel under every table** (gap row 10, the simple target's yards). Each yard block, less 0.15 spacings on every side (`BoardView.DecoYardPanelSide`: 5.7 spacings on the standard board), is dark lacquer (`UiTheme.DecoYardFloor`, `#100C0F`, leaning 8 % toward its seat), edged by a band in the seat's colour at 75 % (`DecoYardBand`), between a gilt hairline outside it and one inside it, with a Deco triangle in each corner of the inner one: a solid faceted corner and a line across it. Drawn under everything on the table: fill at −31, band at −29, gilt at −28 (`DecoBoardArt.YardBand`, white for the tint, and `YardFrame`, gilt baked, 512 px, at 85 % through `UiTheme.DecoYardGilt` so the rim leads).
+  - **Spacing, found in a mock-up:** with the band where it was first put, the table's rim touched it at the middle of each side. The band now sits 2 % in and the inner hairline 5 %, leaving about 0.13 spacings between the rim and the band.
+  - **Tests.** `DecoYardTests` (new), 3, on the Standard and the Compact board: no panel overlaps a cell; every table sits inside its panel's band and clear of the corner ornaments; the band sits between the two hairlines. All pass offline.
+  - **Checks.** Cloud compile on the device's tree (which includes `2658456`): core 969/969; Core, Unity (with and without `DEVELOPMENT_BUILD`), EditorTools and EditTests build with 0 warnings. 50 EditMode tests pass offline; 3 need Unity.
+  - **Play Mode checklist:**
+    - Deco: each table sits on a dark panel edged in its seat's colour, gilt corners in the four corners; the yards are no longer bare black. Classic: unchanged.
+    - The cells sit a little lower than in `CHECKPOINT_BS5.png`, and still read as raised tiles.
+    - Nothing in the panel reaches a track cell; the cross's gilt edge and the panel's hairline don't touch.
+    - Seated figures and the seat marks still read over the panel's edge where they come close.
+    - Watch for: the seat band too loud beside the felt (`DecoYardBand`); the panel's lacquer too warm (`DecoYardWarmth`).
 
 - 2026-09-27 — **BS6 written: the tune pass** (the checkpoint's first pick). On the uncommitted BS5 tree; the two go in one commit.
   - **A gilt lattice between the tiles.** Per arm: the two lines between its three lanes, the line across its mouth between the last two home cells, and one line across every gap between rows, each 0.04 spacings wide down the middle of the 0.14 gap, in dark gilt (`UiTheme.DecoLattice`), with a light-gilt rivet (0.075) wherever a row line crosses a lane line (`UiTheme.DecoRivet`). The arm's outer edges are the cross's own gilt edge, so they aren't doubled. Drawn at the lanes' order (−24), under the tiles' shadows (−23), so each tile's shadow falls across the lattice as it should. `BoardView.DecoLatticeSegments` / `DecoLatticeRivets` give the geometry in spacings for any arm length: 32 lines and 40 rivets on the standard board.
@@ -178,7 +191,7 @@ Files go in `Assets/_Project/Art/Resources/Art/Board/`, as PNG, named exactly af
   | 7 | Light | Candle pools at the corners, gilt catching light | One hot pool at the vault; the arm pools barely show | BS5 |
   | 8 | Props | Candles, chips, plants, instrument (ornate only; none in the simple target) | None beyond the felt's chips | BS6, parked |
   | 9 | Table and frame | Gilt frame, rails, tray (ornate); **dark steel frame** (simple target, from 2026-09-27) | Black carpet, the oxblood rail as a thin red line | Open (D4 note) |
-  | 10 | Yard blocks (simple target) | A dark panel per yard, edged in its seat's colour, gilt corner ornaments | Bare carpet | Not yet planned |
+  | 10 | Yard blocks (simple target) | A dark panel per yard, edged in its seat's colour, gilt corner ornaments | Bare carpet | BS7 |
 
 - 2026-09-27 — **BS1 written: the sprite slots.** On HEAD `64f6a21`. Nothing on screen changes: nothing reads a slot yet, and the folder is empty.
   - **`View/BoardSprites.cs` (new).** The contract in code: one constant per slot and `Slots`, a list of `BoardSlot` (name, painted size, tinted or not). `Get(slot)` loads `Resources/Art/Board/<slot>` as a `Sprite`, caches it (a cached null means "looked, empty"; a sprite the editor destroyed is looked up again), and returns null for an empty slot, so the caller keeps its procedural surface. `Has`, `Filled`, `TryGetSlot`, `IsSlot`. A name outside the contract **throws**, because a misspelt slot in code would otherwise look empty forever. `UnitScale(sprite)` returns the scale that draws a sprite one unit across from its bounds, so BS2+ never depend on pixels-per-unit being right. If a file is in the folder but not imported as a sprite, one warning says so instead of the slot silently staying procedural. The cache clears on entering Play Mode (`SubsystemRegistration`), so "restart Play Mode to see a new file" holds even if domain reload is turned off later.

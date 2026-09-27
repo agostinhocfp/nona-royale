@@ -62,6 +62,13 @@ namespace NonaRoyale.Unity.View
     /// slimmer and darker, and each inner corner carries two small facets in
     /// the colours of the two arms it joins, as the target's do.
     ///
+    /// <b>Yards as panels</b> (BS7). Each yard block is a dark lacquer panel
+    /// under its table, faintly warmed by its seat, edged by a band in the
+    /// seat's colour between two gilt hairlines, with a Deco triangle in each
+    /// corner — the simple target's yards. It fills the largest black on
+    /// the board and frames each table as its seat's own. It stays clear of
+    /// every cell (<c>DecoYardTests</c>).
+    ///
     /// <b>Readability is the constraint.</b> Highlights, reach and targets
     /// draw on the Default layer, above the whole board layer, so they
     /// always land on top of the tiles; the tiles are held dark enough that
@@ -150,7 +157,7 @@ namespace NonaRoyale.Unity.View
         private GiltSheen _sheen;
 
         /// <summary>A tile's drop shadow, in tile sizes: down and right, away from the key light.</summary>
-        private static readonly Vector3 DecoTileShadowOffset = new Vector3(0.06f, -0.09f, 0f);
+        private static readonly Vector3 DecoTileShadowOffset = new Vector3(0.04f, -0.06f, 0f);
 
         /// <summary>The wedges' shadow, in cell spacings: crisp, close under them.</summary>
         private static readonly Vector3 DecoWedgeShadowOffset = new Vector3(0.03f, -0.05f, 0f);
@@ -346,9 +353,36 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         public static float DecoChairRotation(float seatAngle) => seatAngle - 90f;
 
+        /// <summary>How far a yard panel stands in from its yard block's edges, in spacings.</summary>
+        public const float DecoYardInset = 0.15f;
+
+        /// <summary>
+        /// A yard panel's side: the yard block (<see cref="BoardLayout.ArmLength"/>
+        /// spacings square, from the arm's side to the grid's edge) less
+        /// <see cref="DecoYardInset"/> on each side.
+        /// </summary>
+        public static float DecoYardPanelSide(BoardLayout layout) =>
+            (layout.ArmLength - 2f * DecoYardInset) * layout.Spacing;
+
+        /// <summary>The yard's panel (BS7): dark fill, seat band, gilt frame and corners. Under the table.</summary>
+        private void DrawDecoYardPanel(BoardLayout layout, PlayerColor seat)
+        {
+            var at = layout.PositionOf(CellRef.Yard(seat));
+            float side = DecoYardPanelSide(layout);
+            var seatColour = UiTheme.Seat(seat);
+
+            Sprite($"yard_panel_{seat}", BoardArt.Solid, at, side, UiTheme.DecoYardFill(seatColour), TableRuleOrder);
+
+            Sprite($"yard_band_{seat}", DecoBoardArt.YardBand, at, side,
+                UiTheme.DecoSeatFace(seatColour, UiTheme.DecoYardBand), CrossOrder);
+            Sprite($"yard_frame_{seat}", DecoBoardArt.YardFrame, at, side, UiTheme.DecoYardGilt, PatternOrder);
+        }
+
         /// <summary>A Deco yard table (BS4): shadow, felt, rim, emblem, and chairs or seat marks.</summary>
         private void DrawDecoTable(BoardLayout layout, PlayerColor seat, int seats)
         {
+            DrawDecoYardPanel(layout, seat);
+
             float spacing = layout.Spacing;
             var at = layout.PositionOf(CellRef.Yard(seat));
             float diameter = layout.TableDiameter;
