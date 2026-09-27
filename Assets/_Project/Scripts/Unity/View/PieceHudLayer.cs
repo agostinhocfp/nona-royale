@@ -115,6 +115,14 @@ namespace NonaRoyale.Unity.View
         private float _ceiling;
 
         /// <summary>
+        /// The board's centre and half-width in world units, so a status row
+        /// is kept inside the board's edge (G7e). A two-tag row centred on a
+        /// piece at the end of an arm hung past the frame. Zero disables it.
+        /// </summary>
+        private Vector3 _boardCentre;
+        private float _boardExtent;
+
+        /// <summary>
         /// Builds one label and one status row per piece under the HUD canvas.
         /// Called from NewMatch, so it clears whatever the previous match left
         /// behind.
@@ -142,6 +150,13 @@ namespace NonaRoyale.Unity.View
         /// the same way it sets the toasts', banner's and turn button's areas.
         /// </summary>
         public void SetCeiling(float canvasUnits) => _ceiling = Mathf.Max(0f, canvasUnits);
+
+        /// <summary>The board's centre and half-width in world units (G7e). Set where the camera is framed.</summary>
+        public void SetBoard(Vector3 centre, float extent)
+        {
+            _boardCentre = centre;
+            _boardExtent = Mathf.Max(0f, extent);
+        }
 
         /// <summary>
         /// The two pieces whose readout shows whatever their health (H3): the
@@ -446,8 +461,10 @@ namespace NonaRoyale.Unity.View
                 }
 
                 if (showStatuses)
-                    entry.StatusRect.anchoredPosition = ToCanvas(camera, centre - BoardTilt.ScreenUp * _worldOffset)
-                                                        + new Vector2(entry.StackShift, -entry.StackRow * StackRowSpacing);
+                    entry.StatusRect.anchoredPosition = InsideBoard(camera,
+                        ToCanvas(camera, centre - BoardTilt.ScreenUp * _worldOffset)
+                            + new Vector2(entry.StackShift, -entry.StackRow * StackRowSpacing),
+                        entry.StatusRect);
             }
         }
 
@@ -463,6 +480,27 @@ namespace NonaRoyale.Unity.View
 
             float top = _canvasRect.rect.height * 0.5f - _ceiling - rect.sizeDelta.y * 0.5f;
             if (at.y > top) at.y = top;
+            return at;
+        }
+
+        /// <summary>
+        /// Slides a status row sideways until it sits inside the board's left
+        /// and right edges (G7e). Only sideways: the row still hangs under its
+        /// piece, and a board edge is never above or below a tag by more than
+        /// the frame's margin.
+        /// </summary>
+        private Vector2 InsideBoard(Camera camera, Vector2 at, RectTransform rect)
+        {
+            if (_boardExtent <= 0f) return at;
+
+            float left = ToCanvas(camera, _boardCentre - Vector3.right * _boardExtent).x;
+            float right = ToCanvas(camera, _boardCentre + Vector3.right * _boardExtent).x;
+            float half = rect.sizeDelta.x * 0.5f;
+
+            // A row wider than the board: centre it rather than pick an edge.
+            if (right - left <= 2f * half) return new Vector2((left + right) * 0.5f, at.y);
+
+            at.x = Mathf.Clamp(at.x, left + half, right - half);
             return at;
         }
 

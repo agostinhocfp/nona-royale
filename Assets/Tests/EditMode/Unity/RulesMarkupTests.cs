@@ -27,6 +27,18 @@ namespace NonaRoyale.Unity.Tests.View
         }
 
         [Test]
+        public void EveryLink_SharesOneQuietUnderline()
+        {
+            string markup = RulesMarkup.For(BioLinkRage, linked: true);
+
+            Assert.That(markup, Does.Not.Contain("<u>"));
+            var colours = System.Text.RegularExpressions.Regex.Matches(markup, "<u color=#([0-9A-F]{8})>");
+            Assert.That(colours.Count, Is.GreaterThan(1));
+            foreach (System.Text.RegularExpressions.Match m in colours)
+                Assert.That(m.Groups[1].Value, Is.EqualTo(colours[0].Groups[1].Value));
+        }
+
+        [Test]
         public void AnUnlinkedLine_ColoursButDoesNotPromiseATap()
         {
             string markup = RulesMarkup.For(BioLinkRage, linked: false);

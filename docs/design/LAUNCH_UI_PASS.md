@@ -1,7 +1,7 @@
 # Nona Royale — Launch UI pass (G6)
 
 > Location in repo: `docs/design/LAUNCH_UI_PASS.md` · Project copy: `claude/LAUNCH_UI_PASS.md`
-> Status: **Open, 2026-09-26.** G6a–G6e and G7a passed Play Mode and are committed (G7a `049edcd`). **G7b and G7c committed (G7c `65e87f0`). G7d (the log clears the turn button, and four small ones) written, waiting on Play Mode. G8 (All In 1 Sprite Shader): the pack is committed (`f75fd43`); G8a and G8c are committed (`634406e`); the burn wasn't noticeable in Play Mode, and G8c's follow-up makes it readable and logs each run. G8b withdrawn; G8e needs another technique.** Open: G7 captures still owed (settings pages, glossary tab, trait and keyword cards, history hover card, doubles callout).
+> Status: **Open, 2026-09-26.** G6a–G6e and G7a passed Play Mode and are committed (G7a `049edcd`). **G7a–G7d committed. G7e (the last two G7 items) written, waiting on Play Mode; with it G7 closes. G8 (All In 1 Sprite Shader): the pack is committed (`f75fd43`); G8a and G8c are committed (`634406e`); the burn wasn't noticeable in Play Mode, and G8c's follow-up makes it readable and logs each run. G8b withdrawn; G8e needs another technique.** Open: G7 captures still owed (settings pages, glossary tab, trait and keyword cards, history hover card, doubles callout).
 > Related: `GUI_PHASE.md` (E–J, G3–G5), `HUD_PASS.md` (H1–H4: the contextual tray, the folded rail, the quiet board — G6b builds on it and does not undo it), `MOBILE.md` (upright layout — every change here must keep M3/M6 intact), `ART_DIRECTION.md` §3 and §8, ADR-0008
 
 ## Verdict
@@ -412,3 +412,15 @@ Each increment ends with a Play Mode check (desktop and upright) and a commit.
     - Glossary: the tags sit clear of the scrollbar. The roster list and dossier have a little more right margin.
     - Win with Ctrl+Shift+Numpad 0: the top bar reads "RED WINS · ROUND n" with no ENERGY label. The results read VICTORY in gold. Lose on a CPU's turn: DEFEAT in red.
     - Hover a MOVE chip: one line, "GREEN Revú moves 7 cells round 1", with no body. Hover a CAST chip: title "Kian · Blind Spot" and its lines below, as before.
+- 2026-09-27 — **G7d committed (`7bdd871`), and the Windows build profile (`ff9c4d5`),** with the shader pack's folder meta that the G8 add line missed (my miss: `git add Assets/Plugins/AllIn1SpriteShader` does not pick up `Assets/Plugins/AllIn1SpriteShader.meta` beside it). A stale `.git/index.lock` left by the session's own git on the device was moved to `Temp/`. Only read-only git runs there now.
+- 2026-09-27 — **G7e written: the last two G7 items** (designer's pick over onboarding and G8 polish).
+  - **G7c flag 11, a status row off the board's edge.** `PieceHudLayer.SetBoard` (new) takes the board's centre and half-width, which the composition root sets where it frames the camera (`BoardLayout.HomeGoalPosition`, `Extent`). Every frame, each status row slides sideways until it sits between the board's left and right edges (`InsideBoard`). A row wider than the board is centred. Only sideways: the row still hangs under its piece.
+  - **G7 flag 10, busy underlines in the guide.** A linked keyword keeps its colour, but every underline is now the same quiet line: `<u color=#…>` with the dim text colour at half strength (`RulesMarkup.LinkLine`). The underline only says "tappable", and the colour stays on the word. This covers the dossier, the glossary and the cards.
+  - Tests: `RulesMarkupTests.EveryLink_SharesOneQuietUnderline` (Unity test assembly; it compiles here, and Unity runs it).
+  - Files: `PieceHudLayer`, `MatchBootstrap`, `RulesMarkup`, `RulesMarkupTests`.
+  - **Checked:** core 958 passing. The view and the Unity edit-mode tests compile with and without `DEVELOPMENT_BUILD`, 0 warnings.
+  - **Play Mode checklist:**
+    - A piece with two tags at the end of an arm (BALANCE and BURDEN on the east or west tip): the row sits inside the board's edge and doesn't run over the frame. Tags in the middle of the board sit centred under their piece as before.
+    - Tilt the camera (Display → Board camera): the rows still stay inside the edge.
+    - Operators → a dossier, then the glossary: keywords keep their colours, and every underline is one thin grey line, not a coloured one. Clicking a keyword still opens its card.
+- G7 closes with this. What remains from its audit: flag 12, the winning squad on the results screen, which waits for the art.

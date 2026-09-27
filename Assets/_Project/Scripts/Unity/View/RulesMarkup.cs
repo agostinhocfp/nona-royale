@@ -58,7 +58,10 @@ namespace NonaRoyale.Unity.View
 
                     case RunKind.Keyword:
                         var colour = UiTheme.Hex(ColourOf(run.Keyword, run.Text));
-                        if (linked) text.Append("<link=\"").Append(run.Keyword).Append("\"><u>");
+                        // One quiet underline for every link (G7e): each keyword
+                        // underlined in its own colour made a reading page busy.
+                        // The colour stays on the word; the line only says "tap".
+                        if (linked) text.Append("<link=\"").Append(run.Keyword).Append("\"><u color=#").Append(LinkLine).Append('>');
                         text.Append("<color=#").Append(colour).Append('>').Append(Escape(run.Text)).Append("</color>");
                         if (linked) text.Append("</u></link>");
                         break;
@@ -77,6 +80,9 @@ namespace NonaRoyale.Unity.View
 
             return text.ToString();
         }
+
+        /// <summary>The underline under a linked keyword: the dim text colour at half strength, RRGGBBAA.</summary>
+        private static string LinkLine => ColorUtility.ToHtmlStringRGBA(UiTheme.WithAlpha(UiTheme.TextDim, 0.5f));
 
         /// <summary>The colour a keyword is drawn in.</summary>
         public static Color ColourOf(string keyword, string shown = null)

@@ -1138,6 +1138,7 @@ namespace NonaRoyale.Unity.Composition
             if (_banner != null) _banner.SetArea(leftUnits, rightUnits, chromeTop);
             if (_turnButton != null) _turnButton.SetArea(leftUnits, rightUnits, chromeTop, chromeBottom);
             if (_pieceHud != null) _pieceHud.SetCeiling(hud ? chromeTop + TurnBanner.ReservedHeight : 0f);
+            if (_pieceHud != null && _layout != null) _pieceHud.SetBoard(_layout.HomeGoalPosition, _layout.Extent);
 
             _framedWidth = Screen.width;
             _framedHeight = Screen.height;
