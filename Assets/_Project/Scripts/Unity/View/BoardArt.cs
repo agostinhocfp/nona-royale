@@ -581,8 +581,12 @@ namespace NonaRoyale.Unity.View
 
         private enum CrossPart { Fill, Edge, Shadow, Pattern, Sheen }
 
-        /// <summary>Padding around the cells, in cells: how far the floor reaches past them.</summary>
-        private const float CrossPad = 0.12f;
+        /// <summary>
+        /// Padding around the cells, in cells: how far the floor reaches past
+        /// them. Public since BS8b, so the Deco skin's frame and yard panels
+        /// can meet the cross's edge exactly.
+        /// </summary>
+        public const float CrossPad = 0.12f;
 
         /// <summary>The cross's gilt edge, in texels (G3: was 2.2).</summary>
         private const float CrossEdgeWidth = 1.4f;

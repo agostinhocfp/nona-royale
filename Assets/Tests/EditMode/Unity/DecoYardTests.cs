@@ -42,7 +42,7 @@ namespace NonaRoyale.Unity.Tests.View
 
                 foreach (var seat in Seats)
                 {
-                    var panel = layout.PositionOf(CellRef.Yard(seat));
+                    var panel = BoardView.DecoYardPanelCentre(layout, seat);
                     foreach (var cell in cells)
                     {
                         bool overlaps = Mathf.Abs(panel.x - cell.x) < panelHalf + cellHalf &&
@@ -62,11 +62,14 @@ namespace NonaRoyale.Unity.Tests.View
                 float side = BoardView.DecoYardPanelSide(layout);
                 float radius = layout.TableDiameter * 0.5f;
 
+                // The table sits on the yard's centre, CrossPad off the panel's, toward the arms (BS8b).
+                float offset = BoardArt.CrossPad;
+
                 // The band's inner edge, and how far the corner ornament reaches in along the diagonal.
-                float bandInner = side * (0.5f - DecoBoardArt.YardBandInset - DecoBoardArt.YardBandWidth);
+                float bandInner = side * (0.5f - DecoBoardArt.YardBandInset - DecoBoardArt.YardBandWidth) - offset;
                 Assert.Less(radius, bandInner, profile.Name);
 
-                float cornerInner = side * (0.5f - DecoBoardArt.YardInnerLine - DecoBoardArt.YardCornerReach * 0.5f);
+                float cornerInner = side * (0.5f - DecoBoardArt.YardInnerLine - DecoBoardArt.YardCornerReach * 0.5f) - offset;
                 Assert.Less(radius, cornerInner * Mathf.Sqrt(2f), profile.Name);
             }
         }
