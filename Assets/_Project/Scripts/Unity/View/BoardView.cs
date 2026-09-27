@@ -86,6 +86,20 @@ namespace NonaRoyale.Unity.View
         private const int VaultOrder = -14;
         private const int VaultTrimOrder = -13;
         private const int VaultBossOrder = -12;
+        private const int RailShadowOrder = -11;
+        private const int RailOrder = -10;
+
+        /// <summary>
+        /// How much of the padded rail lies on the table, in cells (G9c). The
+        /// rest overhangs into the framing's air: the arms' tips stop about
+        /// 0.4 cells short of the edge, and the table's gilt rule sits 0.3 in,
+        /// just inside the rail, as its brass trim.
+        /// </summary>
+        private const float RailOnTable = 0.22f;
+
+        /// <summary>The rail's two shadows, in cells: down and a little right, as the room's light falls.</summary>
+        private static readonly Vector3 RailShadowNear = new Vector3(0.03f, -0.07f, 0f);
+        private static readonly Vector3 RailShadowFar = new Vector3(0.06f, -0.15f, 0f);
 
         /// <summary>How far the table's gilt rule sits in from its edge, in cell spacings.</summary>
         private const float TableRuleInset = 0.3f;
@@ -148,6 +162,7 @@ namespace NonaRoyale.Unity.View
             }
             Sprite("table_rule", BoardArt.TableRule(sideCells, TableRuleInset), centre, side,
                 UiTheme.TableRule, TableRuleOrder);
+            DrawRail(centre, spacing, sideCells);
 
             // The cross sprites are sized in cells, so their scale is the spacing.
             var cross = BoardArt.Cross(layout.GridSize, ArmCells);
@@ -182,6 +197,49 @@ namespace NonaRoyale.Unity.View
                     ? new Vector3(lineWidth, laneLength, 1f)
                     : new Vector3(laneLength, lineWidth, 1f);
             }
+        }
+
+        /// <summary>
+        /// The padded leather rail round the table's edge (G9c), with its
+        /// shadow on the table and the void around it. It sits over the arm
+        /// glows and under everything that stands on the board.
+        /// </summary>
+        private void DrawRail(Vector3 centre, float spacing, float sideCells)
+        {
+            float cells = sideCells + 2f * (BoardArt.RailCells - RailOnTable);
+
+            RailRuns("rail_shadow_far", centre + RailShadowFar * spacing, spacing, cells, UiTheme.RailShadowFar, RailShadowOrder);
+            RailRuns("rail_shadow", centre + RailShadowNear * spacing, spacing, cells, UiTheme.RailShadowNear, RailShadowOrder);
+            RailRuns("rail", centre, spacing, cells, Color.white, RailOrder);
+        }
+
+        /// <summary>
+        /// The rail's four runs round a square <paramref name="cells"/> across:
+        /// the top and bottom the full width with the corners, the sides
+        /// between them, so nothing overlaps and a shadow never doubles.
+        /// </summary>
+        private void RailRuns(string name, Vector3 centre, float spacing, float cells, Color colour, int order)
+        {
+            float width = BoardArt.RailCells;
+            float mid = (cells - width) * 0.5f * spacing;
+
+            RailRun(name + "_top", BoardArt.RailSide.Top, centre + Vector3.up * mid, spacing,
+                new Vector2(cells, width), colour, order);
+            RailRun(name + "_bottom", BoardArt.RailSide.Bottom, centre + Vector3.down * mid, spacing,
+                new Vector2(cells, width), colour, order);
+            RailRun(name + "_left", BoardArt.RailSide.Left, centre + Vector3.left * mid, spacing,
+                new Vector2(width, cells - 2f * width), colour, order);
+            RailRun(name + "_right", BoardArt.RailSide.Right, centre + Vector3.right * mid, spacing,
+                new Vector2(width, cells - 2f * width), colour, order);
+        }
+
+        private void RailRun(string name, BoardArt.RailSide side, Vector3 position, float spacing,
+            Vector2 size, Color colour, int order)
+        {
+            var renderer = Sprite(name, BoardArt.TableRail(side), position, spacing, colour, order);
+            renderer.drawMode = SpriteDrawMode.Tiled;
+            renderer.tileMode = SpriteTileMode.Continuous;
+            renderer.size = size;
         }
 
         /// <summary>The whispered path: the shared track and the four home columns.</summary>

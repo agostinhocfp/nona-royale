@@ -489,3 +489,28 @@ Each increment ends with a Play Mode check (desktop and upright) and a commit.
     - Tray: the dice sit centred in a dark recess, and live dice stand up in it with a small shadow. A roll's dice fly in and land on the slots. The health bar is a recessed slot with the fill inside it, and it still glides on damage.
     - Upright: no leather between the top bar and the squad band, or between the history band and the tray. The squad band's bottom edge and the history band's top edge have rails.
     - Knobs: `UiTheme` has `BarTop`/`BarFoot`, `Leather`, `Bead`, `RailShade`/`RailDrop` and `Well`; `UiKit` has `RailWidth` and `RailInside`.
+- 2026-09-27 — **G9c: the rail moves to the table.** From the designer's screenshot of G9b:
+  - **G9b's HUD rail is withdrawn.** At 10 canvas units the leather was about 9 px on screen, too thin for its padding to read. It showed as a thin red stripe beside a gold line, a double border round the whole screen, right after the designer had asked for fewer thin border lines. It also framed the wrong thing: the chrome's edge boxes the empty void, and the table's edge is about 350 px further in on each side.
+  - The plates (G9a) read as intended on MENU and LOG.
+  - The dice well was near black, so its inner shadow had nothing to darken, and its bottom light read as an underline.
+  - A repaint of the screenshot was offered; the designer said proceed.
+  - **The padded rail is on the table** (`BoardArt.TableRail`, `BoardView.DrawRail`):
+    - A square leather frame round the table, 0.4 cells wide (26 texels at 64 per cell). Each side is a tube lit from above and the left (`UiTheme.LeatherFold` 150709 → `Leather` 6A2F3B), mitred at the corners, with a dashed seam of brown thread (`RailStitch`) near its inner face that stops short of the corners.
+    - It is drawn as four tiled runs, not sliced, so the seam repeats instead of smearing: the top and bottom runs carry the mitred corners as end caps, and the side runs fill between them. The colour is baked in.
+    - *First build, fixed before commit:* one tiled frame sprite also tiled its empty centre across the whole table. With an 8-texel repeat that was 136 × 136 tiles, and Unity refused it: "Cannot generate 9 slice … Requires 69696 vertices". The four runs tile along their own length only, a few hundred vertices each, and nothing is drawn over the table's middle. The dash repeat divides the tile, so the joins stay in phase.
+    - 0.22 cells of it lie on the table (`RailOnTable`); the rest overhangs into the framing's air. The arms' tips stop about 0.4 cells short of the edge, and the table's gilt rule at 0.3 sits just inside the rail as its brass trim.
+    - Two shadows, down and a little right (`RailShadowNear`/`Far`). It is drawn over the arm glows and under everything that stands on the board (orders −11 and −10).
+    - Piece tags are HUD, so one at the board's edge draws over the rail, not under it.
+  - **The bars end in a lit lip** (`UiKit.Dock`):
+    - Lacquer as in G9b. The board-facing edge rolls toward the light: a 6-unit warm falloff (`UiTheme.BarLip`, 7%) instead of any line. The gilt hairline (`EdgeRule`) is gone with the rail, so the chrome has no frame lines at all.
+    - The `rail` and `railTrim` parameters and the HUD leather sprites are removed.
+  - **Wells:** the floor is `UiTheme.Well` 150F12 (was 080607), darker than the bar but not black. The inner shadow is 80%. The bottom light sits two texels in, at 6%.
+  - Files: `BoardArt`, `BoardView`, `UiKit`, `DecoSprites`, `UiTheme`, `TurnStrip`, `ActionTray`, `SquadRail`, `HistoryStrip`.
+  - **Checked:** core 958 passing. The view and the Unity edit-mode tests compile with and without `DEVELOPMENT_BUILD`, 0 warnings. The rail sprite was rendered offline from the same maths: a padded frame lit from the top left, with the seam stopping at the corners.
+  - **Play Mode checklist:**
+    - Match, flat camera: a stitched oxblood rail frames the table's square, with a soft shadow below it. The gilt table rule runs just inside it. No cell, yard or arm tip is under it.
+    - The chrome: no red or gold line at any bar's edge. Each bar ends in a faintly lit edge against the void.
+    - Tilted camera (Display → Board camera): the rail lies on the table and rides the near edge's slab.
+    - Setup, draft and the end card show the same rail on the board behind them.
+    - Tray: the dice well reads as a recess, darker than the tray with a shadow under its top edge, and no underline.
+    - Knobs: `UiTheme` has `Leather`/`LeatherFold`/`RailStitch`, `RailShadowNear`/`Far`, `BarLip` and `Well`; `BoardView.RailOnTable`; `BoardArt.RailTexels` sets the width. With the Scene view open, the Console shows no "Cannot generate 9 slice" error.

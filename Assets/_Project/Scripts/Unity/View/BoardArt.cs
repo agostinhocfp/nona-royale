@@ -95,6 +95,58 @@ namespace NonaRoyale.Unity.View
         /// <summary>The gilt band around the table's lip: a bright roll over a body that melts into the face.</summary>
         public static Sprite TableBand => _band != null ? _band : (_band = BuildBand(8, 64));
 
+        // ── Table rail (G9c) ────────────────────────────────────────────
+
+        private static Sprite[] _rails;
+
+        /// <summary>Texels per cell in <see cref="TableRail"/>.</summary>
+        public const int RailTexelsPerCell = 64;
+
+        /// <summary>The rail's width in texels, and the repeat of its seam's dashes.</summary>
+        private const int RailTexels = 26;
+        private const int RailPeriod = 8;
+
+        /// <summary>How wide the padded rail is, in cells.</summary>
+        public const float RailCells = (float)RailTexels / RailTexelsPerCell;
+
+        /// <summary>Where across the tube its highlight sits, from its upper or left face (0) to the other (1).</summary>
+        private const float RailHighlightAt = 0.38f;
+
+        /// <summary>How far in from the rail's inner face the seam runs, in texels.</summary>
+        private const float RailSeamInset = 5.5f;
+
+        /// <summary>The four runs of <see cref="TableRail"/>.</summary>
+        public enum RailSide { Top, Bottom, Left, Right }
+
+        /// <summary>
+        /// One run of the padded leather rail round the table (G9c): a tube
+        /// <see cref="RailCells"/> wide lit from above and the left, with a
+        /// dashed seam near its inner face. The top and bottom runs carry the
+        /// mitred corners as fixed end caps; the left and right runs fill the
+        /// straight between them.
+        /// </summary>
+        /// <remarks>
+        /// <b>Four runs, not one frame.</b> A single tiled frame sprite also
+        /// tiles its empty centre across the whole table: with an 8-texel
+        /// repeat that was 136 × 136 tiles, 69 696 vertices, past what a
+        /// sprite mesh may hold, and Unity refused to draw it. Each run tiles
+        /// along its own length only, a few hundred vertices, and nothing
+        /// is drawn over the table's middle.
+        ///
+        /// <b>Tiled, not sliced</b>, so the dashes repeat instead of smearing.
+        /// The dash repeat divides the tile, so a tile's last texel meets the
+        /// next tile's first in phase and the joins do not show. The seam
+        /// stops short of the corners, the way stitching turns one.
+        ///
+        /// <b>Colour baked in</b>, since the seam is not the leather's hue:
+        /// draw it white, or black for its shadow.
+        /// </remarks>
+        public static Sprite TableRail(RailSide side)
+        {
+            if (_rails == null || _rails[0] == null) _rails = BuildRails();
+            return _rails[(int)side];
+        }
+
         // ── Figures ─────────────────────────────────────────────────────
 
         private static Sprite _bust, _bustOutline, _pawn, _pawnOutline, _halo;
@@ -763,6 +815,60 @@ namespace NonaRoyale.Unity.View
                 float d = Mathf.Max(Mathf.Abs(px - half), Mathf.Abs(py - half)) - edge;
                 return DecoSprites.Line(Mathf.Abs(d), 1.2f);
             }, size, Vector4.zero);
+        }
+
+        /// <summary>
+        /// Cuts the four runs from one virtual frame <c>2b + period</c> texels
+        /// square: the top and bottom bands with their corners, the left and
+        /// right bands between them.
+        /// </summary>
+        private static Sprite[] BuildRails()
+        {
+            const int b = RailTexels;
+            const int size = 2 * b + RailPeriod;
+            var ends = new Vector4(b, 0f, b, 0f); // left, bottom, right, top
+
+            return new[]
+            {
+                DecoSprites.RasterizeShaded(size, b, (x, y) => RailFrame(x, size - b + y), RailTexelsPerCell, ends),
+                DecoSprites.RasterizeShaded(size, b, (x, y) => RailFrame(x, y), RailTexelsPerCell, ends),
+                DecoSprites.RasterizeShaded(b, RailPeriod, (x, y) => RailFrame(x, b + y), RailTexelsPerCell, Vector4.zero),
+                DecoSprites.RasterizeShaded(b, RailPeriod, (x, y) => RailFrame(size - b + x, b + y), RailTexelsPerCell, Vector4.zero),
+            };
+        }
+
+        /// <summary>The rail frame's colour at a texel centre of the virtual frame.</summary>
+        private static Color RailFrame(float px, float py)
+        {
+            const int b = RailTexels;
+            const int size = 2 * b + RailPeriod;
+
+            // Distance in from each outer edge; the nearest names the side (a mitre at the corners).
+            float top = size - py, bottom = py, left = px, right = size - px;
+            float outer = Mathf.Min(Mathf.Min(top, bottom), Mathf.Min(left, right));
+            if (outer > b + 1f) return Color.clear;
+
+            // 0 at the tube's upper or left face, 1 at the other: the top and
+            // left runs face out that way, the bottom and right runs in.
+            float u;
+            bool along;
+            if (outer == top) { u = top / b; along = true; }
+            else if (outer == bottom) { u = 1f - bottom / b; along = true; }
+            else if (outer == left) { u = left / b; along = false; }
+            else { u = 1f - right / b; along = false; }
+
+            float k = Mathf.Clamp01(0.5f + 0.5f * Mathf.Cos((u - RailHighlightAt) * Mathf.PI * 1.55f));
+            var colour = Color.Lerp(UiTheme.LeatherFold, UiTheme.Leather, k);
+
+            // The seam: dashes near the inner face, on the straight runs only.
+            bool corner = (px < b || px > size - b) && (py < b || py > size - b);
+            float run = along ? px : py;
+            if (!corner && Mathf.Repeat(run, RailPeriod) < RailPeriod * 0.5f)
+                colour = Color.Lerp(colour, UiTheme.RailStitch,
+                    0.85f * DecoSprites.Line(Mathf.Abs(outer - (b - RailSeamInset)), 1.4f));
+
+            colour.a = Mathf.Clamp01(b - outer + 0.5f);
+            return colour;
         }
 
         private static Sprite BuildHaze(int size)

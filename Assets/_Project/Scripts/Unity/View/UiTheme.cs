@@ -51,11 +51,12 @@ namespace NonaRoyale.Unity.View
     /// shadow on the table, a warm light along the top edge, and it sinks
     /// when pressed (<see cref="UiPlate"/>). The values are the Plate* block.
     ///
-    /// <b>The match bars are furniture</b> (G9b). The top bar, the squad rail,
-    /// the history strip and the tray are lacquered (<see cref="BarTop"/> to
-    /// <see cref="BarFoot"/>), and where one meets the board it has a padded
-    /// oxblood leather rail (<see cref="Leather"/>) with a brass bead, like
-    /// the rail of a gaming table. The dice and the health bar sit in wells.
+    /// <b>The match bars are furniture</b> (G9b, G9c). The top bar, the squad
+    /// rail, the history strip and the tray are lacquered (<see cref="BarTop"/>
+    /// to <see cref="BarFoot"/>) and end in a rounded edge catching the light
+    /// (<see cref="BarLip"/>), with no line. The padded oxblood leather rail
+    /// (<see cref="Leather"/>) is on the table, round the board, the way a
+    /// gaming table has it. The dice and the health bar sit in wells.
     ///
     /// Static values, not a ScriptableObject (decided 2026-09-15): the HUD is
     /// built from code and caches colours when it builds, so Inspector tuning
@@ -141,20 +142,30 @@ namespace NonaRoyale.Unity.View
         public static readonly Color BarTop = WithAlpha(Hex("211819"), 0.97f);
         public static readonly Color BarFoot = WithAlpha(Hex("0A0708"), 0.97f);
 
-        /// <summary>The padded rail's oxblood at its highlight; the sprite shades it down to near black.</summary>
+        /// <summary>
+        /// A bar's board-facing edge rolling toward the light (G9c): warm, and
+        /// low, because the project blends in linear space.
+        /// </summary>
+        public static readonly Color BarLip = WithAlpha(Color.Lerp(GoldBright, Color.white, 0.6f), 0.07f);
+
+        /// <summary>
+        /// The table's padded rail (G9c): oxblood at the tube's highlight, near
+        /// black in its folds, and a dashed seam of waxed brown thread.
+        /// </summary>
         public static readonly Color Leather = Hex("6A2F3B");
+        public static readonly Color LeatherFold = Hex("150709");
+        public static readonly Color RailStitch = Hex("8C6A45");
 
-        /// <summary>The rail's own shadow, a few units under it.</summary>
-        public static readonly Color RailDrop = WithAlpha(Color.black, 0.45f);
+        /// <summary>The rail's shadow on the table and the void: a near copy and a softer far one.</summary>
+        public static readonly Color RailShadowNear = WithAlpha(Color.black, 0.55f);
+        public static readonly Color RailShadowFar = WithAlpha(Color.black, 0.28f);
 
-        /// <summary>The shade the rail casts onto its bar, strongest against the bead.</summary>
-        public static readonly Color RailShade = WithAlpha(Color.black, 0.45f);
-
-        /// <summary>The brass bead between the rail and the bar.</summary>
-        public static readonly Color Bead = WithAlpha(Gold, 0.8f);
-
-        /// <summary>A recess in a bar or a card: darker than anything around it.</summary>
-        public static readonly Color Well = Hex("080607");
+        /// <summary>
+        /// A recess in a bar or a card: darker than the bar, but not black, so
+        /// its inner shadow has something to darken (G9c: was 080607, which
+        /// read as a flat hole).
+        /// </summary>
+        public static readonly Color Well = Hex("150F12");
 
         // ── Plates (G9a) ──
 

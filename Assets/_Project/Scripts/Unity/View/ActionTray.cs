@@ -203,8 +203,7 @@ namespace NonaRoyale.Unity.View
             _tray.pivot = new Vector2(0.5f, 0f);
             _tray.offsetMin = new Vector2(_insetLeft, 0f);
             _tray.offsetMax = new Vector2(-_insetRight, ReservedHeight);
-            // Upright the history band sits over the tray, so its edge is a seam, not the table's (G9b).
-            UiKit.Dock(_tray, true, RectTransform.Edge.Top, rail: !_builtPortrait);
+            UiKit.Dock(_tray, true, RectTransform.Edge.Top);
 
             _content = UiKit.Rect("content", _tray);
             UiKit.Stretch(_content);

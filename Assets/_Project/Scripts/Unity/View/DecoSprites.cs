@@ -123,27 +123,16 @@ namespace NonaRoyale.Unity.View
 
         // ── Match bars (G9b) ────────────────────────────────────────────
 
-        private static Sprite _leatherAlong, _leatherUp, _falloffDown, _falloffRight, _wellShade, _wellShadeChip;
-
-        /// <summary>Where across the rail its highlight sits, from the lit side (0) to the far side (1).</summary>
-        private const float LeatherHighlightAt = 0.35f;
-
-        /// <summary>The rail's darkest grey, a fraction of its tint.</summary>
-        private const float LeatherShadowGrey = 0.2f;
-
-        /// <summary>A well's inner shadow at the top edge, and its lit bottom lip.</summary>
-        private const float WellShadowAlpha = 0.65f;
-        private const float WellLipAlpha = 0.12f;
+        private static Sprite _falloffDown, _falloffRight, _wellShade, _wellShadeChip;
 
         /// <summary>
-        /// A padded leather rail running along x: a tube lit from above, its
-        /// highlight a third of the way down, dark again at the far side.
-        /// Grey, so the tint is the leather at its highlight. Stretched simple.
+        /// A well's inner shadow at the top edge, and the light on its bottom
+        /// lip (G9c: 0.65 and 0.12). The lip sits two texels in, so it reads as
+        /// the recess's edge and not as an underline beneath it.
         /// </summary>
-        public static Sprite LeatherAlong => _leatherAlong != null ? _leatherAlong : (_leatherAlong = BuildLeather(true));
-
-        /// <summary>The same rail running along y, lit from the left.</summary>
-        public static Sprite LeatherUp => _leatherUp != null ? _leatherUp : (_leatherUp = BuildLeather(false));
+        private const float WellShadowAlpha = 0.8f;
+        private const float WellLipAlpha = 0.06f;
+        private const float WellLipAt = 2f;
 
         /// <summary>Alpha falling from full at the top to nothing at the foot. Flip it for the other way.</summary>
         public static Sprite FalloffDown => _falloffDown != null ? _falloffDown : (_falloffDown = BuildFalloff(true));
@@ -255,21 +244,6 @@ namespace NonaRoyale.Unity.View
             }, HudPixelsPerUnit, new Vector4(border, border, border, border));
         }
 
-        private static Sprite BuildLeather(bool horizontal)
-        {
-            const int across = 30;
-            const int along = 2;
-
-            return RasterizeShaded(horizontal ? along : across, horizontal ? across : along, (px, py) =>
-            {
-                // 0 at the lit side (the top, or the left), 1 at the far side.
-                float t = horizontal ? (across - py) / across : px / across;
-                float k = Mathf.Clamp01(0.5f + 0.5f * Mathf.Cos((t - LeatherHighlightAt) * Mathf.PI * 1.6f));
-                float grey = Mathf.Lerp(LeatherShadowGrey, 1f, k);
-                return new Color(grey, grey, grey, 1f);
-            }, HudPixelsPerUnit, Vector4.zero);
-        }
-
         private static Sprite BuildFalloff(bool vertical)
         {
             const int length = 32;
@@ -304,7 +278,7 @@ namespace NonaRoyale.Unity.View
                 // Rows count up from the bottom.
                 float shadow = Mathf.Clamp01(1f - (size - py) / reach);
                 shadow *= shadow * WellShadowAlpha;
-                float lip = Line(Mathf.Abs(py - 1f), 1f) * WellLipAlpha;
+                float lip = Line(Mathf.Abs(py - WellLipAt), 1f) * WellLipAlpha;
 
                 return shadow >= lip
                     ? new Color(0f, 0f, 0f, shadow * inside)

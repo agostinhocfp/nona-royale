@@ -165,8 +165,7 @@ namespace NonaRoyale.Unity.View
             _strip.pivot = new Vector2(1f, 0.5f);
             _strip.offsetMin = new Vector2(-Width, 0f);
             _strip.offsetMax = new Vector2(0f, -TurnStrip.ReservedHeight);
-            // The rail stops where it meets the tray's (G9b).
-            UiKit.Dock(_strip, true, RectTransform.Edge.Left, railTrim: ActionTray.Height - UiKit.RailInside);
+            UiKit.Dock(_strip, true, RectTransform.Edge.Left);
 
             var column = UiKit.Rect("column", _strip);
             UiKit.Stretch(column);
