@@ -638,8 +638,8 @@ namespace NonaRoyale.Unity.View
             bool dimmed = false)
         {
             var rect = Rect("slider_row", parent);
+            // Borderless like every control (G7f); dimmed shows in the name and the track.
             Sliced(rect, DecoSprites.ButtonFill, UiTheme.ButtonFill);
-            Overlay(rect, DecoSprites.ButtonEdge, UiTheme.WithAlpha(UiTheme.Line, dimmed ? 0.35f : 1f));
 
             var row = Row(rect, 12f);
             row.padding = new RectOffset(18, 14, 0, 0);
@@ -790,8 +790,9 @@ namespace NonaRoyale.Unity.View
         /// <remarks>
         /// A selected button is a live state, so it fills with
         /// <see cref="UiTheme.CyanDeep"/> and takes a cyan double edge
-        /// (ART_DIRECTION §8). <paramref name="edge"/> overrides the resting
-        /// edge colour.
+        /// (ART_DIRECTION §8). At rest a button has no edge (G7f): its fill
+        /// lifts it off the panel. <paramref name="edge"/> draws one where the
+        /// edge means something (a ready card's cyan, a held seat's colour).
         /// </remarks>
         public static UnityEngine.UI.Button Button(
             Transform parent, string text, Action onClick, Action afterClick = null,
@@ -824,10 +825,10 @@ namespace NonaRoyale.Unity.View
             {
                 Overlay(rect, DecoSprites.ButtonEdgeDouble, UiTheme.Cyan);
             }
-            else
+            else if (edge.HasValue)
             {
-                var resting = edge ?? UiTheme.Line;
-                Overlay(rect, DecoSprites.ButtonEdge, interactable ? resting : UiTheme.WithAlpha(resting, 0.35f));
+                var resting = edge.Value;
+                Overlay(rect, DecoSprites.ButtonEdge, interactable ? resting : UiTheme.WithAlpha(resting, resting.a * 0.35f));
             }
 
             button.onClick.AddListener(() =>

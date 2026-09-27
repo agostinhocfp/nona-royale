@@ -438,12 +438,12 @@ namespace NonaRoyale.Unity.View
             return "";
         }
 
-        /// <summary>An ivory die with a brass edge; a spent slot is a dim inset.</summary>
+        /// <summary>An ivory die with a brass edge; a spent slot is a dim inset with no edge (G7f).</summary>
         private static RectTransform Die(Transform parent, string face, bool live)
         {
             var die = UiKit.Rect("die", parent);
             UiKit.Sliced(die, DecoSprites.ButtonFill, live ? UiTheme.DieFace : UiTheme.PanelInset);
-            UiKit.Overlay(die, DecoSprites.ButtonEdge, live ? UiTheme.Gold : UiTheme.WithAlpha(UiTheme.Line, 0.4f));
+            if (live) UiKit.Overlay(die, DecoSprites.ButtonEdge, UiTheme.Gold);
             UiKit.Size(die, DieSize, DieSize);
             UiKit.Caption(die, face, 30f, live ? UiTheme.DieInk : UiTheme.TextOff,
                 TextAlignmentOptions.Center).fontStyle = FontStyles.Bold;

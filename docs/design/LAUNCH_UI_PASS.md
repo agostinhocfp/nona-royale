@@ -424,3 +424,24 @@ Each increment ends with a Play Mode check (desktop and upright) and a commit.
     - Tilt the camera (Display → Board camera): the rows still stay inside the edge.
     - Operators → a dossier, then the glossary: keywords keep their colours, and every underline is one thin grey line, not a coloured one. Clicking a keyword still opens its card.
 - G7 closes with this. What remains from its audit: flag 12, the winning squad on the results screen, which waits for the art.
+- 2026-09-27 — **G7f: borderless controls** (designer: "not sure I'm a fan of the thin gold border lines globally"). A four-way mock was drawn in the game's colours and fonts: today's gold everywhere, neutral control edges, borderless controls, and no frames at all. The designer picked **borderless controls**.
+  - **The rule** (`UiTheme` remarks):
+    - Buttons, rows, chips and cards at rest have no edge. A slightly lighter fill lifts them off the panel: `UiTheme.ButtonFill` 231B20 → 2B2127. Hover lightens it, as before.
+    - The gold hairline (`UiTheme.Line`) stays on what frames: floating cards with their corner fans, the turn pill and the toasts, the docked bars' inner rule, dividers and the menu backdrop's frame.
+    - Edges that mean something stay: cyan for selected or ready, a seat's colour for whose, gold for the active seat's plate, the winner's row, ROLL and a live die.
+  - **Changes:**
+    - `UiKit.Button` draws a resting edge only when `edge` is passed. The settings rows, pause and title menus, setup tiles and tray cards all go borderless through it.
+    - `UiKit.SliderRow` has no edge.
+    - The draft's resting card edge is `UiTheme.NoEdge` (new, transparent), so the focus edge still has an image to repaint.
+    - Setup's ADVANCED toggle and the CPU style chip no longer pass the gold edge.
+    - A spent die slot is a plain inset.
+    - Disabled controls read through the darker `ButtonOff` fill and dimmed text, since there is no faded edge any more.
+  - Files: `UiTheme`, `UiKit`, `DraftScreen`, `SetupScreen`, `ActionTray`.
+  - **Checked:** core 958 passing. The view and the Unity edit-mode tests compile with and without `DEVELOPMENT_BUILD`, 0 warnings.
+  - **Play Mode checklist:**
+    - Title, settings, pause, setup, draft and the tray: no gold boxes around buttons, rows or cards. Floating cards (pause, results, guide, glossary cards) keep their gold frame and corner fans. The top bar, tray and rail keep their one gold rule.
+    - Buttons still read as buttons: a lighter block on the panel, lighter again on hover. A disabled one is darker and dimmed.
+    - Draft: hovering a card still gives it the cyan edge, and a held card still shows its seat's edge.
+    - Tray: a castable card keeps its faint cyan edge, and the chosen card its cyan fill and double edge. Live dice keep their brass edge; empty slots are plain wells.
+    - Setup: the ADVANCED toggle and the CPU style chips read without an edge.
+    - Look at it in linear colour space on the real screen: if the new fill lifts too much or too little, `UiTheme.ButtonFill` is the one knob.

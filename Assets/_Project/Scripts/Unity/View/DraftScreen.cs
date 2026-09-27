@@ -1068,14 +1068,14 @@ namespace NonaRoyale.Unity.View
             bool open = refusal == DraftRefusal.None;
 
             // Colour on a card means something about that card (G6c, flags 9
-            // and 10). At rest every card has the gold hairline and a neutral
+            // and 10). At rest a card has no visible edge (G7f) and a neutral
             // shape; the card being read has a cyan edge (the live register);
             // a card the picking seat already holds has that seat's edge. The
             // picking seat's red used to frame all twelve, and red is also the
             // damage and refusal colour.
             var restEdge = refusal == DraftRefusal.AlreadyInSquad && picker != PlayerColor.None
                 ? UiTheme.WithAlpha(UiTheme.Seat(picker), 0.9f)
-                : UiTheme.Line;
+                : UiTheme.NoEdge;   // present, so the focus edge can be painted on it
 
             var button = UiKit.Button(_grid, "", () => PickCard(op), edge: restEdge);
             button.name = "content_card";

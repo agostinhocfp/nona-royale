@@ -32,10 +32,18 @@ namespace NonaRoyale.Unity.View
     ///
     /// <b>Gold is rationed</b> (increment G3, 2026-09-17). ART_DIRECTION §3
     /// allows roughly a fifth of a frame in gold; G and G2 ran past it with
-    /// double rules everywhere. Resting edges are now one hairline of
-    /// <see cref="Line"/>, and full-strength gold marks only headings, the
+    /// double rules everywhere. Full-strength gold marks only headings, the
     /// active seat's plate and ROLL. The richness moved into the board's
     /// surfaces instead.
+    ///
+    /// <b>Controls are borderless</b> (G7f, designer's pick 2026-09-27).
+    /// Buttons, rows, chips and cards at rest have no edge; a slightly lighter
+    /// fill (<see cref="ButtonFill"/>) separates them from the panel, and hover
+    /// lightens it. The gold hairline (<see cref="Line"/>) is kept for what
+    /// frames: floating cards with their corner fans, the floating pill and
+    /// toasts, the docked bars' inner rule, dividers. A page of gold boxes read
+    /// as a lattice; the frame alone is the Deco signature. Cyan edges still
+    /// mean selected or ready, seat edges still mean whose.
     ///
     /// Static values, not a ScriptableObject (decided 2026-09-15): the HUD is
     /// built from code and caches colours when it builds, so Inspector tuning
@@ -72,11 +80,17 @@ namespace NonaRoyale.Unity.View
         public static readonly Color Scrim = WithAlpha(Obsidian, 0.88f);
 
         /// <summary>
-        /// Every resting edge and rule: one gilt hairline at half strength
-        /// (GUI increment G3). Full gold is kept for headings, the active
-        /// seat's plate and ROLL, so it means something where it appears.
+        /// Frames and rules: one gilt hairline at half strength (GUI increment
+        /// G3). Not on controls since G7f. Full gold is kept for headings, the
+        /// active seat's plate and ROLL, so it means something where it appears.
         /// </summary>
         public static readonly Color Line = WithAlpha(Gold, 0.5f);
+
+        /// <summary>
+        /// An edge that is there but not seen, for a control whose edge is
+        /// repainted later (the draft's focus edge, G7f).
+        /// </summary>
+        public static readonly Color NoEdge = new Color(0f, 0f, 0f, 0f);
 
         /// <summary>Corner fans on floating cards: present, never loud (G3).</summary>
         public const float FanAlpha = 0.4f;
@@ -100,7 +114,11 @@ namespace NonaRoyale.Unity.View
         /// </remarks>
         public static readonly Color PanelSheen = WithAlpha(Color.white, 0.04f);
 
-        public static readonly Color ButtonFill = Hex("231B20");
+        /// <summary>
+        /// A control at rest. One step lighter than it was (G7f), because with
+        /// no edge the fill alone has to lift it off the panel.
+        /// </summary>
+        public static readonly Color ButtonFill = Hex("2B2127");
         public static readonly Color ButtonOff = Hex("120E11");
 
         /// <summary>A live control's fill: a selected card, a ready Cast, END TURN.</summary>

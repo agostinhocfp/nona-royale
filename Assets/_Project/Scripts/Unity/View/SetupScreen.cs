@@ -150,7 +150,7 @@ namespace NonaRoyale.Unity.View
             var toggle = ButtonRow("advanced_toggle", 30f);
             var advanced = UiKit.Button(toggle,
                 $"ADVANCED  <size=80%><color=#{UiTheme.Hex(UiTheme.TextDim)}>{(_advanced ? "HIDE" : "SHOW")}</color></size>",
-                () => _advanced = !_advanced, Rebuild, size: UiTheme.FontSmall, tint: UiTheme.Panel, edge: UiTheme.Line);
+                () => _advanced = !_advanced, Rebuild, size: UiTheme.FontSmall, tint: UiTheme.Panel);
             advanced.name = "advanced";
 
             if (_advanced)
@@ -341,7 +341,7 @@ namespace NonaRoyale.Unity.View
             var personality = _edit.PersonalityOf(seat);
             var chip = UiKit.Button(button.transform, personality.Label(), () =>
                 _edit.SetPersonality(seat, NextPersonality(personality)), Rebuild,
-                size: 12f, tint: UiTheme.GoldDeep, edge: UiTheme.Line);
+                size: 12f, tint: UiTheme.GoldDeep);
             UiKit.Size(chip, ScreenLayout.Pick(120f, 84f), 26f);
         }
 
