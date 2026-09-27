@@ -1,5 +1,6 @@
 // Assets/_Project/Scripts/Unity/View/DecoBoardArt.cs
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace NonaRoyale.Unity.View
@@ -10,7 +11,8 @@ namespace NonaRoyale.Unity.View
     /// columns and a compass for the start cells — the centre (BS3) — the
     /// medallion, its emblem and the four corner wedges — the tables' heavy
     /// gilt rim (BS4), the tiles' soft drop shadow (BS5), the corner facets
-    /// (BS6) and the yard panels' frame (BS7). Built once.
+    /// (BS6), the yard panels' frame (BS7) and the steel table frame (BS8).
+    /// Built once.
     /// </summary>
     /// <remarks>
     /// <b>The fallback, not the ceiling.</b> Each piece has a sprite slot in
@@ -615,6 +617,186 @@ namespace NonaRoyale.Unity.View
             var colour = Color.Lerp(UiTheme.DecoGilt * 0.55f, UiTheme.DecoGiltLight, Mathf.Clamp01(k));
             colour.a = alpha;
             return colour;
+        }
+
+        // ── The steel frame (BS8) ──────────────────────────────────────
+
+        /// <summary>The frame's resolution: texels per cell. About 94 across the standard frame's width.</summary>
+        public const int FrameTexelsPerCell = 120;
+
+        /// <summary>The frame's outer corners are cut at 45°, this far along each edge, in cells.</summary>
+        public const float FrameChamfer = 0.9f;
+
+        /// <summary>The bolts along the frame: their spacing along a run and their diameter, in cells.</summary>
+        public const float FrameBoltPitch = 2.2f;
+        public const float FrameBoltSize = 0.13f;
+
+        /// <summary>The four runs of the steel frame: top and bottom full width with the corners, left and right between them.</summary>
+        public enum FrameRun { Top, Bottom, Left, Right }
+
+        private static readonly Dictionary<(int, int), Sprite[]> Frames = new Dictionary<(int, int), Sprite[]>();
+
+        /// <summary>
+        /// The dark steel frame round the table (BS8), as four runs, for a
+        /// frame whose outer and inner edges sit <paramref name="outer"/> and
+        /// <paramref name="inner"/> cells from the board's centre. Each run's
+        /// sprite is sized in cells (pixels per unit = <see cref="FrameTexelsPerCell"/>);
+        /// its pivot is the frame's centre, so every run is drawn at the
+        /// board's centre and they meet exactly.
+        /// </summary>
+        /// <remarks>
+        /// <b>Four runs, not one frame,</b> for the reason the Classic rail
+        /// gives (G9c): a single sprite would carry the empty table in its
+        /// texture. <b>Not tiled:</b> each run is one texture its own length,
+        /// so the bevels, bolts and chamfered corners never repeat or smear.
+        /// <b>One shape:</b> every texel is computed from the same function of
+        /// its position on the whole frame, so the runs join without a seam.
+        /// </remarks>
+        public static Sprite FrameRunSprite(float outer, float inner, FrameRun run)
+        {
+            var key = (Mathf.RoundToInt(outer * 1000f), Mathf.RoundToInt(inner * 1000f));
+            if (!Frames.TryGetValue(key, out var runs) || runs[0] == null)
+            {
+                runs = BuildFrame(outer, inner);
+                Frames[key] = runs;
+            }
+            return runs[(int)run];
+        }
+
+        /// <summary>
+        /// The frame's colour at (u, v) cells from the board's centre, with
+        /// alpha 0 off the frame.
+        /// </summary>
+        private static Color FrameAt(float u, float v, float outer, float inner)
+        {
+            float perTexel = 1f / FrameTexelsPerCell;
+            float au = Mathf.Abs(u);
+            float av = Mathf.Abs(v);
+            float edge = Mathf.Max(au, av);
+
+            // Inside the outer square and its chamfered corners, outside the inner square.
+            float toOuter = Mathf.Min(outer - edge, (2f * outer - FrameChamfer - au - av) / Mathf.Sqrt(2f));
+            float toInner = edge - inner;
+            float alpha = Mathf.Clamp01(toOuter / perTexel + 0.5f) * Mathf.Clamp01(toInner / perTexel + 0.5f);
+
+            // Which run this texel belongs to decides which way its bevels face.
+            bool horizontal = av >= au;
+            bool outerLit = horizontal ? v > 0f : u < 0f;
+            float width = outer - inner;
+            float across = Mathf.Clamp01(toInner / width);
+
+            // Brushed steel: fine streaks along the run, from a hash across it.
+            float streakAt = horizontal ? v : u;
+            float streak = Hash01(Mathf.FloorToInt(streakAt * FrameTexelsPerCell * 0.5f)) * 2f - 1f;
+            float lum = 0.22f + 0.03f * streak;
+
+            // Slightly raised in the middle, lit from the upper left.
+            lum += 0.05f * Mathf.Sin(Mathf.PI * across);
+
+            // Bevels: the outer one faces away from the board, the inner one toward it.
+            const float bevel = 0.09f;
+            if (toOuter < bevel) lum = Mathf.Lerp(outerLit ? 0.62f : 0.06f, lum, toOuter / bevel);
+            if (toInner < bevel) lum = Mathf.Lerp(outerLit ? 0.08f : 0.52f, lum, toInner / bevel);
+
+            // A dark groove down the middle of the run.
+            float mid = Mathf.Abs(across - 0.5f) * width;
+            lum *= 1f - 0.45f * Line(mid / perTexel, 1.2f);
+
+            var colour = Color.Lerp(UiTheme.DecoSteelShade, UiTheme.DecoSteelLight, Mathf.Clamp01(lum));
+
+            // Bolts on the groove, evenly along the run, clear of the corners.
+            float along = horizontal ? u : v;
+            float nearest = Mathf.Round(along / FrameBoltPitch) * FrameBoltPitch;
+            if (Mathf.Abs(nearest) < inner - 0.2f)
+            {
+                float midline = inner + width * 0.5f;
+                float cx = horizontal ? nearest : Mathf.Sign(u) * midline;
+                float cy = horizontal ? Mathf.Sign(v) * midline : nearest;
+                float bx = u - cx;
+                float by = v - cy;
+                float r = Mathf.Sqrt(bx * bx + by * by);
+                float boltR = FrameBoltSize * 0.5f;
+                float bolt = Mathf.Clamp01((boltR - r) / perTexel + 0.5f);
+                if (bolt > 0f)
+                {
+                    // A domed head lit from the upper left, with a slot.
+                    float dome = 0.5f + 0.4f * Mathf.Clamp01((-bx * 0.6f + by * 0.8f) / boltR + 0.3f);
+                    var head = Color.Lerp(UiTheme.DecoSteelShade, UiTheme.DecoSteelLight, dome);
+                    head = Color.Lerp(head, UiTheme.DecoSteelShade, 0.7f * Line(Mathf.Abs(bx + by) / Mathf.Sqrt(2f) / perTexel, 1f));
+                    colour = Color.Lerp(colour, head, bolt);
+                }
+            }
+
+            // The gilt hairline on the frame's inner lip.
+            colour = Color.Lerp(colour, UiTheme.DecoGiltLight, 0.85f * Line(toInner / perTexel, 2.2f));
+
+            colour.a = alpha;
+            return colour;
+        }
+
+        private static Sprite[] BuildFrame(float outer, float inner)
+        {
+            int full = Mathf.CeilToInt(2f * outer * FrameTexelsPerCell);
+            int band = Mathf.CeilToInt((outer - inner) * FrameTexelsPerCell) + 2;
+            int between = full - 2 * band;
+            var runs = new Sprite[4];
+
+            // Top and bottom: full width, band tall. Left and right: band wide, between the two.
+            runs[(int)FrameRun.Top] = FrameSprite("deco_frame_top", full, band, 0, full - band, outer, inner, full);
+            runs[(int)FrameRun.Bottom] = FrameSprite("deco_frame_bottom", full, band, 0, 0, outer, inner, full);
+            runs[(int)FrameRun.Left] = FrameSprite("deco_frame_left", band, between, 0, band, outer, inner, full);
+            runs[(int)FrameRun.Right] = FrameSprite("deco_frame_right", band, between, full - band, band, outer, inner, full);
+            return runs;
+        }
+
+        /// <summary>
+        /// One run: the <paramref name="width"/> × <paramref name="height"/>
+        /// texels of the whole frame starting at (<paramref name="x0"/>,
+        /// <paramref name="y0"/>), pivoted on the frame's centre.
+        /// </summary>
+        private static Sprite FrameSprite(string name, int width, int height, int x0, int y0,
+            float outer, float inner, int full)
+        {
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, mipChain: true)
+            {
+                name = name,
+                filterMode = FilterMode.Trilinear,
+                wrapMode = TextureWrapMode.Clamp,
+                anisoLevel = 4,
+            };
+
+            float half = full * 0.5f;
+            var pixels = new Color32[width * height];
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    float u = (x0 + x + 0.5f - half) / FrameTexelsPerCell;
+                    float v = (y0 + y + 0.5f - half) / FrameTexelsPerCell;
+                    pixels[y * width + x] = FrameAt(u, v, outer, inner);
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply(updateMipmaps: true, makeNoLongerReadable: true);
+
+            // The pivot is the frame's centre, in this run's own normalised coordinates.
+            var pivot = new Vector2((half - x0) / width, (half - y0) / height);
+            var sprite = Sprite.Create(texture, new Rect(0, 0, width, height), pivot,
+                FrameTexelsPerCell, 0, SpriteMeshType.FullRect);
+            sprite.name = name;
+            return sprite;
+        }
+
+        /// <summary>A stable pseudo-random value in 0..1 for an integer.</summary>
+        private static float Hash01(int n)
+        {
+            unchecked
+            {
+                uint h = (uint)n * 747796405u + 2891336453u;
+                h = ((h >> (int)((h >> 28) + 4u)) ^ h) * 277803737u;
+                return ((h >> 22) ^ h) / (float)uint.MaxValue;
+            }
         }
 
         // ── Geometry ────────────────────────────────────────────────────

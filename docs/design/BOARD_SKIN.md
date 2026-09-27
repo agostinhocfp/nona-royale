@@ -1,7 +1,7 @@
 # Nona Royale — Board skin (BS-series)
 
 > Location in repo: `docs/design/BOARD_SKIN.md` · Project copy: `claude/BOARD_SKIN.md`
-> Status: **Open, 2026-09-27.** BS0–BS6 accepted (checkpoint: `docs/art/CHECKPOINT_BS5.png`). BS7 (yard panels, and the cells lowered) written, waiting on Play Mode and commit. Next: BS8 the steel frame.
+> Status: **Open, 2026-09-27.** BS0–BS7b accepted (checkpoint: `docs/art/CHECKPOINT_BS5.png`). BS8 (the steel frame) and BS8b (one set of lines) written, waiting on Play Mode and commit with BS7b. After it, the board surface in code is complete; what is left is sprite art (`yard_chair` first).
 > Design: `claude/HANDOFF_board_skin.md` (the code route). Sister: `claude/HANDOFF_board_assets.md` (the sprite route); its §1 table is the contract, copied below.
 > Target: `docs/art/VISUAL_TARGET.png`, **the simple version since 2026-09-27** (steel frame, no props); the first, ornate one is `docs/art/VISUAL_TARGET_ORNATE.png`, for materials only. Acceptance for every increment is a Play Mode screenshot of the board beside it.
 > Baseline: `docs/art/BASELINE_BS0.png` (Classic, flat, 2560×1440, 2026-09-27).
@@ -59,6 +59,32 @@ Files go in `Assets/_Project/Art/Resources/Art/Board/`, as PNG, named exactly af
 **Route changes** (a code-first row flipping to sprite-first after a checkpoint) are logged here and in the handoff's status table.
 
 ## Log
+
+- 2026-09-27 — **BS8b: one set of lines** (the designer's catch, on the BS7 screenshot: "the edges of the cross are not perfectly aligned with the outer lines of the square board"). Three edges each stopped at their own place: the arms' tips at 7.62 spacings from the centre (the cross's outline, the cells' 7.5 plus `BoardArt.CrossPad`), the yard panels at 7.35 (inset 0.15 all round, BS7), and the frame's inner edge at 7.7 (BS8's 0.2 clearance); the arms' sides were at 1.62 and the panels' inner edges at 1.65. **Now they share their lines, as the target's do:**
+  - the frame's inner edge is the arms' tips (`DecoFrameInner` = half the grid + `CrossPad`; `DecoFrameClearance` is gone);
+  - each yard panel is the whole yard block, from its arm's edge to the frame (`DecoYardPanelSide` = `ArmLength`; `DecoYardInset` is gone), so its side is 6.0 and it is centred `CrossPad` further out on both axes than the yard (`DecoYardPanelCentre`). The table stays on the yard's centre, 0.12 off the panel's, too little to read.
+  - `BoardArt.CrossPad` becomes public (one keyword and its comment in a Classic file; the value is unchanged).
+  - The cross's gilt edge (−25) draws over the panel's dark band (−29), so where they meet there is one line, not two.
+  - **Tests.** `DecoFrameTests` +1: the frame's inner edge is the cross's outline, and every panel's outer edges lie on it and its inner edges on the arms' edges, on both boards. `DecoYardTests` now measures from the panel's own centre and allows for the table's 0.12 offset. 54 EditMode tests pass offline; 3 need Unity. Cloud compile: core 969/969, 0 warnings everywhere.
+  - **Play Mode checklist:** the arms' tips run straight into the frame; each yard's dark edge sits on its arm's gilt edge and on the frame, with no step or gap anywhere round the board; the frame's shadow falls lightly over the outermost row of cells.
+
+- 2026-09-27 — **BS8 written: the steel frame** (the open item, gap row 9). On the uncommitted BS7b tree; the two go in one commit.
+  - **On Deco, `DrawFloor` draws `DrawDecoFrame` where Classic draws its padded oxblood rail** (one branch in `BoardView.cs`, plumbing only; the rail stays on Classic).
+  - **The frame:** four runs, like the rail, and for the same reason (G9c's vertex trap: a single frame sprite carries the empty table). Each run is one texture its own length, not tiled, at 120 texels a cell, every texel from one function of its place on the whole frame, so the runs join without seams and all four pivot on the board's centre. Brushed dark gunmetal (`UiTheme.DecoSteelShade` `#0E0D11` → `DecoSteelLight` `#8C8993`, baked), slightly raised in the middle; bevels on both edges, the outer one lit on the top and left runs, the inner one lit on the bottom and right, as the key light from the upper left falls; a dark groove down each run's middle with domed, slotted bolts on it every 2.2 cells, kept off the corners; outer corners chamfered at 45° (0.9 cells); a gilt hairline on the inner lip. A soft drop shadow onto the table, 55 % black, offset down and right.
+  - **First pass too light**, caught in a mock-up: a 0.42 face read as pale grey steel against the target's near-black frame. Now 0.22, with the bevels at 0.62/0.06 outside and 0.52/0.08 inside.
+  - **Geometry:** the outer edge is exactly where Classic's rail ends (`BoardView.DecoFrameOuter` = the table's edge plus the rail's overhang), so the camera frames the board the same on both skins. The inner edge stands 0.2 spacings past the arms' tips (`DecoFrameInner`, 7.7 on the standard board), over the table's margin, clear of every cell and yard panel. About 0.79 spacings wide on the standard board, twice the rail.
+  - **No cyan plaque.** The target's cyan glass plaque on the top rail looks like UI, and the board carries no UI slots (ART §2.2). The always-on cyan the designer allowed stays available for later hardware.
+  - **Tests.** `DecoFrameTests` (new), 3, on both boards: the outer edge lies past the table and inside the rail's reach; the inner edge clears every track cell and every yard panel; the frame is wide enough for its bolts and chamfer. All pass offline.
+  - **Checks.** Cloud compile on the device's tree: core 969/969; Core, Unity (with and without `DEVELOPMENT_BUILD`), EditorTools and EditTests build with 0 warnings. 53 EditMode tests pass offline; 3 need Unity.
+  - **Play Mode checklist:**
+    - Deco: a dark steel frame with chamfered corners and bolts round the table; no oxblood rail. Classic: the rail, unchanged.
+    - The board sits in the same place and size on screen on both skins (switch mid-match and watch the edges).
+    - The frame's inner gilt line doesn't touch an arm's tip or a yard panel.
+    - The four runs meet at the corners without a seam, flat and tilted.
+    - Watch for: the steel too dark to read as metal, or the bolts too small at phone size (`FrameBoltSize`).
+
+- 2026-09-27 — **BS7b: the yards' edge is dark, not the seat's colour.** On HEAD `2c36b7e`. The designer rejected BS7's seat-coloured band round each yard. **It was my misreading of the target, not a placeholder:** the target draws a dark line round each yard, and its seat colour is in the yard itself (a dark shade of the seat under the table) and in the chairs. Fixed: the band is near-black (`UiTheme.DecoYardEdge`, `#060405` at 95 %; `DecoYardBand` is gone), the gilt hairlines and corner triangles stay, and the panel's lacquer leans further toward its seat (`DecoYardWarmth` 0.08 → 0.14), so the seat colour moves from the edge into the yard. Two lines in `UiTheme`, one in `BoardView.Deco`; geometry and tests unchanged. Cloud compile on the device's tree: core 969/969, all assemblies 0 warnings.
+  - **Play Mode checklist:** each yard is a dark seat-shaded square edged by a dark line and thin gilt, gilt triangles in its corners, no coloured border; the table's felt is the one strong seat colour in the yard.
 
 - 2026-09-27 — **BS7 written: the yard panels, and the cells a little lower.** On HEAD `340fd12`.
   - **The cells lowered** (designer: "reduce the cells' elevation just a bit"), about a third off every cue: the trim's bevel light 0.26/0.18 → 0.18/0.12 and shade 0.5/0.4 → 0.34/0.27; the bevel 9 → 7 px of 128; the face's own bevel softened (0.95/0.45/0.88/0.52 → 0.88/0.55/0.84/0.6); the drop shadow 70 → 50 % (`UiTheme.DecoTileShadow`) at a shorter offset (6 %/9 % → 4 %/6 % of a tile). The gilt edge is unchanged, so the tiles still read as tiles.
@@ -190,7 +216,7 @@ Files go in `Assets/_Project/Art/Resources/Art/Board/`, as PNG, named exactly af
   | 6 | Weight | Drop shadows under everything raised | The cross's shadow vanishes into the black table; nothing else casts one | BS5 |
   | 7 | Light | Candle pools at the corners, gilt catching light | One hot pool at the vault; the arm pools barely show | BS5 |
   | 8 | Props | Candles, chips, plants, instrument (ornate only; none in the simple target) | None beyond the felt's chips | BS6, parked |
-  | 9 | Table and frame | Gilt frame, rails, tray (ornate); **dark steel frame** (simple target, from 2026-09-27) | Black carpet, the oxblood rail as a thin red line | Open (D4 note) |
+  | 9 | Table and frame | Gilt frame, rails, tray (ornate); **dark steel frame** (simple target, from 2026-09-27) | Black carpet, the oxblood rail as a thin red line | BS8 |
   | 10 | Yard blocks (simple target) | A dark panel per yard, edged in its seat's colour, gilt corner ornaments | Bare carpet | BS7 |
 
 - 2026-09-27 — **BS1 written: the sprite slots.** On HEAD `64f6a21`. Nothing on screen changes: nothing reads a slot yet, and the folder is empty.

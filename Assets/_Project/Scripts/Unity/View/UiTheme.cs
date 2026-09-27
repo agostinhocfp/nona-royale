@@ -396,11 +396,19 @@ namespace NonaRoyale.Unity.View
         /// <summary>A Deco yard panel's lacquer (BS7), a shade over the board's black.</summary>
         public static readonly Color DecoYardFloor = Hex("100C0F");
 
-        /// <summary>How far the yard panel's lacquer leans toward its seat colour (BS7).</summary>
-        public const float DecoYardWarmth = 0.08f;
+        /// <summary>
+        /// How far the yard panel's lacquer leans toward its seat colour (BS7).
+        /// 0.08 in BS7; 0.14 since BS7b, as the target's yards are a dark
+        /// shade of their seat and the seat colour lives there, not in an edge.
+        /// </summary>
+        public const float DecoYardWarmth = 0.14f;
 
-        /// <summary>How much of the seat colour the yard panel's band keeps (BS7).</summary>
-        public const float DecoYardBand = 0.75f;
+        /// <summary>
+        /// The yard panel's edge band (BS7b): a dark line, as the target draws
+        /// round each yard. BS7 drew it in the seat's colour, which the
+        /// designer rejected; the target's seat colour is in the yard itself.
+        /// </summary>
+        public static readonly Color DecoYardEdge = WithAlpha(Hex("060405"), 0.95f);
 
         /// <summary>The yard panel's gilt frame and corners (BS7), a little under full so the table's rim leads.</summary>
         public static readonly Color DecoYardGilt = new Color(0.85f, 0.85f, 0.85f, 1f);
@@ -428,6 +436,17 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>The corner wedges' crisp shadow (BS5).</summary>
         public static readonly Color DecoWedgeShadow = WithAlpha(Color.black, 0.55f);
+
+        /// <summary>
+        /// The Deco frame's steel (BS8): dark gunmetal in shade, pale brushed
+        /// steel in the light, baked into the frame's texture. The simple
+        /// target's frame is steel, not gilt, so it spends none of the gold.
+        /// </summary>
+        public static readonly Color DecoSteelShade = Hex("0E0D11");
+        public static readonly Color DecoSteelLight = Hex("8C8993");
+
+        /// <summary>The steel frame's drop shadow onto the table (BS8).</summary>
+        public static readonly Color DecoFrameShadow = WithAlpha(Color.black, 0.55f);
 
         /// <summary>A seat colour darkened to a tile face, keeping <paramref name="keep"/> of it.</summary>
         public static Color DecoSeatFace(Color seat, float keep) =>

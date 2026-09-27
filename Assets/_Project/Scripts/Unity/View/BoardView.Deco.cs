@@ -62,12 +62,23 @@ namespace NonaRoyale.Unity.View
     /// slimmer and darker, and each inner corner carries two small facets in
     /// the colours of the two arms it joins, as the target's do.
     ///
-    /// <b>Yards as panels</b> (BS7). Each yard block is a dark lacquer panel
-    /// under its table, faintly warmed by its seat, edged by a band in the
-    /// seat's colour between two gilt hairlines, with a Deco triangle in each
-    /// corner — the simple target's yards. It fills the largest black on
+    /// <b>Yards as panels</b> (BS7, edge fixed in BS7b, aligned in BS8b). Each yard block is a
+    /// dark lacquer panel under its table, a dark shade of its seat, edged by
+    /// a dark band between two gilt hairlines, with a Deco triangle in each
+    /// corner — the simple target's yards. (BS7's seat-coloured band was a
+    /// misreading of the target, rejected by the designer.) It fills the largest black on
     /// the board and frames each table as its seat's own. It stays clear of
     /// every cell (<c>DecoYardTests</c>).
+    ///
+    /// <b>A steel frame</b> (BS8). On Deco the padded oxblood rail becomes the
+    /// simple target's dark steel frame: brushed gunmetal, bevelled on both
+    /// edges, lit from the upper left, a groove down its middle with bolts
+    /// along it, chamfered outer corners and a gilt hairline on its inner
+    /// lip. Its outer edge is exactly the rail's, so the camera frames the
+    /// board as before. **One set of lines** (BS8b, the designer's catch):
+    /// the frame's inner edge is the arms' tips, and each yard panel runs from
+    /// its arm's edge to the frame, so the cross, the panels and the frame
+    /// share their edges as the target's do (<c>DecoFrameTests</c>).
     ///
     /// <b>Readability is the constraint.</b> Highlights, reach and targets
     /// draw on the Default layer, above the whole board layer, so they
@@ -353,28 +364,74 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         public static float DecoChairRotation(float seatAngle) => seatAngle - 90f;
 
-        /// <summary>How far a yard panel stands in from its yard block's edges, in spacings.</summary>
-        public const float DecoYardInset = 0.15f;
+        /// <summary>
+        /// The steel frame's outer edge, in spacings from the board's centre:
+        /// exactly where Classic's rail ends, so framing is unchanged.
+        /// </summary>
+        public static float DecoFrameOuter(BoardLayout layout) =>
+            layout.GridSize * 0.5f + BoardLayout.TableMargin + BoardArt.RailCells - RailOnTable;
 
         /// <summary>
-        /// A yard panel's side: the yard block (<see cref="BoardLayout.ArmLength"/>
-        /// spacings square, from the arm's side to the grid's edge) less
-        /// <see cref="DecoYardInset"/> on each side.
+        /// The steel frame's inner edge, in spacings from the board's centre:
+        /// exactly on the arms' tips, the cross's own edge (BS8b), so the
+        /// cross runs into the frame as the target's does.
         /// </summary>
-        public static float DecoYardPanelSide(BoardLayout layout) =>
-            (layout.ArmLength - 2f * DecoYardInset) * layout.Spacing;
+        public static float DecoFrameInner(BoardLayout layout) =>
+            layout.GridSize * 0.5f + BoardArt.CrossPad;
+
+        /// <summary>The frame's shadow on the table, in spacings: down and right, away from the light.</summary>
+        private static readonly Vector3 DecoFrameShadowOffset = new Vector3(0.05f, -0.1f, 0f);
+
+        /// <summary>The steel frame (BS8): four runs, and their shadow on the table, where Classic draws its rail.</summary>
+        private void DrawDecoFrame(BoardLayout layout)
+        {
+            var centre = layout.HomeGoalPosition;
+            float spacing = layout.Spacing;
+            float outer = DecoFrameOuter(layout);
+            float inner = DecoFrameInner(layout);
+
+            foreach (DecoBoardArt.FrameRun run in System.Enum.GetValues(typeof(DecoBoardArt.FrameRun)))
+            {
+                var sprite = DecoBoardArt.FrameRunSprite(outer, inner, run);
+                Sprite($"frame_shadow_{run}", sprite, centre + DecoFrameShadowOffset * spacing, spacing,
+                    UiTheme.DecoFrameShadow, RailShadowOrder);
+                Sprite($"frame_{run}", sprite, centre, spacing, Color.white, RailOrder);
+            }
+        }
+
+        /// <summary>
+        /// A yard panel's side (BS8b): the whole yard block,
+        /// <see cref="BoardLayout.ArmLength"/> spacings, from the arm's edge
+        /// to the frame. The panel shares its lines with the cross and the
+        /// frame instead of floating inside them.
+        /// </summary>
+        public static float DecoYardPanelSide(BoardLayout layout) => layout.ArmLength * layout.Spacing;
+
+        /// <summary>
+        /// A yard panel's centre (BS8b): the yard's centre, pushed out along
+        /// both axes by the cross's padding (<see cref="BoardArt.CrossPad"/>),
+        /// so the panel's inner edges sit on the arms' edges and its outer
+        /// edges on the frame's inner edge. The table stays on the yard's
+        /// centre, 0.12 spacings off the panel's.
+        /// </summary>
+        public static Vector3 DecoYardPanelCentre(BoardLayout layout, PlayerColor seat)
+        {
+            var yard = layout.PositionOf(CellRef.Yard(seat));
+            var fromCentre = yard - layout.HomeGoalPosition;
+            var push = new Vector3(Mathf.Sign(fromCentre.x), Mathf.Sign(fromCentre.y), 0f) * (BoardArt.CrossPad * layout.Spacing);
+            return yard + push;
+        }
 
         /// <summary>The yard's panel (BS7): dark fill, seat band, gilt frame and corners. Under the table.</summary>
         private void DrawDecoYardPanel(BoardLayout layout, PlayerColor seat)
         {
-            var at = layout.PositionOf(CellRef.Yard(seat));
+            var at = DecoYardPanelCentre(layout, seat);
             float side = DecoYardPanelSide(layout);
             var seatColour = UiTheme.Seat(seat);
 
             Sprite($"yard_panel_{seat}", BoardArt.Solid, at, side, UiTheme.DecoYardFill(seatColour), TableRuleOrder);
 
-            Sprite($"yard_band_{seat}", DecoBoardArt.YardBand, at, side,
-                UiTheme.DecoSeatFace(seatColour, UiTheme.DecoYardBand), CrossOrder);
+            Sprite($"yard_band_{seat}", DecoBoardArt.YardBand, at, side, UiTheme.DecoYardEdge, CrossOrder);
             Sprite($"yard_frame_{seat}", DecoBoardArt.YardFrame, at, side, UiTheme.DecoYardGilt, PatternOrder);
         }
 

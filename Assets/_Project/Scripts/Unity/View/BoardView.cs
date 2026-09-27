@@ -211,7 +211,8 @@ namespace NonaRoyale.Unity.View
             }
             Sprite("table_rule", BoardArt.TableRule(sideCells, TableRuleInset), centre, side,
                 UiTheme.TableRule, TableRuleOrder);
-            DrawRail(centre, spacing, sideCells);
+            if (Skin == BoardSkin.Deco) DrawDecoFrame(layout);
+            else DrawRail(centre, spacing, sideCells);
 
             // The cross sprites are sized in cells, so their scale is the spacing.
             var cross = BoardArt.Cross(layout.GridSize, ArmCells);
