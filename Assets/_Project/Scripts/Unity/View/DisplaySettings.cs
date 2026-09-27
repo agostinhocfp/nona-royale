@@ -27,9 +27,24 @@ namespace NonaRoyale.Unity.View
     }
 
     /// <summary>
+    /// How the board is dressed (board skin BS2, BOARD_SKIN.md): Classic, as
+    /// built through G10, or Deco, the skin being brought to the visual target.
+    /// </summary>
+    /// <remarks>
+    /// <b>Both stay</b> (designer, 2026-09-27): the Deco skin is built beside
+    /// Classic rather than over it, so none of Classic's work is undone while
+    /// Deco is judged. Classic is the default until Deco is accepted.
+    /// </remarks>
+    public enum BoardSkin
+    {
+        Classic = 0,
+        Deco = 1
+    }
+
+    /// <summary>
     /// The player's display settings: screen mode, resolution, VSync, a
-    /// frame cap (2026-09-17) and the board camera (2026-09-18). Remembered
-    /// between sessions.
+    /// frame cap (2026-09-17), the board camera (2026-09-18) and the board
+    /// skin (BS2, 2026-09-27). Remembered between sessions.
     /// </summary>
     /// <remarks>
     /// <b>Plain C#.</b> Nothing here touches Unity; the composition root
@@ -51,6 +66,7 @@ namespace NonaRoyale.Unity.View
         public const int DefaultHeight = 1080;
         public const bool DefaultVSync = true;
         public const BoardCamera DefaultCamera = BoardCamera.TopDown;
+        public const BoardSkin DefaultSkin = BoardSkin.Classic;
 
         /// <summary>The cap with VSync off. 0 means uncapped.</summary>
         public const int DefaultFrameCap = 60;
@@ -71,10 +87,14 @@ namespace NonaRoyale.Unity.View
         /// <summary>Straight down, or the tilted view (VISUAL_PASS.md, V1).</summary>
         public BoardCamera Camera { get; set; } = DefaultCamera;
 
+        /// <summary>Classic or Deco (BS2).</summary>
+        public BoardSkin Skin { get; set; } = DefaultSkin;
+
         /// <summary>True when every value is the default, so Restore defaults has nothing to do.</summary>
         public bool IsDefault =>
             Mode == DefaultMode && Width == DefaultWidth && Height == DefaultHeight &&
-            VSync == DefaultVSync && FrameCap == DefaultFrameCap && Camera == DefaultCamera;
+            VSync == DefaultVSync && FrameCap == DefaultFrameCap && Camera == DefaultCamera &&
+            Skin == DefaultSkin;
 
         /// <summary>Back to the defaults.</summary>
         public void Reset()
@@ -85,6 +105,7 @@ namespace NonaRoyale.Unity.View
             VSync = DefaultVSync;
             FrameCap = DefaultFrameCap;
             Camera = DefaultCamera;
+            Skin = DefaultSkin;
         }
 
         /// <summary>Copies every value from <paramref name="other"/>.</summary>
@@ -96,11 +117,13 @@ namespace NonaRoyale.Unity.View
             VSync = other.VSync;
             FrameCap = other.FrameCap;
             Camera = other.Camera;
+            Skin = other.Skin;
         }
 
         public bool SameAs(DisplaySettings other) =>
             Mode == other.Mode && Width == other.Width && Height == other.Height &&
-            VSync == other.VSync && FrameCap == other.FrameCap && Camera == other.Camera;
+            VSync == other.VSync && FrameCap == other.FrameCap && Camera == other.Camera &&
+            Skin == other.Skin;
 
         /// <summary>Cycles Windowed and Fullscreen.</summary>
         public void CycleMode() =>
@@ -133,6 +156,10 @@ namespace NonaRoyale.Unity.View
         public void CycleCamera() =>
             Camera = Camera == BoardCamera.Tilted ? BoardCamera.TopDown : BoardCamera.Tilted;
 
+        /// <summary>Cycles the two board skins (BS2).</summary>
+        public void CycleSkin() =>
+            Skin = Skin == BoardSkin.Deco ? BoardSkin.Classic : BoardSkin.Deco;
+
         /// <summary>Repairs values Unity could not apply (a stray PlayerPrefs edit).</summary>
         public void Sanitize()
         {
@@ -145,6 +172,7 @@ namespace NonaRoyale.Unity.View
 
             if (Array.IndexOf(FrameCaps, FrameCap) < 0) FrameCap = DefaultFrameCap;
             if (Camera != BoardCamera.TopDown && Camera != BoardCamera.Tilted) Camera = DefaultCamera;
+            if (Skin != BoardSkin.Classic && Skin != BoardSkin.Deco) Skin = DefaultSkin;
         }
 
         /// <summary>"FULLSCREEN" or "WINDOWED", the settings row's summary.</summary>
@@ -158,6 +186,9 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>"TILTED" or "TOP-DOWN", the board camera row's value.</summary>
         public string CameraLabel() => Camera == BoardCamera.Tilted ? "TILTED" : "TOP-DOWN";
+
+        /// <summary>"CLASSIC" or "DECO", the board skin row's value.</summary>
+        public string SkinLabel() => Skin == BoardSkin.Deco ? "DECO" : "CLASSIC";
 
         private static int IndexOf(int width, int height)
         {

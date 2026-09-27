@@ -249,5 +249,59 @@ namespace NonaRoyale.Unity.Tests.View
 
             Assert.AreEqual(DisplaySettings.DefaultCamera, display.Camera);
         }
+
+        [Test]
+        public void Skin_DefaultsToClassic_SoDecoIsOptedInto()
+        {
+            Assert.AreEqual(BoardSkin.Classic, new DisplaySettings().Skin);
+            Assert.AreEqual(BoardSkin.Classic, DisplaySettings.DefaultSkin);
+        }
+
+        [Test]
+        public void CycleSkin_TogglesTheTwoSkins_AndTheLabelNamesThem()
+        {
+            var display = new DisplaySettings();
+            Assert.AreEqual("CLASSIC", display.SkinLabel());
+
+            display.CycleSkin();
+            Assert.AreEqual(BoardSkin.Deco, display.Skin);
+            Assert.AreEqual("DECO", display.SkinLabel());
+
+            display.CycleSkin();
+            Assert.AreEqual(BoardSkin.Classic, display.Skin);
+        }
+
+        [Test]
+        public void Skin_CountsAsAChange_SoItIsSaved_AndMakesTheSetNonDefault()
+        {
+            var a = new DisplaySettings();
+            var b = new DisplaySettings { Skin = BoardSkin.Deco };
+
+            Assert.IsFalse(a.SameAs(b));
+            Assert.IsFalse(b.IsDefault);
+        }
+
+        [Test]
+        public void CopyFrom_And_Reset_CarryTheSkin()
+        {
+            var source = new DisplaySettings { Skin = BoardSkin.Deco };
+            var target = new DisplaySettings();
+
+            target.CopyFrom(source);
+            Assert.AreEqual(BoardSkin.Deco, target.Skin);
+
+            target.Reset();
+            Assert.AreEqual(DisplaySettings.DefaultSkin, target.Skin);
+        }
+
+        [Test]
+        public void Sanitize_RepairsASkinNoBuildWrote()
+        {
+            var display = new DisplaySettings { Skin = (BoardSkin)7 };
+
+            display.Sanitize();
+
+            Assert.AreEqual(DisplaySettings.DefaultSkin, display.Skin);
+        }
 }
 }

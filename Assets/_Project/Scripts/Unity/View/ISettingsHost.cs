@@ -173,6 +173,13 @@ namespace NonaRoyale.Unity.View
                 display.CameraLabel(), () => { display.CycleCamera(); rebuild(); });
             UiKit.Size(camera, height: RowHeight);
 
+            // The board skin (BS2, BOARD_SKIN.md): Classic as built, or the Deco
+            // skin being brought to the visual target. Switching redraws the board.
+            var skin = UiKit.ChoiceRow(slot("cycle"), "Board skin",
+                display.Skin == BoardSkin.Deco ? "in development" : "",
+                display.SkinLabel(), () => { display.CycleSkin(); rebuild(); });
+            UiKit.Size(skin, height: RowHeight);
+
             var reset = UiKit.ChoiceRow(slot("cycle"), "Restore defaults", "", display.IsDefault ? "DEFAULT" : "RESET",
                 () => { display.Reset(); rebuild(); });
             UiKit.Size(reset, height: RowHeight);
@@ -235,6 +242,7 @@ namespace NonaRoyale.Unity.View
         public const string DisplayVSync = "nr.display.vsync";
         public const string DisplayFrameCap = "nr.display.framecap";
         public const string DisplayCamera = "nr.display.camera";
+        public const string DisplaySkin = "nr.display.boardSkin";
 
         public static BotSpeed LoadSpeed(BotSpeed fallback)
         {
@@ -337,6 +345,7 @@ namespace NonaRoyale.Unity.View
             if (PlayerPrefs.HasKey(DisplayVSync)) into.VSync = PlayerPrefs.GetInt(DisplayVSync) != 0;
             if (PlayerPrefs.HasKey(DisplayFrameCap)) into.FrameCap = PlayerPrefs.GetInt(DisplayFrameCap);
             if (PlayerPrefs.HasKey(DisplayCamera)) into.Camera = (BoardCamera)PlayerPrefs.GetInt(DisplayCamera);
+            if (PlayerPrefs.HasKey(DisplaySkin)) into.Skin = (BoardSkin)PlayerPrefs.GetInt(DisplaySkin);
             into.Sanitize();
         }
 
@@ -349,6 +358,7 @@ namespace NonaRoyale.Unity.View
             PlayerPrefs.SetInt(DisplayVSync, display.VSync ? 1 : 0);
             PlayerPrefs.SetInt(DisplayFrameCap, display.FrameCap);
             PlayerPrefs.SetInt(DisplayCamera, (int)display.Camera);
+            PlayerPrefs.SetInt(DisplaySkin, (int)display.Skin);
             PlayerPrefs.Save();
         }
 

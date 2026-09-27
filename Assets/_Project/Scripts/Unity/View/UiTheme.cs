@@ -340,6 +340,46 @@ namespace NonaRoyale.Unity.View
         public const float HomeInlayNear = 0.22f;
         public const float HomeInlayFar = 0.5f;
 
+        // ── Deco board skin (BS2, BOARD_SKIN.md) ────────────────────────
+
+        /// <summary>
+        /// A Deco track tile's face: near-black lacquer, held at a lower
+        /// contrast than the visual target so the turn's highlights still pop
+        /// over it (D1, 2026-09-27).
+        /// </summary>
+        public static readonly Color DecoTrackFace = Hex("1E191C");
+
+        /// <summary>
+        /// A Deco tile's gilt hairline, in shade and in the light. Baked into
+        /// the trim sprite (<c>DecoBoardArt.TrimGilt</c>); a safe cell's trim
+        /// uses <see cref="Cyan"/> and <see cref="CyanBright"/> instead.
+        /// </summary>
+        public static readonly Color DecoGilt = Color.Lerp(Brass, Gold, 0.7f);
+        public static readonly Color DecoGiltLight = Color.Lerp(Gold, GoldBright, 0.6f);
+
+        /// <summary>How strongly the trim (bevel and hairline) draws over a Deco tile.</summary>
+        public static readonly Color DecoTrim = WithAlpha(Color.white, 0.85f);
+
+        /// <summary>How much of its seat colour a home-column tile and a start tile keep.</summary>
+        public const float DecoHomeFace = 0.5f;
+        public const float DecoStartFace = 0.62f;
+
+        /// <summary>The home column's engraved ring.</summary>
+        public static readonly Color DecoHomeRing = WithAlpha(Color.Lerp(Gold, GoldBright, 0.35f), 0.8f);
+
+        /// <summary>The start cell's compass: pale gold, the one bright mark on the path.</summary>
+        public static readonly Color DecoEmblem = Color.Lerp(GoldBright, Color.white, 0.35f);
+
+        /// <summary>The Deco medallion's face (BS3): black lacquer, a shade under the tiles.</summary>
+        public static readonly Color DecoMedallionFace = Hex("0D0A0C");
+
+        /// <summary>A seat colour darkened to a tile face, keeping <paramref name="keep"/> of it.</summary>
+        public static Color DecoSeatFace(Color seat, float keep) =>
+            new Color(seat.r * keep, seat.g * keep, seat.b * keep, 1f);
+
+        /// <summary>The tint for a painted, greyscale start emblem: its seat, lifted most of the way to white.</summary>
+        public static Color DecoEmblemTint(Color seat) => Color.Lerp(seat, Color.white, 0.6f);
+
         /// <summary>Felt: the seat colour, darkened. The felt sprite shades it further toward the rim.</summary>
         public const float FeltBrightness = 0.62f;
 

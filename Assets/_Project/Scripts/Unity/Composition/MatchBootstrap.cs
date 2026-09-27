@@ -617,6 +617,7 @@ namespace NonaRoyale.Unity.Composition
             _layout = new BoardLayout(board, cellSpacing);
 
             var boardView = GetComponent<BoardView>() ?? gameObject.AddComponent<BoardView>();
+            boardView.Skin = _display.Skin;
             var map = new PathMap(board);
             boardView.Build(map, _layout, 3);
 
@@ -716,6 +717,7 @@ namespace NonaRoyale.Unity.Composition
             _layout = new BoardLayout(board, cellSpacing);
 
             var boardView = GetComponent<BoardView>() ?? gameObject.AddComponent<BoardView>();
+            boardView.Skin = _display.Skin;
             int seatsPerTable = 0;
             foreach (var player in _match.Players)
                 seatsPerTable = Mathf.Max(seatsPerTable, player.Operators.Count);
@@ -1345,6 +1347,11 @@ namespace NonaRoyale.Unity.Composition
             }
 
             SaveSettingsIfChanged();
+
+            // The board skin (BS2): a change on the Display page redraws the
+            // board at once, mid-match included. A no-op when nothing changed.
+            var skinView = GetComponent<BoardView>();
+            if (skinView != null) skinView.ApplySkin(_display.Skin);
 
             if (_controls != null)
             {

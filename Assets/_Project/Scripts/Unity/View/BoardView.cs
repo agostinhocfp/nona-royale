@@ -55,8 +55,15 @@ namespace NonaRoyale.Unity.View
     /// <see cref="SceneLighting.BoardLayer"/> when that layer exists, so the
     /// powered cells' cyan light reaches the floor and not the pieces. The
     /// layer sits behind Default, so the orders above still hold.
+    ///
+    /// <b>Two skins</b> (board skin BS2, BOARD_SKIN.md). <see cref="Skin"/>
+    /// picks Classic, drawn by this file exactly as before, or Deco, drawn by
+    /// <c>BoardView.Deco.cs</c> element by element as the BS-series lands.
+    /// An element Deco doesn't draw yet is drawn as Classic.
+    /// <see cref="ApplySkin"/> redraws the board when the Display page
+    /// changes the skin, mid-match included: the board holds no state.
     /// </remarks>
-    public sealed class BoardView : MonoBehaviour
+    public sealed partial class BoardView : MonoBehaviour
     {
         private static readonly PlayerColor[] Seats =
         {
@@ -117,9 +124,23 @@ namespace NonaRoyale.Unity.View
         private PoweredShine _shine;
         private int? _layer;
 
+        // What the last Build drew, so a skin change can draw it again (BS2).
+        private PathMap _builtMap;
+        private BoardLayout _builtLayout;
+        private int _builtSeats;
+        private BoardSkin _builtSkin;
+
+        /// <summary>The skin the next <see cref="Build"/> draws (BS2). Set it before building.</summary>
+        public BoardSkin Skin { get; set; } = DisplaySettings.DefaultSkin;
+
         /// <param name="seatsPerTable">Seats drawn at each table: the largest squad.</param>
         public void Build(PathMap map, BoardLayout layout, int seatsPerTable)
         {
+            _builtMap = map;
+            _builtLayout = layout;
+            _builtSeats = seatsPerTable;
+            _builtSkin = Skin;
+
             foreach (var go in _drawn)
                 if (go != null) Destroy(go);
 
@@ -131,11 +152,26 @@ namespace NonaRoyale.Unity.View
             _layer = SceneLighting.BoardLayerId;
 
             DrawFloor(layout);
-            DrawTrack(map, layout);
+            if (Skin == BoardSkin.Deco) DrawDecoTrack(map, layout);
+            else DrawTrack(map, layout);
 
             foreach (var seat in Seats) DrawTable(layout, seat, seatsPerTable);
 
-            DrawVault(layout);
+            if (Skin == BoardSkin.Deco) DrawDecoCentre(layout);
+            else DrawVault(layout);
+        }
+
+        /// <summary>
+        /// Draws the board again in <paramref name="skin"/> if it was last
+        /// built in another (BS2). Does nothing before the first build or when
+        /// the skin is unchanged, so it is cheap to call every frame.
+        /// </summary>
+        public void ApplySkin(BoardSkin skin)
+        {
+            Skin = skin;
+            if (_builtMap == null || _builtLayout == null || skin == _builtSkin) return;
+
+            Build(_builtMap, _builtLayout, _builtSeats);
         }
 
         // ── Floor ────────────────────────────────────────────────────────
