@@ -155,6 +155,9 @@ namespace NonaRoyale.Unity.Composition
                  "Remembered; this is the first-run default.")]
         public bool lightingEffects = true;
 
+        [Tooltip("First-match tips on a person's turns (G10a). Remembered; this is the first-run default.")]
+        public bool showTips = true;
+
         [Tooltip("Health readout above every deployed piece (ADR-0008). " +
                  "H toggles it while playing — the stranger test decides its fate.")]
         public bool showPieceHealth = true;
@@ -344,7 +347,13 @@ namespace NonaRoyale.Unity.Composition
         private BotSpeed _savedSpeed;
         private bool _savedReduced;
         private bool _savedLighting;
+        private bool _savedTips;
         private AnimationSpeed _savedAnimation;
+
+        /// <summary>The first-match tips already shown (G10a), across sessions.</summary>
+        private HashSet<NonaRoyale.Core.Text.CoachTip> _tipsSeen = new HashSet<NonaRoyale.Core.Text.CoachTip>();
+
+        private CoachCard _coach;
 
         /// <summary>The seats the next deal uses. Squads and seed live in the inspector fields.</summary>
         private readonly List<PlayerColor> _seats = new List<PlayerColor>();
@@ -425,6 +434,8 @@ namespace NonaRoyale.Unity.Composition
             reducedMotion = SettingsStore.Load(SettingsStore.ReducedMotion, reducedMotion);
             animationSpeed = SettingsStore.LoadAnimationSpeed(animationSpeed);
             lightingEffects = SettingsStore.Load(SettingsStore.Lighting, lightingEffects);
+            showTips = SettingsStore.Load(SettingsStore.Tips, showTips);
+            _tipsSeen = SettingsStore.LoadSeenTips();
 
             _savedHealth = showPieceHealth;
             _savedLog = showFullLog;
@@ -433,6 +444,7 @@ namespace NonaRoyale.Unity.Composition
             _savedReduced = reducedMotion;
             _savedAnimation = animationSpeed;
             _savedLighting = lightingEffects;
+            _savedTips = showTips;
 
             SettingsStore.LoadAudio(_levels);
             _savedLevels.CopyFrom(_levels);
@@ -490,6 +502,23 @@ namespace NonaRoyale.Unity.Composition
             {
                 _savedLighting = lightingEffects;
                 SettingsStore.SaveLighting(lightingEffects);
+            }
+
+            if (showTips != _savedTips)
+            {
+                // Back on after off: the whole set plays again (G10a).
+                if (showTips)
+                {
+                    _tipsSeen.Clear();
+                    SettingsStore.SaveSeenTips(_tipsSeen);
+                }
+                else if (_coach != null)
+                {
+                    _coach.Hide();
+                }
+
+                _savedTips = showTips;
+                SettingsStore.SaveTips(showTips);
             }
 
             // Not mid-drag: a slider reports every frame it moves, and each save flushes to disk.
@@ -573,6 +602,7 @@ namespace NonaRoyale.Unity.Composition
             if (_history != null) _history.Clear();
             if (_toasts != null) _toasts.Clear();
             if (_banner != null) _banner.Bind(_hudRoot.MatchLayer);
+            if (_coach != null) _coach.Hide();
 
             _hudRoot.MatchLayerVisible = false;
         }
@@ -754,6 +784,10 @@ namespace NonaRoyale.Unity.Composition
             _toasts.Bind(hud);
             _banner = GetComponent<TurnBanner>() ?? gameObject.AddComponent<TurnBanner>();
             _banner.Bind(hud);
+            _coach = GetComponent<CoachCard>() ?? gameObject.AddComponent<CoachCard>();
+            _coach.Bind(hud);
+            _coach.Dismissed = DismissTip;
+            _coach.Silenced = () => showTips = false;
             _turnButton = GetComponent<TurnButton>() ?? gameObject.AddComponent<TurnButton>();
             _turnButton.Bind(hud, this);
             _cellLabels = GetComponent<CellLabelLayer>() ?? gameObject.AddComponent<CellLabelLayer>();
@@ -1136,6 +1170,7 @@ namespace NonaRoyale.Unity.Composition
             if (_tray != null) _tray.SetInsets(leftUnits, rightUnits);
             if (_toasts != null) _toasts.SetArea(leftUnits, rightUnits, chromeTop);
             if (_banner != null) _banner.SetArea(leftUnits, rightUnits, chromeTop);
+            if (_coach != null) _coach.SetArea(leftUnits, rightUnits, chromeBottom);
             if (_turnButton != null) _turnButton.SetArea(leftUnits, rightUnits, chromeTop, chromeBottom);
             if (_pieceHud != null) _pieceHud.SetCeiling(hud ? chromeTop + TurnBanner.ReservedHeight : 0f);
             if (_pieceHud != null && _layout != null) _pieceHud.SetBoard(_layout.HomeGoalPosition, _layout.Extent);
@@ -1420,7 +1455,10 @@ namespace NonaRoyale.Unity.Composition
             // A press still waiting for the board is the player's own answer.
             bool waiting = _buffered != BufferedIntent.None;
 
-            var command = _pacer.Tick(_match, humanTurn: !CpuTurn, busy: Busy || AnyPieceMoving() || waiting,
+            // Nobody is hurried while reading a tip (G10a): the roll clock holds and the turn does not end itself.
+            bool reading = _coach != null && _coach.Shown.HasValue;
+
+            var command = _pacer.Tick(_match, humanTurn: !CpuTurn, busy: Busy || AnyPieceMoving() || waiting || reading,
                 Time.unscaledDeltaTime, rollClock, autoEndTurn);
 
             if (_turnButton != null) _turnButton.SetCountdown(_pacer.RollSecondsLeft);
@@ -2199,6 +2237,8 @@ namespace NonaRoyale.Unity.Composition
             _matchLog.Add(events, engine.Round, refusals: !fromBot);
             if (_logPanel != null) _logPanel.MarkDirty();
 
+            OfferTip(events);
+
             if (_banner == null) return;
 
             if (batch.TurnBegan != null && !engine.MatchOver)
@@ -2210,6 +2250,42 @@ namespace NonaRoyale.Unity.Composition
 
             if (engine.MatchOver || engine.Phase != TurnPhase.AwaitingRoll)
                 _banner.Hide();
+        }
+
+        // ── First-match tips (G10a) ─────────────────────────────────────
+
+        /// <summary>
+        /// Shows the first unseen tip that applies after a presented batch,
+        /// if tips are on and none is up. A tip counts as seen when it is
+        /// shown, so quitting mid-tip never replays it.
+        /// </summary>
+        /// <param name="events">The batch just presented, or null to ask about the current state only.</param>
+        private void OfferTip(IReadOnlyList<IGameEvent> events)
+        {
+            if (_coach == null || _match == null) return;
+
+            if (_match.Engine.MatchOver)
+            {
+                _coach.Hide();
+                return;
+            }
+
+            if (!showTips || _coach.Shown.HasValue) return;
+
+            var tip = NonaRoyale.Core.Text.Coach.Due(_match, events,
+                seat => _bots == null || !_bots.IsCpu(seat), t => _tipsSeen.Contains(t));
+            if (!tip.HasValue) return;
+
+            _tipsSeen.Add(tip.Value);
+            SettingsStore.SaveSeenTips(_tipsSeen);
+            _coach.Show(tip.Value);
+        }
+
+        /// <summary>Got it: the card goes, and the next tip the current state calls for, if any, takes its place.</summary>
+        private void DismissTip()
+        {
+            if (_coach != null) _coach.Hide();
+            OfferTip(null);
         }
 
         /// <summary>Redraws everything that depends on the selection.</summary>
@@ -2451,6 +2527,7 @@ namespace NonaRoyale.Unity.Composition
         BotSpeed ISettingsHost.CpuSpeed { get => cpuSpeed; set => cpuSpeed = value; }
         bool ISettingsHost.ReducedMotion { get => reducedMotion; set => reducedMotion = value; }
         bool ISettingsHost.LightingEffects { get => lightingEffects; set => lightingEffects = value; }
+        bool ISettingsHost.Tips { get => showTips; set => showTips = value; }
         AnimationSpeed ISettingsHost.AnimationSpeed { get => animationSpeed; set => animationSpeed = value; }
         AudioLevels ISettingsHost.Audio => _levels;
         DisplaySettings ISettingsHost.Display => _display;

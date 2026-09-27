@@ -31,6 +31,7 @@ Set these on `MatchBootstrap` before pressing Play:
 | `randomSquads`       | off   | The alpha three: same squads for both testers, easier to compare |
 | `players`            | 2     | The stranger plays **both seats**, as in hot-seat play           |
 | `openingDeployments` | 2     | The adopted value                                                |
+| `showTips`           | on    | The first-match tips (G10a) are part of what is tested. Before each session turn **Tips** off and on again in Settings, so the stranger sees every tip |
 
 - **Two window sizes per session.** Play the first half at 1920×1080 and the second at 1280×720. Switch at a turn boundary. The HUD scales with the window, and this is the only way to check it with a real player.
 - **Record the screen**, with the tester's voice if they agree. Notes miss half of what happens.
@@ -85,7 +86,7 @@ Fix, then run the test again with **new** strangers. A tester who has already se
 | ------- | ---- | ------------- | ---- | ------- | -------------- |
 |         |      |               |      |         |                |
 
-**Already known.** Watch for these rather than fix them beforehand, so the test shows whether they matter:
+**Already known.** Watch for these rather than fix them beforehand, so the test shows whether they matter. Since G10a the first three have a first-match tip (Spending the roll, Safe cells); note whether the tip was read, and whether it was enough:
 
 - Landing labels show pip counts (`6`, `4`, `10`). Nothing says the bold one spends the whole roll.
 - Status tags under a piece can overlap the health label of a piece on the cell directly below.

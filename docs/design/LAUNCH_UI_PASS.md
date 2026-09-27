@@ -514,3 +514,35 @@ Each increment ends with a Play Mode check (desktop and upright) and a commit.
     - Setup, draft and the end card show the same rail on the board behind them.
     - Tray: the dice well reads as a recess, darker than the tray with a shadow under its top edge, and no underline.
     - Knobs: `UiTheme` has `Leather`/`LeatherFold`/`RailStitch`, `RailShadowNear`/`Far`, `BarLip` and `Well`; `BoardView.RailOnTable`; `BoardArt.RailTexels` sets the width. With the Scene view open, the Console shows no "Cannot generate 9 slice" error.
+- 2026-09-27 — **G10a: first-match tips** (designer's pick over running the stranger test first, G8 polish, and transitions with accessibility).
+  - **The rule** (`Core/Text/Coach`, new, pure): a tip says what the top bar's prompt cannot, the rule behind the click. The prompt already says "Deploy with your 6 — click a piece in your yard"; the tip says only a 6 leaves the yard, a 6 must be used, and two dry turns bring one out on their own. Numbers come from the configs, like the glossary, and keywords link to it.
+  - **Nine tips.** Offer order: moments first, since they are gone by the next batch, then states.
+    - **Collisions:** the hit, the bounce back a cell, passing over never collides, and a safe cell stops it.
+    - **Knocked out:** back to the yard at full health, the bounty, and a 6 to return.
+    - **Safe cells:** a person's dice move stops on one. A placement, or the deploy onto the spawn cell, does not count.
+    - **The home column:** out of the fight, can't cast, and no exact roll needed.
+    - **How to win:** a person's first roll, plus how the first roll fills energy.
+    - **Leaving the yard.**
+    - **Spending the roll:** a die per operator, bright for the whole roll and faint for one die, pips not cells, and a move is compulsory.
+    - **Doubles:** rolls a turn, spend first, and only the first roll pays energy.
+    - **Abilities:** paid from the shared pool, casting doesn't end the turn, and select → card → aim → Cast. It waits for the action phase, because readiness ignores the phase and a cast before the roll is refused.
+  - **Who sees them:** moments involving a person's seat, and states on a person's turn. A table of CPUs sees none. Hot-seat players share one set.
+  - **The card** (`View/CoachCard`, new): a framed floating card with a gold TIP heading, the title, the tip, and two buttons, **Got it** and **No more tips**.
+    - Wide, it sits in the board's empty lower-left corner above the tray, 360 wide, clear of the toasts and banner at the top centre, the ability peek at the bottom centre and the turn button at the bottom right.
+    - Upright, it spans the width above the history band.
+    - One tip at a time. Got it shows the next tip the current state calls for.
+    - A tip counts as seen when it is shown, so quitting mid-tip never replays it.
+    - It goes when the match ends or is torn down.
+  - **No hurry while reading:** a tip on screen holds the 15-second roll clock and the auto end turn (`DrivePacer`).
+  - **Setting** (`ISettingsHost.Tips`): a **Tips** row on the settings page, in the pause menu and on the title screen. It is remembered in `nr.settings.tips`, and the seen set in `nr.tips.seen`. Turning Tips back on clears the seen set, so the whole set plays again. **No more tips** turns it off.
+  - `STRANGER_TEST.md`: the setup table asks for tips on and reset before each session, and the known issues note which ones now have a tip.
+  - Tests: `CoachTests` (11). Every tip has words with nothing unwritten, numbers follow the configs, the safe tip links the glossary, and the first turn offers the goal to a person but nothing to a CPU. A seen tip stays seen, and abilities wait for the roll. Collisions count for either party, knockouts for victim or credited seat but not the dev key, a dice stop on a safe cell counts but a placement does not, and the home column counts from the track or on arrival home.
+  - Files: `Coach` (new), `CoachCard` (new), `CoachTests` (new), all with metas; `ISettingsHost`, `MatchBootstrap`, `STRANGER_TEST.md`.
+  - **Checked:** core 969 passing (958 + 11). The view and the Unity edit-mode tests compile with and without `DEVELOPMENT_BUILD`, 0 warnings.
+  - **Play Mode checklist** (Settings → turn Tips off and on first, so every tip plays):
+    - New match with a person's seat: the **How to win** card is in the lower-left corner on the first turn. The roll clock's countdown holds while it is up.
+    - Got it, then roll: **Leaving the yard** if you rolled a 6, otherwise **Spending the roll**. Each appears once across matches.
+    - Click **safe** or **energy** in a tip: the glossary card opens.
+    - Over a match or two: Collisions, Knocked out, Safe cells, Doubles, Abilities and The home column each appear once, when they first happen to a person's seat.
+    - **No more tips** closes the card, and Settings shows Tips off.
+    - A CPU-only table shows no tips. Upright, the card spans the width above the history band and does not cover the tray.

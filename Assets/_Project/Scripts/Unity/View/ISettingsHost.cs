@@ -1,4 +1,6 @@
 // Assets/_Project/Scripts/Unity/View/ISettingsHost.cs
+using System.Collections.Generic;
+using NonaRoyale.Core.Text;
 using NonaRoyale.Unity.Audio;
 using UnityEngine;
 
@@ -33,6 +35,12 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>Pools of light, powered-cell glow and bloom; off is the flat room (LT1).</summary>
         bool LightingEffects { get; set; }
+
+        /// <summary>
+        /// First-match tips (G10a). Turning them back on forgets which were
+        /// seen, so the whole set plays again.
+        /// </summary>
+        bool Tips { get; set; }
 
         /// <summary>The volume settings (AU1). The sound page writes to this object directly.</summary>
         AudioLevels Audio { get; }
@@ -71,6 +79,7 @@ namespace NonaRoyale.Unity.View
 #endif
             Row(slot, "Reduced motion", "", host.ReducedMotion, v => host.ReducedMotion = v, rebuild);
             Row(slot, "Lighting effects", "", host.LightingEffects, v => host.LightingEffects = v, rebuild);
+            Row(slot, "Tips", "", host.Tips, v => host.Tips = v, rebuild);
             AnimationSpeedRow(slot, host, rebuild);
             CpuSpeedRow(slot, host, rebuild);
         }
@@ -207,6 +216,10 @@ namespace NonaRoyale.Unity.View
         public const string ReducedMotion = "nr.settings.reducedMotion";
         public const string AnimSpeed = "nr.settings.animationSpeed";
         public const string Lighting = "nr.settings.lighting";
+        public const string Tips = "nr.settings.tips";
+
+        /// <summary>The tips already shown (G10a), as a comma-separated list of <see cref="CoachTip"/> names.</summary>
+        public const string TipsSeen = "nr.tips.seen";
         public const string VolumeMaster = "nr.audio.master";
         public const string VolumeMusic = "nr.audio.music";
         public const string VolumeSfx = "nr.audio.sfx";
@@ -257,6 +270,29 @@ namespace NonaRoyale.Unity.View
         public static void SaveLighting(bool on)
         {
             PlayerPrefs.SetInt(Lighting, on ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>Writes the Tips setting (G10a) and flushes it to disk.</summary>
+        public static void SaveTips(bool on)
+        {
+            PlayerPrefs.SetInt(Tips, on ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>The tips already shown. Names that no longer parse are dropped, so a renamed tip plays again.</summary>
+        public static HashSet<CoachTip> LoadSeenTips()
+        {
+            var seen = new HashSet<CoachTip>();
+            foreach (var name in PlayerPrefs.GetString(TipsSeen, "").Split(','))
+                if (System.Enum.TryParse(name.Trim(), out CoachTip tip)) seen.Add(tip);
+            return seen;
+        }
+
+        /// <summary>Writes the tips already shown and flushes them to disk.</summary>
+        public static void SaveSeenTips(IEnumerable<CoachTip> seen)
+        {
+            PlayerPrefs.SetString(TipsSeen, string.Join(",", seen));
             PlayerPrefs.Save();
         }
 
