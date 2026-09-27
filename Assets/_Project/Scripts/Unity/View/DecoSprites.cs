@@ -62,6 +62,15 @@ namespace NonaRoyale.Unity.View
         /// <summary>The edge of a control that wants pressing: 2 units and a 1-unit rule inside.</summary>
         public static Sprite ButtonEdgeDouble => _buttonEdgeDouble != null ? _buttonEdgeDouble : (_buttonEdgeDouble = Chamfer(6, new[] { new Band(0f, 2f), new Band(4f, 1f) }));
 
+        private static Sprite _plateRim;
+
+        /// <summary>
+        /// The light along a plate's top edge (G9a): a 1.5-unit line just
+        /// inside the top and the two top chamfers of <see cref="ButtonFill"/>,
+        /// fading out down the sides. Sliced like the fill.
+        /// </summary>
+        public static Sprite PlateRim => _plateRim != null ? _plateRim : (_plateRim = BuildPlateRim(6));
+
         /// <summary>Small chips, tags and pills. Corners cut at 4.</summary>
         public static Sprite ChipFill => _chipFill != null ? _chipFill : (_chipFill = Chamfer(4, null));
 
@@ -177,6 +186,33 @@ namespace NonaRoyale.Unity.View
             }, pixelsPerUnit, new Vector4(border, border, border, border));
 
             return sprite;
+        }
+
+        /// <summary>
+        /// A band inside a chamfered box's top edge and top corners only,
+        /// fading out below the corners. Same border as <see cref="Chamfer"/>,
+        /// so it slices over the fill exactly.
+        /// </summary>
+        private static Sprite BuildPlateRim(int cut)
+        {
+            int border = cut + 3;
+            int size = border * 2 + 2;
+            float half = size * 0.5f;
+
+            return Rasterize(size, size, (px, py) =>
+            {
+                float x = Mathf.Abs(px - half);
+                float up = py - half; // rows count up from the bottom
+
+                // Negative inside: the sides, the top and the two top cuts.
+                float box = Mathf.Max(x - half, up - half);
+                float corner = (x + up - (2f * half - cut)) / Mathf.Sqrt(2f);
+                float band = BandCoverage(Mathf.Max(box, corner), 0.5f, HairlineWidth);
+
+                // Full along the top and the cuts, gone two units below them.
+                float fade = Mathf.Clamp01((up - (half - cut - 2f)) / 2f);
+                return band * fade;
+            }, HudPixelsPerUnit, new Vector4(border, border, border, border));
         }
 
         /// <summary>

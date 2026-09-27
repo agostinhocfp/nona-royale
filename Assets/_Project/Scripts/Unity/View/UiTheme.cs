@@ -45,6 +45,12 @@ namespace NonaRoyale.Unity.View
     /// as a lattice; the frame alone is the Deco signature. Cyan edges still
     /// mean selected or ready, seat edges still mean whose.
     ///
+    /// <b>Controls are plates</b> (G9a, designer's pick 2026-09-27). With the
+    /// edges gone the controls lacked weight, so each one stands off its
+    /// panel: a face lit from the top, a darker lip showing its thickness, a
+    /// shadow on the table, a warm light along the top edge, and it sinks
+    /// when pressed (<see cref="UiPlate"/>). The values are the Plate* block.
+    ///
     /// Static values, not a ScriptableObject (decided 2026-09-15): the HUD is
     /// built from code and caches colours when it builds, so Inspector tuning
     /// would not show live without extra plumbing.
@@ -115,11 +121,40 @@ namespace NonaRoyale.Unity.View
         public static readonly Color PanelSheen = WithAlpha(Color.white, 0.04f);
 
         /// <summary>
-        /// A control at rest. One step lighter than it was (G7f), because with
-        /// no edge the fill alone has to lift it off the panel.
+        /// A control at rest: the top of its plate. One step lighter than it
+        /// was (G7f), because with no edge the fill alone has to lift it off
+        /// the panel, and one more (G9a), because the plate shades down from
+        /// this towards its foot.
         /// </summary>
-        public static readonly Color ButtonFill = Hex("2B2127");
+        public static readonly Color ButtonFill = Hex("352A31");
         public static readonly Color ButtonOff = Hex("120E11");
+
+        // ── Plates (G9a) ──
+
+        /// <summary>A plate's foot, as a fraction of its tint; the top is the full tint.</summary>
+        public const float PlateFaceFoot = 0.74f;
+
+        /// <summary>The lip under a plate, as a fraction of its tint.</summary>
+        public const float PlateLipShade = 0.42f;
+
+        /// <summary>
+        /// The light along a plate's top edge: warm, like the room's lamps.
+        /// Low, because the project blends in linear space (see <see cref="PanelSheen"/>).
+        /// </summary>
+        public static readonly Color PlateRim = WithAlpha(Color.Lerp(GoldBright, Color.white, 0.6f), 0.16f);
+
+        /// <summary>The shadow right under a plate's lip, and how far below the lip it shows.</summary>
+        public static readonly Color PlateShadowNear = WithAlpha(Color.black, 0.5f);
+        public const float PlateShadowNearDrop = 1.5f;
+
+        /// <summary>
+        /// The soft shadow further out: it reaches <see cref="PlateShadowFarReach"/>
+        /// times the depth plus <see cref="PlateShadowFarDrop"/> below the face,
+        /// so it tightens as the plate is pressed.
+        /// </summary>
+        public static readonly Color PlateShadowFar = WithAlpha(Color.black, 0.24f);
+        public const float PlateShadowFarReach = 1.75f;
+        public const float PlateShadowFarDrop = 3.5f;
 
         /// <summary>A live control's fill: a selected card, a ready Cast, END TURN.</summary>
         public static readonly Color CyanDeep = Hex("0C3A3E");

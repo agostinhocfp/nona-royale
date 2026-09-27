@@ -445,3 +445,25 @@ Each increment ends with a Play Mode check (desktop and upright) and a commit.
     - Tray: a castable card keeps its faint cyan edge, and the chosen card its cyan fill and double edge. Live dice keep their brass edge; empty slots are plain wells.
     - Setup: the ADVANCED toggle and the CPU style chips read without an edge.
     - Look at it in linear colour space on the real screen: if the new fill lifts too much or too little, `UiTheme.ButtonFill` is the one knob.
+- 2026-09-27 — **G9a: controls become plates** (designer: "the buttons do need something to give them weight… the match's UI lacks physicality"). A before/after mock was drawn; the designer picked **plates, then match bars** (two increments, this one first) and **oxblood leather** for the bars' rail.
+  - **The plate** (`UiPlate`, new, a `BaseMeshEffect` on the control's own image):
+    - The face is lit from above: the full tint at the top, 74% of it at the foot (`UiTheme.PlateFaceFoot`), shaded through vertex colours, so it follows hover, press and disabled tints.
+    - A lip under it shows its thickness: the face's own sliced mesh copied down by the depth at 42% of the tint (`PlateLipShade`), so the chamfered corners carry through.
+    - A shadow on the table: two black copies, near (50%, 1.5 below the lip) and far (24%, reaching further, tightening as the plate goes down). They share the face's mesh and draw call. Buttons had no shadow before.
+    - A warm light along the top edge and the two top chamfers (`DecoSprites.PlateRim`, a child named "rim", `UiTheme.PlateRim` at 16%). It is drawn under any selected or seat edge.
+    - The rect is still the face. Lip and shadow hang below it, in the column gap, so content inside a button stays centred.
+    - Depth follows height: 10% of it, clamped between 1.5 and 4 units, so a trait chip is not all lip. A selected button is latched at half height; a disabled one sits nearly flush and its top light dims.
+  - **The press** (`UiButtonFeel`): the plate sinks by its depth instead of the 0.93 scale dip, and a scaled plate no longer shrinks away from its lip. The rect moves down and the lip shrinks by the same amount, so the lip's foot and the near shadow stay put on the table, and content sinks with the face. The raycast area is padded back up by as much, so a press near the top edge is not lost as the button moves, and a padding set by the caller (the tray's touch chips) is kept. If a layout rebuild puts the rect back mid-press, the offset is dropped instead of being applied twice. The feel also keeps the stance in step if `interactable` changes after the build.
+  - **Also:**
+    - `UiTheme.ButtonFill` 2B2127 → 352A31. It is now the top of the gradient, so the average stays near G7f's.
+    - `UiKit.SliderRow` is a plate that nothing presses.
+    - The squad rail's landscape column spacing is 4 → 7 so each row's lip and shadow show.
+  - Files: `UiPlate` (new, with meta), `UiButtonFeel`, `UiKit`, `DecoSprites`, `UiTheme`, `SquadRail`.
+  - **Checked:** core 958 passing. The view and the Unity edit-mode tests compile with and without `DEVELOPMENT_BUILD`, 0 warnings.
+  - **Play Mode checklist:**
+    - Title, settings, pause, setup, draft, the tray and the rail: every button stands on a dark lip with a soft shadow under it and a thin warm light along its top.
+    - Press and hold one: it sinks, and its text sinks with it. The shadow under it stays where it was, and it springs back on release. Press right at a button's top edge: it still sinks and still clicks.
+    - Selected buttons (a chosen setup tile, a picked guide entry) stand half as tall. Disabled ones (an empty draft slot "—") sit nearly flat with a dim top light.
+    - Trait chips on the tray card: a thin lip, not a fat one.
+    - Stacks: the settings rows, the rail's rows and the menus show each lip clear of the next plate.
+    - Tuning knobs, all in `UiTheme`'s Plate block: `PlateFaceFoot` (shading), `PlateLipShade`, `PlateRim` alpha, and the two shadows. `UiPlate.MaxDepth` sets the height.

@@ -638,8 +638,9 @@ namespace NonaRoyale.Unity.View
             bool dimmed = false)
         {
             var rect = Rect("slider_row", parent);
-            // Borderless like every control (G7f); dimmed shows in the name and the track.
-            Sliced(rect, DecoSprites.ButtonFill, UiTheme.ButtonFill);
+            // Borderless like every control (G7f), a plate like every control
+            // (G9a), though nothing presses it; dimmed shows in the name and the track.
+            UiPlate.Attach(Sliced(rect, DecoSprites.ButtonFill, UiTheme.ButtonFill));
 
             var row = Row(rect, 12f);
             row.padding = new RectOffset(18, 14, 0, 0);
@@ -783,11 +784,17 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
-        /// A chamfered button with a brass edge. The click runs
+        /// A chamfered button, raised as a plate. The click runs
         /// <paramref name="onClick"/> and then <paramref name="afterClick"/>,
         /// usually the owner's MarkDirty.
         /// </summary>
         /// <remarks>
+        /// Every button is a <see cref="UiPlate"/> (G9a): it stands off the
+        /// panel on a lip and a shadow, and sinks when pressed. The lip and
+        /// shadow hang below the rect, so the face is the rect and content
+        /// laid out inside it stays centred. A selected button is latched at
+        /// half height; a disabled one sits nearly flush.
+        ///
         /// A selected button is a live state, so it fills with
         /// <see cref="UiTheme.CyanDeep"/> and takes a cyan double edge
         /// (ART_DIRECTION §8). At rest a button has no edge (G7f): its fill
@@ -821,6 +828,9 @@ namespace NonaRoyale.Unity.View
             colours.fadeDuration = 0.08f;
             SetColoursWithoutFade(button, colours);
 
+            // Before any edge, so a selected or seat edge draws over the top light.
+            var plate = UiPlate.Attach(image, latched: selected);
+
             if (selected)
             {
                 Overlay(rect, DecoSprites.ButtonEdgeDouble, UiTheme.Cyan);
@@ -840,7 +850,7 @@ namespace NonaRoyale.Unity.View
                 afterClick?.Invoke();
             });
 
-            UiButtonFeel.Attach(button);
+            UiButtonFeel.Attach(button, plate);
 
             // The caption ignores layout, so a button can also hold laid-out
             // content of its own (the squad rail's rows do).

@@ -216,7 +216,8 @@ namespace NonaRoyale.Unity.View
                 _content.pivot = new Vector2(0.5f, 1f);
                 _content.sizeDelta = Vector2.zero;
 
-                UiKit.Column(_content, 4f, 10).padding.right = 16; // clear of the rule
+                // 7, was 4: each row is a plate now (G9a), and its lip and shadow need the gap.
+                UiKit.Column(_content, 7f, 10).padding.right = 16; // clear of the rule
                 _content.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             }
 
