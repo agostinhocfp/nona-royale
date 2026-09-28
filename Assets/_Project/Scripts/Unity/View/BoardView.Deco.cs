@@ -62,11 +62,12 @@ namespace NonaRoyale.Unity.View
     /// slimmer and darker, and each inner corner carries two small facets in
     /// the colours of the two arms it joins, as the target's do.
     ///
-    /// <b>Yards as panels</b> (BS7, edge fixed in BS7b, aligned in BS8b). Each yard block is a
-    /// dark lacquer panel under its table, a dark shade of its seat, edged by
-    /// a dark band between two gilt hairlines, with a Deco triangle in each
-    /// corner — the simple target's yards. (BS7's seat-coloured band was a
-    /// misreading of the target, rejected by the designer.) It fills the largest black on
+    /// <b>Yards as panels</b> (BS7, edge fixed in BS7b, aligned in BS8b, one line since BS9).
+    /// Each yard block is a dark lacquer panel under its table, a dark shade of
+    /// its seat, with one subtle gilt hairline just inside its edge and a Deco
+    /// triangle in each corner — the simple target's yards. (BS7's seat-coloured
+    /// band, and BS7b's dark band between two hairlines, were dropped at the
+    /// designer's call.) It fills the largest black on
     /// the board and frames each table as its seat's own. It stays clear of
     /// every cell (<c>DecoYardTests</c>).
     ///
@@ -167,8 +168,8 @@ namespace NonaRoyale.Unity.View
         /// <summary>The slow sheen over the big gilt (BS5). Cleared and refilled by every build.</summary>
         private GiltSheen _sheen;
 
-        /// <summary>A tile's drop shadow, in tile sizes: down and right, away from the key light.</summary>
-        private static readonly Vector3 DecoTileShadowOffset = new Vector3(0.04f, -0.06f, 0f);
+        /// <summary>A tile's drop shadow, in tile sizes: down and right, away from the key light. (0.04, -0.06) until BS9.</summary>
+        private static readonly Vector3 DecoTileShadowOffset = new Vector3(0.025f, -0.04f, 0f);
 
         /// <summary>The wedges' shadow, in cell spacings: crisp, close under them.</summary>
         private static readonly Vector3 DecoWedgeShadowOffset = new Vector3(0.03f, -0.05f, 0f);
@@ -422,7 +423,7 @@ namespace NonaRoyale.Unity.View
             return yard + push;
         }
 
-        /// <summary>The yard's panel (BS7): dark fill, seat band, gilt frame and corners. Under the table.</summary>
+        /// <summary>The yard's panel (BS7, BS9): dark fill, one subtle gilt hairline and its corners. Under the table.</summary>
         private void DrawDecoYardPanel(BoardLayout layout, PlayerColor seat)
         {
             var at = DecoYardPanelCentre(layout, seat);
@@ -431,7 +432,6 @@ namespace NonaRoyale.Unity.View
 
             Sprite($"yard_panel_{seat}", BoardArt.Solid, at, side, UiTheme.DecoYardFill(seatColour), TableRuleOrder);
 
-            Sprite($"yard_band_{seat}", DecoBoardArt.YardBand, at, side, UiTheme.DecoYardEdge, CrossOrder);
             Sprite($"yard_frame_{seat}", DecoBoardArt.YardFrame, at, side, UiTheme.DecoYardGilt, PatternOrder);
         }
 

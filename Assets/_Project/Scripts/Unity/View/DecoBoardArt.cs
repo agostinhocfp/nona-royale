@@ -60,8 +60,8 @@ namespace NonaRoyale.Unity.View
         /// <summary>The corners' chamfer, in pixels of <see cref="Size"/>.</summary>
         private const float Chamfer = 7f;
 
-        /// <summary>The bevel's width, in pixels of <see cref="Size"/>.</summary>
-        private const float Bevel = 7f;
+        /// <summary>The bevel's width, in pixels of <see cref="Size"/>. 9 until BS7, 7 until BS9 (flatter cells).</summary>
+        private const float Bevel = 5f;
 
         /// <summary>The gilt edge's width, in pixels of <see cref="Size"/>.</summary>
         private const float EdgeWidth = 3.2f;
@@ -75,14 +75,15 @@ namespace NonaRoyale.Unity.View
 
         private static Sprite _body, _trimGilt, _trimCyan, _ring, _compass;
         private static Sprite _medallion, _medallionEmblem, _wedge, _tableRim, _tileShadow, _facetA, _facetB;
-        private static Sprite _yardBand, _yardFrame;
+        private static Sprite _yardFrame;
 
         /// <summary>
         /// How far the tile shadow's sprite reaches past the tile, as a
         /// fraction of the sprite: it is drawn <see cref="TileShadowScale"/>
         /// times the tile, and the soft falloff lives in that margin.
         /// </summary>
-        public const float TileShadowScale = 1.3f;
+        /// <remarks>1.3 until BS9: a tighter falloff sits the tiles closer to the board.</remarks>
+        public const float TileShadowScale = 1.2f;
 
         /// <summary>A square tile's face, edge to edge, greyscale, with a faint tinted bevel.</summary>
         public static Sprite TileBody => _body != null ? _body : (_body = Raster("deco_tile_body", BodyAt));
@@ -126,11 +127,12 @@ namespace NonaRoyale.Unity.View
             float face = FaceValue * (0.95f + 0.1f * (py / Size));
 
             // The bevel faces the nearest edge: top and left catch the light.
+            // Kept close to the face since BS9 (was 0.88 / 0.55 / 0.84 / 0.6), for flatter cells.
             float nx = px - Size * 0.5f;
             float ny = py - Size * 0.5f;
             float bevel = Mathf.Abs(ny) >= Mathf.Abs(nx)
-                ? (ny > 0f ? 0.88f : 0.55f)
-                : (nx < 0f ? 0.84f : 0.6f);
+                ? (ny > 0f ? 0.8f : 0.63f)
+                : (nx < 0f ? 0.78f : 0.66f);
 
             float t = Mathf.Clamp01(depth / Bevel);
             float lum = Mathf.Lerp(bevel, face, t * t * (3f - 2f * t));
@@ -156,8 +158,8 @@ namespace NonaRoyale.Unity.View
             // shade on the bottom and right, fading toward the face.
             float t = Mathf.Clamp01((depth - EdgeWidth) / Bevel);
             float fade = 1f - t * t * (3f - 2f * t);
-            // Lowered in BS7 at the designer's call ("reduce the cells' elevation just a bit"): about a third off.
-            float strength = lit ? (vertical ? 0.18f : 0.12f) : (vertical ? 0.34f : 0.27f);
+            // Lowered twice at the designer's call: about a third off in BS7, about 40 % more in BS9.
+            float strength = lit ? (vertical ? 0.11f : 0.07f) : (vertical ? 0.2f : 0.16f);
             var bevel = lit ? Color.white : Color.black;
             float bevelAlpha = strength * fade * inside;
 
@@ -544,25 +546,23 @@ namespace NonaRoyale.Unity.View
         /// <summary>The yard panel's texture size: a panel is nearly six spacings across.</summary>
         public const int YardSize = 512;
 
-        /// <summary>The seat-coloured band round a yard panel, inset and wide, as fractions of the panel's side.</summary>
-        public const float YardBandInset = 0.02f;
-        public const float YardBandWidth = 0.018f;
+        /// <summary>
+        /// The panel's one gilt hairline, inset from its edge as a fraction of
+        /// the side (BS9). BS7 drew two hairlines with a band between them; the
+        /// target has a single subtle line, and the panel's edge already lies
+        /// on the arms' edges and the frame's (BS8b).
+        /// </summary>
+        public const float YardLine = 0.035f;
 
-        /// <summary>The gilt hairlines: one outside the band, one inside it; the corner ornaments sit in the inner one.</summary>
-        public const float YardOuterLine = 0.008f;
-        public const float YardInnerLine = 0.05f;
+        /// <summary>How strongly the hairline is drawn, 0 to 1: under the corner ornaments, so it stays subtle.</summary>
+        public const float YardLineStrength = 0.6f;
 
-        /// <summary>The corner ornaments' reach from the inner hairline's corner, as a fraction of the side.</summary>
+        /// <summary>The corner ornaments' reach from the hairline's corner, as a fraction of the side.</summary>
         public const float YardCornerReach = 0.15f;
 
-        /// <summary>The seat-coloured band, in white for the seat tint.</summary>
-        public static Sprite YardBand => _yardBand != null ? _yardBand
-            : (_yardBand = Raster("deco_yard_band", YardBandAt, YardSize));
-
         /// <summary>
-        /// The panel's gilt: a hairline outside the band, one inside it, and a
-        /// Deco triangle in each corner of the inner one, faceted toward the
-        /// light. Colours baked.
+        /// The panel's gilt: one subtle hairline and a Deco triangle in each of
+        /// its corners, faceted toward the light. Colours baked.
         /// </summary>
         public static Sprite YardFrame => _yardFrame != null ? _yardFrame
             : (_yardFrame = Raster("deco_yard_frame", YardFrameAt, YardSize));
@@ -575,29 +575,19 @@ namespace NonaRoyale.Unity.View
             return Mathf.Max(x, y) - (0.5f - inset);
         }
 
-        private static Color YardBandAt(float px, float py)
-        {
-            float u = px / YardSize;
-            float v = py / YardSize;
-            float d = ToInsetSquare(u, v, YardBandInset + YardBandWidth * 0.5f);
-            float alpha = Cover((Mathf.Abs(d) - YardBandWidth * 0.5f) * YardSize);
-            return new Color(1f, 1f, 1f, alpha);
-        }
-
         private static Color YardFrameAt(float px, float py)
         {
             float u = px / YardSize;
             float v = py / YardSize;
 
-            float outer = Cover((Mathf.Abs(ToInsetSquare(u, v, YardOuterLine)) * YardSize) - 1.2f);
-            float inner = Cover((Mathf.Abs(ToInsetSquare(u, v, YardInnerLine)) * YardSize) - 0.9f);
+            float line = YardLineStrength * Cover((Mathf.Abs(ToInsetSquare(u, v, YardLine)) * YardSize) - 0.9f);
 
-            // The corner ornament: distances in from the inner hairline's
+            // The corner ornament: distances in from the hairline's
             // nearest corner. A solid triangle at the corner, and a line
             // across the corner beyond it.
             float cx = Mathf.Abs(u - 0.5f);
             float cy = Mathf.Abs(v - 0.5f);
-            float edge = 0.5f - YardInnerLine;
+            float edge = 0.5f - YardLine;
             float dx = edge - cx;
             float dy = edge - cy;
             float inside = Mathf.Min(dx, dy);
@@ -606,7 +596,7 @@ namespace NonaRoyale.Unity.View
             float solid = inside >= 0f ? Cover((sum - YardCornerReach * 0.55f) * YardSize) : 0f;
             float across = inside >= 0f ? Cover((Mathf.Abs(sum - YardCornerReach) * YardSize / Mathf.Sqrt(2f)) - 0.9f) : 0f;
 
-            float alpha = Mathf.Max(Mathf.Max(outer, inner), Mathf.Max(solid, across));
+            float alpha = Mathf.Max(line, Mathf.Max(solid, across));
 
             // Faceted toward the light: the corners and lines on the top and
             // left catch it; a solid triangle is split along its diagonal.

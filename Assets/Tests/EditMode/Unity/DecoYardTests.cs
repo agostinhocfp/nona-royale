@@ -65,20 +65,23 @@ namespace NonaRoyale.Unity.Tests.View
                 // The table sits on the yard's centre, CrossPad off the panel's, toward the arms (BS8b).
                 float offset = BoardArt.CrossPad;
 
-                // The band's inner edge, and how far the corner ornament reaches in along the diagonal.
-                float bandInner = side * (0.5f - DecoBoardArt.YardBandInset - DecoBoardArt.YardBandWidth) - offset;
-                Assert.Less(radius, bandInner, profile.Name);
+                // The hairline, and how far the corner ornament reaches in along the diagonal.
+                float line = side * (0.5f - DecoBoardArt.YardLine) - offset;
+                Assert.Less(radius, line, profile.Name);
 
-                float cornerInner = side * (0.5f - DecoBoardArt.YardInnerLine - DecoBoardArt.YardCornerReach * 0.5f) - offset;
+                float cornerInner = side * (0.5f - DecoBoardArt.YardLine - DecoBoardArt.YardCornerReach * 0.5f) - offset;
                 Assert.Less(radius, cornerInner * Mathf.Sqrt(2f), profile.Name);
             }
         }
 
         [Test]
-        public void TheBand_SitsBetweenTheTwoHairlines()
+        public void TheHairline_IsOneSubtleLine_JustInsideTheEdge()
         {
-            Assert.Greater(DecoBoardArt.YardBandInset, DecoBoardArt.YardOuterLine);
-            Assert.Less(DecoBoardArt.YardBandInset + DecoBoardArt.YardBandWidth, DecoBoardArt.YardInnerLine);
+            // BS9: one line, as the target draws, close to the panel's edge and under full strength.
+            Assert.Greater(DecoBoardArt.YardLine, 0f);
+            Assert.Less(DecoBoardArt.YardLine, 0.05f);
+            Assert.Greater(DecoBoardArt.YardLineStrength, 0f);
+            Assert.Less(DecoBoardArt.YardLineStrength, 1f);
         }
     }
 }

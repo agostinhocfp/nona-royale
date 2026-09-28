@@ -403,13 +403,6 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         public const float DecoYardWarmth = 0.14f;
 
-        /// <summary>
-        /// The yard panel's edge band (BS7b): a dark line, as the target draws
-        /// round each yard. BS7 drew it in the seat's colour, which the
-        /// designer rejected; the target's seat colour is in the yard itself.
-        /// </summary>
-        public static readonly Color DecoYardEdge = WithAlpha(Hex("060405"), 0.95f);
-
         /// <summary>The yard panel's gilt frame and corners (BS7), a little under full so the table's rim leads.</summary>
         public static readonly Color DecoYardGilt = new Color(0.85f, 0.85f, 0.85f, 1f);
 
@@ -428,11 +421,11 @@ namespace NonaRoyale.Unity.View
         public static Color DecoChairTint(Color seat) => Color.Lerp(seat, Color.white, 0.15f);
 
         /// <summary>
-        /// A Deco tile's soft drop shadow (BS5). 0.7 in BS5; 0.5 since BS7, with
-        /// a shorter offset and a softer bevel, when the designer asked for the
-        /// cells a little less raised.
+        /// A Deco tile's soft drop shadow (BS5). 0.7 in BS5, 0.5 in BS7, 0.32
+        /// since BS9, each time with a shorter offset and a softer bevel, when
+        /// the designer asked for flatter cells.
         /// </summary>
-        public static readonly Color DecoTileShadow = WithAlpha(Color.black, 0.5f);
+        public static readonly Color DecoTileShadow = WithAlpha(Color.black, 0.32f);
 
         /// <summary>The corner wedges' crisp shadow (BS5).</summary>
         public static readonly Color DecoWedgeShadow = WithAlpha(Color.black, 0.55f);
