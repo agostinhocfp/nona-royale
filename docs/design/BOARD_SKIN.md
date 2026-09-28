@@ -60,6 +60,12 @@ Files go in `Assets/_Project/Art/Resources/Art/Board/`, as PNG, named exactly af
 
 ## Log
 
+- 2026-09-28 — **BS11: a still board** (the designer's call: "remove the lighting effect going across the board every few seconds"; asked which of the two, the answer was the gilt sheen, and the safe-cell glint only every 60 s).
+  - **The gilt sheen is gone.** BS5's slow band over the rims, the medallion and the wedges: `View/GiltSheen.cs` and `GiltSheenTests.cs` deleted (with their `.meta` files); `BoardView` no longer adds or clears it, `MatchBootstrap` no longer sets `GiltSheen.Active`. The rims, medallion and wedges are drawn exactly as before, on their default material.
+  - **The safe-cell glint (G8f) runs once a minute**, both skins. One lap round the powered cells still takes 3.4 s (`PoweredShine.LapSeconds`, the powered lights' breath) with a 0.7 s sweep per cell; it now repeats every 60 s (`Period`) instead of back to back. The timing moved into a pure `PoweredShine.LocationAt(clock, index, count)`. Lighting effects off or Reduced motion still park it.
+  - **Tests.** `PoweredShineTests` (new), 3: every cell glints exactly once, inside the lap; the rest of the minute is still; laps are a minute apart. Cloud compile: core 969/969, 0 warnings everywhere.
+  - **Play Mode checklist:** no band crosses the rims, medallion or wedges; the safe cells glint in one quick lap right after the board builds, then nothing for a minute; Classic's safe cells behave the same.
+
 - 2026-09-28 — **BS10: home columns as one strip** (the designer's call: "the home cells have a thick border around them; it causes a perception of misalignment").
   - **Cause.** Each home cell was a raised track tile (0.86 of a spacing) with its own gilt edge and drop shadow, centred in a lattice box a full spacing wide. Round every home cell sat its gilt edge, a dark 0.07 gap and the lattice line, and the shadow, down and right, made the gap uneven: a thick border that looked off-centre against the lattice.
   - **Now** every home cell fills its lattice box up to the lines' inner edges (`BoardView.DecoHomeCellSide` = spacing × (1 − `DecoLatticeWidth`), 0.96), flat, in the seat face, with no edge, bevel or shadow; its ring stays. A column reads as one seat-coloured strip ruled by the lattice, as the target draws it. Track, start and safe cells are unchanged.

@@ -43,15 +43,13 @@ namespace NonaRoyale.Unity.View
     /// drawn: the target's tables are quieter, and chips come back as props
     /// in BS6.
     ///
-    /// <b>Weight and a moving light</b> (BS5). Every tile casts a soft drop
-    /// shadow down and to the right, away from the key light, onto the floor
-    /// between the cells; the wedges cast a crisp one, as the medallion and
-    /// the tables already do. A slow sheen passes over the big gilt — the
-    /// rims, the medallion and the wedges — every few seconds
-    /// (<see cref="GiltSheen"/>), off with Lighting effects or under Reduced
-    /// motion. Everything that gives weight is painted, so the board still
-    /// reads finished with the lighting off. No light pools: the simple
-    /// target has no candles, and its light is even.
+    /// <b>Weight</b> (BS5). Every tile casts a soft drop shadow down and to
+    /// the right, away from the key light, onto the floor between the cells;
+    /// the wedges cast a crisp one, as the medallion and the tables already
+    /// do. Everything that gives weight is painted, so the board still reads
+    /// finished with the lighting off. No light pools: the simple target has
+    /// no candles, and its light is even. (BS5's slow sheen over the big gilt
+    /// was removed in BS11 at the designer's call: the board stays still.)
     ///
     /// <b>Tuned against the target</b> (BS6, the BS5 checkpoint). A gilt
     /// lattice runs in the gaps between the tiles with a rivet at each
@@ -171,9 +169,6 @@ namespace NonaRoyale.Unity.View
         /// (<see cref="BoardLayout.CellSize"/>), so the column is one strip.
         /// </summary>
         public static float DecoHomeCellSide(BoardLayout layout) => layout.Spacing * (1f - DecoLatticeWidth);
-
-        /// <summary>The slow sheen over the big gilt (BS5). Cleared and refilled by every build.</summary>
-        private GiltSheen _sheen;
 
         /// <summary>A tile's drop shadow, in tile sizes: down and right, away from the key light. (0.04, -0.06) until BS9.</summary>
         private static readonly Vector3 DecoTileShadowOffset = new Vector3(0.025f, -0.04f, 0f);
@@ -335,7 +330,6 @@ namespace NonaRoyale.Unity.View
 
                 var wedge = Sprite($"wedge_{k}", wedgeSprite, at + offset, wedgeSize, UiTheme.DecoWedgeTint, VaultOrder);
                 wedge.transform.rotation = turn;
-                _sheen.Add(wedge);
 
                 // The two facets at this inner corner, in the colours of the arms it joins (BS6).
                 var facetAt = at + turn * new Vector3(1f, 1f, 0f) * spacing;
@@ -354,9 +348,8 @@ namespace NonaRoyale.Unity.View
                 diameter * 1.06f, UiTheme.Shadow, VaultGlowOrder);
 
             var discArt = BoardSprites.Get(BoardSprites.Medallion);
-            _sheen.Add(discArt != null
-                ? SlotSprite("medallion", discArt, at, diameter, Color.white, VaultTrimOrder)
-                : Sprite("medallion", DecoBoardArt.Medallion, at, diameter, Color.white, VaultTrimOrder));
+            if (discArt != null) SlotSprite("medallion", discArt, at, diameter, Color.white, VaultTrimOrder);
+            else Sprite("medallion", DecoBoardArt.Medallion, at, diameter, Color.white, VaultTrimOrder);
 
             var emblemArt = BoardSprites.Get(BoardSprites.MedallionEmblem);
             float emblem = diameter * DecoEmblemOfMedallion;
@@ -501,9 +494,8 @@ namespace NonaRoyale.Unity.View
             }
 
             var rimArt = BoardSprites.Get(BoardSprites.TableRim);
-            _sheen.Add(rimArt != null
-                ? SlotSprite($"rim_{seat}", rimArt, at, diameter, UiTheme.DecoRimTint, RimOrder)
-                : Sprite($"rim_{seat}", DecoBoardArt.TableRim, at, diameter, UiTheme.DecoRimTint, RimOrder));
+            if (rimArt != null) SlotSprite($"rim_{seat}", rimArt, at, diameter, UiTheme.DecoRimTint, RimOrder);
+            else Sprite($"rim_{seat}", DecoBoardArt.TableRim, at, diameter, UiTheme.DecoRimTint, RimOrder);
         }
 
         /// <summary>

@@ -7,7 +7,9 @@ namespace NonaRoyale.Unity.View
     /// <summary>
     /// A glint that runs round the powered cells' inlays (LAUNCH_UI_PASS.md,
     /// G8f): each safe cell in turn catches a diagonal band of light, one
-    /// after another round the board, on the powered lights' own period.
+    /// after another round the board. One lap takes
+    /// <see cref="LapSeconds"/>, once every <see cref="Period"/> (BS11: once
+    /// a minute, at the designer's call; it ran every lap back to back before).
     /// </summary>
     /// <remarks>
     /// <b>The pack's shine, masked by the inlay.</b> Each inlay gets its own
@@ -30,11 +32,14 @@ namespace NonaRoyale.Unity.View
         /// <summary>Whether glints run. The composition root sets it from Lighting effects and Reduced motion.</summary>
         public static bool Active { get; set; } = true;
 
-        /// <summary>One lap of the board: the same period as the powered lights' breath.</summary>
-        private const float Period = 3.4f;
+        /// <summary>Seconds from one lap's start to the next's (BS11). 3.4, back to back, until then.</summary>
+        public const float Period = 60f;
+
+        /// <summary>One lap of the board: the powered lights' breath.</summary>
+        public const float LapSeconds = 3.4f;
 
         /// <summary>How long one cell's glint takes to cross it.</summary>
-        private const float SweepSeconds = 0.7f;
+        public const float SweepSeconds = 0.7f;
 
         /// <summary>Where the band starts and ends, in the shader's location units: just off each side of the sprite.</summary>
         private const float From = -0.25f;
@@ -86,16 +91,25 @@ namespace NonaRoyale.Unity.View
             _parked = false;
             _clock = (_clock + Time.deltaTime) % Period;
 
-            float step = Period / _materials.Count;
             for (int i = 0; i < _materials.Count; i++)
             {
                 if (_materials[i] == null) continue;
-
-                // Each cell's glint starts a step after the last one's.
-                float t = (_clock - i * step + Period) % Period / SweepSeconds;
-                float location = t < 1f ? Mathf.Lerp(From, To, t) : Parked;
-                _materials[i].SetFloat(ShaderFx.ShineLocation, location);
+                _materials[i].SetFloat(ShaderFx.ShineLocation, LocationAt(_clock, i, _materials.Count));
             }
+        }
+
+        /// <summary>
+        /// Where cell <paramref name="index"/> of <paramref name="count"/>'s
+        /// band is, <paramref name="clock"/> seconds into a period: each cell's
+        /// glint starts a step after the last one's, all inside the lap, and
+        /// every band is parked for the rest of the period.
+        /// </summary>
+        public static float LocationAt(float clock, int index, int count)
+        {
+            if (count <= 0) return Parked;
+            float step = LapSeconds / count;
+            float t = ((clock - index * step) % Period + Period) % Period / SweepSeconds;
+            return t < 1f ? Mathf.Lerp(From, To, t) : Parked;
         }
 
         private void Park()

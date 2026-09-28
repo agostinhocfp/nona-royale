@@ -1332,9 +1332,6 @@ namespace NonaRoyale.Unity.Composition
             // The powered cells' glint (G8f) goes quiet with the lighting and under reduced motion.
             PoweredShine.Active = lightingEffects && !reducedMotion;
 
-            // The Deco skin's gilt sheen (BS5) follows the same two switches.
-            GiltSheen.Active = lightingEffects && !reducedMotion;
-
             // Before the pause check: the switch lives on the pause menu.
             if (_lighting != null)
             {
