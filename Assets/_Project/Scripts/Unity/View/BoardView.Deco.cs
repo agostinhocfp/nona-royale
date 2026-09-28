@@ -165,6 +165,13 @@ namespace NonaRoyale.Unity.View
             }
         }
 
+        /// <summary>
+        /// A home cell's side (BS10): its whole lattice box, up to the inner
+        /// edges of the lines round it. Wider than a track tile
+        /// (<see cref="BoardLayout.CellSize"/>), so the column is one strip.
+        /// </summary>
+        public static float DecoHomeCellSide(BoardLayout layout) => layout.Spacing * (1f - DecoLatticeWidth);
+
         /// <summary>The slow sheen over the big gilt (BS5). Cleared and refilled by every build.</summary>
         private GiltSheen _sheen;
 
@@ -230,6 +237,12 @@ namespace NonaRoyale.Unity.View
                 }
             }
 
+            // Home columns (BS10): every cell fills its lattice box, flat, with
+            // no edge, bevel or shadow of its own, so a column reads as one
+            // seat-coloured strip ruled by the lattice, as the target draws it.
+            // BS2's raised tiles left a dark gap and a second gilt edge inside
+            // every box, which read as a thick border, off-centre with its shadow.
+            float homeSide = DecoHomeCellSide(layout);
             foreach (var seat in Seats)
             {
                 var seatColour = UiTheme.Seat(seat);
@@ -242,14 +255,21 @@ namespace NonaRoyale.Unity.View
                     bool safe = map.IsSafe(home);
 
                     // A painted home tile carries its ring; tint it with the seat itself.
-                    var trim = DecoTile($"home_{seat}_{depth}", at, cell, homeArt != null ? seatColour : face,
-                        DecoBoardArt.TrimGilt, homeArt, tinted: true, needTrim: homeArt == null || safe);
+                    SpriteRenderer glint;
+                    if (homeArt != null)
+                    {
+                        glint = SlotSprite($"home_{seat}_{depth}", homeArt, at, homeSide, seatColour, CellOrder);
+                    }
+                    else
+                    {
+                        Sprite($"home_{seat}_{depth}", BoardArt.Solid, at, homeSide, face, CellOrder);
+                        glint = Sprite($"home_ring_{seat}_{depth}", DecoBoardArt.CellRing, at, cell,
+                            UiTheme.DecoHomeRing, InlayOrder);
+                    }
 
-                    if (homeArt == null)
-                        Sprite($"home_ring_{seat}_{depth}", DecoBoardArt.CellRing, at, cell, UiTheme.DecoHomeRing, InlayOrder);
-
-                    // The column's mouth is safe too, so it glints with the start cells (G8f).
-                    if (safe) _shine.Add(trim);
+                    // The column's mouth is safe too, so it glints with the start
+                    // cells (G8f): on its ring since BS10, as it has no edge now.
+                    if (safe) _shine.Add(glint);
                 }
             }
         }

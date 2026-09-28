@@ -55,7 +55,7 @@ In order of what it buys on screen. Each phase ends with a Play Mode screenshot 
 | `yard_table_rim` *(opt.)* | 1024 | Colour | The table's full diameter, dimmed to 80 %. | `mask_yard_table_rim`: ring from **87 %** of the radius to the edge; transparent centre. |
 | `board_medallion` *(opt.)* | 512 | Colour | 1.05 cells: the grid leaves no more room. | `mask_board_medallion`: a disc to the edge. The outer ring (from 80 %) is the rim; the grey middle is the face under the emblem. |
 | `board_corner_wedge` *(opt.)* | 256 | Colour | The square from the board's centre (bottom-left) to the inner corner (top-right), turned 4 times. It also casts its own shadow. | `mask_board_corner_wedge`: **stay inside the white kite.** The red blocks in the overview are cells: a wider wedge would cover them. |
-| `board_cell_home` *(opt.)* | 256 | **Grey**, tinted | Every home tile, tinted with the **full** seat colour. Replaces the tile **and** its ring. | `mask_board_cell_home`: fill edge to edge (corners cut 5 %), gilt edge and the ring at 31 % painted in. |
+| `board_cell_home` *(opt.)* | 256 | **Grey**, tinted | Every home cell, tinted with the **full** seat colour, filling its whole lattice box (0.96 of a spacing, BS10): the column reads as one strip ruled by the lattice. Replaces the face **and** its ring. | `mask_board_cell_home`: fill edge to edge, **square corners, no edge or bevel** (the lattice is the edge), and the ring at 28 % of the width painted in. |
 | `board_cell_track` *(opt.)* | 256 | Colour | Every plain track tile, as painted (untinted). Replaces the tile and its gilt edge. | `mask_board_cell_track`: fill edge to edge; paint a thin gilt edge and a **soft** top-left bevel (the cells were lowered in BS7). |
 
 **Grey slots:** paint in colour if that's easier, then desaturate and set the average to about **50 %** grey (§5, step 5). The code multiplies in the seat colour, so a dark grey gives a muddy seat and a light grey washes it out. The exception is `board_start_emblem`, which should be light.
@@ -120,7 +120,7 @@ Each entry: the subject for the frame, extra negatives, and what to pick for.
 - **`yard_table_rim`:** *"a heavy round bevelled aged-gilt ring, top-down, polished bead, one soft highlight at upper left, empty transparent centre"*. Stencil `mask_yard_table_rim`.
 - **`board_medallion`:** *"a round black lacquer disc with a heavy bevelled aged-gilt rim, soft specular at upper left"*. Stencil `mask_board_medallion`.
 - **`board_corner_wedge`:** *"a slim Art Deco gilt spike ornament pointing to the upper right corner, faceted down its spine"*. Stencil `mask_board_corner_wedge`; **clip it to the kite** in §5.
-- **`board_cell_home`:** *"one square board-game tile of neutral grey lacquer, thin bevelled aged-gilt edge, thin engraved gilt ring centred"*. Stencil `mask_board_cell_home`, then grey to 50 %.
+- **`board_cell_home`:** *"a flat square of neutral grey lacquer, edge to edge, no border, thin engraved gilt ring centred"*. Stencil `mask_board_cell_home`, then grey to 50 %.
 - **`board_cell_track`:** *"one square board-game tile of near-black polished marble, very thin bevelled aged-gilt edge, subtle"*. Stencil `mask_board_cell_track`. **Pick the quietest** candidate: highlights must pop over it.
 
 ## 5. Cleaning (Photopea is enough)

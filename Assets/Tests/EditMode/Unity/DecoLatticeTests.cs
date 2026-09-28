@@ -91,6 +91,58 @@ namespace NonaRoyale.Unity.Tests.View
         }
 
         [Test]
+        public void HomeCells_FillTheirLatticeBox_UpToTheLines()
+        {
+            foreach (var profile in Profiles())
+            {
+                var layout = new BoardLayout(profile, 1.3f);
+                float side = BoardView.DecoHomeCellSide(layout);
+                float line = BoardView.DecoLatticeWidth * layout.Spacing;
+
+                // Face and line meet exactly: no dark gap, no overlap (BS10).
+                Assert.AreEqual(layout.Spacing, side + line, 1e-5f, profile.Name);
+                Assert.Greater(side, layout.CellSize, profile.Name);
+            }
+        }
+
+        [Test]
+        public void HomeCells_NeverMeetAWedgeOrAFacet()
+        {
+            foreach (var profile in Profiles())
+            {
+                var layout = new BoardLayout(profile, 1f);
+                var centre = layout.HomeGoalPosition;
+                float half = BoardView.DecoHomeCellSide(layout) * 0.5f;
+                float r = 1f / Mathf.Sqrt(2f);
+
+                foreach (var seat in Seats)
+                    for (int d = 0; d < profile.HomeColumnLength; d++)
+                    {
+                        Vector2 at = layout.PositionOf(CellRef.HomeColumn(seat, d)) - centre;
+                        for (float x = -half; x <= half; x += half / 8f)
+                            for (float y = -half; y <= half; y += half / 8f)
+                            {
+                                var p = at + new Vector2(x, y);
+                                foreach (var dir in new[] { new Vector2(r, r), new Vector2(-r, r), new Vector2(-r, -r), new Vector2(r, -r) })
+                                {
+                                    float t = Vector2.Dot(p, dir);
+                                    float s = dir.x * p.y - dir.y * p.x;
+                                    Assert.IsFalse(DecoBoardArt.InWedge(t, s), $"{profile.Name}: {seat} home {d} at {p}");
+                                }
+
+                                var q = p;
+                                for (int k = 0; k < 4; k++)
+                                {
+                                    Assert.IsFalse(DecoBoardArt.InFacet(q.x, q.y, true) || DecoBoardArt.InFacet(q.x, q.y, false),
+                                        $"{profile.Name}: {seat} home {d} at {p}");
+                                    q = new Vector2(-q.y, q.x);
+                                }
+                            }
+                    }
+            }
+        }
+
+        [Test]
         public void CornerFacets_NeverEnterACell()
         {
             foreach (var profile in Profiles())
