@@ -46,7 +46,9 @@ The designer is testing operators as flat casino-chip tokens with portrait art, 
 | `ShadowOffset`, `ShadowAlpha` | `ChipView` | (0.03, -0.11), 0.7 | The drop shadow (0.55 before CP2) |
 | `ContactSize`, `ContactAlpha` | `ChipView` | 1.06, 0.75 | The tight shadow in the seam under the edge |
 | `InkWidth`, `InkAlpha` | `ChipView` | 0.018, 0.95 | The ink outline, per side, in chip diameters |
-| `FaceTint` | `ChipView` | (0.97, 0.94, 0.89) | Brightness and warmth of the unlit face and ring |
+| `FaceTint` | `ChipView` | (1, 0.98, 0.94) | Brightness and warmth of the unlit face and ring (0.97, 0.94, 0.89 in CP2) |
+| `BodyTint` | `ChipView` | (0.88, 0.86, 0.82) | Brightness of the unlit body, edge and inserts |
+| `HeroDiameter`, `UprightHeroDiameter` | `ActionTray` | 172, 100 | The hero portrait's size, wide and upright |
 | `FaceRadius`, `RingOuter` | `ChipSprites` | 0.78, 0.86 | Face size, ring width |
 | `MaskRadius` | `ChipArtLibrary` | 0.48 | How much of the portrait is kept. **Changing it needs a reimport of the chips folder** |
 
@@ -56,6 +58,14 @@ The designer is testing operators as flat casino-chip tokens with portrait art, 
 - **An ink outline** (`UiTheme.Ink`) round the chip and its edge, always on. The selection rim now follows the outline, outside it.
 - **Lift:** the edge is thicker and carries the inserts down its side, a tight contact shadow sits in the seam and fades out on a hop, and the drop shadow is darker.
 - Not done, for after a screenshot: a gloss sweep on the face, stronger seat colour on the body, and a slow lift on the chips that can act (with CO2).
+
+## CP3 — Hero portrait, dice dock, more light (designer, 2026-09-29)
+
+- **Hero portrait.** The selected operator opens the action tray as a large chip (`View/HeroPortrait.cs`): the same portrait, seat-coloured body, inserts, ink and gilt ring as its chip on the board, in uGUI. Wide it is 172 across in a 172 slot and rises 34 units above the tray's top edge; upright it is 100 across and rises over the aim line only, never the board. An operator with no portrait shows its emblem. The shape icon on the operator card is gone: the portrait says who it is.
+- **Powered while armed.** With an ability armed, the portrait shows the lit twin and a cyan glow on the device.
+- **The dice moved.** Wide: to a small dock floating over the board's bottom-left corner, above the portrait, mirroring the turn button in the bottom-right; the dice hint moves with them. Upright: to the screen's bottom-left corner, in the tray's bottom row with Cast between the dice and the turn button; the hint is dropped there (the top bar says it). The coach's tips start above the portrait and the dock, wide (`ActionTray.LeftStackClearance`).
+- **More light.** The whole chip is now unlit except its shadows and ink: the face and ring at `FaceTint`, raised to about full, and the body, edge and inserts at `BodyTint`, a step lower so the portrait stays the brightest thing on the chip.
+- **Play Mode checks:** the portrait against the board and the rail, wide and upright; the dock against the pieces in the bottom-left cells and against the dice roll's landing; a coach tip shown while an operator is selected; armed and unarmed.
 
 ## Adding an operator's chip
 
@@ -80,3 +90,4 @@ The designer is testing operators as flat casino-chip tokens with portrait art, 
 - 2026-09-29 — **CP1.** Chip pieces behind the Pieces switch (default Chips): code-drawn chip body, inserts and ring; portrait faces for Luka, Bouncer and Syla with lit twins and device glows; emblem faces for the other nine; a chip importer that cuts portraits to a circle; EditMode tests for the lookup, the anchors, the setting and the switch. Compiles against the editor DLLs (runtime, editor and EditMode test assemblies); not yet run in Unity.
 - 2026-09-29 — **CP1b, chips 40% larger** (designer, after the first look: "they need some size"). `ChipDiameter` 0.72 → 1.008; the hit radius follows the chip. The toughest operators' chips now overlap neighbouring cells slightly.
 - 2026-09-29 — **CP2, chips stand out without size** (designer): unlit face, emblem, ring and cast glow at the room's warm white; an ink outline round the chip and its edge; a thicker edge with the inserts carried down it, a contact shadow and a darker drop shadow. Compiles (runtime, editor and EditMode test assemblies); not yet run in Unity.
+- 2026-09-29 — **CP3, hero portrait and dice dock** (designer): the selected operator's chip as a hero portrait in the tray, lit while armed; the dice moved to a dock at the board's bottom-left (wide) or the screen's bottom-left (upright); the whole chip unlit except shadows and ink, a little brighter. Compiles (runtime, editor and EditMode test assemblies); not yet run in Unity.

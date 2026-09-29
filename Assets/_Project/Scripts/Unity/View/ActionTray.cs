@@ -87,6 +87,15 @@ namespace NonaRoyale.Unity.View
     /// what follows from it, and the rules line follows, dimmer, as the
     /// reference that carries the numbers.
     ///
+    /// <b>The hero portrait and the dice dock</b> (designer, 2026-09-29). The
+    /// selected operator's portrait opens the tray, drawn as a large chip
+    /// with the same art as its chip on the board (<see cref="HeroPortrait"/>);
+    /// wide, it rises above the tray's top edge. It lights its device while an
+    /// ability is armed. The dice moved out to make room: wide, to a small
+    /// dock floating over the board's bottom-left corner, above the portrait,
+    /// mirroring the turn button in the bottom-right; upright, to the screen's
+    /// bottom-left corner, in the tray's bottom row with Cast beside them.
+    ///
     /// Its left and right edges follow whatever the side panels reserve, and
     /// the composition root sets them through <see cref="SetInsets"/>. The
     /// background blocks board clicks.
@@ -132,6 +141,32 @@ namespace NonaRoyale.Unity.View
         /// <summary>The slot widths. Fixed, so nothing moves as the bar fills in (H1).</summary>
         private const float DiceWidth = 132f;
         private const float OperatorWidth = 300f;
+
+        /// <summary>The hero portrait, wide: its slot, and its diameter, which rises above the tray.</summary>
+        private const float HeroWidth = 172f;
+        private const float HeroDiameter = 172f;
+
+        /// <summary>The hero portrait, upright: it rises over the aim line, not over the board.</summary>
+        private const float UprightHeroWidth = 104f;
+        private const float UprightHeroDiameter = 100f;
+
+        /// <summary>The row's bottom padding, which the wide portrait stands on.</summary>
+        private const float WidePadding = 12f;
+
+        /// <summary>How far the wide portrait rises above the tray's top edge.</summary>
+        private const float HeroOverflow = HeroDiameter + WidePadding - Height;
+
+        /// <summary>The wide dice dock: padding inside it, and its gap to the board's edge and the portrait.</summary>
+        private const float DockPadding = 12f;
+        private const float DockGap = 14f;
+        private const float DockHeight = DieSize + 14f + 34f + 2f * DockPadding;
+
+        /// <summary>
+        /// What the portrait and the dice dock take above the tray at the
+        /// board's bottom-left, wide; nothing upright. A card floating in that
+        /// corner (the coach's tips) starts above it.
+        /// </summary>
+        public static float LeftStackClearance => ScreenLayout.Pick(HeroOverflow + DockGap + DockHeight + DockGap, 0f);
         private const float CastWidth = 210f;
 
         private const float DieSize = 52f;
@@ -163,6 +198,10 @@ namespace NonaRoyale.Unity.View
         private RectTransform _canvas;
         private RectTransform _tray;
         private RectTransform _content;
+
+        /// <summary>The wide dice dock over the board's bottom-left corner, and what it holds. Null upright.</summary>
+        private RectTransform _dock;
+        private RectTransform _dockContent;
         private bool _dirty;
         private bool _builtPortrait;
         private float _insetLeft;
@@ -219,6 +258,14 @@ namespace NonaRoyale.Unity.View
 
             _tray.offsetMin = new Vector2(left, 0f);
             _tray.offsetMax = new Vector2(-right, ReservedHeight);
+            PlaceDock();
+        }
+
+        /// <summary>The dock sits at the board's bottom-left corner, above the portrait that rises out of the tray.</summary>
+        private void PlaceDock()
+        {
+            if (_dock == null) return;
+            _dock.anchoredPosition = new Vector2(_insetLeft + DockGap, Height + HeroOverflow + DockGap);
         }
 
         private void Build()
@@ -245,11 +292,29 @@ namespace NonaRoyale.Unity.View
             }
             else
             {
-                var row = UiKit.Row(_content, 14f, 12);
+                var row = UiKit.Row(_content, 14f, (int)WidePadding);
                 row.padding.top = 16; // clear of the rule
                 row.childForceExpandHeight = true;
                 row.childAlignment = TextAnchor.UpperLeft;
+
+                BuildDock();
             }
+        }
+
+        /// <summary>The wide dice dock: a small panel over the board's bottom-left corner.</summary>
+        private void BuildDock()
+        {
+            _dock = UiKit.Rect("dice_dock", _canvas);
+            _dock.anchorMin = _dock.anchorMax = Vector2.zero;
+            _dock.pivot = Vector2.zero;
+            _dock.sizeDelta = new Vector2(DiceWidth + 2f * DockPadding, DockHeight);
+            UiKit.Panel(_dock, blocksPointer: true);
+
+            _dockContent = UiKit.Rect("content", _dock);
+            UiKit.Stretch(_dockContent, DockPadding);
+            UiKit.Column(_dockContent, 0f);
+
+            PlaceDock();
         }
 
         private void LateUpdate()
@@ -263,6 +328,14 @@ namespace NonaRoyale.Unity.View
                 DiceFaces = null;
                 old.SetActive(false);
                 Destroy(old);
+
+                if (_dock != null)
+                {
+                    _dock.gameObject.SetActive(false);
+                    Destroy(_dock.gameObject);
+                    _dock = null;
+                    _dockContent = null;
+                }
 
                 Build();
                 _dirty = true;
@@ -285,6 +358,8 @@ namespace NonaRoyale.Unity.View
                 if (Visible) _dirty = true;
             }
 
+            if (_dock != null && _dock.gameObject.activeSelf != Visible) _dock.gameObject.SetActive(Visible);
+
             if (!_dirty || !Visible) return;
 
             _dirty = false;
@@ -302,6 +377,16 @@ namespace NonaRoyale.Unity.View
                 var child = _content.GetChild(i).gameObject;
                 child.SetActive(false);
                 Destroy(child);
+            }
+
+            if (_dockContent != null)
+            {
+                for (int i = _dockContent.childCount - 1; i >= 0; i--)
+                {
+                    var child = _dockContent.GetChild(i).gameObject;
+                    child.SetActive(false);
+                    Destroy(child);
+                }
             }
 
             var match = _host?.Match;
@@ -326,8 +411,9 @@ namespace NonaRoyale.Unity.View
 
         private void RebuildWide()
         {
-            DiceSection(_content, DiceWidth);
-            Divider(_content);
+            if (_dockContent != null) DiceSection(_dockContent, DiceWidth, hint: true);
+
+            HeroSection(_content, HeroWidth, HeroDiameter);
             OperatorCard(_content, OperatorWidth, compact: false);
             Divider(_content);
             AbilitySection(_content);
@@ -347,8 +433,7 @@ namespace NonaRoyale.Unity.View
             UiKit.Row(top, 10f).childForceExpandHeight = true;
             UiKit.Size(top, height: UprightTopHeight, flexibleHeight: 0f);
 
-            DiceSection(top, 124f);
-            Divider(top);
+            HeroSection(top, UprightHeroWidth, UprightHeroDiameter);
             OperatorCard(top, -1f, compact: true);
 
             var cards = UiKit.Rect("abilities", _content);
@@ -359,6 +444,9 @@ namespace NonaRoyale.Unity.View
             UiKit.Row(bottom, 8f).childForceExpandHeight = true;
             UiKit.Size(bottom, height: UprightCastHeight, flexibleHeight: 0f);
 
+            // The dice in the screen's bottom-left corner, the turn button in
+            // its bottom-right, Cast between (designer, 2026-09-29).
+            DiceSection(bottom, 124f, hint: false);
             CastSection(bottom, -1f, compact: true);
 
             // The turn button floats in the screen's bottom-right corner; this
@@ -399,7 +487,8 @@ namespace NonaRoyale.Unity.View
 
         // ── Dice ─────────────────────────────────────────────────────────
 
-        private void DiceSection(Transform parent, float width)
+        /// <param name="hint">Show the line on what the dice need. Upright the bottom row has no room for it; the top bar says it.</param>
+        private void DiceSection(Transform parent, float width, bool hint)
         {
             var engine = _host.Match.Engine;
 
@@ -452,10 +541,37 @@ namespace NonaRoyale.Unity.View
 
             // Roll and End turn live on the turn button at the board's corner
             // (TurnButton); the tray only shows the dice and what they need.
+            if (!hint) return;
+
             string hintText = held ? "Rolling…" : DiceHint(engine, dice.Count, canRoll, canEnd);
-            var hint = UiKit.Label(box, hintText, UiTheme.FontSmall,
+            var line = UiKit.Label(box, hintText, UiTheme.FontSmall,
                 canEnd && !canRoll ? UiTheme.Cyan : UiTheme.TextDim, wrap: true);
-            UiKit.Size(hint, height: ScreenLayout.Pick(34f, 16f));
+            UiKit.Size(line, height: 34f);
+        }
+
+        // ── The hero portrait ────────────────────────────────────────────
+
+        /// <summary>
+        /// The selected operator as a large chip (<see cref="HeroPortrait"/>),
+        /// standing on the bottom of its slot and rising above it. Powered
+        /// while an ability is armed. Nothing selected keeps the slot empty.
+        /// </summary>
+        private void HeroSection(Transform parent, float width, float diameter)
+        {
+            var op = _host.SelectedOperator;
+            if (op == null)
+            {
+                Empty(parent, width);
+                return;
+            }
+
+            var slot = UiKit.Rect("hero", parent);
+            UiKit.Fixed(slot, width);
+
+            var portrait = HeroPortrait.Build(slot, op, diameter, powered: _host.SelectedAbility != null);
+            portrait.anchorMin = portrait.anchorMax = new Vector2(0.5f, 0f);
+            portrait.pivot = new Vector2(0.5f, 0f);
+            portrait.anchoredPosition = Vector2.zero;
         }
 
         /// <summary>One line on what the dice need, from the engine's answers only.</summary>
@@ -535,7 +651,7 @@ namespace NonaRoyale.Unity.View
             UiKit.Row(top, 10f);
             UiKit.Size(top, height: compact ? 34f : 48f);
 
-            UiKit.Icon(top, PieceShape.For(op), seatColour, compact ? 30f : 44f);
+            // No shape icon: the hero portrait beside the card says who this is.
 
             var name = UiKit.Rect("name", top);
             UiKit.Column(name, 2f);

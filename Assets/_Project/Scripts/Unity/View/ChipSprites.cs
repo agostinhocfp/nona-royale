@@ -32,6 +32,13 @@ namespace NonaRoyale.Unity.View
         /// <summary>The gilt ring's outer edge, as a fraction of the chip's radius. Its inner edge sits a hair inside the face.</summary>
         public const float RingOuter = 0.86f;
 
+        /// <summary>
+        /// A portrait's scale inside a chip one unit across, so the importer's
+        /// circle (<see cref="ChipArtLibrary.MaskRadius"/>) lands just under
+        /// the gilt ring. The board's chips and the tray's hero portrait share it.
+        /// </summary>
+        public static float PortraitScale => (0.5f * FaceRadius + 0.005f) / ChipArtLibrary.MaskRadius;
+
         /// <summary>How many edge inserts ring the body.</summary>
         public const int InsertCount = 8;
 

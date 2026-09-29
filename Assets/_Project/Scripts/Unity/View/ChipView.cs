@@ -22,10 +22,12 @@ namespace NonaRoyale.Unity.View
     /// <b>Made to stand out (CP2, designer 2026-09-29: "pop more without
     /// increasing size").</b> Three things, in the order they matter:
     /// <list type="bullet">
-    /// <item><b>The face and the ring are unlit</b>
-    /// (<see cref="ShaderFx.ChipUnlit"/>), at <see cref="FaceTint"/>: the
-    /// room's warm white, not its dim ambient. The body stays lit, so the
-    /// chip still sits in the room's light.</item>
+    /// <item><b>The chip is unlit</b> (<see cref="ShaderFx.ChipUnlit"/>):
+    /// the face and the ring at <see cref="FaceTint"/>, the body, its edge
+    /// and the inserts a step lower at <see cref="BodyTint"/>, both the
+    /// room's warm white rather than its dim ambient. Only the shadows and
+    /// the ink stay in the room's light (CP3: the body was lit in CP2, and
+    /// the designer asked for more light).</item>
     /// <item><b>An ink outline</b> round the chip and its edge, in the style's
     /// line colour (<c>UiTheme.Ink</c>, ART §2.2), so it never melts into the
     /// dark cells or the gilt inlay. The selection rim draws outside it.</item>
@@ -77,10 +79,16 @@ namespace NonaRoyale.Unity.View
         /// strength, so they read as lit by the room's key light rather than
         /// pasted on. Tune in Play Mode.
         /// </summary>
-        private static readonly Color FaceTint = new Color(0.97f, 0.94f, 0.89f);
+        private static readonly Color FaceTint = new Color(1f, 0.98f, 0.94f);
 
-        /// <summary>The portrait's scale, so the importer's circle lands just under the gilt ring.</summary>
-        private static float PortraitScale => (0.5f * ChipSprites.FaceRadius + 0.005f) / ChipArtLibrary.MaskRadius;
+        /// <summary>
+        /// What the unlit body, edge and inserts are multiplied by: the same
+        /// warm white a step below the face, so the portrait stays the
+        /// brightest thing on the chip (CP3). Tune in Play Mode.
+        /// </summary>
+        private static readonly Color BodyTint = new Color(0.88f, 0.86f, 0.82f);
+
+        private static float PortraitScale => ChipSprites.PortraitScale;
 
         /// <summary>The emblem's size on an emblem chip, in chip diameters.</summary>
         private const float EmblemSize = 0.42f;
@@ -155,12 +163,12 @@ namespace NonaRoyale.Unity.View
             _ring = Part("chip_ring", ChipSprites.Ring, RingOrder, 1f, Vector2.zero);
             _flare = Part("chip_device_flare", DecoSprites.Glow, FlareOrder, FlareSize, Vector2.zero);
 
-            // The face, the ring and the glow ignore the room's light (CP2).
-            // Without the material they stay lit, as before.
+            // The chip ignores the room's light (CP2, CP3); the shadows and the
+            // ink keep it. Without the material everything stays lit, as before.
             var unlit = ShaderFx.Source(ShaderFx.ChipUnlit);
             if (unlit != null)
             {
-                foreach (var renderer in new[] { _face, _emblem, _lit, _ring, _flare })
+                foreach (var renderer in new[] { _edge, _edgeInserts, _body, _inserts, _face, _emblem, _lit, _ring, _flare })
                     renderer.sharedMaterial = unlit;
             }
 
@@ -299,27 +307,21 @@ namespace NonaRoyale.Unity.View
             _inkTop.color = ink;
             _inkEdge.color = ink;
 
-            var body = _seat;
-            body.a = _alpha;
-            _body.color = body;
-
-            var edge = Color.Lerp(Color.black, _seat, EdgeShade);
-            edge.a = _alpha;
-            _edge.color = edge;
-
-            _inserts.color = UiTheme.WithAlpha(UiTheme.DieFace, _alpha);
-            _edgeInserts.color = UiTheme.WithAlpha(Color.Lerp(Color.black, UiTheme.DieFace, EdgeInsertShade), _alpha);
-
             // The unlit parts take the room's warm white, so they are lit by
-            // it rather than pasted over it (CP2).
-            _ring.color = Tinted(UiTheme.Gold);
+            // it rather than pasted over it (CP2); the body a step lower (CP3).
+            _body.color = Tinted(_seat, BodyTint);
+            _edge.color = Tinted(Color.Lerp(Color.black, _seat, EdgeShade), BodyTint);
+            _inserts.color = Tinted(UiTheme.DieFace, BodyTint);
+            _edgeInserts.color = Tinted(Color.Lerp(Color.black, UiTheme.DieFace, EdgeInsertShade), BodyTint);
+
+            _ring.color = Tinted(UiTheme.Gold, FaceTint);
 
             // A portrait draws as painted; the emblem chip's face is black lacquer under a gold shape.
-            _face.color = HasPortrait ? Tinted(Color.white) : UiTheme.WithAlpha(UiTheme.Obsidian, _alpha);
-            _emblem.color = Tinted(UiTheme.PieceEmblem);
+            _face.color = HasPortrait ? Tinted(Color.white, FaceTint) : UiTheme.WithAlpha(UiTheme.Obsidian, _alpha);
+            _emblem.color = Tinted(UiTheme.PieceEmblem, FaceTint);
 
             _lit.enabled = _lit.sprite != null && _power > 0f;
-            var lit = Tinted(Color.white);
+            var lit = Tinted(Color.white, FaceTint);
             lit.a *= _power;
             _lit.color = lit;
 
@@ -328,8 +330,8 @@ namespace NonaRoyale.Unity.View
             _flare.transform.localScale = Vector3.one * (FlareSize * (0.6f + 0.4f * _power));
         }
 
-        private Color Tinted(Color colour) =>
-            new Color(colour.r * FaceTint.r, colour.g * FaceTint.g, colour.b * FaceTint.b, colour.a * _alpha);
+        private Color Tinted(Color colour, Color tint) =>
+            new Color(colour.r * tint.r, colour.g * tint.g, colour.b * tint.b, colour.a * _alpha);
 
         private SpriteRenderer Part(string name, Sprite sprite, int order, float scale, Vector2 offset)
         {

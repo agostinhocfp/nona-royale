@@ -1171,7 +1171,9 @@ namespace NonaRoyale.Unity.Composition
             if (_tray != null) _tray.SetInsets(leftUnits, rightUnits);
             if (_toasts != null) _toasts.SetArea(leftUnits, rightUnits, chromeTop);
             if (_banner != null) _banner.SetArea(leftUnits, rightUnits, chromeTop);
-            if (_coach != null) _coach.SetArea(leftUnits, rightUnits, chromeBottom);
+            // Wide, the tips start above the hero portrait and the dice dock,
+            // which share the board's bottom-left corner (2026-09-29).
+            if (_coach != null) _coach.SetArea(leftUnits, rightUnits, chromeBottom + ActionTray.LeftStackClearance);
             if (_turnButton != null) _turnButton.SetArea(leftUnits, rightUnits, chromeTop, chromeBottom);
             if (_pieceHud != null) _pieceHud.SetCeiling(hud ? chromeTop + TurnBanner.ReservedHeight : 0f);
             if (_pieceHud != null && _layout != null) _pieceHud.SetBoard(_layout.HomeGoalPosition, _layout.Extent);
