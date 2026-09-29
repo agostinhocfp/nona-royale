@@ -41,6 +41,7 @@ namespace NonaRoyale.Unity.View
         private static Sprite _inserts;
         private static Sprite _ring;
         private static Sprite _disc;
+        private static Sprite _contact;
 
         /// <summary>The body: a greyscale disc, lighter toward the upper left, with a bevel at its edge. Tinted per seat.</summary>
         public static Sprite Body => _body != null ? _body : (_body = Build("chip_body", BodyAt));
@@ -54,6 +55,13 @@ namespace NonaRoyale.Unity.View
         /// <summary>A plain white disc: the chip's thickness, the emblem face's ground, the hit flash and the rim's shape.</summary>
         public static Sprite Disc => _disc != null ? _disc : (_disc = Build("chip_disc", DiscAt));
 
+        /// <summary>
+        /// A contact shadow: solid to 80% of the radius, gone at the edge.
+        /// Tighter than <c>BoardArt.SoftDisc</c>, so it darkens only the seam
+        /// where the chip meets the table.
+        /// </summary>
+        public static Sprite Contact => _contact != null ? _contact : (_contact = Build("chip_contact", ContactAt));
+
         // ── Builders ────────────────────────────────────────────────────
 
         /// <summary>Antialiased coverage of a disc of radius 1, at <paramref name="r"/> (in radii), <paramref name="px"/> radii to a texel.</summary>
@@ -63,6 +71,13 @@ namespace NonaRoyale.Unity.View
         {
             float r = Mathf.Sqrt(x * x + y * y);
             return new Color(1f, 1f, 1f, Inside(r, 1f, px));
+        }
+
+        private static Color ContactAt(float x, float y, float px)
+        {
+            float r = Mathf.Sqrt(x * x + y * y);
+            float alpha = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.8f, 1f, r));
+            return new Color(1f, 1f, 1f, alpha);
         }
 
         private static Color BodyAt(float x, float y, float px)

@@ -37,6 +37,15 @@ namespace NonaRoyale.Unity.View
         /// <summary>A travelling glint for lit sprites: <c>SHINE_ON</c> on <c>AllIn1Urp2dRenderer</c> (G8f).</summary>
         public const string ShineLit = "ShineLit";
 
+        /// <summary>
+        /// Unlit sprites: URP's <c>Sprite-Unlit-Default</c> (chip pieces,
+        /// 2026-09-29). A chip's portrait and ring draw at full brightness
+        /// wherever the chip stands, instead of sinking into the room's dim
+        /// ambient and the gaps between its pools. No keyword; it is a saved
+        /// material so the shader is in every build.
+        /// </summary>
+        public const string ChipUnlit = "ChipUnlit";
+
         public static readonly int ShineLocation = Shader.PropertyToID("_ShineLocation");
 
         public static readonly int FadeAmount = Shader.PropertyToID("_FadeAmount");
