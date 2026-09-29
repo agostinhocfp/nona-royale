@@ -6,47 +6,146 @@ using UnityEngine.UI;
 namespace NonaRoyale.Unity.View
 {
     /// <summary>
-    /// The selected operator's portrait in the tray, drawn as a large chip
-    /// (hero portrait, 2026-09-29): the same art, body, inserts and gilt ring
-    /// as the operator's chip on the board, in uGUI.
+    /// The selected operator's portrait in the tray (hero portrait,
+    /// 2026-09-29): the operator's chip portrait inside the Deco hero frame,
+    /// in uGUI.
     /// </summary>
     /// <remarks>
-    /// <b>Why a chip and not a bust.</b> The player learns one object: the
-    /// thing on the board and the thing in the tray are the same chip, one
-    /// big and one small. The seat colour on the body says whose it is.
+    /// <b>The frame is painted</b> (designer's hero-frame sheet, 2026-09-29):
+    /// black lacquer, oxblood insets, ivory clasps top and bottom, side pods
+    /// and a gold inner ring, cut from the sheet by
+    /// <c>tools/art/hero_frame.py</c> into
+    /// <c>Resources/Art/Hero/hero_frame</c> (the frame, its centre clear) and
+    /// <c>hero_frame_lit</c> (the cyan arcs alone, aligned to it). Both are
+    /// square canvases centred on the gold ring, so one size places them.
+    ///
+    /// <b>The face is the chip's</b> (<see cref="ChipArtLibrary"/>): the same
+    /// portrait the operator carries on the board, so the tray and the board
+    /// show one object. An operator with no portrait yet shows its shape in
+    /// gold on black lacquer.
     ///
     /// <b>Powered while armed.</b> With an ability armed, the portrait shows
-    /// its lit twin and a cyan glow sits on the device, the same light the
-    /// chip shows on the board when the cast lands. At rest the device is
-    /// dark (ART §5).
+    /// its lit twin, the frame's cyan arcs come on, and a glow sits on the
+    /// device. At rest the device and the arcs are dark (ART §5).
     ///
-    /// An operator with no portrait yet shows its shape in gold on black
-    /// lacquer, like its emblem chip. Nothing here catches the pointer.
+    /// <b>No frame file, no frame.</b> Without <c>hero_frame</c> the portrait
+    /// is drawn as a large chip in the seat colour, as it was first built.
+    ///
+    /// Nothing here catches the pointer.
     /// </remarks>
     public static class HeroPortrait
     {
-        /// <summary>The chip's thickness, in diameters: how far below it its edge shows.</summary>
-        private const float EdgeDrop = 0.05f;
+        public const string FramePath = "Art/Hero/hero_frame";
+        public const string FrameLitPath = "Art/Hero/hero_frame_lit";
 
-        private const float InkWidth = 0.014f;
-        private const float EmblemSize = 0.42f;
-        private const float GlowSize = 0.46f;
+        // The frame canvas, measured on the cut sprite (fractions of its width).
+
+        /// <summary>The gold ring's inner edge: the portrait fills this circle and tucks under the ring.</summary>
+        public const float InnerRadius = 199f / 640f;
+
+        /// <summary>How much of the canvas the frame covers, across and down: the side pods, and the clasps.</summary>
+        public const float VisibleWidth = 610f / 640f;
+        public const float VisibleHeight = 513f / 640f;
+
+        /// <summary>The clear band under the bottom clasp, which a caller standing the frame on a line takes back.</summary>
+        public const float BottomInset = 57.5f / 640f;
+
+        private const float EmblemSize = 0.26f;
+        private const float GlowSize = 0.3f;
+
+        // The chip fallback's proportions, in diameters.
+        private const float ChipEdgeDrop = 0.05f;
+        private const float ChipInkWidth = 0.014f;
+        private const float ChipEmblemSize = 0.42f;
+
+        private static Sprite _frame;
+        private static Sprite _frameLit;
+        private static bool _looked;
+
+        /// <summary>Whether the painted frame is in the build.</summary>
+        public static bool HasFrame
+        {
+            get
+            {
+                Load();
+                return _frame != null;
+            }
+        }
 
         /// <summary>
-        /// Builds the portrait as a child of <paramref name="parent"/>,
-        /// <paramref name="diameter"/> units across, centred on the returned
-        /// rect. The caller anchors and places it.
+        /// Builds the portrait as a child of <paramref name="parent"/>: a
+        /// square <paramref name="size"/> units across, centred on the gold
+        /// ring. The caller anchors and places it; the frame's visible part
+        /// is <see cref="VisibleWidth"/> by <see cref="VisibleHeight"/> of it.
         /// </summary>
-        /// <param name="powered">An ability is armed: the lit twin and the device glow.</param>
-        public static RectTransform Build(Transform parent, OperatorState op, float diameter, bool powered)
+        /// <param name="powered">An ability is armed: the lit twin, the arcs and the device glow.</param>
+        public static RectTransform Build(Transform parent, OperatorState op, float size, bool powered)
         {
             var root = UiKit.Rect("hero_portrait", parent);
-            root.sizeDelta = new Vector2(diameter, diameter);
+            root.sizeDelta = new Vector2(size, size);
 
+            Load();
+            if (_frame != null) Framed(root, op, powered);
+            else Chip(root, op, powered);
+
+            return root;
+        }
+
+        /// <summary>Forgets the frame, so the next build loads it again. For tests and tools.</summary>
+        public static void ClearCache()
+        {
+            _frame = null;
+            _frameLit = null;
+            _looked = false;
+        }
+
+        private static void Load()
+        {
+            // A destroyed sprite reads as null, and loading again is cheap.
+            if (_looked && (_frame != null || ReferenceEquals(_frame, null))) return;
+            _looked = true;
+            _frame = Resources.Load<Sprite>(FramePath);
+            _frameLit = Resources.Load<Sprite>(FrameLitPath);
+        }
+
+        private static void Framed(RectTransform root, OperatorState op, bool powered)
+        {
+            var art = ChipArtLibrary.For(op.Name);
+
+            // The portrait's circle (a fraction of its width) fills the ring's inside, and a hair more.
+            float face = (InnerRadius + 0.004f) * 2f;
+            float portrait = (InnerRadius + 0.004f) / ChipArtLibrary.MaskRadius;
+
+            Layer(root, "shadow", BoardArt.SoftDisc, UiTheme.WithAlpha(Color.black, 0.55f), VisibleWidth * 1.08f, new Vector2(0.02f, -0.05f));
+
+            if (art != null)
+            {
+                var sprite = powered && art.Lit != null ? art.Lit : art.Unlit;
+                Layer(root, "face", sprite, Color.white, portrait, Vector2.zero);
+            }
+            else
+            {
+                Layer(root, "face", ChipSprites.Disc, UiTheme.Obsidian, face, Vector2.zero);
+                Layer(root, "emblem", PieceShape.For(op), UiTheme.PieceEmblem, EmblemSize, Vector2.zero);
+            }
+
+            Layer(root, "frame", _frame, Color.white, 1f, Vector2.zero);
+
+            if (!powered) return;
+
+            if (_frameLit != null) Layer(root, "frame_lit", _frameLit, Color.white, 1f, Vector2.zero);
+
+            var device = art != null ? art.Device * portrait : Vector2.zero;
+            Layer(root, "device_glow", DecoSprites.Glow, UiTheme.WithAlpha(UiTheme.Cyan, 0.75f), GlowSize, device);
+        }
+
+        /// <summary>The first build: a large chip in the seat colour. Kept for a build without the frame.</summary>
+        private static void Chip(RectTransform root, OperatorState op, bool powered)
+        {
             var seat = BoardLayout.ColourOf(op.Owner);
             var art = ChipArtLibrary.For(op.Name);
-            var edgeAt = new Vector2(0f, -EdgeDrop);
-            float ink = 1f + 2f * InkWidth;
+            var edgeAt = new Vector2(0f, -ChipEdgeDrop);
+            float ink = 1f + 2f * ChipInkWidth;
 
             Layer(root, "shadow", BoardArt.SoftDisc, UiTheme.WithAlpha(Color.black, 0.6f), 1.14f, new Vector2(0.03f, -0.08f));
             Layer(root, "ink_edge", ChipSprites.Disc, UiTheme.Ink, ink, edgeAt);
@@ -64,7 +163,7 @@ namespace NonaRoyale.Unity.View
             else
             {
                 Layer(root, "face", ChipSprites.Disc, UiTheme.Obsidian, ChipSprites.FaceRadius, Vector2.zero);
-                Layer(root, "emblem", PieceShape.For(op), UiTheme.PieceEmblem, EmblemSize, Vector2.zero);
+                Layer(root, "emblem", PieceShape.For(op), UiTheme.PieceEmblem, ChipEmblemSize, Vector2.zero);
             }
 
             Layer(root, "ring", ChipSprites.Ring, UiTheme.Gold, 1f, Vector2.zero);
@@ -72,13 +171,11 @@ namespace NonaRoyale.Unity.View
             if (powered)
             {
                 var device = art != null ? art.Device * ChipSprites.PortraitScale : Vector2.zero;
-                Layer(root, "device_glow", DecoSprites.Glow, UiTheme.WithAlpha(UiTheme.Cyan, 0.75f), GlowSize, device);
+                Layer(root, "device_glow", DecoSprites.Glow, UiTheme.WithAlpha(UiTheme.Cyan, 0.75f), 0.46f, device);
             }
-
-            return root;
         }
 
-        /// <summary>One layer: a sprite <paramref name="scale"/> diameters across, <paramref name="offset"/> diameters from the centre.</summary>
+        /// <summary>One layer: a sprite <paramref name="scale"/> of the root across, <paramref name="offset"/> of it from the centre.</summary>
         private static void Layer(RectTransform root, string name, Sprite sprite, Color colour, float scale, Vector2 offset)
         {
             var rect = UiKit.Rect(name, root);

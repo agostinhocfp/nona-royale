@@ -88,8 +88,8 @@ namespace NonaRoyale.Unity.View
     /// reference that carries the numbers.
     ///
     /// <b>The hero portrait and the dice dock</b> (designer, 2026-09-29). The
-    /// selected operator's portrait opens the tray, drawn as a large chip
-    /// with the same art as its chip on the board (<see cref="HeroPortrait"/>);
+    /// selected operator's portrait opens the tray: the same art as its chip
+    /// on the board, in the painted Deco hero frame (<see cref="HeroPortrait"/>);
     /// wide, it rises above the tray's top edge. It lights its device while an
     /// ability is armed. The dice moved out to make room: wide, to a small
     /// dock floating over the board's bottom-left corner, above the portrait,
@@ -142,19 +142,24 @@ namespace NonaRoyale.Unity.View
         private const float DiceWidth = 132f;
         private const float OperatorWidth = 300f;
 
-        /// <summary>The hero portrait, wide: its slot, and its diameter, which rises above the tray.</summary>
-        private const float HeroWidth = 172f;
-        private const float HeroDiameter = 172f;
+        /// <summary>
+        /// The hero portrait's canvas, wide: the frame inside it is about 200
+        /// across and 168 tall, and rises above the tray (<see cref="HeroPortrait"/>).
+        /// </summary>
+        private const float HeroSize = 210f;
 
-        /// <summary>The hero portrait, upright: it rises over the aim line, not over the board.</summary>
-        private const float UprightHeroWidth = 104f;
-        private const float UprightHeroDiameter = 100f;
+        /// <summary>The hero portrait's canvas, upright: it rises over the aim line, not over the board.</summary>
+        private const float UprightHeroSize = 124f;
 
         /// <summary>The row's bottom padding, which the wide portrait stands on.</summary>
         private const float WidePadding = 12f;
 
+        /// <summary>The portrait's visible width and height for a canvas of <paramref name="size"/>: the painted frame's, or the chip's.</summary>
+        private static float HeroVisibleWidth(float size) => HeroPortrait.HasFrame ? size * HeroPortrait.VisibleWidth : size;
+        private static float HeroVisibleHeight(float size) => HeroPortrait.HasFrame ? size * HeroPortrait.VisibleHeight : size;
+
         /// <summary>How far the wide portrait rises above the tray's top edge.</summary>
-        private const float HeroOverflow = HeroDiameter + WidePadding - Height;
+        private static float HeroOverflow => Mathf.Max(0f, WidePadding + HeroVisibleHeight(HeroSize) - Height);
 
         /// <summary>The wide dice dock: padding inside it, and its gap to the board's edge and the portrait.</summary>
         private const float DockPadding = 12f;
@@ -413,7 +418,7 @@ namespace NonaRoyale.Unity.View
         {
             if (_dockContent != null) DiceSection(_dockContent, DiceWidth, hint: true);
 
-            HeroSection(_content, HeroWidth, HeroDiameter);
+            HeroSection(_content, HeroSize);
             OperatorCard(_content, OperatorWidth, compact: false);
             Divider(_content);
             AbilitySection(_content);
@@ -433,7 +438,7 @@ namespace NonaRoyale.Unity.View
             UiKit.Row(top, 10f).childForceExpandHeight = true;
             UiKit.Size(top, height: UprightTopHeight, flexibleHeight: 0f);
 
-            HeroSection(top, UprightHeroWidth, UprightHeroDiameter);
+            HeroSection(top, UprightHeroSize);
             OperatorCard(top, -1f, compact: true);
 
             var cards = UiKit.Rect("abilities", _content);
@@ -552,12 +557,15 @@ namespace NonaRoyale.Unity.View
         // ── The hero portrait ────────────────────────────────────────────
 
         /// <summary>
-        /// The selected operator as a large chip (<see cref="HeroPortrait"/>),
-        /// standing on the bottom of its slot and rising above it. Powered
-        /// while an ability is armed. Nothing selected keeps the slot empty.
+        /// The selected operator's portrait in its hero frame
+        /// (<see cref="HeroPortrait"/>), standing on the bottom of its slot and
+        /// rising above it. Powered while an ability is armed. Nothing
+        /// selected keeps the slot empty. The slot is as wide as the frame.
         /// </summary>
-        private void HeroSection(Transform parent, float width, float diameter)
+        private void HeroSection(Transform parent, float size)
         {
+            float width = Mathf.Ceil(HeroVisibleWidth(size)) + 2f;
+
             var op = _host.SelectedOperator;
             if (op == null)
             {
@@ -568,10 +576,14 @@ namespace NonaRoyale.Unity.View
             var slot = UiKit.Rect("hero", parent);
             UiKit.Fixed(slot, width);
 
-            var portrait = HeroPortrait.Build(slot, op, diameter, powered: _host.SelectedAbility != null);
+            var portrait = HeroPortrait.Build(slot, op, size, powered: _host.SelectedAbility != null);
             portrait.anchorMin = portrait.anchorMax = new Vector2(0.5f, 0f);
             portrait.pivot = new Vector2(0.5f, 0f);
-            portrait.anchoredPosition = Vector2.zero;
+
+            // The frame's canvas has a clear band under the bottom clasp; take
+            // it back so the clasp itself stands on the line.
+            float inset = HeroPortrait.HasFrame ? size * HeroPortrait.BottomInset : 0f;
+            portrait.anchoredPosition = new Vector2(0f, -inset);
         }
 
         /// <summary>One line on what the dice need, from the engine's answers only.</summary>

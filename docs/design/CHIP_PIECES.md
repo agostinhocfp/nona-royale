@@ -48,7 +48,7 @@ The designer is testing operators as flat casino-chip tokens with portrait art, 
 | `InkWidth`, `InkAlpha` | `ChipView` | 0.018, 0.95 | The ink outline, per side, in chip diameters |
 | `FaceTint` | `ChipView` | (1, 0.98, 0.94) | Brightness and warmth of the unlit face and ring (0.97, 0.94, 0.89 in CP2) |
 | `BodyTint` | `ChipView` | (0.88, 0.86, 0.82) | Brightness of the unlit body, edge and inserts |
-| `HeroDiameter`, `UprightHeroDiameter` | `ActionTray` | 172, 100 | The hero portrait's size, wide and upright |
+| `HeroSize`, `UprightHeroSize` | `ActionTray` | 210, 124 | The hero portrait's canvas, wide and upright; the frame inside it is 95% as wide and 80% as tall |
 | `FaceRadius`, `RingOuter` | `ChipSprites` | 0.78, 0.86 | Face size, ring width |
 | `MaskRadius` | `ChipArtLibrary` | 0.48 | How much of the portrait is kept. **Changing it needs a reimport of the chips folder** |
 
@@ -66,6 +66,14 @@ The designer is testing operators as flat casino-chip tokens with portrait art, 
 - **The dice moved.** Wide: to a small dock floating over the board's bottom-left corner, above the portrait, mirroring the turn button in the bottom-right; the dice hint moves with them. Upright: to the screen's bottom-left corner, in the tray's bottom row with Cast between the dice and the turn button; the hint is dropped there (the top bar says it). The coach's tips start above the portrait and the dock, wide (`ActionTray.LeftStackClearance`).
 - **More light.** The whole chip is now unlit except its shadows and ink: the face and ring at `FaceTint`, raised to about full, and the body, edge and inserts at `BodyTint`, a step lower so the portrait stays the brightest thing on the chip.
 - **Play Mode checks:** the portrait against the board and the rail, wide and upright; the dock against the pieces in the bottom-left cells and against the dice roll's landing; a coach tip shown while an operator is selected; armed and unarmed.
+
+## CP4 — The painted hero frame (designer, 2026-09-29)
+
+- **The designer's vision** (`art/source/ui/hero_frame_sheet.png`): the portrait in a Deco frame of black lacquer, oxblood insets, ivory clasps top and bottom, side pods and a gold inner ring, with cyan arcs when powered. CP3's hero was a large seat-coloured chip; the frame replaces it.
+- **Cut from the sheet by `tools/art/hero_frame.py`** into `Resources/Art/Hero/hero_frame.png` (background removed by flooding the dark background in from the border, the ring's inside cleared) and `hero_frame_lit.png` (the lit frame's cyan arcs alone, aligned, with a soft glow). Both 640×640, centred on the gold ring; the portrait fills the ring's inside (`HeroPortrait.InnerRadius`, 199/640). Rerun the script on a new sheet, after measuring its crop boxes again.
+- **The face is the chip portrait**, so the tray and the board still show one object; the emblem sits on black lacquer where there is no portrait. While an ability is armed: the lit portrait, the frame's arcs and a device glow. Without the frame file, CP3's chip hero is drawn instead.
+- **The oxblood insets stay oxblood**, as painted, not the seat colour. The seat shows on the board's chip and the health bar. If the frame should carry the seat, the insets can be split into a tinted layer by the same script.
+- **Fix: the black squares behind the portraits.** The six chip PNGs were saved RGB, and a texture with no alpha channel can't be cut, so the importer's circle never took. The files are now RGBA and cut, and the importer gives any RGB file an alpha channel (from grey) before cutting it, so a generator's RGB output works as dropped in. `ChipArtImporter` also imports `Art/Hero/`.
 
 ## Adding an operator's chip
 
@@ -91,3 +99,4 @@ The designer is testing operators as flat casino-chip tokens with portrait art, 
 - 2026-09-29 — **CP1b, chips 40% larger** (designer, after the first look: "they need some size"). `ChipDiameter` 0.72 → 1.008; the hit radius follows the chip. The toughest operators' chips now overlap neighbouring cells slightly.
 - 2026-09-29 — **CP2, chips stand out without size** (designer): unlit face, emblem, ring and cast glow at the room's warm white; an ink outline round the chip and its edge; a thicker edge with the inserts carried down it, a contact shadow and a darker drop shadow. Compiles (runtime, editor and EditMode test assemblies); not yet run in Unity.
 - 2026-09-29 — **CP3, hero portrait and dice dock** (designer): the selected operator's chip as a hero portrait in the tray, lit while armed; the dice moved to a dock at the board's bottom-left (wide) or the screen's bottom-left (upright); the whole chip unlit except shadows and ink, a little brighter. Compiles (runtime, editor and EditMode test assemblies); not yet run in Unity.
+- 2026-09-29 — **CP4, the painted hero frame** (designer's sheet): the hero portrait moves into the Deco frame cut from the sheet by `tools/art/hero_frame.py`, with its cyan arcs while armed; the chip portraits are re-saved RGBA and the importer now handles RGB files, which fixes the black squares behind the faces. Compiles (runtime and editor assemblies); not yet run in Unity.

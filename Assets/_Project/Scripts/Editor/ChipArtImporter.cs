@@ -9,7 +9,8 @@ namespace NonaRoyale.EditorTools
 {
     /// <summary>
     /// Imports chip portraits dropped into <c>Art/Resources/Art/Chips/</c>
-    /// (chip pieces, 2026-09-29), and cuts each one to a circle.
+    /// (chip pieces, 2026-09-29), and cuts each one to a circle; and the hero
+    /// frame in <c>Art/Resources/Art/Hero/</c>, with the same settings and no cut.
     /// </summary>
     /// <remarks>
     /// <b>The generator's output goes in as it is.</b> A chip portrait comes
@@ -19,6 +20,12 @@ namespace NonaRoyale.EditorTools
     /// transparent, on every mip level, with a one-texel soft edge. The gilt
     /// ring drawn over the chip covers that edge. This runs on every import,
     /// so a replaced file is cut the same way.
+    ///
+    /// <b>A file with no alpha channel still gets one</b> (fixed 2026-09-29).
+    /// The generator saves RGB, and a texture imported from RGB has no alpha
+    /// to cut into: the first chips kept their black corners. Such a file is
+    /// imported with its alpha taken from its grey values, which forces a
+    /// format with alpha, and the cut then writes the alpha outright.
     ///
     /// <b>Settings, first import only</b>, like the other importers (an
     /// Inspector change survives a re-import; deleting the <c>.meta</c>
@@ -38,24 +45,38 @@ namespace NonaRoyale.EditorTools
     public sealed class ChipArtImporter : AssetPostprocessor
     {
         public const string Folder = "Assets/_Project/Art/Resources/Art/Chips/";
+        public const string HeroFolder = "Assets/_Project/Art/Resources/Art/Hero/";
 
         /// <summary>True for a file directly inside the chips folder (not a subfolder).</summary>
-        public static bool InChipFolder(string assetPath)
+        public static bool InChipFolder(string assetPath) => InFolder(assetPath, Folder);
+
+        /// <summary>True for a file directly inside the hero frame's folder.</summary>
+        public static bool InHeroFolder(string assetPath) => InFolder(assetPath, HeroFolder);
+
+        private static bool InFolder(string assetPath, string folder)
         {
             var dir = Path.GetDirectoryName(assetPath);
             if (dir == null) return false;
-            return string.Equals(dir.Replace('\\', '/') + "/", Folder, StringComparison.OrdinalIgnoreCase);
+            return string.Equals(dir.Replace('\\', '/') + "/", folder, StringComparison.OrdinalIgnoreCase);
         }
 
         private void OnPreprocessTexture()
         {
-            if (!InChipFolder(assetPath)) return;
+            bool chip = InChipFolder(assetPath);
+            if (!chip && !InHeroFolder(assetPath)) return;
 
             var name = Path.GetFileNameWithoutExtension(assetPath);
-            if (!name.EndsWith("_chip_unlit", StringComparison.Ordinal) && !name.EndsWith("_chip_lit", StringComparison.Ordinal))
+            if (chip && !name.EndsWith("_chip_unlit", StringComparison.Ordinal) && !name.EndsWith("_chip_lit", StringComparison.Ordinal))
                 Debug.LogWarning($"[ChipArt] {assetPath} is not named <operator>_chip_unlit or <operator>_chip_lit, so nothing loads it.");
 
             var importer = (TextureImporter)assetImporter;
+
+            // An RGB file has no alpha to cut into; take it from grey so the
+            // format keeps one, and the cut below writes it outright.
+            if (chip)
+                importer.alphaSource = importer.DoesSourceTextureHaveAlpha()
+                    ? TextureImporterAlphaSource.FromInput
+                    : TextureImporterAlphaSource.FromGrayScale;
             importer.GetSourceTextureWidthAndHeight(out int width, out int height);
             if (width != height)
                 Debug.LogWarning($"[ChipArt] {assetPath} is {width}×{height}; chip portraits are square. The cut is centred on its width.");
@@ -69,7 +90,6 @@ namespace NonaRoyale.EditorTools
             importer.textureType = TextureImporterType.Sprite;
             importer.spriteImportMode = SpriteImportMode.Single;
             importer.sRGBTexture = true;
-            importer.alphaSource = TextureImporterAlphaSource.FromInput;
             importer.alphaIsTransparency = true;
             importer.mipmapEnabled = true;
             importer.mipmapFilter = TextureImporterMipFilter.KaiserFilter;
@@ -77,7 +97,8 @@ namespace NonaRoyale.EditorTools
             importer.filterMode = FilterMode.Trilinear;
             importer.wrapMode = TextureWrapMode.Clamp;
             importer.textureCompression = TextureImporterCompression.CompressedHQ;
-            importer.maxTextureSize = 512;
+            importer.maxTextureSize = chip ? 512 : 1024;
+            if (!chip) importer.alphaSource = TextureImporterAlphaSource.FromInput;
 
             // One unit across at the imported size, which the cap may have shrunk.
             importer.spritePixelsPerUnit = Mathf.Min(width, importer.maxTextureSize);
@@ -95,13 +116,16 @@ namespace NonaRoyale.EditorTools
         {
             if (!InChipFolder(assetPath)) return;
 
+            // Grey-derived alpha is not transparency: overwrite it rather than multiply.
+            bool replace = ((TextureImporter)assetImporter).alphaSource == TextureImporterAlphaSource.FromGrayScale;
+
             for (int level = 0; level < texture.mipmapCount; level++)
             {
                 int width = Mathf.Max(1, texture.width >> level);
                 int height = Mathf.Max(1, texture.height >> level);
 
                 var pixels = texture.GetPixels(level);
-                Cut(pixels, width, height);
+                Cut(pixels, width, height, replace);
                 texture.SetPixels(pixels, level);
             }
         }
@@ -111,7 +135,8 @@ namespace NonaRoyale.EditorTools
         /// (a fraction of the width) and fades everything outside it to clear,
         /// over one texel.
         /// </summary>
-        internal static void Cut(Color[] pixels, int width, int height)
+        /// <param name="replace">Write the circle as the alpha, ignoring what the texture had.</param>
+        internal static void Cut(Color[] pixels, int width, int height, bool replace)
         {
             float cx = width * 0.5f;
             float cy = height * 0.5f;
@@ -125,7 +150,7 @@ namespace NonaRoyale.EditorTools
                 float coverage = Mathf.Clamp01(radius - Mathf.Sqrt(dx * dx + dy * dy) + 0.5f);
 
                 int i = y * width + x;
-                pixels[i].a *= coverage;
+                pixels[i].a = replace ? coverage : pixels[i].a * coverage;
             }
         }
     }
