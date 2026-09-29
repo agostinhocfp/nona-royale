@@ -30,4 +30,5 @@
 
 - The image tool and plan behind Luka's concept sheet (`ART_PROMPTS.md`).
 - The image tool and plan behind `docs/art/VISUAL_TARGET.png` (2026-09-27). A reference, not a shipped asset, but it counts for the AI-content disclosure if any of it is traced or reused.
+- The image tool and plan behind the chip portraits `art/source/characters/{luka,bouncer,syla}/<name>_chip_{unlit,lit}.png` (2026-09-29). Each `_lit` file is a masked edit of its `_unlit` file (`ART_PROMPTS.md` v4.2, asset block 7).
 - Steam's AI-content disclosure, checked at submission time.

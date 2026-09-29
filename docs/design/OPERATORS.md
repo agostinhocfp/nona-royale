@@ -62,11 +62,15 @@ Read at the table: _the one you route around._
 
 ### Syla, The Blood Hound — Assassin
 
-Obsidian derringers, a taste for wounded targets, and a drone network that marks people for the rest of the squad. She is fast, fragile, and rewards a player who is already winning a fight — several of her tools do more against a target that has already been hit.
+A drone network that marks people for the rest of the squad, and a taste for wounded targets. She is fast, fragile, and rewards a player who is already winning a fight — several of her tools do more against a target that has already been hit.
 
 That dependence is sharper than it looks. Her cheap shot barely trades on its own; it is a control tool that pays properly only into a target she has already opened up. A player who leads with her tends to lose her.
 
 Read at the table: _the one who finishes things._
+
+**Look (designer, 2026-09-29; the full entry lives in the project copy of this file and in `ART_PROMPTS.md` v4.2).** A tall woman in her late twenties with medium-brown skin, a prominent facial structure (high, sharp cheekbones and a defined jaw) and almond-shaped eyes. A narrow waist and noticeably wide hips; not broad-shouldered. Black hair in a sharp geometric Deco bob, oxblood lips. A bias-cut bone-ivory column gown under a structured matte black shoulder cape with squared stepped shoulders and a low collar at the base of the neck (the high fan collar is dropped). Long black opera gloves. No gold anywhere.
+
+**Device:** two flat matte-obsidian drone housings on the tops of her shoulders and two slim cradles at the hips, each with a single cyan slit, dark at rest. **She carries no weapon:** the obsidian derringers are dropped (2026-09-19). Her chip portrait holds a drone at her fingertips (`art/source/characters/syla/`).
 
 ### Kurbyn, DarkGrave — Brawler
 
