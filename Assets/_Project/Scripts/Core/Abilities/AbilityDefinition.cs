@@ -84,6 +84,15 @@ namespace NonaRoyale.Core.Abilities
         /// roster will not have. The constructor throwing is the only thing that
         /// makes a new operator arrive with one.
         ///
+        /// <b>Facts, not advice</b> (designer, 2026-09-29). Say what the
+        /// ability does and what follows from it: who it reaches, what lands
+        /// now and what lands later, what stops it, how it plays with another
+        /// rule. Never when to cast it, what to pair it with, or what it is
+        /// good for. The player makes those decisions, and the words exist to
+        /// give them enough to make them. No verdicts on cost or cooldown
+        /// either ("cheap", "the big one"): those are the meta line's numbers
+        /// restated as opinion.
+        ///
         /// <b>Not the XML doc comments.</b> Those explain the design to the next
         /// developer — why the self-damage bypasses the pipeline, what was walked
         /// back and from where. This is for someone choosing between two buttons.
