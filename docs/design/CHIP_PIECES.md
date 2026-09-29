@@ -1,7 +1,7 @@
 # Nona Royale — Chip pieces
 
 > Location in repo: `docs/design/CHIP_PIECES.md` · Project copy: `claude/CHIP_PIECES.md`
-> Status: **CP1 built 2026-09-29, awaiting Play Mode.** Operators on the board as casino chips, beside the figures, for playtesting.
+> Status: **Adopted, ADR-0013 (2026-09-29).** CP1–CP4 built and accepted in Play Mode. Operators are portrait chips on the board; the other nine portraits come from `ART_PROMPTS.md` block 8.
 > Related: `ART_PROMPTS.md` v4.2 asset block 7 (the chip frame and anchors), `OPERATORS.md`, `ART_DIRECTION.md` §3 and §5, `VISUAL_PASS.md` (the tilt), `OPERATOR_LOOKBOOK.md` (the rigs this sits beside).
 
 ## What and why
@@ -100,3 +100,5 @@ The designer is testing operators as flat casino-chip tokens with portrait art, 
 - 2026-09-29 — **CP2, chips stand out without size** (designer): unlit face, emblem, ring and cast glow at the room's warm white; an ink outline round the chip and its edge; a thicker edge with the inserts carried down it, a contact shadow and a darker drop shadow. Compiles (runtime, editor and EditMode test assemblies); not yet run in Unity.
 - 2026-09-29 — **CP3, hero portrait and dice dock** (designer): the selected operator's chip as a hero portrait in the tray, lit while armed; the dice moved to a dock at the board's bottom-left (wide) or the screen's bottom-left (upright); the whole chip unlit except shadows and ink, a little brighter. Compiles (runtime, editor and EditMode test assemblies); not yet run in Unity.
 - 2026-09-29 — **CP4, the painted hero frame** (designer's sheet): the hero portrait moves into the Deco frame cut from the sheet by `tools/art/hero_frame.py`, with its cyan arcs while armed; the chip portraits are re-saved RGBA and the importer now handles RGB files, which fixes the black squares behind the faces. Compiles (runtime and editor assemblies); not yet run in Unity.
+- 2026-09-29 — **Adopted (ADR-0013).** Chips are the board pieces; ADR-0009 is superseded for them; the rigs leave the 2D build once `archive/rigs-2d` is tagged; no ability icons in the tray.
+- 2026-09-29 — **Kurbyn's chip.** Unlit and lit portraits in `art/source/characters/kurbyn/` and, 512 px and cut, in `Resources/Art/Chips/`; the lit file is the designer's masked edit composited back onto the unlit one inside a feathered mask round the rig, so nothing outside the device changes when it lights. Anchor (0.473, 0.283) in `ChipArtLibrary`; the anchor test covers him.

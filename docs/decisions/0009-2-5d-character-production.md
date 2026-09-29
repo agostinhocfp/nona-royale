@@ -1,6 +1,6 @@
 # ADR-0009 — 2.5D character production: model in 3D, render to 2D sprites
 
-- **Status:** Accepted 2026-09-17 (designer, from a picker). The code side (ART1) passes the cloud build and tests; the look still needs a Play Mode check.
+- **Status:** **Superseded for board pieces by ADR-0013 (2026-09-29).** Operators are portrait chips on the board; no more Meshy models or Blender renders for the 2D game. Accepted 2026-09-17 (designer, from a picker).
 - **Date:** 2026-09-17
 - **Location:** `docs/decisions/0009-2-5d-character-production.md`
 - **Relates to:** ADR-0001 (2D locked; "2.5D noted, not adopted"), ADR-0010 (URP 2D), `ART_PIPELINE.md` §1, §2, §4, §5, §8 and §9, `ART_DIRECTION.md` §5 and §6.1, `docs/design/ART_HOOKUP.md` (the stage log), `tools/blender/render_operator.py`.
@@ -48,3 +48,4 @@ Operators need several consistent images each: seated, standing, a portrait, and
 ## Status history
 
 - 2026-09-17: Accepted. Luka rendered in the cloud with Blender 4.0.2 (EEVEE through a virtual display); renders written to `art/renders/luka/`.
+- 2026-09-29: Superseded for board pieces by ADR-0013 (chip pieces). The rigs are dropped from the 2D build and kept for the planned 3D version.
