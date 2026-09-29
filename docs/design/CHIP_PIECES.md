@@ -40,7 +40,7 @@ The designer is testing operators as flat casino-chip tokens with portrait art, 
 
 | Constant | Where | Now | Does |
 | --- | --- | --- | --- |
-| `ChipDiameter` | `OperatorPiece` | 0.72 | Chip size: 0.54 of a cell for the frailest operator to 0.88 for the toughest |
+| `ChipDiameter` | `OperatorPiece` | 1.008 | Chip size: 0.76 of a cell for the frailest operator to 1.23 for the toughest (was 0.72) |
 | `ChipHopGrow` | `OperatorPiece` | 0.14 | How much a chip grows at the top of a hop |
 | `EdgeDrop` | `ChipView` | 0.055 | Thickness |
 | `ShadowOffset`, `ShadowAlpha` | `ChipView` | (0.03, -0.10), 0.55 | The drop shadow |
@@ -68,3 +68,4 @@ The designer is testing operators as flat casino-chip tokens with portrait art, 
 ## Log
 
 - 2026-09-29 — **CP1.** Chip pieces behind the Pieces switch (default Chips): code-drawn chip body, inserts and ring; portrait faces for Luka, Bouncer and Syla with lit twins and device glows; emblem faces for the other nine; a chip importer that cuts portraits to a circle; EditMode tests for the lookup, the anchors, the setting and the switch. Compiles against the editor DLLs (runtime, editor and EditMode test assemblies); not yet run in Unity.
+- 2026-09-29 — **CP1b, chips 40% larger** (designer, after the first look: "they need some size"). `ChipDiameter` 0.72 → 1.008; the hit radius follows the chip. The toughest operators' chips now overlap neighbouring cells slightly.

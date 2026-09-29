@@ -152,11 +152,13 @@ namespace NonaRoyale.Unity.View
         private const float ArtSeatedHeightScale = 1.6f;
 
         /// <summary>
-        /// A chip's diameter in figure units: 0.54 of a cell for the frailest
-        /// operator to 0.88 for the toughest, so size still carries health and
-        /// the largest still fits its cell. Tune in Play Mode.
+        /// A chip's diameter in figure units: 0.76 of a cell for the frailest
+        /// operator to 1.23 for the toughest, so size still carries health.
+        /// 0.72 until the first Play Mode look (designer, 2026-09-29: "they
+        /// need some size"), then 40% larger; the toughest chips now overlap
+        /// their cell's neighbours a little. Tune in Play Mode.
         /// </summary>
-        private const float ChipDiameter = 0.72f;
+        private const float ChipDiameter = 1.008f;
 
         /// <summary>How much a chip grows at the top of a hop, toward the camera.</summary>
         private const float ChipHopGrow = 0.14f;
@@ -387,7 +389,7 @@ namespace NonaRoyale.Unity.View
         public int ShownHealth { get; private set; }
 
         /// <summary>The drawn radius in world units, for hit testing. Ignores the hover lift.</summary>
-        public float Radius => _baseScale * 0.4f;
+        public float Radius => _baseScale * (ChipActive ? ChipDiameter * 0.5f : 0.4f);
 
         /// <summary>
         /// The figure's footprint on screen, in pixels, for hit testing under
