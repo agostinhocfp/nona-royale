@@ -23,5 +23,8 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>Opens the operator guide over the paused match; leaving it returns to the pause menu (OPERATOR_GUIDE.md OG4).</summary>
         void OpenGuide();
+
+        /// <summary>Opens the full event log over the match (G11: it moved here from the history strip).</summary>
+        void OpenLog();
     }
 }

@@ -781,7 +781,6 @@ namespace NonaRoyale.Unity.Composition
             _logPanel.CloseRequested = () => showFullLog = false;
             _history = GetComponent<HistoryStrip>() ?? gameObject.AddComponent<HistoryStrip>();
             _history.Bind(hud);
-            _history.LogRequested = () => showFullLog = !showFullLog;
             _toasts = GetComponent<EventToasts>() ?? gameObject.AddComponent<EventToasts>();
             _toasts.Bind(hud);
             _banner = GetComponent<TurnBanner>() ?? gameObject.AddComponent<TurnBanner>();
@@ -2562,6 +2561,8 @@ namespace NonaRoyale.Unity.Composition
         }
 
         /// <summary>From the pause menu; leaving the guide goes back to it (OG4).</summary>
+        void IPauseHost.OpenLog() => showFullLog = true;
+
         void IPauseHost.OpenGuide()
         {
             if (_guide == null) return;

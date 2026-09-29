@@ -98,7 +98,7 @@ namespace NonaRoyale.Unity.View
         /// row, the three ability cards and the Cast row, plus the padding
         /// between them.
         /// </summary>
-        public const float UprightHeight = 292f;
+        public const float UprightHeight = 298f;
 
         private const float AbilityNameSize = 15f;
         private const float AbilityMetaSize = 13f;
@@ -127,7 +127,7 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>Upright row heights.</summary>
         private const float UprightAimHeight = 18f;
-        private const float UprightTopHeight = 78f;
+        private const float UprightTopHeight = 84f;
         private const float UprightCardsHeight = 92f;
         private const float UprightCastHeight = 60f;
 
@@ -380,7 +380,9 @@ namespace NonaRoyale.Unity.View
             var engine = _host.Match.Engine;
 
             var box = UiKit.Rect("dice", parent);
-            UiKit.Column(box, 8f);
+            // The hint clears the well's bleed and the dice's lip and shadow
+            // (G11): at 8 it sat on the well's bottom edge.
+            UiKit.Column(box, ScreenLayout.Pick(14f, 12f));
             UiKit.Fixed(box, width);
 
             // The dice sit in a well (G9b), centred, so the roller also lands on them.

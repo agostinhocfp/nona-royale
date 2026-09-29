@@ -67,7 +67,10 @@ namespace NonaRoyale.Unity.View
             {
                 _root = UiKit.Rect("operator_guide", canvasRect);
                 UiKit.Stretch(_root);
-                UiKit.Fill(_root, UiTheme.WithAlpha(UiTheme.Obsidian, 0.96f), blocksPointer: true);
+                // Opaque (G11). At 96% the match's top bar read through above
+                // the tabs: the project blends in linear space, where 4% of
+                // bright text over near black is plainly visible.
+                UiKit.Fill(_root, UiTheme.Obsidian, blocksPointer: true);
                 _fader = _root.gameObject.AddComponent<CanvasGroup>();
                 _root.gameObject.SetActive(false);
             }
@@ -363,26 +366,87 @@ namespace NonaRoyale.Unity.View
 
         // ── Glossary ─────────────────────────────────────────────────────
 
+        /// <summary>
+        /// The glossary never runs wider than this (G11). The frame is up to
+        /// 1560 wide, and a single column of definitions that wide made
+        /// lines too long to read.
+        /// </summary>
+        private const float GlossaryMaxWidth = 920f;
+
+        /// <summary>
+        /// The glossary (G11): a row of section jumps over one scrolling
+        /// column. The jumps matter upright, where the list is several
+        /// screens long and the damage types and table rules sat far below the
+        /// statuses with no way to them but scrolling.
+        /// </summary>
         private void GlossaryBody()
         {
-            UiKit.Column(_body, 0f).childForceExpandHeight = true;
+            var column = UiKit.Column(_body, 8f);
+            column.childForceExpandHeight = false;
+            column.childForceExpandWidth = false;
+            column.childAlignment = TextAnchor.UpperCenter;
+
+            float width = Mathf.Min(GlossaryMaxWidth, _frame.sizeDelta.x);
+
+            var jumps = UiKit.Rect("jumps", _body);
+            UiKit.Size(jumps, width: width, height: 32f, flexibleHeight: 0f);
+            var jumpRow = UiKit.Row(jumps, 6f);
+            jumpRow.childForceExpandHeight = true;
+            jumpRow.childForceExpandWidth = true;
 
             var panel = UiKit.Rect("panel", _body);
-            UiKit.Size(panel, flexibleHeight: 1f);
+            UiKit.Size(panel, width: width, flexibleHeight: 1f);
             UiKit.Panel(panel, blocksPointer: true);
             var content = UiKit.ScrollColumn(ViewportIn(panel, ScreenLayout.Pick(26f, 14f)), 4f);
 
+            var headings = new List<KeyValuePair<GlossaryGroup, RectTransform>>();
             GlossaryGroup? current = null;
             foreach (var entry in Glossary.Entries())
             {
                 if (current != entry.Group)
                 {
                     current = entry.Group;
-                    UiKit.Space(content, height: current == GlossaryGroup.Status ? 0f : 10f);
-                    UiKit.Size(UiKit.Heading(content, GroupHeading(entry.Group)), height: 20f);
+                    UiKit.Space(content, height: current == GlossaryGroup.Status ? 0f : 14f);
+                    var heading = UiKit.Heading(content, GroupHeading(entry.Group));
+                    UiKit.Size(heading, height: 22f);
+                    headings.Add(new KeyValuePair<GlossaryGroup, RectTransform>(entry.Group, (RectTransform)heading.transform));
                 }
 
                 GlossaryRow(content, entry);
+            }
+
+            foreach (var pair in headings)
+            {
+                var target = pair.Value;
+                UiKit.Button(jumps, JumpLabel(pair.Key), () => JumpTo(content, target), size: 13f);
+            }
+        }
+
+        /// <summary>Scrolls the glossary so <paramref name="target"/> sits at the top, as far as the list allows.</summary>
+        private static void JumpTo(RectTransform content, RectTransform target)
+        {
+            if (content == null || target == null) return;
+
+            LayoutRebuilder.ForceRebuildLayoutImmediate(content);
+
+            var scroll = content.GetComponentInParent<ScrollRect>();
+            var viewport = scroll != null && scroll.viewport != null ? scroll.viewport : (RectTransform)content.parent;
+
+            // A laid-out child hangs from the top: its top edge is this far down.
+            float top = -target.anchoredPosition.y - target.rect.height * (1f - target.pivot.y);
+            float max = Mathf.Max(0f, content.rect.height - viewport.rect.height);
+
+            if (scroll != null) scroll.StopMovement();
+            content.anchoredPosition = new Vector2(content.anchoredPosition.x, Mathf.Clamp(top - 6f, 0f, max));
+        }
+
+        private static string JumpLabel(GlossaryGroup group)
+        {
+            switch (group)
+            {
+                case GlossaryGroup.Status: return "STATUSES";
+                case GlossaryGroup.Damage: return "DAMAGE";
+                default: return "TABLE RULES";
             }
         }
 
@@ -403,7 +467,8 @@ namespace NonaRoyale.Unity.View
                 UiTheme.FontBody, UiTheme.TextNote, wrap: true);
             KeywordLinks.Attach(definition, ShowKeyword);
 
-            UiKit.Space(content, height: 8f);
+            // More air between entries (G11: was 8), so each reads as one item.
+            UiKit.Space(content, height: 14f);
         }
 
         private static string GroupHeading(GlossaryGroup group)

@@ -594,3 +594,23 @@ Each increment ends with a Play Mode check (desktop and upright) and a commit.
   - Visible change at rest: with nothing hovered the seat rows used to stretch to fill the hint's spare height (about 115 units each at four seats). They now stay at 76, and the detail panel is taller.
   - **Checked:** read against Unity's `HorizontalOrVerticalLayoutGroup` sizing (lerp min→preferred, then flexible share). Not compiled; the edit is two `UiKit.Size` calls and a helper over `Content`.
   - **Play Mode checklist:** at 2 and 4 seats, sweep the pointer across every card and the filled seat slots: the seat rows and the detail's top edge stay put, and the detail's name line doesn't move. The longest kits still fit or clip as before. Upright (phone) is unchanged.
+- 2026-09-29 — **G11: the log moves to the menu, the dice hint clears its well, the glossary gets jumps and a real backdrop.** From the designer's upright screenshots.
+  - **Log → menu.**
+    - The history strip's LOG button is gone, both wide and upright, so upright the band is all history chips.
+    - The pause menu gains **LOG** between RESUME and OPERATORS, with the L key hint on desktop only (`ScreenLayout.Key`). It closes the menu and opens the log (`IPauseHost.OpenLog`).
+    - The L key and the Settings row still toggle it. `HistoryStrip.LogRequested` and `LogButton` are removed.
+  - **Dice hint.** The text under the dice ("Doubles: you roll again after these.") sat on the well's bottom edge. The column gap was 8, and the well bleeds 5 below the dice, with the dice's own lip and shadow under that. The gap is now 14 wide and 12 upright. Upright, the dice-and-operator row grows 78 → 84 and the tray's reservation 292 → 298 to hold it; wide stays inside its 122.
+  - **Glossary**, checked as asked. Four changes:
+    1. **The match showed through.** The guide's backdrop was Obsidian at 96%; in linear blending, 4% of the top bar's bright text over near black is plainly legible, which is the "RED to play / Move 6 + 6" behind the tabs. It is now opaque. This also covers the roster and the dossiers.
+    2. **Section jumps.** A row of three buttons over the list, STATUSES · DAMAGE · TABLE RULES, scrolls to that section's heading. Upright the list is several screens long, and the damage types and table rules were only reachable by scrolling.
+    3. **Width capped at 920 wide** (`GlossaryMaxWidth`). The frame runs to 1560, and one column of definitions that wide made lines too long to read. Upright is unaffected.
+    4. **More air:** 14 between entries (was 8) and between sections, so each entry reads as one item.
+    - **Left as is:**
+      - The title with its tag chip ("Stun" beside the STUN chip) repeats the word on purpose: the chip is how the status looks on the board.
+      - The coloured link underlines were settled in G7e.
+  - Files: `HistoryStrip`, `PauseMenu`, `IPauseHost`, `MatchBootstrap`, `ActionTray`, `OperatorGuideScreen`.
+  - **Checked:** core 971 passing. The view and the Unity edit-mode tests compile with and without `DEVELOPMENT_BUILD`, 0 warnings.
+  - **Play Mode checklist:**
+    - Upright and wide: no LOG button on the history strip. MENU → LOG opens the full log, and closing it returns to the match. L still toggles it on desktop.
+    - Upright tray on doubles: the hint text sits clearly below the dice well, and the tray still fits the screen. The board may be a few units smaller.
+    - MENU → OPERATORS → GLOSSARY, upright: nothing of the match shows above or behind the tabs. The three jump buttons scroll to their sections, and the last section scrolls as far as the list allows. Wide: the glossary is a centred column, not full width.

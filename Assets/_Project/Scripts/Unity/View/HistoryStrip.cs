@@ -18,7 +18,7 @@ namespace NonaRoyale.Unity.View
     /// card game's play history: each chip shows who acted (the piece's shape in
     /// its seat colour), what kind of action it was, and one number. Hovering a
     /// chip opens a card with everything the action caused. The full text log
-    /// is still one key away (L), as an overlay.
+    /// is still one key away (L), or LOG in the menu (G11), as an overlay.
     ///
     /// <b>Turns are separated</b> by a thin divider in the seat's colour with
     /// the round, so "what did Blue do last turn" is a glance.
@@ -59,9 +59,6 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>Canvas units the rail claims above the tray. Nothing, standing up.</summary>
         public static float ReservedHeight => ScreenLayout.Pick(0f, BandHeight);
-
-        /// <summary>Called when the Log button on the strip is pressed.</summary>
-        public Action LogRequested { get; set; }
 
         private RectTransform _canvas;
         private RectTransform _strip;
@@ -171,7 +168,7 @@ namespace NonaRoyale.Unity.View
             UiKit.Stretch(column);
             UiKit.Column(column, 6f, 5).padding.left = 10; // clear of the rule
 
-            LogButton(column, height: 28f, width: -1f);
+            // No LOG button (G11): the full log opens from the menu, or with L.
 
             var scrollRect = UiKit.Rect("scroll", column);
             UiKit.Size(scrollRect, flexibleHeight: 1f);
@@ -212,8 +209,6 @@ namespace NonaRoyale.Unity.View
             layout.padding.top = 8; // clear of the rule
             layout.childAlignment = TextAnchor.MiddleLeft;
 
-            LogButton(row, height: 44f, width: 52f);
-
             var scrollRect = UiKit.Rect("scroll", row);
             UiKit.Size(scrollRect, flexibleWidth: 1f);
             _scroll = scrollRect.gameObject.AddComponent<ScrollRect>();
@@ -243,15 +238,6 @@ namespace NonaRoyale.Unity.View
 
             _scroll.viewport = viewport;
             _scroll.content = _content;
-        }
-
-        private void LogButton(Transform parent, float height, float width)
-        {
-            var log = UiKit.Button(parent, $"LOG{ScreenLayout.KeyMarkup(" <size=70%>L</size>")}",
-                () => LogRequested?.Invoke(), size: 13f);
-
-            if (width >= 0f) UiKit.Fixed(log, width, height);
-            else UiKit.Size(log, height: height);
         }
 
         private void BuildCard()

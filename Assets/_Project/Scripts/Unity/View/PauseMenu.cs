@@ -250,6 +250,10 @@ namespace NonaRoyale.Unity.View
             Choice("RESUME", "Esc", Close, UiTheme.CyanDeep, UiTheme.Cyan);
             Space(4f);
 
+            // The full log lives here (G11), not on the history strip: the
+            // strip is for what just happened, the log for looking back.
+            Choice("LOG", ScreenLayout.Key("L"), () => { Close(); _host?.OpenLog(); });
+
             // The guide, for the question a first match asks most (OG4).
             Choice("OPERATORS", "", () => { Close(); _host?.OpenGuide(); });
             Choice("NEW MATCH", "", () => { Close(); _host?.OpenSetup(); });
