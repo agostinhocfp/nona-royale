@@ -67,6 +67,7 @@ namespace NonaRoyale.Unity.View
             { "javi", new Vector2(0.744f, 0.378f) },    // the canister in his raised hand
             { "sanity", new Vector2(0.23f, 0.223f) },   // the prod's head on his shoulder
             { "mimi", new Vector2(0.68f, 0.534f) },     // the emitter nearest her face
+            { "fortuna", new Vector2(0.644f, 0.825f) }, // the dealer's shoe in her left hand
         };
 
         private static readonly Dictionary<string, ChipArt> Cache = new Dictionary<string, ChipArt>();

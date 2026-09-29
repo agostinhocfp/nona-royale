@@ -14,6 +14,9 @@ namespace NonaRoyale.Unity.Tests.View
     [TestFixture]
     public class ChipPieceTests
     {
+        /// <summary>An operator with no chip portrait and no anchor: no one in the cast, so the art pass never paints it.</summary>
+        private const string Unpainted = "Nobody";
+
         private GameObject _host;
 
         [SetUp]
@@ -52,7 +55,7 @@ namespace NonaRoyale.Unity.Tests.View
         [Test]
         public void EveryChipSoFar_HasAMeasuredAnchor_InsideItsFace()
         {
-            foreach (var name in new[] { "Luka", "Bouncer", "Syla", "Kurbyn", "Javi", "Sanity", "Mimi" })
+            foreach (var name in new[] { "Luka", "Bouncer", "Syla", "Kurbyn", "Javi", "Sanity", "Mimi", "Fortuna" })
             {
                 Assert.IsTrue(ChipArtLibrary.HasAnchor(name), name);
 
@@ -64,8 +67,9 @@ namespace NonaRoyale.Unity.Tests.View
         [Test]
         public void AnOperatorWithNoAnchor_FlaresAtTheCentre()
         {
-            Assert.IsFalse(ChipArtLibrary.HasAnchor("Mimi"));
-            Assert.AreEqual(Vector2.zero, ChipArtLibrary.DeviceFor("Mimi"));
+            // A name no operator carries, so the test outlives the art pass.
+            Assert.IsFalse(ChipArtLibrary.HasAnchor(Unpainted));
+            Assert.AreEqual(Vector2.zero, ChipArtLibrary.DeviceFor(Unpainted));
         }
 
         [Test]
@@ -106,10 +110,10 @@ namespace NonaRoyale.Unity.Tests.View
         [Test]
         public void AChipWithNoPortrait_ShowsItsEmblem()
         {
-            var piece = Bind("Mimi", PieceStyle.Chips);
+            var piece = Bind(Unpainted, PieceStyle.Chips);
 
             Assert.IsTrue(Child(piece, "chip_emblem").enabled);
-            Assert.AreSame(PieceShape.For("Mimi"), Child(piece, "chip_emblem").sprite);
+            Assert.AreSame(PieceShape.For(Unpainted), Child(piece, "chip_emblem").sprite);
         }
 
         private OperatorPiece Bind(string name, PieceStyle style)
