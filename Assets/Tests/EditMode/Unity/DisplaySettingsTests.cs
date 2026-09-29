@@ -303,5 +303,52 @@ namespace NonaRoyale.Unity.Tests.View
 
             Assert.AreEqual(DisplaySettings.DefaultSkin, display.Skin);
         }
+
+        [Test]
+        public void Pieces_DefaultToChips_TheFormatUnderTest()
+        {
+            Assert.AreEqual(PieceStyle.Chips, new DisplaySettings().Pieces);
+            Assert.AreEqual(PieceStyle.Chips, DisplaySettings.DefaultPieces);
+        }
+
+        [Test]
+        public void CyclePieces_TogglesTheTwoStyles_AndTheLabelNamesThem()
+        {
+            var display = new DisplaySettings();
+            Assert.AreEqual("CHIPS", display.PiecesLabel());
+
+            display.CyclePieces();
+            Assert.AreEqual(PieceStyle.Figures, display.Pieces);
+            Assert.AreEqual("FIGURES", display.PiecesLabel());
+
+            display.CyclePieces();
+            Assert.AreEqual(PieceStyle.Chips, display.Pieces);
+        }
+
+        [Test]
+        public void Pieces_CountAsAChange_AndAreCopiedAndReset()
+        {
+            var source = new DisplaySettings { Pieces = PieceStyle.Figures };
+            var target = new DisplaySettings();
+
+            Assert.IsFalse(target.SameAs(source));
+            Assert.IsFalse(source.IsDefault);
+
+            target.CopyFrom(source);
+            Assert.AreEqual(PieceStyle.Figures, target.Pieces);
+
+            target.Reset();
+            Assert.AreEqual(DisplaySettings.DefaultPieces, target.Pieces);
+        }
+
+        [Test]
+        public void Sanitize_RepairsAPieceStyleNoBuildWrote()
+        {
+            var display = new DisplaySettings { Pieces = (PieceStyle)5 };
+
+            display.Sanitize();
+
+            Assert.AreEqual(DisplaySettings.DefaultPieces, display.Pieces);
+        }
 }
 }

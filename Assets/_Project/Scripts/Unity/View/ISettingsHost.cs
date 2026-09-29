@@ -180,6 +180,13 @@ namespace NonaRoyale.Unity.View
                 display.SkinLabel(), () => { display.CycleSkin(); rebuild(); });
             UiKit.Size(skin, height: RowHeight);
 
+            // The piece style (2026-09-29): operators as figures, or as chips
+            // carrying their portraits. Switching redraws the pieces at once.
+            var pieces = UiKit.ChoiceRow(slot("cycle"), "Pieces",
+                display.Pieces == PieceStyle.Chips ? "in playtest" : "",
+                display.PiecesLabel(), () => { display.CyclePieces(); rebuild(); });
+            UiKit.Size(pieces, height: RowHeight);
+
             var reset = UiKit.ChoiceRow(slot("cycle"), "Restore defaults", "", display.IsDefault ? "DEFAULT" : "RESET",
                 () => { display.Reset(); rebuild(); });
             UiKit.Size(reset, height: RowHeight);
@@ -243,6 +250,7 @@ namespace NonaRoyale.Unity.View
         public const string DisplayFrameCap = "nr.display.framecap";
         public const string DisplayCamera = "nr.display.camera";
         public const string DisplaySkin = "nr.display.boardSkin";
+        public const string DisplayPieces = "nr.display.pieces";
 
         public static BotSpeed LoadSpeed(BotSpeed fallback)
         {
@@ -346,6 +354,7 @@ namespace NonaRoyale.Unity.View
             if (PlayerPrefs.HasKey(DisplayFrameCap)) into.FrameCap = PlayerPrefs.GetInt(DisplayFrameCap);
             if (PlayerPrefs.HasKey(DisplayCamera)) into.Camera = (BoardCamera)PlayerPrefs.GetInt(DisplayCamera);
             if (PlayerPrefs.HasKey(DisplaySkin)) into.Skin = (BoardSkin)PlayerPrefs.GetInt(DisplaySkin);
+            if (PlayerPrefs.HasKey(DisplayPieces)) into.Pieces = (PieceStyle)PlayerPrefs.GetInt(DisplayPieces);
             into.Sanitize();
         }
 
@@ -359,6 +368,7 @@ namespace NonaRoyale.Unity.View
             PlayerPrefs.SetInt(DisplayFrameCap, display.FrameCap);
             PlayerPrefs.SetInt(DisplayCamera, (int)display.Camera);
             PlayerPrefs.SetInt(DisplaySkin, (int)display.Skin);
+            PlayerPrefs.SetInt(DisplayPieces, (int)display.Pieces);
             PlayerPrefs.Save();
         }
 

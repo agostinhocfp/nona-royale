@@ -87,6 +87,18 @@ namespace NonaRoyale.Unity.View
     /// A knockout folds the figure before the shatter, so the shards leave a
     /// body that has gone down rather than one standing at rest
     /// (<see cref="Shatter"/>, <see cref="IsKnockingOut"/>).
+    ///
+    /// <b>Chips (2026-09-29).</b> Under <see cref="PieceStyle.Chips"/> every
+    /// operator is a casino chip lying on the table instead of a figure
+    /// (<see cref="ChipView"/>): its portrait as the face, or its shape in
+    /// gold where no portrait exists yet, the seat colour on the chip's
+    /// body. The chip stays flat under the tilt, drops the pin, the seat
+    /// disc and the contact shadow (it has its own), and neither breathes
+    /// nor sways. A hop grows it toward the camera rather than lifting it up
+    /// the screen, with its shadow left on the table; a cast lights its
+    /// portrait. Everything else - the walk, the marks, the rim, the flash,
+    /// the bar, the knockout - is the figure's, applied to the chip. The
+    /// style can change mid-match (<see cref="ApplyStyle"/>).
     /// </remarks>
     public sealed class OperatorPiece : MonoBehaviour
     {
@@ -138,6 +150,24 @@ namespace NonaRoyale.Unity.View
         /// line. Tune in Play Mode.
         /// </summary>
         private const float ArtSeatedHeightScale = 1.6f;
+
+        /// <summary>
+        /// A chip's diameter in figure units: 0.54 of a cell for the frailest
+        /// operator to 0.88 for the toughest, so size still carries health and
+        /// the largest still fits its cell. Tune in Play Mode.
+        /// </summary>
+        private const float ChipDiameter = 0.72f;
+
+        /// <summary>How much a chip grows at the top of a hop, toward the camera.</summary>
+        private const float ChipHopGrow = 0.14f;
+
+        /// <summary>A chip's frame: the chip centred on the origin, the halo and bar above it.</summary>
+        private static readonly FigureLayout ChipLayout = new FigureLayout(
+            artScale: ChipDiameter, artY: 0f, feet: 0f,
+            top: ChipDiameter * 0.5f,
+            headY: ChipDiameter * 0.5f + 0.07f,
+            pinY: 0f,
+            barY: ChipDiameter * 0.5f + 0.13f);
 
         /// <summary>Peak opacity of the white silhouette on a rendered figure's hit flash.</summary>
         private const float ArtFlashStrength = 0.75f;
@@ -263,6 +293,10 @@ namespace NonaRoyale.Unity.View
         /// <summary>Lime streaks and afterimages while the engine reports haste (2026-09-24).</summary>
         private HasteTrail _haste;
 
+        // ── The chip (2026-09-29) ───────────────────────────────
+        private PieceStyle _style = PieceStyle.Figures;
+        private ChipView _chip;
+
         // ── The rig (LB5b) ──────────────────────────────────────
         private RigView _rig;
         private RigAnimator _animator;
@@ -337,6 +371,12 @@ namespace NonaRoyale.Unity.View
         /// <summary>Whether the figure is drawn as a rig (LB5b).</summary>
         public bool ShowsRig => RigActive;
 
+        /// <summary>Whether the operator is drawn as a chip (2026-09-29).</summary>
+        public bool ShowsChip => ChipActive;
+
+        /// <summary>The piece style it is drawn in.</summary>
+        public PieceStyle Style => _style;
+
         /// <summary>Whether a rigged figure faces the left of the screen.</summary>
         public bool FacesLeft => _facesLeft;
 
@@ -373,6 +413,10 @@ namespace NonaRoyale.Unity.View
             {
                 if (!_rig.TryBounds(out bounds)) return false;
             }
+            else if (ChipActive)
+            {
+                bounds = _chip.Bounds;
+            }
             else
             {
                 if (!_body.enabled) return false;
@@ -406,14 +450,17 @@ namespace NonaRoyale.Unity.View
 
         private bool Reduced => _motion != null && _motion.ReducedMotion;
         private bool RigActive => _rig != null && _rig.Active;
+        private bool ChipActive => _chip != null && _chip.Active;
         private float Rate => _motion != null ? _motion.Rate : 1f;
 
         /// <summary>A procedural figure takes the seat colour; a rendered one is drawn as painted.</summary>
         private Color BodyColour => _rendered ? Color.white : _seatColour;
 
-        public void Bind(OperatorState op, float cellSize, float cellSpacing, MotionSettings motion)
+        public void Bind(OperatorState op, float cellSize, float cellSpacing, MotionSettings motion,
+            PieceStyle style = PieceStyle.Figures)
         {
             Operator = op;
+            _style = style;
             name = $"{op.Owner}_{op.Name}";
             _motion = motion;
             ShownHealth = op.Health;
@@ -482,7 +529,7 @@ namespace NonaRoyale.Unity.View
         /// sprite; its streaks carry the look alone.
         /// </summary>
         internal Sprite GhostSprite =>
-            RigActive || _body == null ? null : _rendered ? _flashOverlay.sprite : _body.sprite;
+            RigActive || _body == null ? null : ChipActive ? _chip.Silhouette : _rendered ? _flashOverlay.sprite : _body.sprite;
 
         /// <summary>Where an afterimage is laid: the body, with its scale and lean.</summary>
         internal Transform GhostFrame => _body != null ? _body.transform : null;
@@ -506,13 +553,25 @@ namespace NonaRoyale.Unity.View
 
             var frame = seated ? FigureLayout.Bust : FigureLayout.Pawn;
             var pose = seated ? FigurePose.Seated : FigurePose.Standing;
+            bool chip = _style == PieceStyle.Chips;
 
-            // A render, then a rig, then the look book, then the pawn.
-            var rig = OperatorArtLibrary.Rendered(Operator.Name, pose) == null ? OperatorRigArt.For(Operator.Name) : null;
-            var art = rig == null ? OperatorArtLibrary.Figure(Operator.Name, pose) : null;
-            _rendered = art != null || rig != null;
+            // A chip, or: a render, then a rig, then the look book, then the pawn.
+            var rig = !chip && OperatorArtLibrary.Rendered(Operator.Name, pose) == null ? OperatorRigArt.For(Operator.Name) : null;
+            var art = !chip && rig == null ? OperatorArtLibrary.Figure(Operator.Name, pose) : null;
+            _rendered = chip || art != null || rig != null;
 
-            if (rig != null)
+            _pin.enabled = !chip;
+            _flashOverlay.sortingOrder = chip ? ChipView.FlashOrder : 4;
+
+            if (chip)
+            {
+                _layout = ChipLayout;
+
+                _body.sprite = null;
+                _flashOverlay.sprite = ChipSprites.Disc;
+                _outline.enabled = false;
+            }
+            else if (rig != null)
             {
                 _layout = FigureLayout.Fit(
                     seated ? rig.SeatedBottom : rig.RestBottom,
@@ -556,6 +615,7 @@ namespace NonaRoyale.Unity.View
             _body.transform.localScale = Vector3.one * _layout.ArtScale;
 
             ShowRig(rig, seated);
+            ShowChip(chip);
 
             // A new figure: the rim is copied from it afresh (G8d).
             _rimDirty = true;
@@ -565,8 +625,9 @@ namespace NonaRoyale.Unity.View
 
             _healthBack.transform.localPosition = new Vector3(0f, _layout.BarY, 0f);
 
-            // The seat disc stands in for the tint a render does not take.
-            bool showBase = _rendered && !seated;
+            // The seat disc stands in for the tint a render does not take. A
+            // chip carries the seat on its own body.
+            bool showBase = _rendered && !seated && !chip;
             _seatBase.enabled = showBase;
             _seatRing.enabled = showBase;
             // First placement only; GroundMarks owns these every frame after.
@@ -579,6 +640,25 @@ namespace NonaRoyale.Unity.View
             ShowContact(!seated);
 
             _body.color = WithAlpha(BodyColour);
+        }
+
+        /// <summary>
+        /// Draws the piece in <paramref name="style"/> from now on: figures or
+        /// chips (2026-09-29). A no-op when the style is unchanged, so the
+        /// composition root can call it every frame, like the board skin.
+        /// </summary>
+        public void ApplyStyle(PieceStyle style)
+        {
+            if (_style == style || Operator == null) return;
+            _style = style;
+
+            // Forget the pose, so the next one is built in the new style.
+            bool seated = Seated;
+            _seated = null;
+            _animator?.Clear();
+            SetPose(seated);
+            _shapedPitch = -1f;
+            Draw();
         }
 
         /// <summary>
@@ -742,6 +822,7 @@ namespace NonaRoyale.Unity.View
             _hopping = false;
             _hold = 0f;
             _animator?.Stop();
+            _chip?.StopCast();
             Draw();
         }
 
@@ -753,6 +834,7 @@ namespace NonaRoyale.Unity.View
         private IReadOnlyList<SpriteRenderer> BurnParts()
         {
             if (RigActive) return _rig.Parts;
+            if (ChipActive) return _chip.Parts;
             if (_body == null) return null;
 
             var parts = new List<SpriteRenderer>(3);
@@ -807,6 +889,13 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         public void Cast(Vector3? aim, float tellSeconds)
         {
+            // A chip lights its portrait for the tell (2026-09-29).
+            if (ChipActive)
+            {
+                if (!_hidden) _chip.Cast(tellSeconds);
+                return;
+            }
+
             if (!RigActive || Seated || _hidden || _collapsing) return;
 
             float elevation = 0f;
@@ -853,6 +942,7 @@ namespace NonaRoyale.Unity.View
 
             _body.color = _rendered ? WithAlpha(BodyColour) : WithAlpha(Color.Lerp(BodyColour, Color.white, _flash));
             if (_rig != null) _rig.SetAlpha(_alpha);
+            if (_chip != null) _chip.SetAlpha(_alpha);
             _outline.color = WithAlpha(_outline.color);
             _pin.color = WithAlpha(_pin.color);
             TintSeatBase();
@@ -993,6 +1083,8 @@ namespace NonaRoyale.Unity.View
             bool idle = !_hopping && _path.Count == 0 && _hold <= 0f;
             if (idle) _idleTime += delta;
 
+            if (ChipActive) _chip.Tick(rated, ChipAir);
+
             if (RigActive)
             {
                 _animator.Advance(idle ? delta : 0f, rated);
@@ -1069,6 +1161,12 @@ namespace NonaRoyale.Unity.View
                 for (int i = 0; i < parts.Count && i < silhouettes.Count; i++)
                     yield return new FigureRim.Source(silhouettes[i], parts[i]);
             }
+            else if (ChipActive)
+            {
+                // The chip's face and its edge below it: the rim follows the whole token.
+                yield return new FigureRim.Source(_chip.RimEdge, _chip.RimEdge);
+                yield return new FigureRim.Source(_chip.RimTop, _chip.RimTop);
+            }
             else if (_rendered)
             {
                 // No silhouette (an unreadable texture): the render itself, tinted, still gives its shape.
@@ -1133,12 +1231,13 @@ namespace NonaRoyale.Unity.View
             _segmentCells = cells;
 
             // A rigged figure steps rather than hops: no lift, no landing squash.
+            // A chip hops toward the camera instead of up the screen (Draw).
             bool hops = !Reduced && !RigActive;
 
             if (_hopT < 1f)
             {
                 _ground = Vector3.Lerp(_hopFrom, next, _hopT);
-                _lift = hops ? Mathf.Sin(_hopT * Mathf.PI) * HopHeight * _stepDistance : 0f;
+                _lift = hops && !ChipActive ? Mathf.Sin(_hopT * Mathf.PI) * HopHeight * _stepDistance : 0f;
                 return;
             }
 
@@ -1157,9 +1256,18 @@ namespace NonaRoyale.Unity.View
         {
             float sx = 1f, sy = 1f, roll = 0f;
             bool rig = RigActive;
+            bool chip = ChipActive;
 
+            if (chip)
+            {
+                // A chip grows toward the camera through a hop and settles
+                // with a small thud; it neither breathes nor sways (2026-09-29).
+                float grow = 1f + ChipHopGrow * ChipAir - 0.05f * _land;
+                sx = grow;
+                sy = grow;
+            }
             // A rig moves its own joints; the whole-sprite squash, breath and sway are for flat figures.
-            if (!Reduced && !rig)
+            else if (!Reduced && !rig)
             {
                 // Stretch in the air, squash on landing.
                 float air = _hopping ? Mathf.Sin(_hopT * Mathf.PI) : 0f;
@@ -1190,8 +1298,8 @@ namespace NonaRoyale.Unity.View
                     ? Mathf.Lerp(_popFrom, 1.15f, t / 0.55f)
                     : Mathf.Lerp(1.15f, 1f, (t - 0.55f) / 0.45f);
 
-                // A rise stands up: taller before it is wider.
-                if (_popRise && !rig) sy *= 1f + 0.18f * Mathf.Sin(t * Mathf.PI);
+                // A rise stands up: taller before it is wider. A chip just pops.
+                if (_popRise && !rig && !chip) sy *= 1f + 0.18f * Mathf.Sin(t * Mathf.PI);
             }
 
             float scale = _hidden ? 0f : _baseScale * _hover * pop;
@@ -1219,6 +1327,31 @@ namespace NonaRoyale.Unity.View
             Stand();
             Depth();
             PoseRig();
+        }
+
+        // ── The chip (2026-09-29) ────────────────────────────────────────
+
+        /// <summary>How far through a hop a chip is, 0 on the table to 1 at the top. Zero under Reduced motion.</summary>
+        private float ChipAir => _hopping && !Reduced ? Mathf.Sin(_hopT * Mathf.PI) : 0f;
+
+        /// <summary>Shows the chip, building it on first use, or hides it when the piece draws a figure.</summary>
+        private void ShowChip(bool show)
+        {
+            if (!show)
+            {
+                if (_chip != null) _chip.Active = false;
+                return;
+            }
+
+            if (_chip == null)
+            {
+                _chip = new ChipView(_body.transform, PieceShape.For(Operator));
+                _chip.SetSeat(BoardLayout.ColourOf(Operator.Owner));
+            }
+
+            _chip.Show(ChipArtLibrary.For(Operator.Name));
+            _chip.SetAlpha(_alpha);
+            _chip.Active = true;
         }
 
         // ── The rig (LB5b) ───────────────────────────────────────────────
@@ -1327,11 +1460,20 @@ namespace NonaRoyale.Unity.View
         {
             if (_figure == null) return;
 
-            float lean = BoardTilt.Lean;
-            FigureTilt.LeanPivot(BoardTilt.Pitch, _layout.Feet, out float py, out float pz);
+            // A chip lies on the table: no lean, whatever the camera.
+            if (ChipActive)
+            {
+                _figure.localPosition = Vector3.zero;
+                _figure.localRotation = Quaternion.identity;
+            }
+            else
+            {
+                float lean = BoardTilt.Lean;
+                FigureTilt.LeanPivot(BoardTilt.Pitch, _layout.Feet, out float py, out float pz);
 
-            _figure.localPosition = new Vector3(0f, py, pz);
-            _figure.localRotation = Quaternion.Euler(lean, 0f, 0f);
+                _figure.localPosition = new Vector3(0f, py, pz);
+                _figure.localRotation = Quaternion.Euler(lean, 0f, 0f);
+            }
 
             if (Mathf.Approximately(_shapedPitch, BoardTilt.Pitch)) return;
 
@@ -1364,7 +1506,7 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         private void ShowContact(bool standing)
         {
-            if (_contact != null) _contact.enabled = standing && BoardTilt.IsTilted;
+            if (_contact != null) _contact.enabled = standing && BoardTilt.IsTilted && _style != PieceStyle.Chips;
         }
 
         /// <summary>

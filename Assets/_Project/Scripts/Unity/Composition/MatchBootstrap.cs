@@ -753,7 +753,7 @@ namespace NonaRoyale.Unity.Composition
 
                 var piece = go.AddComponent<OperatorPiece>();
                 piece.BoardCentre = _layout.HomeGoalPosition;
-                piece.Bind(op, _layout.CellSize, cellSpacing, _motion);
+                piece.Bind(op, _layout.CellSize, cellSpacing, _motion, _display.Pieces);
                 piece.Stepped += OnPieceStepped;
                 _pieces.Add(piece);
             }
@@ -1352,6 +1352,10 @@ namespace NonaRoyale.Unity.Composition
             // board at once, mid-match included. A no-op when nothing changed.
             var skinView = GetComponent<BoardView>();
             if (skinView != null) skinView.ApplySkin(_display.Skin);
+
+            // The piece style (2026-09-29), the same way: a change on the
+            // Display page redraws every piece at once. A no-op when unchanged.
+            foreach (var piece in _pieces) piece.ApplyStyle(_display.Pieces);
 
             if (_controls != null)
             {

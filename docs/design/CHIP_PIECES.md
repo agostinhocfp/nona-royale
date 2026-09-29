@@ -1,0 +1,70 @@
+# Nona Royale — Chip pieces
+
+> Location in repo: `docs/design/CHIP_PIECES.md` · Project copy: `claude/CHIP_PIECES.md`
+> Status: **CP1 built 2026-09-29, awaiting Play Mode.** Operators on the board as casino chips, beside the figures, for playtesting.
+> Related: `ART_PROMPTS.md` v4.2 asset block 7 (the chip frame and anchors), `OPERATORS.md`, `ART_DIRECTION.md` §3 and §5, `VISUAL_PASS.md` (the tilt), `OPERATOR_LOOKBOOK.md` (the rigs this sits beside).
+
+## What and why
+
+The designer is testing operators as flat casino-chip tokens with portrait art, instead of standing figures (2026-09-29). If the chips are adopted, board pieces need no Blender pass: they are sprites only. The first three portraits are Luka, Bouncer and Syla. **Mimi and the rest wait for this playtest.**
+
+## Decisions (designer, 2026-09-29)
+
+1. **Flat token.** The chip lies on the cell, face up, with a visible edge for thickness. Under the tilted camera it stays on the table rather than standing up.
+2. **Emblem chips for the nine without art.** Same body and ring, the operator's shape in gold on black lacquer as the face, so the playtest judges the format and not a mixed board.
+3. **A switch, not a replacement.** Display settings get **Pieces: Chips / Figures**, default **Chips**. The figures (renders, rigs, look book, pawn) are untouched.
+4. **Board pieces only.** The HUD, the draft and the dossier keep what they show today.
+
+## How it is built (CP1)
+
+| File | What |
+| --- | --- |
+| `View/ChipSprites.cs` (new) | The shared parts drawn in code: greyscale body (tinted per seat), ivory edge inserts, gilt ring, plain disc. Mipmapped, 256 px, one unit across |
+| `View/ChipArtLibrary.cs` (new) | Loads `Resources/Art/Chips/<name>_chip_unlit` and `_chip_lit`; the device anchors by name |
+| `View/ChipView.cs` (new) | One chip: shadow, edge, body, inserts, face (portrait or emblem), lit face, ring, device glow |
+| `Editor/ChipArtImporter.cs` (new) | Imports the chip folder (centre pivot, 512 max, one unit across) and **cuts every portrait to a circle** at import, so the generator's square files go in as they are |
+| `View/OperatorPiece.cs` | A chip branch ahead of the figure fallbacks; `ApplyStyle` switches live |
+| `View/DisplaySettings.cs`, `View/ISettingsHost.cs` | `PieceStyle`, the Pieces row, saved as `nr.display.pieces` |
+| `Composition/MatchBootstrap.cs` | Binds pieces in the chosen style; applies a change every frame, like the board skin |
+| `Art/Resources/Art/Chips/` | The six portraits, downscaled to 512 from `art/source/characters/` |
+
+**What a chip does differently from a figure:**
+
+- **Hop:** it grows toward the camera and back instead of lifting up the screen, and lands with a small thud. Reduced motion glides, as before.
+- **Idle:** no breathing, no sway. A chip is an object.
+- **Cast:** the lit portrait fades in over the unlit one and a cyan glow swells on the device anchor for the tell's length, then both go dark. The rim flare still plays.
+- **Seat identity:** the chip's body is the seat colour, so the seat disc, its ring and the shape pin are hidden.
+- **Unchanged:** the walk, the select glow and rim, the target ring, the hit flash (a white disc), the health bar, the knockout shards and burn, the haste streaks.
+
+**Tuning knobs** (Play Mode):
+
+| Constant | Where | Now | Does |
+| --- | --- | --- | --- |
+| `ChipDiameter` | `OperatorPiece` | 0.72 | Chip size: 0.54 of a cell for the frailest operator to 0.88 for the toughest |
+| `ChipHopGrow` | `OperatorPiece` | 0.14 | How much a chip grows at the top of a hop |
+| `EdgeDrop` | `ChipView` | 0.055 | Thickness |
+| `ShadowOffset`, `ShadowAlpha` | `ChipView` | (0.03, -0.10), 0.55 | The drop shadow |
+| `FaceRadius`, `RingOuter` | `ChipSprites` | 0.78, 0.86 | Face size, ring width |
+| `MaskRadius` | `ChipArtLibrary` | 0.48 | How much of the portrait is kept. **Changing it needs a reimport of the chips folder** |
+
+## Adding an operator's chip
+
+1. Generate and approve the portrait under `ART_PROMPTS.md` asset block 7 (unlit, then the lit twin as a masked edit).
+2. Keep the originals in `art/source/characters/<name>/`, and drop copies (512 px is enough) into `Assets/_Project/Art/Resources/Art/Chips/` with the same names.
+3. Measure the device anchor and add it to `ChipArtLibrary.Anchors`. Without one, the glow plays at the face's centre.
+4. Record both files in `docs/art/PROVENANCE.md`.
+
+## Play Mode checks
+
+- [ ] The three portrait chips and the nine emblem chips in all four seat colours, at gameplay zoom and in a phone-sized Game view.
+- [ ] A cast by Luka, Bouncer and Syla: the glow lands on the ring, the fist and the hand drone.
+- [ ] Walk, bounce, knockout and redeploy, with Reduced motion on and off.
+- [ ] Selection rim, target ring and hit flash read on a chip.
+- [ ] Tilted camera: the chips lie flat and sort front to back.
+- [ ] Both board skins.
+- [ ] Switch Pieces mid-match: every piece redraws at once, and back.
+- [ ] The yard: seated chips sit readably at the tables.
+
+## Log
+
+- 2026-09-29 — **CP1.** Chip pieces behind the Pieces switch (default Chips): code-drawn chip body, inserts and ring; portrait faces for Luka, Bouncer and Syla with lit twins and device glows; emblem faces for the other nine; a chip importer that cuts portraits to a circle; EditMode tests for the lookup, the anchors, the setting and the switch. Compiles against the editor DLLs (runtime, editor and EditMode test assemblies); not yet run in Unity.

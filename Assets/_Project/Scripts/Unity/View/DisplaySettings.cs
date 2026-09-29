@@ -42,9 +42,26 @@ namespace NonaRoyale.Unity.View
     }
 
     /// <summary>
+    /// How operators are drawn on the board (2026-09-29): as figures, the
+    /// rigs and renders built through LB5, or as casino chips carrying a
+    /// portrait (<see cref="ChipView"/>).
+    /// </summary>
+    /// <remarks>
+    /// <b>Both stay</b> while the chips are playtested, like the board skin:
+    /// the figures are not deleted. Chips are the default, because the chip
+    /// is the format under test.
+    /// </remarks>
+    public enum PieceStyle
+    {
+        Figures = 0,
+        Chips = 1
+    }
+
+    /// <summary>
     /// The player's display settings: screen mode, resolution, VSync, a
-    /// frame cap (2026-09-17), the board camera (2026-09-18) and the board
-    /// skin (BS2, 2026-09-27). Remembered between sessions.
+    /// frame cap (2026-09-17), the board camera (2026-09-18), the board
+    /// skin (BS2, 2026-09-27) and the piece style (2026-09-29). Remembered
+    /// between sessions.
     /// </summary>
     /// <remarks>
     /// <b>Plain C#.</b> Nothing here touches Unity; the composition root
@@ -67,6 +84,7 @@ namespace NonaRoyale.Unity.View
         public const bool DefaultVSync = true;
         public const BoardCamera DefaultCamera = BoardCamera.TopDown;
         public const BoardSkin DefaultSkin = BoardSkin.Classic;
+        public const PieceStyle DefaultPieces = PieceStyle.Chips;
 
         /// <summary>The cap with VSync off. 0 means uncapped.</summary>
         public const int DefaultFrameCap = 60;
@@ -90,11 +108,14 @@ namespace NonaRoyale.Unity.View
         /// <summary>Classic or Deco (BS2).</summary>
         public BoardSkin Skin { get; set; } = DefaultSkin;
 
+        /// <summary>Figures or chips (2026-09-29).</summary>
+        public PieceStyle Pieces { get; set; } = DefaultPieces;
+
         /// <summary>True when every value is the default, so Restore defaults has nothing to do.</summary>
         public bool IsDefault =>
             Mode == DefaultMode && Width == DefaultWidth && Height == DefaultHeight &&
             VSync == DefaultVSync && FrameCap == DefaultFrameCap && Camera == DefaultCamera &&
-            Skin == DefaultSkin;
+            Skin == DefaultSkin && Pieces == DefaultPieces;
 
         /// <summary>Back to the defaults.</summary>
         public void Reset()
@@ -106,6 +127,7 @@ namespace NonaRoyale.Unity.View
             FrameCap = DefaultFrameCap;
             Camera = DefaultCamera;
             Skin = DefaultSkin;
+            Pieces = DefaultPieces;
         }
 
         /// <summary>Copies every value from <paramref name="other"/>.</summary>
@@ -118,12 +140,13 @@ namespace NonaRoyale.Unity.View
             FrameCap = other.FrameCap;
             Camera = other.Camera;
             Skin = other.Skin;
+            Pieces = other.Pieces;
         }
 
         public bool SameAs(DisplaySettings other) =>
             Mode == other.Mode && Width == other.Width && Height == other.Height &&
             VSync == other.VSync && FrameCap == other.FrameCap && Camera == other.Camera &&
-            Skin == other.Skin;
+            Skin == other.Skin && Pieces == other.Pieces;
 
         /// <summary>Cycles Windowed and Fullscreen.</summary>
         public void CycleMode() =>
@@ -160,6 +183,10 @@ namespace NonaRoyale.Unity.View
         public void CycleSkin() =>
             Skin = Skin == BoardSkin.Deco ? BoardSkin.Classic : BoardSkin.Deco;
 
+        /// <summary>Cycles the two piece styles (2026-09-29).</summary>
+        public void CyclePieces() =>
+            Pieces = Pieces == PieceStyle.Chips ? PieceStyle.Figures : PieceStyle.Chips;
+
         /// <summary>Repairs values Unity could not apply (a stray PlayerPrefs edit).</summary>
         public void Sanitize()
         {
@@ -173,6 +200,7 @@ namespace NonaRoyale.Unity.View
             if (Array.IndexOf(FrameCaps, FrameCap) < 0) FrameCap = DefaultFrameCap;
             if (Camera != BoardCamera.TopDown && Camera != BoardCamera.Tilted) Camera = DefaultCamera;
             if (Skin != BoardSkin.Classic && Skin != BoardSkin.Deco) Skin = DefaultSkin;
+            if (Pieces != PieceStyle.Figures && Pieces != PieceStyle.Chips) Pieces = DefaultPieces;
         }
 
         /// <summary>"FULLSCREEN" or "WINDOWED", the settings row's summary.</summary>
@@ -189,6 +217,9 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>"CLASSIC" or "DECO", the board skin row's value.</summary>
         public string SkinLabel() => Skin == BoardSkin.Deco ? "DECO" : "CLASSIC";
+
+        /// <summary>"CHIPS" or "FIGURES", the pieces row's value.</summary>
+        public string PiecesLabel() => Pieces == PieceStyle.Chips ? "CHIPS" : "FIGURES";
 
         private static int IndexOf(int width, int height)
         {
