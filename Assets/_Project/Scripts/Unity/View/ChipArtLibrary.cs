@@ -63,6 +63,7 @@ namespace NonaRoyale.Unity.View
             { "luka", new Vector2(0.69f, 0.58f) },      // the signet ring
             { "bouncer", new Vector2(0.66f, 0.76f) },   // the gauntlet's fist
             { "syla", new Vector2(0.84f, 0.33f) },      // the drone at her fingertips
+            { "kurbyn", new Vector2(0.473f, 0.283f) },  // the neural rig behind his ear
         };
 
         private static readonly Dictionary<string, ChipArt> Cache = new Dictionary<string, ChipArt>();

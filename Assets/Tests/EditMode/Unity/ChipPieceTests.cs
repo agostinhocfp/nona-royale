@@ -50,9 +50,9 @@ namespace NonaRoyale.Unity.Tests.View
         }
 
         [Test]
-        public void TheFirstThreeChips_HaveMeasuredAnchors_InsideTheirFace()
+        public void EveryChipSoFar_HasAMeasuredAnchor_InsideItsFace()
         {
-            foreach (var name in new[] { "Luka", "Bouncer", "Syla" })
+            foreach (var name in new[] { "Luka", "Bouncer", "Syla", "Kurbyn" })
             {
                 Assert.IsTrue(ChipArtLibrary.HasAnchor(name), name);
 
