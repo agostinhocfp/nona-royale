@@ -85,7 +85,8 @@ Grounded, rich, shadow-heavy. Accent tones are *accents*, never base colors.
 | Base dark | Charcoal velvet | `#141013` | Floor fields, panels |
 | Neutral | Gunmetal | `#1A1519` | Mid surfaces, stone |
 | Primary metal | Gilt gold | `#C99A3C` -> hi `#F4D98B` | Trim, frames, ornament, key accents |
-| Tarnish | Aged brass | `#7C5A1E` | Decay on gold, low-light metal, **all operator hardware** |
+| Tarnish | Aged brass | `#7C5A1E` | Decay on gold, low-light metal, **operator hardware** (except Bouncer's gauntlet) |
+| Operator steel | Gunmetal | `#3B3F45` -> hi `#A7B0BA` | **Bouncer's gauntlet** (2026-09-29): plain worked steel, never gold or brass |
 | Jewel accent A | Blood velvet | `#5A1626` | Carpet, drapery, danger cues |
 | Jewel accent B | Deco emerald | `#0F6E56` | Secondary accent (felt, glass) — sparing |
 | Ink line | Deep maroon-black | `#1C0E12` | Character/tile outlines |
@@ -97,7 +98,7 @@ Rough mix per frame: ~70% dark neutrals, ~20% gold, ~10% one jewel tone. The tec
 
 **Two rules the first operator renders forced (2026-09-19):**
 
-- **Operator metal is aged brass, never gilt.** Bouncer's gauntlet and any other sizeable metal on a figure use `#7C5A1E` with tarnish. The first renders came back in bright polished gold, which put a large gilt mass on operators who are not Fortuna and quietly spent her whole distinction. **Fortuna is the only figure whose metal is gilt, and the only one permitted to exceed the gold budget** — being over-gilded is how she reads as the room's owner rather than its staff.
+- **Operator metal is aged brass, never gilt.** Sizeable metal on a figure uses `#7C5A1E` with tarnish. **The one exception is Bouncer's gauntlet, which is gunmetal steel (designer, 2026-09-29):** a big gold or brass fist reads as Thanos, which is not the goal. Steel also keeps it clear of Fortuna's gold and of the brass on Kurbyn and Sanity. The first renders came back in bright polished gold, which put a large gilt mass on operators who are not Fortuna and quietly spent her whole distinction. **Fortuna is the only figure whose metal is gilt, and the only one permitted to exceed the gold budget** — being over-gilded is how she reads as the room's owner rather than its staff.
 - **No decorative gold trim on contractors.** Syla's first pass carried gold edging on the cape and pods. It came off. Her frame is black and her accent is cyan.
 
 **Jewel tones as garments are allowed on operators**, because a figure occupies a small fraction of a frame: Kian wears Deco emerald and Revú wears oxblood, and each is the only operator who does. Revú's oxblood must be clearly **darker** than `board_carpet.png` (§6.1 forbids a red operator on blood velvet).
@@ -134,7 +135,7 @@ Rough mix per frame: ~70% dark neutrals, ~20% gold, ~10% one jewel tone. The tec
 |---|---|---|---|---|
 | 1 | Luka | warm light torso (camel) | four-point X, forward wedge | cyan signet ring |
 | 2 | Syla | light core in a dark frame | downward triangle | cyan drone slits |
-| 3 | Bouncer | black mass split by a hard white V | wide low slab | aged-brass gauntlet |
+| 3 | Bouncer | black mass split by a hard white V | wide low slab | gunmetal steel gauntlet |
 | 4 | Kurbyn | mid-dark, broken by bare forearms | coiled four-point | brass + nape cyan |
 | 5 | Javi | dark waistcoat block, two white sleeves | upright cross | frosted canister seals |
 | 6 | Sanity | large mid-brown mass | octagon | brass + prod cyan |
@@ -148,7 +149,7 @@ Rough mix per frame: ~70% dark neutrals, ~20% gold, ~10% one jewel tone. The tec
 **Four standing rules fall out of it:**
 
 - **The light torso is Luka's.** No other operator carries a warm light torso. Syla's ivory is a core inside a black frame, and Nuetu's dove-grey is cool and reads as a mass rather than a garment. This is why Javi wears a charcoal waistcoat over his bone-white shirt.
-- **The gilt is Fortuna's.** Every other operator's metal is aged brass (§3). This rule was written because the first Bouncer render spent her distinction in one pass.
+- **The gilt is Fortuna's.** Every other operator's metal is aged brass, and Bouncer's gauntlet is steel (§3). This rule was written because the first Bouncer render spent her distinction in one pass.
 - **Two operators read by shape rather than value.** Mimi is solved by being the smallest figure with the brightest hardware; Lethe by being the only mid-grey and the only silhouette with radiating upper points.
 - **The board must be checked under the pieces, not beside them.** Revú on blood-velvet carpet and Luka on lit gold inlay are the two known collisions. Both are Play Mode checks.
 
@@ -252,3 +253,4 @@ Plus **structural / art-only elements** that are not gameplay cells: floor field
 - 2026-09-27 — **Visual target locked; §2.2 amended from flat cel to Dark Deco, rendered** (designer). `docs/art/VISUAL_TARGET.png` becomes §10 reference 5 and the top anchor in §4, with Hearthstone and Marvel Snap added as finish anchors. The five rules are rewritten around it: modelled form with hard edges, one ink colour, geometric form (unchanged), low-contrast materials with bevels and speculars, and placed light with drop shadows. The shape language, the two registers, the palette and its 70/20/10 mix, the value ledger and devices-dark-at-rest all stand. Two relaxations, both the designer's: a little always-on cyan in frame hardware, and props that are well done. Reference 4 keeps shape and value only. Realism stays rejected (§0). Five cel-era docs and the Blender toon settings are listed for a pass, and the §6.1 "whisper" rule is opened against the target. **Also restores v5 to the repo:** `docs/art/ART_DIRECTION.md` had stayed at the 2026-09-15 v4 while the project copy moved to v5 on 2026-09-19, so the repo never had §2.2, §5.1 or the aged-brass rules that `STYLE.md`, `PHYSICAL_UI.md` and `OPERATOR_LOOKBOOK.md` cite.
 - 2026-09-27 — **§6.1 decided against the target** (designer, `BOARD_SKIN.md` D1–D3). The path at rest is gilt-edged tiles at a lower contrast than the target, not a whisper; highlights must still pop over them. HOME is a black medallion with a gilt emblem and the vault door is dropped, so the win moment moves off the centre. The yard chairs are a sprite (`yard_chair`). §11's "central vault door" becomes the medallion.
 - 2026-09-27 — **The visual target is replaced by its simpler version** (designer). `VISUAL_TARGET.png` is now the image with a dark steel frame and no candles, plants or instrument; the board, the tables and their chairs are unchanged. The first version is kept as `VISUAL_TARGET_ORNATE.png`. Consequences: the frame stops spending the gold budget, and the board skin's prop increment (BS6) shrinks (`BOARD_SKIN.md`).
+- 2026-09-29 — **Bouncer's gauntlet becomes gunmetal steel** (designer). §3 gains an operator-steel row and an exception to the aged-brass rule; §5.1's Bouncer accent is updated. The reason: a big gold or brass fist read as Thanos. Found while making the chip portraits, where Luka's chip is the first accepted reference.
