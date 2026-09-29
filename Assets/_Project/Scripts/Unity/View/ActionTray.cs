@@ -66,6 +66,20 @@ namespace NonaRoyale.Unity.View
     /// touch screen, or upright where the cards carry no rules line, the peek
     /// shows the armed ability's, since a tap arms rather than hovers.
     ///
+    /// <b>Hold any card to read it</b> (CAST_ONBOARDING.md CO3, designer
+    /// 2026-09-29). Pressing a card for <see cref="HoldRelay.HoldSeconds"/>
+    /// opens its peek without arming it, on touch or mouse, whether or not
+    /// it can be cast; a tap on a card that cannot be cast opens it too,
+    /// since there is nothing to arm. A peek opened by a press stays until
+    /// the next press anywhere, and it names the card's state ("ready in 2
+    /// turns"). This is the peek, not CO3's full glossary card, which is
+    /// still planned.
+    ///
+    /// <b>The peek sits on the cards, not on the tray</b> (designer,
+    /// 2026-09-29, on a phone). Its bottom edge is the top of the card row,
+    /// so upright it covers the aim line, the dice and the operator card
+    /// instead of the board.
+    ///
     /// <b>The peek leads with plain words</b> (CAST_ONBOARDING.md,
     /// 2026-09-29). The card shows only cost, reach and cooldown, and a player
     /// new to the genre cannot read "5e · r3 · cd 3" or a rules line as advice.
@@ -174,6 +188,12 @@ namespace NonaRoyale.Unity.View
         private float _peekHideAt = -1f;
         private int _peekArmedId = -1;
 
+        /// <summary>The peek was opened by a press on a card (CO3): it stays until the next press.</summary>
+        private bool _peekPressed;
+
+        /// <summary>The row the ability cards sit in: the peek stands on its top edge.</summary>
+        private RectTransform _cardsRow;
+
         private OperatorState _barOperator;
         private float _barFraction = -1f;
 
@@ -253,6 +273,10 @@ namespace NonaRoyale.Unity.View
                 _peekHideAt = -1f;
                 HidePeek(null);
             }
+
+            // A peek opened by a press is read until the player presses again,
+            // anywhere: on the board, the tray or another card.
+            if (_peekPressed && Input.GetMouseButtonDown(0)) HidePeek(null);
 
             if (_tray.gameObject.activeSelf != Visible)
             {
@@ -646,6 +670,8 @@ namespace NonaRoyale.Unity.View
             var engine = _host.Match.Engine;
             var op = _host.SelectedOperator;
 
+            _cardsRow = cards;
+
             var row = UiKit.Row(cards, 8f);
             row.childForceExpandWidth = true;
             row.childForceExpandHeight = true;
@@ -732,6 +758,11 @@ namespace NonaRoyale.Unity.View
             EqualShare(button);
 
             var card = (RectTransform)button.transform;
+
+            // Hold any card to read it, without arming it (CO3); a card that
+            // can't be cast opens it on a tap too, having nothing to arm.
+            System.Action read = () => ShowPeek(ability, card, pressed: true, state: reason);
+            HoldRelay.On(button, read, usable || chosen ? null : read);
             var column = UiKit.Column(card, 3f, 8);
             column.padding.top = 10;
             column.childAlignment = TextAnchor.UpperLeft;
@@ -782,25 +813,41 @@ namespace NonaRoyale.Unity.View
         /// description and its whole rules line, above <paramref name="card"/>,
         /// or centred over the bar when there is no card to hang it from.
         /// </summary>
-        private void ShowPeek(AbilityDefinition ability, RectTransform card)
+        /// <param name="pressed">
+        /// Opened by a press on the card (CO3) rather than a hover: it belongs
+        /// to no card, so leaving the card or a rebuild does not close it, and
+        /// it stays until the next press.
+        /// </param>
+        /// <param name="state">Why the card can't be cast now ("ready in 2 turns"), or null.</param>
+        private void ShowPeek(AbilityDefinition ability, RectTransform card, bool pressed = false, string state = null)
         {
             if (ability == null || _canvas == null) return;
             if (_peek == null) BuildPeek();
 
-            _peekTitle.text = $"<b>{ability.Name}</b>  <size=85%><color=#{UiTheme.Hex(UiTheme.TextDim)}>{OperatorDossier.Meta(ability)}</color></size>";
+            string meta = OperatorDossier.Meta(ability);
+            if (state != null) meta += $" · {state}";
+
+            _peekTitle.text = $"<b>{ability.Name}</b>  <size=85%><color=#{UiTheme.Hex(UiTheme.TextDim)}>{meta}</color></size>";
             _peekWords.text = ability.Description;
             _peekBody.text = RulesMarkup.For(RulesText.For(ability), linked: false);
 
-            _peekOwner = card;
+            _peekOwner = pressed ? null : card;
+            _peekPressed = pressed;
             _peekHideAt = -1f;
             _peek.gameObject.SetActive(true);
             _peek.SetAsLastSibling();
             LayoutRebuilder.ForceRebuildLayoutImmediate(_peek);
 
-            // Above the bar's top edge, over the card, kept on screen. World
-            // units are pixels on this canvas, as the history card assumes.
-            _tray.GetWorldCorners(_corners);
+            // On the card row's top edge, over the card, kept on screen. The
+            // row rather than the whole tray (designer, 2026-09-29): upright,
+            // the tray's top is well above the cards, and a peek standing on it
+            // covered too much of the board on a phone. World units are pixels
+            // on this canvas, as the history card assumes.
+            var standOn = _cardsRow != null && _cardsRow.gameObject.activeInHierarchy ? _cardsRow : _tray;
+            standOn.GetWorldCorners(_corners);
             float top = _corners[1].y;
+
+            _tray.GetWorldCorners(_corners);
             float x = (_corners[0].x + _corners[3].x) * 0.5f;
 
             if (card != null)
@@ -821,6 +868,7 @@ namespace NonaRoyale.Unity.View
             if (card != null && !ReferenceEquals(card, _peekOwner)) return;
 
             _peekOwner = null;
+            _peekPressed = false;
             _peek.gameObject.SetActive(false);
         }
 

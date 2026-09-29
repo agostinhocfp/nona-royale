@@ -1,7 +1,7 @@
 # Nona Royale — Cast onboarding (CO)
 
 > Location in repo: `docs/design/CAST_ONBOARDING.md` · Project copy: `claude/CAST_ONBOARDING.md`
-> Status: **Open, 2026-09-29.** CO0 (the words the cards need) written, waiting on Play Mode. CO1–CO6 planned.
+> Status: **Open, 2026-09-29.** CO0 (the words the cards need) written, waiting on Play Mode. **CO3a (hold any card to read its peek) built, waiting on a phone.** CO1–CO6 planned.
 > Related: `STRANGER_TEST.md` (§4 condition 2, "Casts": the condition this pass exists to meet), `LAUNCH_UI_PASS.md` (G10a, the first-match tips this builds on), `HUD_PASS.md` (H1, the tray's stable geometry, which nothing here may break), `MOBILE.md` (M3: every change must work upright and on touch), `PRESENTATION.md` §1 (the view computes nothing), ADR-0008.
 
 ## Why this document exists
@@ -86,6 +86,19 @@ That is a discoverability failure, not a comprehension failure. Players who grew
 - Implementation: a `HoldRelay` component (`IPointerDownHandler`, `IPointerUpHandler`, `IPointerExitHandler`), shaped like `HoverRelay`. It reports a hold and marks the press consumed; the card's click handler checks that and returns without arming. `GlossaryCard.ShowAbility(host, operatorName, ability, stateLine)` is the new entry point.
 - Files: `HoldRelay` (new, `Assets/_Project/Scripts/Unity/View/HoldRelay.cs`), `GlossaryCard`, `ActionTray`.
 
+#### CO3a — Hold any card to read its peek (designer, 2026-09-29, built)
+
+The first slice, from the designer's phone playtest: on touch the peek only ever showed the armed ability, so a card that couldn't be cast could never be read.
+
+- **Hold any ability card** (0.4 s, touch or mouse), castable or not: the tray's **peek** opens (name, meta, description, rules line), not yet the full glossary card. The hold never arms; its release is made ineligible for a click.
+- **Tap a card that can't be cast:** the same peek, since there is nothing to arm. A castable card still arms on a tap, and its peek still shows for 4 s on touch, as before.
+- **The peek names the card's state** after the meta ("ready in 2 turns", "needs 5e, have 2").
+- **A peek opened by a press stays until the next press anywhere.** Hover peeks on desktop are unchanged.
+- **Hold feedback:** a thin cyan bar fills along the card's bottom edge from 0.15 s.
+- **The peek is lower** (designer, on a Galaxy S26): it stands on the top edge of the card row instead of the tray's, so upright it covers the aim line, the dice and the operator card rather than the board. Wide, the difference is the tray's padding.
+- Still open from CO3: the full card in `GlossaryCard`, linked keywords, right-click on desktop.
+- Files: `HoldRelay` (new), `ActionTray`; `HoldRelayTests` (new, EditMode).
+
 ### CO4 — Energy full
 
 - At the cap on a human turn, the energy pips glow gold and pulse slowly.
@@ -115,3 +128,4 @@ CO1 and CO2 first: the cheapest, and between them they fix finding 1 and finding
 - 2026-09-29 — Pass opened from the first stranger session. Findings read from the repo. CO3 added at the designer's request.
 - 2026-09-29 — Pass doc committed (`04c8158`). **CO0 written:** every ability description rewritten with context, and the peek shows it. Core 972 passing; view compile and Play Mode owed.
 - 2026-09-29 — **CO0 revised (designer): facts, not advice.** Every sentence telling the player when or how to cast came out ("open with Ace Shards, then follow with this", "save it for the kill", "cheap and ready again soon"). The rule went into `AbilityDefinition.Description`; the two-sentence test went with it, since it asked for exactly that advice. Core 971 passing.
+- 2026-09-29 — **CO3a built** (designer, phone playtest): hold any ability card to read its peek, tap a card that can't be cast to read it, the peek names the card's state and sits on the card row rather than above the tray. Runtime, editor and EditMode test assemblies compile against the editor DLLs; not yet run in Unity or on the phone.
