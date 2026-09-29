@@ -112,7 +112,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition ShortCircuit { get; } = new AbilityDefinition(
             id: 801, name: "Short Circuit",
             description:
-                "The engineer drives a charged prod into the target, shorting its systems and leaving it frozen through its next turn.",
+                "Jabs an enemy right beside you for a little damage. They are stunned through their next turn, unable to move or use abilities.",
             energyCost: 3, cooldownTurns: 1, range: 1,
             effects: new[]
             {
@@ -164,7 +164,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition ZeroDay { get; } = new AbilityDefinition(
             id: 802, name: "Zero-Day",
             description:
-                "The engineer launches a magnetized guided grenade to an enemy, its magnets snap tightly to the target. The next turn, it explodes dealing massive area-of-effect thermal damage and slowing nearby enemies.",
+                "Sticks a charge on an enemy. When your next turn begins it goes off wherever they have moved, hurting them and any enemy beside them and slowing them all. A cleanse removes it before it blows.",
             energyCost: 4, cooldownTurns: 3, range: 3,
             effects: new[]
             {
@@ -215,7 +215,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition Collision { get; } = new AbilityDefinition(
             id: 803, name: "Collision",
             description:
-                "Upon striking a target (be it an enemy or an ally), the caster anchors himself to it, launching himself towards him causing damage to enemies in his path and stunning the target. Lands a cell behind the target.",
+                "Charge down the track to the target, clipping every enemy you pass, and land just beyond it. On an enemy you hit hard and stun them for their next turn; on an ally it is just the ride.",
             energyCost: 6, cooldownTurns: 3, range: 5,
             effects: new[]
             {

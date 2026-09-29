@@ -85,7 +85,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition CryoPulse { get; } = new AbilityDefinition(
             id: 401, name: "Cryo-Pulse",
             description:
-                "Freezes the ground around an enemy. Everything caught in it is wounded, slowed, and cracks open as it thaws.",
+                "Freezes the ground around an enemy. They and every enemy near them are hurt, slowed through their next turn, and left bleeding.",
             energyCost: 4, cooldownTurns: 3, range: 3,
             effects: new[]
             {
@@ -140,7 +140,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition Translocation { get; } = new AbilityDefinition(
             id: 402, name: "Translocation",
             description:
-                "Trade places with anyone on the board, friend or enemy.",
+                "Swap places with any operator in reach, friend or enemy. Each of you lands where the other stood.",
             energyCost: 3, cooldownTurns: 4, range: TranslocationRange,
             effects: new[] { AbilityEffect.Swap() });
 
@@ -181,7 +181,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition CryoField { get; } = new AbilityDefinition(
             id: 403, name: "Cryo Field",
             description:
-                "Mimi surrounds herself with a deepening cold. For a while, enemies near her are bitten by frost each time her turn begins.",
+                "Wraps you in cold for a while. Each time your turn begins, every enemy near you takes frost damage, wherever you have moved to.",
             energyCost: 4, cooldownTurns: 3, range: 0,
             targeting: AbilityTargeting.None,
             effects: new[]

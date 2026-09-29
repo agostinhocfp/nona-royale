@@ -81,7 +81,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition NaniteInfusion { get; } = new AbilityDefinition(
             id: 501, name: "Nanite Infusion",
             description:
-                "Nanites seal an ally's wounds. Turned on an enemy they do the opposite, and your squad standing near them catches the runoff.",
+                "Heals an ally, or yourself. Aimed at an enemy it wounds them instead, and any of your operators standing near that enemy are healed a little.",
             energyCost: 3, cooldownTurns: 2, range: 5,
             // Opts in to self-cast (§10, 2026-09-17): his toolkit is defensive,
             // and a healer who cannot treat himself is half one.
@@ -142,7 +142,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition TraumaPlate { get; } = new AbilityDefinition(
             id: 502, name: "Trauma Plate",
             description:
-                "Bolts a ballistic insert onto an ally's carrier. It takes what comes until it is spent, then fails.",
+                "Gives an ally, or yourself, a shield that soaks up damage until it is used up or wears off. Atomic hits go straight through it.",
             energyCost: 4, cooldownTurns: 3, range: 4,
             // Opts in to self-cast (§10, 2026-09-17): defensive toolkit — a
             // support plates himself when the fight comes to him.
@@ -182,7 +182,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition NeuralPurge { get; } = new AbilityDefinition(
             id: 503, name: "Neural Purge",
             description:
-                "Floods an ally's nerves with inhibitory signals, washing out everything riding them.",
+                "Strips every status from an ally or yourself: stuns, slows, bleeding, marks, and charges or strikes waiting to land. It removes helpful ones too, shields included.",
             energyCost: 6, cooldownTurns: 3, range: 5,
             // Opts in to self-cast (§10, 2026-09-17): defensive toolkit — he
             // washes his own stuns and marks like anyone else's.

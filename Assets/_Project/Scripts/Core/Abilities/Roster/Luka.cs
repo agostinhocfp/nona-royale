@@ -115,7 +115,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition BlindSpot { get; } = new AbilityDefinition(
             id: 901, name: "Blind Spot",
             description:
-                "Luka's ring wipes him from every lens in the room. He reappears beside the target and strikes it, harder if it is a heavy target, and slows it for a round. If it is still close when his next turn begins, he strikes it again.",
+                "Vanish and reappear beside an enemy, strike them, and slow them through their next turn. If they are still close when your next turn begins, you strike again. Both hits land harder on heavy targets.",
             energyCost: 5, cooldownTurns: 3, range: 3,
             effects: new[]
             {
@@ -159,7 +159,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition HermesRing { get; } = new AbilityDefinition(
             id: 902, name: "Hermes' Ring",
             description:
-                "Luka turns his ring inward, jamming all tech damage aimed at him for a while.",
+                "Blocks all Tech damage aimed at you for a while. Tech comes from Kian's abilities, Mimi's Cryo-Pulse and Sanity's Zero-Day; Normal and Atomic hits still land.",
             energyCost: 3, cooldownTurns: 4, range: 0,
             targeting: AbilityTargeting.None,
             effects: new[]
@@ -206,7 +206,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition Vendetta { get; } = new AbilityDefinition(
             id: 903, name: "Vendetta",
             description:
-                "Luka becomes enraged with unrelenting focus, assaulting the target with a flurry of atomic blows. Any blow can land a critical hit, and heavy targets suffer worse.",
+                "A flurry of blows on one enemy that no shield stops, and you heal what each blow takes off. Any blow can land a critical hit, and heavy targets suffer worse.",
             // 5 energy, cooldown 2 since 2026-09-20/21 (designer): both halves
             // of the pass, the cost first and the cooldown after the commit
             // message and the code were found to disagree.

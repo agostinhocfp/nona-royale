@@ -91,7 +91,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition DealAgain { get; } = new AbilityDefinition(
             id: 1201, name: "Deal Again",
             description:
-                "She sweeps the worst die off the table and throws it again. What comes up is the house's business.",
+                "Throws your lowest unspent die again. The new face can come up worse.",
             energyCost: 3, cooldownTurns: 1, range: 0,
             effects: new[]
             {
@@ -128,7 +128,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition TheTable { get; } = new AbilityDefinition(
             id: 1202, name: "The Table",
             description:
-                "She sets a game down on the board. Nobody walks past a game in progress, and nobody sits down for free.",
+                "Sets a table on a cell near you for a few of your turns. An enemy whose dice move would cross it is stopped on it and hurt, each enemy only once.",
             // 5 energy since 2026-09-21 (designer): at 6 it was priced beside
             // the ultimates that kill, and it kills nobody.
             energyCost: 5, cooldownTurns: 3, range: 4,
@@ -162,7 +162,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition Boxcars { get; } = new AbilityDefinition(
             id: 1203, name: "Boxcars",
             description:
-                "She takes the dice out of your hand, looks at them, and puts them back the way the house likes them.",
+                "Turns both your unspent dice to the top face. They count as a double, so you still earn another roll.",
             // 7 energy since 2026-09-21 (designer), from 9. At 9 it was three
             // quarters of the cap for an ultimate that cannot kill anybody, so
             // it was reachable only after a hoard that cost her the race.

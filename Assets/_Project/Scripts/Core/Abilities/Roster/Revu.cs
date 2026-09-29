@@ -75,7 +75,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition LeechRound { get; } = new AbilityDefinition(
             id: 1101, name: "Leech Round",
             description:
-                "A round with a loan attached. It wounds the target, and the target's side owes the house a debt that grows every turn until it is collected.",
+                "Wounds an enemy and puts their whole side in debt to you. The debt grows every time they end a turn. It ends when you collect it with Sadist, or when one of their operators lands on you.",
             energyCost: 3, cooldownTurns: 1, range: 3,
             effects: new[]
             {
@@ -107,7 +107,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition Sadist { get; } = new AbilityDefinition(
             id: 1102, name: "Sadist",
             description:
-                "Collection day. The deeper the target's side is in debt, the harder it lands, and whoever stands near the debtor pays a share. The debt is settled either way.",
+                "Collects the debt: hits an enemy for as much as their side owes you, and enemies near them take half. It still hurts with no debt, and the debt is cleared either way.",
             energyCost: 6, cooldownTurns: 3, range: 3,
             effects: new[]
             {

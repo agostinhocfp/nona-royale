@@ -1,7 +1,7 @@
 # Nona Royale — Cast onboarding (CO)
 
 > Location in repo: `docs/design/CAST_ONBOARDING.md` · Project copy: `claude/CAST_ONBOARDING.md`
-> Status: **Open, 2026-09-29.** Planned. Nothing written yet.
+> Status: **Open, 2026-09-29.** CO0 (the words the cards need) written, waiting on Play Mode. CO1–CO6 planned.
 > Related: `STRANGER_TEST.md` (§4 condition 2, "Casts": the condition this pass exists to meet), `LAUNCH_UI_PASS.md` (G10a, the first-match tips this builds on), `HUD_PASS.md` (H1, the tray's stable geometry, which nothing here may break), `MOBILE.md` (M3: every change must work upright and on touch), `PRESENTATION.md` §1 (the view computes nothing), ADR-0008.
 
 ## Why this document exists
@@ -30,6 +30,29 @@ That is a discoverability failure, not a comprehension failure. Players who grew
 - **Touch first.** Each increment names its upright and touch behaviour.
 
 ## Increments
+
+### CO0 — Words for the cards (designer, 2026-09-29)
+
+- **Why first.** A card in the tray shows only its meta ("5e · r3 · cd 3"). The hover peek showed the rules line, which is exact but reads as a formula, and never showed the description. CO3's full card would have had nothing plain to say either: a third of the descriptions were flavour alone, and some were wrong.
+- **Every ability's description rewritten** (32 across the twelve roster operators): what it does in plain words, and what follows from it. Still no numbers (`AbilityDefinition.Description`); the rules line carries them.
+- **Facts, not advice** (designer, 2026-09-29). A description never says when to cast, what to pair it with or what it is good for, and passes no verdict on cost or cooldown ("cheap", "save it for the kill"). "It hits harder if they are already bleeding" is the model: the player gets the fact and makes the decision. The rule is written into `AbilityDefinition.Description`'s remarks.
+- **Corrections along the way:**
+  - Zero-Day promised "massive area-of-effect thermal damage"; it deals a small Tech hit and a slow.
+  - Vendetta never mentioned its lifesteal.
+  - Nano Cell's words predate the removal of its stun (2026-09-24); they now say it blocks collisions too.
+  - Hermes' Ring now says where Tech damage comes from (Kian's abilities, Cryo-Pulse, Zero-Day) and that Normal and Atomic still land.
+  - Sonic Disrupter now says that an enemy ahead of the caster is pushed further along.
+  - Drone Strike now says enemies on a safe cell take nothing.
+- **The peek leads with the words.** Hovering a card (or arming one on touch) opens the peek with the name and meta, the description, then the rules line in the dimmer text colour as the reference.
+- **Tests:** `AbilityDescriptionTests` (new): no digits, at most 320 characters. Facts-not-advice is kept in review; no test can read it.
+- **Descriptions are not in the rules fingerprint** (`RulesFingerprintTests`), so existing replays stay valid.
+- Files: the twelve `Roster/*.cs`, `AbilityDefinition`, `ActionTray`, `AbilityDescriptionTests` (new; Unity writes its `.meta`).
+- **Checked:** core 971 passing (969 + 2). The view was not compiled here: run `tools\view-compile.cmd`, or let Unity recompile.
+- **Play Mode checklist:**
+  - Hover each of an operator's three cards: the peek shows the name and meta, then the plain description, then the rules line, dimmer. Nothing is cut off at 1920×1080 or 1280×720.
+  - Killzone and Tagged From Above, the two longest, still fit the peek above the bar without covering the top bar.
+  - On touch (or with the simulator), arming a card shows the same peek for its few seconds.
+  - Operator guide and draft dossier: the new words appear under each ability.
 
 ### CO1 — Stop pointing at END TURN
 
@@ -90,3 +113,5 @@ CO1 and CO2 first: the cheapest, and between them they fix finding 1 and finding
 ## Log
 
 - 2026-09-29 — Pass opened from the first stranger session. Findings read from the repo. CO3 added at the designer's request.
+- 2026-09-29 — Pass doc committed (`04c8158`). **CO0 written:** every ability description rewritten with context, and the peek shows it. Core 972 passing; view compile and Play Mode owed.
+- 2026-09-29 — **CO0 revised (designer): facts, not advice.** Every sentence telling the player when or how to cast came out ("open with Ace Shards, then follow with this", "save it for the kill", "cheap and ready again soon"). The rule went into `AbilityDefinition.Description`; the two-sentence test went with it, since it asked for exactly that advice. Core 971 passing.

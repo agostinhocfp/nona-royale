@@ -66,6 +66,13 @@ namespace NonaRoyale.Unity.View
     /// touch screen, or upright where the cards carry no rules line, the peek
     /// shows the armed ability's, since a tap arms rather than hovers.
     ///
+    /// <b>The peek leads with plain words</b> (CAST_ONBOARDING.md,
+    /// 2026-09-29). The card shows only cost, reach and cooldown, and a player
+    /// new to the genre cannot read "5e · r3 · cd 3" or a rules line as advice.
+    /// So the peek opens with the ability's description, what it does and
+    /// what follows from it, and the rules line follows, dimmer, as the
+    /// reference that carries the numbers.
+    ///
     /// Its left and right edges follow whatever the side panels reserve, and
     /// the composition root sets them through <see cref="SetInsets"/>. The
     /// background blocks board clicks.
@@ -157,6 +164,7 @@ namespace NonaRoyale.Unity.View
         private RectTransform _peek;
         private TMP_Text _peekTitle;
         private TMP_Text _peekBody;
+        private TMP_Text _peekWords;
         private RectTransform _peekOwner;
         private readonly Vector3[] _corners = new Vector3[4];
         private const float PeekWidth = 380f;
@@ -768,9 +776,9 @@ namespace NonaRoyale.Unity.View
         // ── The peek (G7b-3) ─────────────────────────────────────────────
 
         /// <summary>
-        /// Opens the peek with <paramref name="ability"/>'s name and whole rules
-        /// line, above <paramref name="card"/>, or centred over the bar when
-        /// there is no card to hang it from.
+        /// Opens the peek with <paramref name="ability"/>'s name, its
+        /// description and its whole rules line, above <paramref name="card"/>,
+        /// or centred over the bar when there is no card to hang it from.
         /// </summary>
         private void ShowPeek(AbilityDefinition ability, RectTransform card)
         {
@@ -778,6 +786,7 @@ namespace NonaRoyale.Unity.View
             if (_peek == null) BuildPeek();
 
             _peekTitle.text = $"<b>{ability.Name}</b>  <size=85%><color=#{UiTheme.Hex(UiTheme.TextDim)}>{OperatorDossier.Meta(ability)}</color></size>";
+            _peekWords.text = ability.Description;
             _peekBody.text = RulesMarkup.For(RulesText.For(ability), linked: false);
 
             _peekOwner = card;
@@ -827,8 +836,10 @@ namespace NonaRoyale.Unity.View
             _peek.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
             // Wrapped labels: no single-line slack to pull them into each other.
+            // Plain words first, then the rules line as the dimmer reference.
             _peekTitle = UiKit.Label(_peek, "", UiTheme.FontBody, wrap: true);
-            _peekBody = UiKit.Label(_peek, "", UiTheme.FontSmall, UiTheme.Text, wrap: true);
+            _peekWords = UiKit.Label(_peek, "", UiTheme.FontSmall, UiTheme.Text, wrap: true);
+            _peekBody = UiKit.Label(_peek, "", UiTheme.FontSmall, UiTheme.TextDim, wrap: true);
 
             // It must never take the pointer from the card under it.
             var group = _peek.gameObject.AddComponent<CanvasGroup>();

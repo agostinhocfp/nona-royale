@@ -138,7 +138,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition BioLinkRage { get; } = new AbilityDefinition(
             id: 701, name: "Bio-Link Rage",
             description:
-                "Unpicks an enemy's tissue faster than they can feel it, and feeds what comes off straight back into you.",
+                "Tears into an enemy close by and leaves them moving shorter for a while, and you heal a little from it. You heal more while your Killzone is still live.",
             energyCost: 3, cooldownTurns: 2, range: 2,
             effects: new[]
             {
@@ -179,7 +179,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition AblativePlating { get; } = new AbilityDefinition(
             id: 702, name: "Ablative Plating",
             description:
-                "Wraps you in a drone swarm that meets incoming fire and comes apart instead of you.",
+                "Wraps you in a shield that soaks up damage until it is used up or wears off. Atomic hits go straight through it.",
             energyCost: 3, cooldownTurns: 4, range: 0,
             targeting: AbilityTargeting.None,
             effects: new[]
@@ -243,7 +243,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition Killzone { get; } = new AbilityDefinition(
             id: 703, name: "Killzone",
             description:
-                "Blankets a stretch of track. It goes off a round later and crushes whatever is standing there, and the ground stays hostile afterwards.",
+                "Marks an area near you and heals you a little. When your next turn begins it goes off: every enemy inside is hurt and stunned, and whoever is still inside keeps getting hurt for a while. Enemies have one turn to leave before it goes off.",
             // Cooldown 4 since 2026-09-21 (designer), from 6. At once every
             // seven turns the trap was almost never on the board at the moment a
             // fast operator chose to close, which is the only moment it answers.

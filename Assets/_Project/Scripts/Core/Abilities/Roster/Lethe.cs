@@ -138,7 +138,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition NanoCell { get; } = new AbilityDefinition(
             id: 1001, name: "Nano Cell",
             description:
-                "Wraps an ally in a lattice of nanites that knits its wounds and turns ordinary harm aside until it dissolves.",
+                "Heals an ally, or yourself, and wraps them in a shield that stops every Normal and Tech hit until it wears off, so an enemy landing on them bounces off. Atomic hits still go through, and a cleanse strips it.",
             energyCost: 4, cooldownTurns: 4, range: 4,
             // Opts in to self-cast (§10, 2026-09-17).
             allowsSelfTarget: true,
@@ -228,7 +228,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition ErisExploit { get; } = new AbilityDefinition(
             id: 1002, name: "Eris' Exploit",
             description:
-                "Sows discord in a patch of track: it draws the enemy in around it, then every enemy inside turns on every other one at once, and again next round on whoever stayed.",
+                "Pulls nearby enemies toward a cell, then hurts each enemy around it once for every other enemy there with them, so a lone enemy takes nothing. It goes off again when your next turn begins, on whoever stayed.",
             energyCost: 4, cooldownTurns: 3, range: 3,
             targeting: AbilityTargeting.Cell,
             effects: new[]

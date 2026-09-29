@@ -59,7 +59,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition DarginPulse { get; } = new AbilityDefinition(
             id: 301, name: "Dargin Pulse",
             description:
-                "A burst that scrambles motor function, leaving every enemy nearby unable to act.",
+                "Every enemy close to you is hurt and stunned. On their next turn they cannot move or use abilities.",
                        energyCost: 6, cooldownTurns: 3, range: 2,
             targeting: AbilityTargeting.None,
 
@@ -96,7 +96,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition MiraclePull { get; } = new AbilityDefinition(
             id: 302, name: "Miracle Pull",
             description:
-                "A gravitic tether no defence can stop, collapsing in on everything around the target. An enemy already wounded is finished outright.",
+                "An enemy below half health is knocked out on the spot. A healthier one takes a heavy hit instead, and every enemy near it takes some too, straight through shields.",
             energyCost: 9, cooldownTurns: 3, range: 2,
             effects: new[]
             {

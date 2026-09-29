@@ -99,7 +99,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition InversionMatrix { get; } = new AbilityDefinition(
             id: 601, name: "Inversion Matrix",
             description:
-                "Fires a line of graviton emitters down the track ahead of you, lifting every enemy in their path off the ground.",
+                "Hits every enemy on the cells straight ahead of you on the track and stuns them for their next turn. It fires from where you stand, with nothing to aim.",
             energyCost: 3, cooldownTurns: 3, range: 4,
             targeting: AbilityTargeting.None,
             effects: new[]
@@ -160,7 +160,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition SonicDisrupter { get; } = new AbilityDefinition(
             id: 602, name: "Sonic Disrupter",
             description:
-                "Vents a compressed charge in every direction, hurling nearby enemies clear of you and leaving them struggling to recover.",
+                "Blasts every enemy near you: they are hurt, slowed through their next turn, and shoved away from you. An enemy behind you loses ground; one ahead of you is pushed further along.",
             energyCost: 3, cooldownTurns: 3, range: SonicDisrupterRadius,
             targeting: AbilityTargeting.None,
             effects: new[]
@@ -236,7 +236,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition DroneStrike { get; } = new AbilityDefinition(
             id: 603, name: "Drone Strike",
             description:
-                "Paints a square anywhere on the board. A beam comes down on it next round, splitting its force between everyone caught underneath.",
+                "Marks any cell on the board. When your next turn begins, a strike lands there and splits its damage between the enemies on and beside it, so a lone enemy takes it all. Enemies on a safe cell take nothing.",
             energyCost: 4, cooldownTurns: 2,
             range: AbilityDefinition.UnlimitedRange,
             targeting: AbilityTargeting.Cell,

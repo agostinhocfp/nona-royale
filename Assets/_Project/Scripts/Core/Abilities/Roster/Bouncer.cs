@@ -91,7 +91,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition VelvetRope { get; } = new AbilityDefinition(
             id: 101, name: "Velvet Rope",
             description:
-                "Drags an enemy to your side, and nothing they carry will stop it. On an ally, repositions them unharmed.",
+                "Hooks an enemy in reach and drags them to the cell beside you, with a hit no shield can stop. They land inside your Intimidating Presence. On an ally, it pulls them to your side unharmed.",
             energyCost: 6, cooldownTurns: 2, range: 3,
             effects: new[]
             {
@@ -154,7 +154,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition AllInMauling { get; } = new AbilityDefinition(
             id: 102, name: "All-In Mauling",
             description:
-                "A brutal exchange at close quarters that costs you blood as well. On an ally, a rough grapple that patches them up instead.",
+                "A brutal beating for an enemy close by, and you take a little damage back in the exchange. On an ally, a rough grapple that patches them up instead.",
             energyCost: 4, cooldownTurns: 1, range: 2,
             effects: new[]
             {

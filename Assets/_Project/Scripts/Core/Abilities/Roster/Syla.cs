@@ -41,7 +41,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition FromTheHip { get; } = new AbilityDefinition(
             id: 201, name: "From the Hip",
             description:
-                "A quick shot that leaves the target struggling to keep pace. It bites much deeper into someone already bleeding.",
+                "A quick shot that slows an enemy through their next turn, so every die carries them less far. It hits harder if they are already bleeding.",
             energyCost: 3, cooldownTurns: 1, range: 3,
             effects: new[]
             {
@@ -62,7 +62,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition AceShards { get; } = new AbilityDefinition(
             id: 202, name: "Ace Shards",
             description:
-                "Scatters shrapnel around you, opening wounds on every enemy close enough to catch it.",
+                "Shrapnel bursts all around you, hurting every enemy close by and leaving each one bleeding. Bleeding hurts again when their next turn begins.",
                        energyCost: 6, cooldownTurns: 3, range: 2,
             targeting: AbilityTargeting.None,
 
@@ -130,7 +130,7 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityDefinition TaggedFromAbove { get; } = new AbilityDefinition(
             id: 203, name: "Tagged From Above",
             description:
-                "Paints an enemy for the squad and slips you out of sight. If your side finishes them while the mark holds, everyone gets a cell or two of extra movement each roll.",
+                "Marks an enemy, who takes damage at the start of each of their turns while the mark lasts, and hides you from single-target abilities. If your side knocks the marked enemy out before the mark fades, your whole squad moves extra cells for a while.",
             energyCost: 9, cooldownTurns: 4, range: 3,
             effects: new[]
             {
