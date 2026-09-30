@@ -370,6 +370,14 @@ namespace NonaRoyale.Unity.Composition
 
         private void Start()
         {
+            // The match keeps playing while the window is in the background
+            // (CORE_GAMEPLAY.md CG3, designer 2026-09-30): the CPUs take their
+            // turns while the player is elsewhere. The project's Player setting
+            // is off, and off means Unity stops the whole loop on losing focus,
+            // in the Editor and a desktop build alike. A phone's OS suspends the
+            // app whatever this says.
+            Application.runInBackground = true;
+
             _seats.Clear();
 
             // The inspector's seed is a starting value for debugging, not the

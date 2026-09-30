@@ -1,7 +1,7 @@
 # Nona Royale — Core Gameplay Pass
 
 > Location in repo: `docs/design/CORE_GAMEPLAY.md` · Project copy: `claude/CORE_GAMEPLAY.md`
-> Status: **Open, 2026-09-30.** CG1 and CG2 in; the designer's list is still being written.
+> Status: **Open, 2026-09-30.** CG1–CG3 in; the designer's list is still being written.
 > Related: `HUD_PASS.md` (the tray's stable geometry, H1), `PRESENTATION.md` §4 (board-first input), `CAST_ONBOARDING.md` (CO3, hold a card to read it), `MOBILE.md` (the upright tray)
 
 ## Goal
@@ -14,6 +14,7 @@ The designer's notes from playing the match, taken one at a time. This pass chan
 |---|---|---|
 | CG1 | The tray shows an operator on other seats' turns | In, 2026-09-30 |
 | CG2 | Clicking any seat's operator shows its kit | In, 2026-09-30 |
+| CG3 | The match keeps running in the background | In for desktop, 2026-09-30; mobile needs match resume (open) |
 
 ### CG1 — The tray stays up off-turn
 
@@ -43,6 +44,13 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - A card its seat could cast is drawn at full strength with no cyan edge and is not a button. A tap or a hold opens the peek, as on any card that cannot be cast (CO3); on a mouse the hover peek works too.
 - The operator card names the seat in its colour ("RED · on the board"), since the hero portrait carries no seat colour.
 
+### CG3 — The match keeps running in the background
+
+**Designer (2026-09-30):** "The match should keep running while the app is on the background."
+
+- **Desktop and the Editor:** the Player setting *Run In Background* was off, and off means Unity stops its whole loop when the window loses focus, so the CPUs froze mid-turn the moment the player looked elsewhere. `MatchBootstrap.Start` now sets `Application.runInBackground = true`. Nothing in the game paused on focus loss itself: the only focus handler re-applies the cursor. Music and sound keep playing too.
+- **Phones: not possible as asked.** iOS and Android suspend a backgrounded app's whole process; no setting keeps a Unity game's loop running there, and the OS may kill the process outright. What a phone can have instead is **resume**: save the match on `OnApplicationPause(true)` and restore it on launch. The pieces exist, a match is its seed and its command list (`Core/Replay`), so a save is small and a restore is a replay. Not built; open below.
+
 ## Play Mode checks
 
 - [ ] Solo against CPUs: after ending your turn, your last operator stays in the tray through every CPU turn; with nothing ever selected, one of yours appears on the first CPU turn.
@@ -53,7 +61,13 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - [ ] Read-only cards: cooldown counts are right; the energy line uses that seat's pool; hold and tap open the peek on touch.
 - [ ] Hot seat with two humans: the second player does not start on the first player's operator.
 - [ ] Upright (phone): the same, in the stacked tray.
+- [ ] CG3: start a match against CPUs, end your turn, switch to another window: the CPUs keep playing (Editor and a Windows build).
+
+## Open
+
+- [ ] **Match resume on mobile (CG3):** save the seed and command list when the app is backgrounded, restore by replay on the next launch, and offer "Resume match" on the title screen.
 
 ## Log
 
+- 2026-09-30 — **CG3 in for desktop**: `Application.runInBackground = true` at start. Mobile resume recorded as an open item.
 - 2026-09-30 — **Opened, CG1 and CG2 in.** New on the host: `ShownOperator`, `CanCommand` and `ViewOperator` (`IControlPanelHost`), backed by `_viewedOperator` in `MatchBootstrap`. `ActionTray` draws the shown operator and renders it read-only when it is not the player's to command; `SquadRail` rows and chips the player cannot command show their operator on a click. Compiles; not yet played.
