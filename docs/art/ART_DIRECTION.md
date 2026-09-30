@@ -37,7 +37,7 @@ Nona Royale is a stylized 2D board game set in a criminal underworld dressed as 
 
 | | Environment / world | Tech / ability FX |
 |---|---|---|
-| Temperature | Warm (gold, amber, maroon) | Cool (cyan, white, pale blue) |
+| Temperature | Warm (gold, amber, maroon) | Luminous: the board's cyan, and each operator's own glow (ADR-0014) |
 | Surface | Physical, textured, tarnished | Luminous, holographic, clean |
 | Form | Ornate, gilded, Deco geometry | Precise, minimal, near-future |
 | Feel | Old-world, decaying | Modern, intrusive, sharp |
@@ -90,16 +90,17 @@ Grounded, rich, shadow-heavy. Accent tones are *accents*, never base colors.
 | Jewel accent A | Blood velvet | `#5A1626` | Carpet, drapery, danger cues |
 | Jewel accent B | Deco emerald | `#0F6E56` | Secondary accent (felt, glass) — sparing |
 | Ink line | Deep maroon-black | `#1C0E12` | Character/tile outlines |
-| **Tech accent** | Holo cyan | `#5FE0E8` -> hi `#C9FBFF` | **Ability FX, holographic UI states, powered tiles — FX only, never a surface color.** A little always-on cyan in frame hardware is allowed (§2.2, 2026-09-27) |
+| **Tech accent** | Holo cyan | `#5FE0E8` -> hi `#C9FBFF` | **Holographic UI states, powered tiles, and the house's devices — FX only, never a surface color.** A little always-on cyan in frame hardware is allowed (§2.2, 2026-09-27) |
+| **Operator glows** | One per operator | `OperatorGlow.cs` | **A powered device, in its owner's colour (ADR-0014, 2026-09-30).** The house and Luka glow cyan; Syla `#FF3FC8`, Mimi `#DDF6FF`, Kian `#D4FF3A`, Nuetu `#F12A27`, Fortuna `#FFF1CC`, Revú `#C04DFF`, Lethe `#EEE6FF`. None on a seat's hue or the threat rim's amber, Nuetu's red excepted by the designer |
 
 **In code:** these values live in `Assets/_Project/Scripts/Unity/View/UiTheme.cs`. Locking the palette means editing that file; nothing else in the view holds a colour.
 
-Rough mix per frame: ~70% dark neutrals, ~20% gold, ~10% one jewel tone. The tech cyan appears only when something is *powered/active*, plus the small allowance in the frame — its rarity is what gives it meaning. The visual target keeps this mix: a near-black cross and frame, gilt edges and fittings, and one jewel tone per seat.
+Rough mix per frame: ~70% dark neutrals, ~20% gold, ~10% one jewel tone. The tech cyan, and each operator's glow, appears only when something is *powered/active*, plus the small allowance in the frame — its rarity is what gives it meaning. The visual target keeps this mix: a near-black cross and frame, gilt edges and fittings, and one jewel tone per seat.
 
 **Two rules the first operator renders forced (2026-09-19):**
 
 - **Operator metal is aged brass, never gilt.** Sizeable metal on a figure uses `#7C5A1E` with tarnish. **The one exception is Bouncer's gauntlet, which is gunmetal steel (designer, 2026-09-29):** a big gold or brass fist reads as Thanos, which is not the goal. Steel also keeps it clear of Fortuna's gold and of the brass on Kurbyn and Sanity. The first renders came back in bright polished gold, which put a large gilt mass on operators who are not Fortuna and quietly spent her whole distinction. **Fortuna is the only figure whose metal is gilt, and the only one permitted to exceed the gold budget** — being over-gilded is how she reads as the room's owner rather than its staff.
-- **No decorative gold trim on contractors.** Syla's first pass carried gold edging on the cape and pods. It came off. Her frame is black and her accent is cyan.
+- **No decorative gold trim on contractors.** Syla's first pass carried gold edging on the cape and pods. It came off. Her frame is black and her accent is her magenta drone light (ADR-0014).
 
 **Jewel tones as garments are allowed on operators**, because a figure occupies a small fraction of a frame: Kian wears Deco emerald and Revú wears oxblood, and each is the only operator who does. Revú's oxblood must be clearly **darker** than `board_carpet.png` (§6.1 forbids a red operator on blood velvet).
 
@@ -124,8 +125,8 @@ Rough mix per frame: ~70% dark neutrals, ~20% gold, ~10% one jewel tone. The tec
 - **Clothing:** tailored fitted formalwear, lightly embellished; carries **one discreet piece of tech** that hints at the ability without breaking the formalwear silhouette. A device that has to break the silhouette is the wrong device (ADR-0011 rejected a prosthetic arm on exactly this rule).
 - **Expressions:** subtle but readable.
 - **Silhouette-first:** identifiable in pure black silhouette at board scale.
-- **Ability tells:** when powered, an operator's tech reads in the cool register (§2.1) — a device lights, a holographic cue appears — distinct from the warm environment.
-- **Devices are DARK at rest (added 2026-09-19).** Cyan means *powered*, and §3 says its rarity is what gives it meaning. The standing and seated board sprites carry **no cyan at all**; the light arrives with the cast tell and leaves with it. Character sheets and portraits may show the device lit, because their job is to establish where the light goes — generate both states and ship the unlit one to the board. Every figure in the first batch came back glowing while standing idle, so this has to be stated in the prompt rather than assumed. The 2026-09-27 frame-cyan allowance does not extend to figures.
+- **Ability tells:** when powered, an operator's tech reads in the tech register (§2.1) — a device lights, a holographic cue appears — distinct from the warm environment. **Since 2026-09-30 it lights in the operator's own colour** (ADR-0014): cyan for the house and Luka, a colour of their own for everyone else.
+- **Devices are DARK at rest (added 2026-09-19).** A glow means *powered* (cyan until ADR-0014; now the operator's own colour), and §3 says its rarity is what gives it meaning. The standing and seated board sprites carry **no cyan at all**; the light arrives with the cast tell and leaves with it. Character sheets and portraits may show the device lit, because their job is to establish where the light goes — generate both states and ship the unlit one to the board. Every figure in the first batch came back glowing while standing idle, so this has to be stated in the prompt rather than assumed. The 2026-09-27 frame-cyan allowance does not extend to figures.
 
 ### 5.1 The value ledger — assigned, not discovered
 
@@ -134,7 +135,7 @@ Rough mix per frame: ~70% dark neutrals, ~20% gold, ~10% one jewel tone. The tec
 | # | Operator | Value solution | Silhouette | Dominant accent |
 |---|---|---|---|---|
 | 1 | Luka | warm light torso (camel) | four-point X, forward wedge | cyan signet ring |
-| 2 | Syla | light core in a dark frame | downward triangle | cyan drone slits |
+| 2 | Syla | light core in a dark frame | downward triangle | magenta drone slits |
 | 3 | Bouncer | black mass split by a hard white V | wide low slab | gunmetal steel gauntlet |
 | 4 | Kurbyn | mid-dark, broken by bare forearms | coiled four-point | brass + nape cyan |
 | 5 | Javi | dark waistcoat block, two white sleeves | upright cross | frosted canister seals |
@@ -142,13 +143,13 @@ Rough mix per frame: ~70% dark neutrals, ~20% gold, ~10% one jewel tone. The tec
 | 7 | Mimi | near-black and small, bright pale hardware | small dart | frosted white rig |
 | 8 | Fortuna | the only gold-dominant figure | diamond (under review) | gilt gold |
 | 9 | Revú | the only red torso | three-point barbed hook | oxblood |
-| 10 | Kian | the only green torso, outline breaks upward | five-point spiked crown | emerald + cyan rod tips |
-| 11 | Nuetu | the only all-light mass, cool dove-grey | disc | black plates on grey |
+| 10 | Kian | the only green torso, outline breaks upward | five-point spiked crown | emerald + chartreuse rod tips |
+| 11 | Nuetu | black with bold red embroidery (the all-light slot is open since 2026-09-30) | disc | charcoal plates, red seams |
 | 12 | Lethe | the only true mid-grey figure | six-point spark | tarnished silver |
 
 **Four standing rules fall out of it:**
 
-- **The light torso is Luka's.** No other operator carries a warm light torso. Syla's ivory is a core inside a black frame, and Nuetu's dove-grey is cool and reads as a mass rather than a garment. This is why Javi wears a charcoal waistcoat over his bone-white shirt.
+- **The light torso is Luka's.** No other operator carries a warm light torso. Syla's ivory is a core inside a black frame. (Nuetu's dove-grey suit, the other light mass, became a black senator tunic on 2026-09-30.) This is why Javi wears a charcoal waistcoat over his bone-white shirt.
 - **The gilt is Fortuna's.** Every other operator's metal is aged brass, and Bouncer's gauntlet is steel (§3). This rule was written because the first Bouncer render spent her distinction in one pass.
 - **Two operators read by shape rather than value.** Mimi is solved by being the smallest figure with the brightest hardware; Lethe by being the only mid-grey and the only silhouette with radiating upper points.
 - **The board must be checked under the pieces, not beside them.** Revú on blood-velvet carpet and Luka on lit gold inlay are the two known collisions. Both are Play Mode checks.
@@ -254,3 +255,4 @@ Plus **structural / art-only elements** that are not gameplay cells: floor field
 - 2026-09-27 — **§6.1 decided against the target** (designer, `BOARD_SKIN.md` D1–D3). The path at rest is gilt-edged tiles at a lower contrast than the target, not a whisper; highlights must still pop over them. HOME is a black medallion with a gilt emblem and the vault door is dropped, so the win moment moves off the centre. The yard chairs are a sprite (`yard_chair`). §11's "central vault door" becomes the medallion.
 - 2026-09-27 — **The visual target is replaced by its simpler version** (designer). `VISUAL_TARGET.png` is now the image with a dark steel frame and no candles, plants or instrument; the board, the tables and their chairs are unchanged. The first version is kept as `VISUAL_TARGET_ORNATE.png`. Consequences: the frame stops spending the gold budget, and the board skin's prop increment (BS6) shrinks (`BOARD_SKIN.md`).
 - 2026-09-29 — **Bouncer's gauntlet becomes gunmetal steel** (designer). §3 gains an operator-steel row and an exception to the aged-brass rule; §5.1's Bouncer accent is updated. The reason: a big gold or brass fist read as Thanos. Found while making the chip portraits, where Luka's chip is the first accepted reference.
+- 2026-09-30 — **Each operator's device glows its own colour (ADR-0014, designer).** Cyan stays the board's, the interface's and the house's (Bouncer, Kurbyn, Javi, Sanity, and Luka's house ring); the others bring their own: Syla magenta, Mimi ice white, Kian chartreuse, Nuetu red, Fortuna warm white, Revú orchid, Lethe moon lilac. §2.1, §3, §5 and §5.1 amended. No glow on a seat's hue or the threat rim's amber, Nuetu's red excepted. Devices stay dark at rest. §5.1 also records Nuetu's new look (black senator tunic, red embroidery), which empties the all-light slot.

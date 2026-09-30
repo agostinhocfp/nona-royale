@@ -33,3 +33,4 @@
 - The image tool and plan behind the chip portraits `art/source/characters/{luka,bouncer,syla,kurbyn,javi,sanity,mimi,fortuna,revu,nuetu,lethe}/<name>_chip_{unlit,lit}.png` (2026-09-29). Each `_lit` file is a masked edit of its `_unlit` file (`ART_PROMPTS.md` v4.2, asset block 7).
 - The image tool and plan behind the hero frame sheet `art/source/ui/hero_frame_sheet.png` (designer, 2026-09-29), and the two sprites cut from it by `tools/art/hero_frame.py`: `Assets/_Project/Art/Resources/Art/Hero/hero_frame.png`, `hero_frame_lit.png`.
 - Steam's AI-content disclosure, checked at submission time.
+- The chip lit twins repainted to each operator's glow colour (2026-09-30, ADR-0014): `art/source/characters/{syla,mimi,fortuna,revu,lethe}/<name>_chip_lit.png`, made from `<name>_chip_lit_cyan.png` by `tools/art/recolour_glow.py`; `nuetu_chip_lit.png` is the designer's own red masked edit. No new generator output beyond Nuetu's.

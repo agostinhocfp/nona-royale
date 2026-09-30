@@ -1352,6 +1352,7 @@ namespace NonaRoyale.Unity.View
             }
 
             _chip.Show(ChipArtLibrary.For(Operator.Name));
+            _chip.SetGlow(OperatorGlow.For(Operator.Name));
             _chip.SetAlpha(_alpha);
             _chip.Active = true;
         }

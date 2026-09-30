@@ -15,8 +15,11 @@ namespace NonaRoyale.Unity.View
     ///
     /// <b>It shows the aim the command carried, nothing more.</b> Positions
     /// come from the pieces and the layout; which cells an area covers is the
-    /// engine's business and the effects that follow show it. Cyan is the
-    /// tech register (ART_DIRECTION §8).
+    /// engine's business and the effects that follow show it.
+    ///
+    /// <b>It glows the caster's colour</b> (<see cref="OperatorGlow"/>,
+    /// ADR-0014): cyan for the house, the operator's own for everyone else.
+    /// The caller passes it; cyan when it does not.
     /// </remarks>
     public sealed class CastTell : MonoBehaviour
     {
@@ -70,10 +73,11 @@ namespace NonaRoyale.Unity.View
         /// <param name="caster">The caster's position.</param>
         /// <param name="target">The target piece's position, for a targeted cast.</param>
         /// <param name="cell">The chosen cell's position, for a cell-targeted cast.</param>
-        public float Play(Vector3 caster, Vector3? target, Vector3? cell)
+        /// <param name="glow">The caster's glow (<see cref="OperatorGlow.For"/>); the house's cyan when null.</param>
+        public float Play(Vector3 caster, Vector3? target, Vector3? cell, Color? glow = null)
         {
             float k = _motion != null ? _motion.Tween(1f) : 1f;
-            var cyan = UiTheme.Cyan;
+            var cyan = glow ?? OperatorGlow.House;
             bool aimed = target.HasValue || cell.HasValue;
 
             // The sweep: a glow and an opening ring on the caster.

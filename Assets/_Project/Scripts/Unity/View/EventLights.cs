@@ -137,15 +137,17 @@ namespace NonaRoyale.Unity.View
         /// cell part-way through the tell.
         /// </summary>
         /// <param name="tellSeconds">How long the cast tell holds, so the aim's flash lands with its line.</param>
-        public void CastFlash(Vector3 caster, Vector3? aim, float tellSeconds)
+        public void CastFlash(Vector3 caster, Vector3? aim, float tellSeconds, Color? glow = null)
         {
             if (!CanLight || _boardLayer == null) return;
 
-            Spawn("cast_flash", caster, UiTheme.Cyan, AdditiveStyle, castReach * _cell, castSeconds, castIntensity, 0f, true);
+            // The caster's own glow (ADR-0014); the house's cyan when none is given.
+            var colour = glow ?? OperatorGlow.House;
+            Spawn("cast_flash", caster, colour, AdditiveStyle, castReach * _cell, castSeconds, castIntensity, 0f, true);
 
             if (aim.HasValue)
             {
-                Spawn("cast_flash_aim", aim.Value, UiTheme.Cyan, AdditiveStyle, castReach * _cell, castSeconds, castIntensity,
+                Spawn("cast_flash_aim", aim.Value, colour, AdditiveStyle, castReach * _cell, castSeconds, castIntensity,
                     Mathf.Max(0f, tellSeconds) * castAimDelay, true);
             }
         }

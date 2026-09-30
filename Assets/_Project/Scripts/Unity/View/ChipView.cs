@@ -41,8 +41,9 @@ namespace NonaRoyale.Unity.View
     /// board is chips while the portraits are made.
     ///
     /// <b>The cast.</b> The lit portrait fades in over the unlit one, and a
-    /// cyan glow swells over the device, for the tell's length. Devices are
-    /// dark at rest (ART §5); this is the only time the chip carries cyan.
+    /// glow in the operator's own colour (<see cref="OperatorGlow"/>,
+    /// ADR-0014) swells over the device, for the tell's length. Devices are
+    /// dark at rest (ART §5); this is the only time the chip glows.
     ///
     /// Units: the chip is one unit across inside <see cref="Root"/>, which
     /// the piece scales to the chip's diameter.
@@ -135,6 +136,7 @@ namespace NonaRoyale.Unity.View
         private readonly List<SpriteRenderer> _parts;
 
         private Color _seat;
+        private Color _glow = OperatorGlow.House;
         private float _alpha = 1f;
         private float _castLeft;
         private float _castLength;
@@ -245,6 +247,16 @@ namespace NonaRoyale.Unity.View
             Colour();
         }
 
+        /// <summary>The device's glow while casting: the operator's own colour (ADR-0014).</summary>
+        public void SetGlow(Color glow)
+        {
+            _glow = glow;
+            Colour();
+        }
+
+        /// <summary>The glow the flare is drawn in.</summary>
+        public Color Glow => _glow;
+
         /// <summary>The evasive fade, for every part at once.</summary>
         public void SetAlpha(float alpha)
         {
@@ -326,7 +338,7 @@ namespace NonaRoyale.Unity.View
             _lit.color = lit;
 
             _flare.enabled = _power > 0f;
-            _flare.color = UiTheme.WithAlpha(UiTheme.Cyan, 0.85f * _alpha * _power);
+            _flare.color = UiTheme.WithAlpha(_glow, 0.85f * _alpha * _power);
             _flare.transform.localScale = Vector3.one * (FlareSize * (0.6f + 0.4f * _power));
         }
 

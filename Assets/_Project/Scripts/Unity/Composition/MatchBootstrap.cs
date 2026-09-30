@@ -2164,14 +2164,18 @@ namespace NonaRoyale.Unity.Composition
                         : cell.HasValue ? _layout.PositionOf(cell.Value) : (Vector3?)null;
                     caster.Cast(aimAt, hold);
 
+                    // The tell, the rim and the light glow the caster's own colour (ADR-0014).
+                    var glow = OperatorGlow.For(caster.Operator.Name);
+
                     _tells.Play(
                         caster.transform.position,
                         target != null ? target.transform.position : (Vector3?)null,
-                        cell.HasValue ? _layout.PositionOf(cell.Value) : (Vector3?)null);
+                        cell.HasValue ? _layout.PositionOf(cell.Value) : (Vector3?)null,
+                        glow);
 
-                    // G8f: the caster's rim flares with the sweep; the target's
-                    // as the line lands, amber for an enemy, cyan for an ally.
-                    caster.Flare(UiTheme.Select, 0f, hold);
+                    // G8f: the caster's rim flares with the sweep, in its glow; the
+                    // target's as the line lands, amber for an enemy, cyan for an ally.
+                    caster.Flare(glow, 0f, hold);
                     if (target != null && target != caster)
                     {
                         bool enemy = _match.Teams.AreEnemies(caster.Operator.Owner, target.Operator.Owner);
@@ -2187,7 +2191,7 @@ namespace NonaRoyale.Unity.Composition
                     {
                         Vector3? aim = target != null ? target.transform.position
                             : cell.HasValue ? _layout.PositionOf(cell.Value) : (Vector3?)null;
-                        _eventLights.CastFlash(caster.transform.position, aim, hold);
+                        _eventLights.CastFlash(caster.transform.position, aim, hold, glow);
                     }
                     Speak(VoiceSlot.Cast, caster.Operator);
                 },

@@ -25,8 +25,10 @@ namespace NonaRoyale.Unity.View
     /// gold on black lacquer.
     ///
     /// <b>Powered while armed.</b> With an ability armed, the portrait shows
-    /// its lit twin, the frame's cyan arcs come on, and a glow sits on the
-    /// device. At rest the device and the arcs are dark (ART §5).
+    /// its lit twin, the frame's cyan arcs come on, and a glow in the
+    /// operator's own colour sits on the device (<see cref="OperatorGlow"/>,
+    /// ADR-0014). The arcs stay cyan: the frame is the interface, not the
+    /// operator. At rest the device and the arcs are dark (ART §5).
     ///
     /// <b>No frame file, no frame.</b> Without <c>hero_frame</c> the portrait
     /// is drawn as a large chip in the seat colour, as it was first built.
@@ -136,7 +138,7 @@ namespace NonaRoyale.Unity.View
             if (_frameLit != null) Layer(root, "frame_lit", _frameLit, Color.white, 1f, Vector2.zero);
 
             var device = art != null ? art.Device * portrait : Vector2.zero;
-            Layer(root, "device_glow", DecoSprites.Glow, UiTheme.WithAlpha(UiTheme.Cyan, 0.75f), GlowSize, device);
+            Layer(root, "device_glow", DecoSprites.Glow, UiTheme.WithAlpha(OperatorGlow.For(op.Name), 0.75f), GlowSize, device);
         }
 
         /// <summary>The first build: a large chip in the seat colour. Kept for a build without the frame.</summary>
@@ -171,7 +173,7 @@ namespace NonaRoyale.Unity.View
             if (powered)
             {
                 var device = art != null ? art.Device * ChipSprites.PortraitScale : Vector2.zero;
-                Layer(root, "device_glow", DecoSprites.Glow, UiTheme.WithAlpha(UiTheme.Cyan, 0.75f), 0.46f, device);
+                Layer(root, "device_glow", DecoSprites.Glow, UiTheme.WithAlpha(OperatorGlow.For(op.Name), 0.75f), 0.46f, device);
             }
         }
 
