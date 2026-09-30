@@ -70,6 +70,7 @@ namespace NonaRoyale.Unity.View
             { "fortuna", new Vector2(0.644f, 0.825f) }, // the dealer's shoe in her left hand
             { "revu", new Vector2(0.678f, 0.363f) },    // the ledger case's spine
             { "nuetu", new Vector2(0.502f, 0.417f) },   // the bio-link collar at his throat
+            { "lethe", new Vector2(0.447f, 0.558f) },   // the lattice collar, where its lights gather
         };
 
         private static readonly Dictionary<string, ChipArt> Cache = new Dictionary<string, ChipArt>();
