@@ -431,7 +431,8 @@ namespace NonaRoyale.Unity.View
             else
             {
                 chip = UiKit.Rect($"op_{op.Name}", _content);
-                UiKit.Sliced(chip, DecoSprites.ChipFill, UiTheme.PanelInset);
+                var face = UiKit.Sliced(chip, DecoSprites.ChipFill, UiTheme.PanelInset, blocksPointer: true);
+                LookOnClick(chip, face, op);
             }
 
             UiKit.Fixed(chip, ChipWidth);
@@ -722,6 +723,24 @@ namespace NonaRoyale.Unity.View
             _debtThisBuild[seat.Color] = seat.Debt;
         }
 
+        /// <summary>
+        /// A row or chip the player cannot command still answers a click: it
+        /// shows that operator's kit in the tray, read-only (core gameplay
+        /// pass, 2026-09-30). No button look, because it commands nothing.
+        /// </summary>
+        private void LookOnClick(RectTransform rect, Image target, OperatorState op)
+        {
+            var button = rect.gameObject.AddComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            button.targetGraphic = target;
+            button.navigation = new Navigation { mode = Navigation.Mode.None };
+            button.onClick.AddListener(() =>
+            {
+                _host.ViewOperator(op);
+                MarkDirty();
+            });
+        }
+
         private void OperatorRow(RectTransform parent, OperatorState op, bool playing, Core.GameEngine engine)
         {
             bool home = engine.IsHome(op);
@@ -745,7 +764,7 @@ namespace NonaRoyale.Unity.View
             else
             {
                 row = UiKit.Rect($"op_{op.Name}", parent);
-                UiKit.Fill(row, Color.clear);
+                LookOnClick(row, UiKit.Fill(row, Color.clear, blocksPointer: true), op);
             }
 
             UiKit.Size(row, height: RowHeight);

@@ -171,6 +171,15 @@ namespace NonaRoyale.Unity.Composition
         private readonly MatchLog _matchLog = new MatchLog();
 
         private OperatorState _selectedOperator;
+
+        /// <summary>
+        /// The operator being looked at rather than commanded (core gameplay
+        /// pass, 2026-09-30): any seat's, clicked on the board or the rail, or
+        /// the player's own kept in view once their turn has passed. The tray
+        /// shows it when nothing is selected. It never drives a command.
+        /// </summary>
+        private OperatorState _viewedOperator;
+
         private OperatorState _selectedTarget;
         private CellRef? _selectedCell;
         private IReadOnlyList<CellRef> _legalCells = new List<CellRef>();
@@ -587,6 +596,7 @@ namespace NonaRoyale.Unity.Composition
             _bots = null;
             SetHovered(null);
             _selectedOperator = null;
+            _viewedOperator = null;
             _selectedTarget = null;
             _selectedAbility = null;
             _selectedCell = null;
@@ -661,6 +671,7 @@ namespace NonaRoyale.Unity.Composition
             _matchLog.Clear();
             SetHovered(null);
             _selectedOperator = null;
+            _viewedOperator = null;
             _selectedTarget = null;
             _selectedAbility = null;
             _selectedCell = null;
@@ -1411,7 +1422,13 @@ namespace NonaRoyale.Unity.Composition
 
             // A click on a board that is still catching up would aim at where
             // pieces were, not where they are.
-            if (!Busy && Input.GetMouseButtonDown(0)) HandleBoardClick();
+            // A busy board or a CPU's turn still lets the player look at a
+            // piece; only commands wait (core gameplay pass, 2026-09-30).
+            if (Input.GetMouseButtonDown(0))
+            {
+                if (!Busy && !CpuTurn) HandleBoardClick();
+                else LookAtPieceUnderPointer();
+            }
             if (Input.GetMouseButtonDown(1)) StepBack();
 
             ReleaseBufferedIntent();
@@ -1719,7 +1736,10 @@ namespace NonaRoyale.Unity.Composition
             {
                 var piece = BoardPointer.PieceAt(world, Input.mousePosition, _pieces, PieceClickRadius * cellSpacing);
 
-                if (piece != null && (IsCommandable(piece.Operator) || _castTargets.Contains(piece.Operator)))
+                // With nothing armed, a click on any piece does something: it
+                // commands your own or shows anyone's kit (2026-09-30).
+                if (piece != null && (IsCommandable(piece.Operator) || _castTargets.Contains(piece.Operator) ||
+                                      _selectedAbility == null))
                     hovered = piece;
             }
 
@@ -1843,12 +1863,35 @@ namespace NonaRoyale.Unity.Composition
 
             if (_selectedOperator == null)
             {
-                TryMoveAt(world, focusOnSelected: false);
+                // A landing still wins: clicking an enemy to land on it is a
+                // collision, not a look. Only a piece nobody can land on is looked at.
+                if (TryMoveAt(world, focusOnSelected: false)) return;
+                if (piece != null) Host.ViewOperator(piece.Operator);
+                return;
+            }
+
+            // Someone else's piece: show its kit, which lets go of yours.
+            if (piece != null)
+            {
+                Host.ViewOperator(piece.Operator);
                 return;
             }
 
             // A click on empty board lets go of the selection.
             Host.ToggleOperator(_selectedOperator);
+        }
+
+        /// <summary>
+        /// A click while the board is busy or a CPU is playing: it looks at
+        /// the piece under the pointer and commands nothing (2026-09-30).
+        /// </summary>
+        private void LookAtPieceUnderPointer()
+        {
+            if (_match.Engine.MatchOver || PointerOverPanel()) return;
+            if (!BoardPointer.TryWorldPoint(out var world)) return;
+
+            var piece = BoardPointer.PieceAt(world, Input.mousePosition, _pieces, PieceClickRadius * cellSpacing);
+            if (piece != null && !IsCommandable(piece.Operator)) Host.ViewOperator(piece.Operator);
         }
 
         private void AimAt(Vector3 world, OperatorPiece piece)
@@ -1983,15 +2026,23 @@ namespace NonaRoyale.Unity.Composition
 
             if (_log.Count > 200) _log.RemoveRange(0, _log.Count - 200);
 
-            // The selection belongs to the seat that made it.
+            // The selection belongs to the seat that made it. The operator stays
+            // in the tray, read-only, while the CPUs play (2026-09-30).
             if (_selectedOperator != null &&
                 (_match.Engine.MatchOver || _selectedOperator.Owner != _match.Engine.CurrentPlayer.Color))
             {
+                if (!_match.Engine.MatchOver) _viewedOperator = _selectedOperator;
                 _selectedOperator = null;
                 _selectedAbility = null;
                 _selectedTarget = null;
                 _selectedCell = null;
             }
+
+            // Hot seat: the next human at the screen starts on their own board,
+            // not on the last one's kit. A look at a CPU's piece stays.
+            if (_viewedOperator != null && !_match.Engine.MatchOver && !CpuTurn &&
+                _viewedOperator.Owner != _match.Engine.CurrentPlayer.Color && SeatTag(_viewedOperator.Owner) == null)
+                _viewedOperator = null;
 
             if (immediate || _queue == null)
             {
@@ -2346,6 +2397,8 @@ namespace NonaRoyale.Unity.Composition
         IReadOnlyList<string> IControlPanelHost.Log => _log;
 
         OperatorState IControlPanelHost.SelectedOperator => _selectedOperator;
+        OperatorState IControlPanelHost.ShownOperator => ShownOperator();
+        bool IControlPanelHost.CanCommand(OperatorState op) => op != null && _match != null && IsCommandable(op);
         AbilityDefinition IControlPanelHost.SelectedAbility => _selectedAbility;
         OperatorState IControlPanelHost.SelectedTarget => _selectedTarget;
         CellRef? IControlPanelHost.SelectedCell => _selectedCell;
@@ -2440,6 +2493,7 @@ namespace NonaRoyale.Unity.Composition
             if (CpuTurn) return;
 
             _selectedOperator = ReferenceEquals(op, _selectedOperator) ? null : op;
+            _viewedOperator = null;       // commanding ends the look
             _selectedAbility = null;      // an ability belongs to its caster
             _selectedTarget = null;       // and a target belongs to its ability
             _selectedCell = null;         // as does a cell
@@ -2450,6 +2504,15 @@ namespace NonaRoyale.Unity.Composition
         void IControlPanelHost.ToggleAbility(AbilityDefinition ability)
         {
             if (CpuTurn) return;
+
+            // A card on the player's own operator, shown but not selected (kept
+            // in view since their last turn): arming it selects the operator.
+            if (_selectedOperator == null && _viewedOperator != null && _match != null && IsCommandable(_viewedOperator))
+            {
+                _selectedOperator = _viewedOperator;
+                _viewedOperator = null;
+            }
+
             if (_match == null || _selectedOperator == null || ability == null) return;
 
             bool chosen = _selectedAbility != null && _selectedAbility.Id == ability.Id;
@@ -2463,6 +2526,58 @@ namespace NonaRoyale.Unity.Composition
             _selectedCell = null;
 
             SelectionChanged();
+        }
+
+        void IControlPanelHost.ViewOperator(OperatorState op)
+        {
+            if (_match == null || op == null) return;
+
+            // Looking again at the one being looked at puts it away.
+            _viewedOperator = ReferenceEquals(op, _viewedOperator) ? null : op;
+
+            // A look replaces the command: the tray shows one operator, and a
+            // selection left behind it would keep drawing moves nobody sees.
+            if (_viewedOperator != null && !ReferenceEquals(op, _selectedOperator))
+            {
+                _selectedOperator = null;
+                _selectedAbility = null;
+                _selectedTarget = null;
+                _selectedCell = null;
+            }
+
+            SelectionChanged();
+        }
+
+        /// <summary>
+        /// What the tray shows: the selection, else the look, else, on a CPU's
+        /// turn, one of the player's own operators (core gameplay pass,
+        /// 2026-09-30: the wait is the time to read your own kit).
+        /// </summary>
+        private OperatorState ShownOperator()
+        {
+            if (_match == null) return null;
+            if (_selectedOperator != null) return _selectedOperator;
+            if (_viewedOperator != null) return _viewedOperator;
+            if (_match.Engine.MatchOver || !CpuTurn) return null;
+
+            // The first human seat's operator in play, else its first not yet home.
+            OperatorState fallback = null;
+            foreach (var seat in _match.Players)
+            {
+                if (SeatTag(seat.Color) != null) continue;
+
+                foreach (var op in seat.Operators)
+                {
+                    if (_match.Engine.IsHome(op)) continue;
+                    if (!op.IsInYard) return op;
+                    if (fallback == null) fallback = op;
+                }
+
+                if (fallback == null && seat.Operators.Count > 0) fallback = seat.Operators[0];
+                break;
+            }
+
+            return fallback;
         }
 
         void IControlPanelHost.ToggleTarget(OperatorState op)

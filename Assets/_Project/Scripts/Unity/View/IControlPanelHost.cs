@@ -46,6 +46,25 @@ namespace NonaRoyale.Unity.View
         OperatorState SelectedTarget { get; }
         CellRef? SelectedCell { get; }
 
+        /// <summary>
+        /// The operator the tray shows (core gameplay pass, 2026-09-30): the
+        /// selected one; else the one being looked at (<see cref="ViewOperator"/>),
+        /// any seat's; else, on a CPU's turn, one of the player's own, so the
+        /// tray never goes blank while they wait. Null when there is nothing to show.
+        /// </summary>
+        OperatorState ShownOperator { get; }
+
+        /// <summary>Whether the player at the screen may command <paramref name="op"/> right now.</summary>
+        bool CanCommand(OperatorState op);
+
+        /// <summary>
+        /// Looks at an operator without commanding it: any seat's, at any time,
+        /// the CPUs' turns included. The tray shows its kit read-only. Looking
+        /// at the one already shown puts it away. Commanding (selecting) an
+        /// operator ends the look.
+        /// </summary>
+        void ViewOperator(OperatorState op);
+
         /// <summary>True when the selected ability has everything it needs to be cast.</summary>
         bool CastReady { get; }
 

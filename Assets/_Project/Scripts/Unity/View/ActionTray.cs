@@ -87,6 +87,15 @@ namespace NonaRoyale.Unity.View
     /// what follows from it, and the rules line follows, dimmer, as the
     /// reference that carries the numbers.
     ///
+    /// <b>It shows an operator whoever's turn it is</b> (core gameplay pass,
+    /// designer 2026-09-30). The tray shows the host's
+    /// <see cref="IControlPanelHost.ShownOperator"/>: the selection, else an
+    /// operator being looked at (any seat's, clicked on the board or the
+    /// rail), else, on a CPU's turn, one of the player's own. An operator the
+    /// player cannot command right now is shown read-only: its cards are not
+    /// buttons, a tap or a hold opens the peek, and their state is its own
+    /// seat's (its cooldowns, its seat's energy), not the seat to play.
+    ///
     /// <b>The hero portrait and the dice dock</b> (designer, 2026-09-29). The
     /// selected operator's portrait opens the tray: the same art as its chip
     /// on the board, in the painted Deco hero frame (<see cref="HeroPortrait"/>);
@@ -566,7 +575,7 @@ namespace NonaRoyale.Unity.View
         {
             float width = Mathf.Ceil(HeroVisibleWidth(size)) + 2f;
 
-            var op = _host.SelectedOperator;
+            var op = _host.ShownOperator;
             if (op == null)
             {
                 Empty(parent, width);
@@ -633,7 +642,7 @@ namespace NonaRoyale.Unity.View
         private void OperatorCard(Transform parent, float width, bool compact)
         {
             var engine = _host.Match.Engine;
-            var op = _host.SelectedOperator;
+            var op = _host.ShownOperator;
 
             // Nothing selected draws nothing. The top bar is already telling
             // them to pick a piece (H1).
@@ -672,13 +681,17 @@ namespace NonaRoyale.Unity.View
 
             // The one place the tray says why none of the cards can be cast
             // when the reason is the operator's, not the ability's (G6b).
+            bool commandable = _host.CanCommand(op);
             string where = engine.IsHome(op) ? "home"
-                : engine.CanDeploy(op)
+                : commandable && engine.CanDeploy(op)
                     ? (ScreenLayout.Touch ? "ready to deploy — tap it" : "ready to deploy — click it")
                 : op.IsInYard ? "waiting in the yard"
                 : _host.Match.Map.CellAt(op.Owner, op.Progress).Kind == CellKind.HomeColumn
                     ? "in the home column, out of the fight"
                 : "on the board";
+            // Shown but not the player's to command: whose it is, in its seat's colour.
+            if (!commandable)
+                where = $"<color=#{UiTheme.Hex(UiTheme.Readable(seatColour))}>{op.Owner.ToString().ToUpperInvariant()}</color> · {where}";
             UiKit.Label(name, where, compact ? 12f : UiTheme.FontSmall, UiTheme.TextDim);
 
             var health = UiKit.Rect("health", card);
@@ -766,6 +779,15 @@ namespace NonaRoyale.Unity.View
             }
         }
 
+        /// <summary>The seat of that colour in the match, or null.</summary>
+        private PlayerState SeatOf(PlayerColor colour)
+        {
+            foreach (var seat in _host.Match.Players)
+                if (seat.Color == colour) return seat;
+
+            return null;
+        }
+
         /// <summary>The roster entry a piece was dealt from. Null for a piece no roster operator matches.</summary>
         private static OperatorDefinition DefinitionOf(OperatorState op)
         {
@@ -796,7 +818,7 @@ namespace NonaRoyale.Unity.View
         private void AbilityRow(RectTransform cards)
         {
             var engine = _host.Match.Engine;
-            var op = _host.SelectedOperator;
+            var op = _host.ShownOperator;
 
             _cardsRow = cards;
 
@@ -851,9 +873,22 @@ namespace NonaRoyale.Unity.View
         /// </remarks>
         private void AbilityCard(Transform parent, OperatorState op, AbilityDefinition ability, int index, Core.GameEngine engine)
         {
-            bool chosen = _host.SelectedAbility != null && _host.SelectedAbility.Id == ability.Id;
+            bool commandable = _host.CanCommand(op);
+            bool chosen = commandable && _host.SelectedAbility != null && _host.SelectedAbility.Id == ability.Id;
             var availability = engine.CheckAbility(op, ability);
-            bool usable = availability == AbilityAvailability.Ready;
+
+            // Read-only, for an operator shown off its seat's turn: the engine
+            // weighs energy and dice against the seat to play, so those two are
+            // asked again of the operator's own seat, and the dice not at all.
+            var seat = SeatOf(op.Owner);
+            if (!commandable && (availability == AbilityAvailability.Ready ||
+                                 availability == AbilityAvailability.InsufficientEnergy ||
+                                 availability == AbilityAvailability.DiceNotHeld))
+                availability = seat != null && seat.Energy < ability.EnergyCost
+                    ? AbilityAvailability.InsufficientEnergy
+                    : AbilityAvailability.Ready;
+
+            bool usable = commandable && availability == AbilityAvailability.Ready;
 
             string reason;
             switch (availability)
@@ -866,7 +901,7 @@ namespace NonaRoyale.Unity.View
                     reason = turns == 1 ? "ready next turn" : $"ready in {turns} turns";
                     break;
                 case AbilityAvailability.InsufficientEnergy:
-                    reason = $"needs {ability.EnergyCost}e, have {engine.CurrentPlayer.Energy}";
+                    reason = $"needs {ability.EnergyCost}e, have {(commandable || seat == null ? engine.CurrentPlayer.Energy : seat.Energy)}";
                     break;
                 case AbilityAvailability.CasterOutOfPlay:
                 case AbilityAvailability.CasterStunned:
@@ -898,7 +933,9 @@ namespace NonaRoyale.Unity.View
             // A card that can't be cast is dimmed as a whole, keyword colours
             // included, rather than greying the plain text and leaving the cyan
             // cost and the coloured keywords at full strength (G6b).
-            bool live = usable || chosen;
+            // A read-only card its seat could cast stays at full strength: it is
+            // information, not a disabled button.
+            bool live = usable || chosen || (!commandable && availability == AbilityAvailability.Ready);
             var textColour = UiTheme.Text;
 
             // Smaller than body text (feedback 2026-09-15): three names side by
