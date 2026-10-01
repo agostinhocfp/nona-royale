@@ -614,3 +614,8 @@ Each increment ends with a Play Mode check (desktop and upright) and a commit.
     - Upright and wide: no LOG button on the history strip. MENU → LOG opens the full log, and closing it returns to the match. L still toggles it on desktop.
     - Upright tray on doubles: the hint text sits clearly below the dice well, and the tray still fits the screen. The board may be a few units smaller.
     - MENU → OPERATORS → GLOSSARY, upright: nothing of the match shows above or behind the tabs. The three jump buttons scroll to their sections, and the last section scrolls as far as the list allows. Wide: the glossary is a centred column, not full width.
+- 2026-10-02 — **Fix: the setup card's seat row ran off the right edge upright** (designer's phone screenshot: VIOLET's tile cut by the card frame, the row off centre).
+  - Cause: each seat tile was sized by its contents, with every inner line fixed at 84 units upright plus 16 of padding. Four tiles and three gaps wanted 430 units in an upright card's 408, and a left-aligned row spills its overflow to the right.
+  - Fix, `SetupScreen` only: the tiles take the row's width in four equal shares (`width 0`, `flexibleWidth 1`) instead of asking for their contents, and upright their lines fill the tile (`TileLine`) rather than fixing 84. Wide is unchanged: its lines stay 120 inside tiles that now share the row equally.
+  - Not fixed here: the ALPHA THREE squad button truncates to "ALPHA T…" at phone width, as the same screenshot shows.
+  - **Checked:** the view compiles against the Unity 6000.6 DLLs. **Play Mode:** Device Simulator, upright: the four seat tiles are equal, inside the card, and centred under the TABLE row. Wide: the seats look as before. Crossed table: the "HUMAN · BLUE" line still fits.

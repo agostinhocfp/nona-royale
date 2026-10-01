@@ -62,11 +62,10 @@ namespace NonaRoyale.Unity.View
             var material = ShaderFx.Instance(ShaderFx.BurnLit);
             if (material == null) return false;
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
             // One line per knockout, so a Play Mode check can tell "ran but
-            // too subtle" from "never ran".
-            Debug.Log($"[FxBurn] {label ?? parent.name}: {drawn.Count} parts over {seconds.ToString("0.00", CultureInfo.InvariantCulture)} s");
-#endif
+            // too subtle" from "never ran". Editor and development builds only.
+            if (Debug.isDebugBuild)
+                Debug.Log($"[FxBurn] {label ?? parent.name}: {drawn.Count} parts over {seconds.ToString("0.00", CultureInfo.InvariantCulture)} s");
 
             material.SetColor(ShaderFx.FadeBurnColor, edge);
             material.SetFloat(ShaderFx.FadeAmount, ShaderFx.FadeNone);

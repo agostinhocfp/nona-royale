@@ -457,10 +457,8 @@ namespace NonaRoyale.Unity.Composition
             showPieceHealth = SettingsStore.Load(SettingsStore.PieceHealth, showPieceHealth);
             showFullLog = SettingsStore.Load(SettingsStore.FullLog, showFullLog);
             showDevPanel = SettingsStore.Load(SettingsStore.DevPanel, showDevPanel);
-#if !(UNITY_EDITOR || DEVELOPMENT_BUILD)
             // No dev panel for players (G7c), whatever a development build saved.
-            showDevPanel = false;
-#endif
+            if (!Debug.isDebugBuild) showDevPanel = false;
 
             cpuSpeed = SettingsStore.LoadSpeed(cpuSpeed);
             reducedMotion = SettingsStore.Load(SettingsStore.ReducedMotion, reducedMotion);
@@ -776,9 +774,10 @@ namespace NonaRoyale.Unity.Composition
             _feedback = GetComponent<FeedbackLayer>() ?? gameObject.AddComponent<FeedbackLayer>();
             _feedback.Bind(_layout.CellSize);
 
-            // Rigs and look-book figures render on the thread pool while the
-            // rest of the match builds; a piece that binds first waits for its
-            // own. An operator with a rig never draws its look-book figure.
+            // Look-book figures render on the thread pool while the rest of the
+            // match builds; a piece that binds first waits for its own. Every
+            // figure comes from the look book since the rigs went (2026-10-01),
+            // so there is nothing left to exclude here.
             var figureNames = _match.Operators.Select(o => o.Name).Distinct().ToList();
             OperatorLookBook.Prewarm(figureNames);
 
@@ -788,7 +787,6 @@ namespace NonaRoyale.Unity.Composition
                 go.transform.SetParent(transform, false);
 
                 var piece = go.AddComponent<OperatorPiece>();
-                piece.BoardCentre = _layout.HomeGoalPosition;
                 piece.Bind(op, _layout.CellSize, cellSpacing, _motion, _display.Pieces);
                 piece.Stepped += OnPieceStepped;
                 _pieces.Add(piece);
@@ -1347,21 +1345,21 @@ namespace NonaRoyale.Unity.Composition
             // is open rather than changing what it shows under the pointer.
             if (!paused)
             {
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-                // F3, since Tab now cycles the operators (CG5).
-                if (Input.GetKeyDown(KeyCode.F3)) showDevPanel = !showDevPanel;
-#endif
+                // F3, since Tab now cycles the operators (CG5). Editor and
+                // development builds only (G7c).
+                if (Debug.isDebugBuild && Input.GetKeyDown(KeyCode.F3)) showDevPanel = !showDevPanel;
                 if (Input.GetKeyDown(KeyCode.F2)) useLegacyPanel = !useLegacyPanel;
                 if (Input.GetKeyDown(KeyCode.H)) showPieceHealth = !showPieceHealth;
                 if (Input.GetKeyDown(KeyCode.L)) showFullLog = !showFullLog;
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-                // Dev only, compiled out of release builds. Ctrl+Shift+Numpad 0
-                // wins the match for the seat to play (G7); Ctrl+Shift+Numpad 9
-                // knocks out everyone on the track (G8c).
-                if (DevChord(KeyCode.Keypad0)) DevWin();
-                if (DevChord(KeyCode.Keypad9)) DevKnockOut();
-#endif
+                // Dev only: dead in release builds, where Debug.isDebugBuild is
+                // false. Ctrl+Shift+Numpad 0 wins the match for the seat to play
+                // (G7); Ctrl+Shift+Numpad 9 knocks out everyone on the track (G8c).
+                if (Debug.isDebugBuild)
+                {
+                    if (DevChord(KeyCode.Keypad0)) DevWin();
+                    if (DevChord(KeyCode.Keypad9)) DevKnockOut();
+                }
             }
 
             // Driven every frame rather than on the keypress, so flipping the
@@ -2140,7 +2138,10 @@ namespace NonaRoyale.Unity.Composition
 
         // ── Driving the engine ───────────────────────────────────────────
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        // The dev tools below compile into every build; Update reaches them only
+        // when Debug.isDebugBuild (editor and development builds). Unity 6.6
+        // deprecated the DEVELOPMENT_BUILD define (UAC0009, 2026-10-01).
+
         /// <summary>Ctrl+Shift+<paramref name="key"/>, either Ctrl and either Shift.</summary>
         private static bool DevChord(KeyCode key) =>
             Input.GetKeyDown(key)
@@ -2186,7 +2187,6 @@ namespace NonaRoyale.Unity.Composition
             _log.Add("[DEV] knocked out everyone on the track");
             Handle(_match.Engine.DevKnockOutTrack(), immediate: false);
         }
-#endif
 
         private void Send(ICommand command, OperatorState castBy = null, AbilityDefinition cast = null) =>
             Handle(_match.Engine.Execute(command), immediate: false, castBy, cast, command: command);

@@ -304,6 +304,12 @@ namespace NonaRoyale.Unity.View
             var button = UiKit.Button(row, "", () => CycleSeat(seat), Rebuild, selected: human,
                 tint: on ? (Color?)null : UiTheme.PanelInset);
 
+            // Four equal tiles that share the row and never outgrow it. Sized
+            // by their contents, the four wanted more width than an upright
+            // card has (4 × 100 plus the gaps, against 408), so the row ran
+            // off the card's right edge and the seats sat off centre.
+            UiKit.Size(button, width: 0f, flexibleWidth: 1f);
+
             var column = UiKit.Column((RectTransform)button.transform, 4f, 8);
             column.childAlignment = TextAnchor.MiddleCenter;
             column.childForceExpandWidth = false;
@@ -313,7 +319,7 @@ namespace NonaRoyale.Unity.View
 
             var name = UiKit.Label(button.transform, seat.ToString().ToUpperInvariant(), UiTheme.FontBody,
                 on ? UiTheme.Readable(colour) : UiTheme.TextOff, TextAlignmentOptions.Center, bold: true);
-            UiKit.Size(name, ScreenLayout.Pick(120f, 84f), 24f);
+            TileLine(name, 24f);
 
             // At a crossed table a tile says which side it is on rather than
             // just who plays it: two tiles reading "HUMAN" and two reading
@@ -329,11 +335,11 @@ namespace NonaRoyale.Unity.View
             var state = UiKit.Label(button.transform, kind, 11f,
                 human ? UiTheme.Cyan : on ? UiTheme.Text : UiTheme.TextOff, TextAlignmentOptions.Center, bold: on);
             state.characterSpacing = UiTheme.HeadingSpacing * 0.5f;
-            UiKit.Size(state, ScreenLayout.Pick(120f, 84f), 16f);
+            TileLine(state, 16f);
 
             if (!cpu)
             {
-                UiKit.Space(button.transform, ScreenLayout.Pick(120f, 84f), 26f);
+                UiKit.Space(button.transform, ScreenLayout.Pick(120f, 0f), 26f);
                 return;
             }
 
@@ -342,7 +348,18 @@ namespace NonaRoyale.Unity.View
             var chip = UiKit.Button(button.transform, personality.Label(), () =>
                 _edit.SetPersonality(seat, NextPersonality(personality)), Rebuild,
                 size: 12f, tint: UiTheme.GoldDeep);
-            UiKit.Size(chip, ScreenLayout.Pick(120f, 84f), 26f);
+            TileLine(chip, 26f);
+        }
+
+        /// <summary>
+        /// A line inside a seat tile: 120 wide on a wide screen, where the
+        /// tiles have room to spare; upright, the tile's whole inner width,
+        /// so the tile sets the width and not its words.
+        /// </summary>
+        private static void TileLine(Component line, float height)
+        {
+            if (ScreenLayout.IsPortrait) UiKit.Size(line, height: height, flexibleWidth: 1f);
+            else UiKit.Size(line, 120f, height);
         }
 
         /// <summary>EMPTY → HUMAN → CPU → EMPTY. The last two seats skip EMPTY and say why.</summary>

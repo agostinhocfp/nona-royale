@@ -72,11 +72,10 @@ namespace NonaRoyale.Unity.View
 
             Row(slot, "Health above pieces", "H", host.ShowPieceHealth, v => host.ShowPieceHealth = v, rebuild);
             Row(slot, "Event log", "L", host.ShowFullLog, v => host.ShowFullLog = v, rebuild);
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
             // A developer's tool, not a player's setting (G7c): release builds
             // have no dev panel to show.
-            Row(slot, "Dev panel", "F3", host.ShowDevPanel, v => host.ShowDevPanel = v, rebuild);
-#endif
+            if (Debug.isDebugBuild)
+                Row(slot, "Dev panel", "F3", host.ShowDevPanel, v => host.ShowDevPanel = v, rebuild);
             Row(slot, "Reduced motion", "", host.ReducedMotion, v => host.ReducedMotion = v, rebuild);
             Row(slot, "Lighting effects", "", host.LightingEffects, v => host.LightingEffects = v, rebuild);
             Row(slot, "Tips", "", host.Tips, v => host.Tips = v, rebuild);
