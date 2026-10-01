@@ -89,12 +89,14 @@ namespace NonaRoyale.Core.Tests.Abilities
         {
             // 2026-09-21. Changing them is a deliberate act that also updates
             // §10.7.
-            // +1 on 2026-09-25, +1 again on 2026-10-01. At 9 he is above
-            // Luka.HeavyAbove, so Blind Spot's riders and Vendetta's heavy crit
-            // now read him as a tank (§2.4) — asserted here so that the day
-            // somebody retunes either number, the coupling is visible.
+            // +1 on 2026-09-25, +1 again on 2026-10-01. The second one was cast
+            // to clear Luka.HeavyAbove on purpose: the designer wanted him worse
+            // against Luka, and the heavy line is the only switch that does it
+            // (§2.4). Asserted as a pair, because a health retune that silently
+            // dropped him off the list would undo the intent, not just a number.
             Assert.That(Nuetu.MaxHealth, Is.EqualTo(9));
-            Assert.That(Nuetu.MaxHealth, Is.GreaterThan(Luka.HeavyAbove), "he counts as heavy");
+            Assert.That(Nuetu.MaxHealth, Is.GreaterThan(Luka.HeavyAbove),
+                "heavy on purpose, so Blind Spot's riders and Vendetta's crit read him as a tank");
             Assert.That(Nuetu.Speed, Is.EqualTo(1.0));
             Assert.That(Nuetu.BioLinkBurdenTurns, Is.EqualTo(2));
 

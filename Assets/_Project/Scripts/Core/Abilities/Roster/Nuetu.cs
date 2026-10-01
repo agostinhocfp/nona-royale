@@ -65,14 +65,21 @@ namespace NonaRoyale.Core.Abilities
         ///
         /// Raised by 1 again on 2026-09-25 (designer, to shorten matches; COMBAT_SYSTEMS §1.1): now 8.
         ///
-        /// <b>Nine since 2026-10-01 (designer), and it crosses a line nobody
-        /// asked it to.</b> <see cref="Luka.HeavyAbove"/> is 8, so at 9 he joins
-        /// the Bouncer, Sanity and Revú as a <i>heavy</i> target: Blind Spot's
-        /// strike and follow-up each pay their +1 into him, and a Vendetta blow
-        /// that crits against him triples instead of doubling (§2.4). That is
-        /// the fourth of twelve operators on a list meant to mean "the tanks",
-        /// and the first bruiser on it. Watch it; the dial if it reads wrong is
-        /// <c>HeavyAbove</c>, not this.
+        /// <b>Nine since 2026-10-01, and crossing Luka's heavy line is the whole
+        /// reason for it (designer).</b> <see cref="Luka.HeavyAbove"/> is 8, so
+        /// at 9 he joins the Bouncer, Sanity and Revú as a <i>heavy</i> target:
+        /// Blind Spot's strike and follow-up each pay their +1 into him, and a
+        /// Vendetta blow that crits against him triples instead of doubling
+        /// (§2.4). <b>That is the point, not a side effect</b> — the brief was to
+        /// make him worse against Luka specifically, and the heavy line is the
+        /// only switch in the game that does it.
+        ///
+        /// <b>He is a tank by intent</b> (designer, stated 2026-10-01), whatever
+        /// the archetype label on §10.7 says. So the heavy list still means what
+        /// it was written to mean; he is simply the fourth name on it rather than
+        /// an operator who wandered onto it. The trade is deliberate and
+        /// two-sided: a point of health against every source of damage in the
+        /// game, paid for with a worse matchup against one duelist.
         /// </remarks>
         public const int MaxHealth = 9;
 
