@@ -35,6 +35,14 @@ namespace NonaRoyale.Unity.View
     ///
     /// Rebuilt from scratch on every change, like <see cref="HighlightLayer"/>:
     /// there are a handful of devices at most, and a rebuild cannot drift.
+    ///
+    /// <b>A beacon's patch breathes</b> (CORE_GAMEPLAY.md, CG8): its area
+    /// swells and fades over <see cref="BeaconPulsePeriod"/> seconds around
+    /// its resting alpha, so a strike that is coming reads as live rather than
+    /// as paint on the floor. Slow on purpose: it should be noticed, not
+    /// flicker. The target mark stays steady, so the anchor cell is always
+    /// readable, and under Reduced motion the patch holds still. Only Drone
+    /// Strike paints a beacon today.
     /// </remarks>
     public sealed class DeviceLayer : MonoBehaviour
     {
@@ -44,8 +52,18 @@ namespace NonaRoyale.Unity.View
         private const float ArmedZoneAreaAlpha = 0.30f;
         private const float LingeringZoneAreaAlpha = 0.18f;
 
+        /// <summary>Seconds per breath of a beacon's patch.</summary>
+        private const float BeaconPulsePeriod = 2.8f;
+
+        /// <summary>How far the patch's alpha swings either side of its rest: 0.16 ± 60%, so 0.06 to 0.26.</summary>
+        private const float BeaconPulseDepth = 0.6f;
+
         private readonly List<GameObject> _markers = new List<GameObject>();
+        private readonly List<SpriteRenderer> _beaconAreas = new List<SpriteRenderer>();
         private BoardLayout _layout;
+
+        /// <summary>Reduced motion: the patch holds its resting alpha.</summary>
+        public bool Reduced { get; set; }
 
         public void Bind(BoardLayout layout) => _layout = layout;
 
@@ -55,6 +73,24 @@ namespace NonaRoyale.Unity.View
                 if (marker != null) Destroy(marker);
 
             _markers.Clear();
+            _beaconAreas.Clear();
+        }
+
+        private void Update()
+        {
+            if (_beaconAreas.Count == 0) return;
+
+            float alpha = BeaconAreaAlpha *
+                          LightPulse.Breath(Time.unscaledTimeAsDouble, BeaconPulsePeriod, BeaconPulseDepth, 0f, Reduced);
+
+            foreach (var area in _beaconAreas)
+            {
+                if (area == null) continue;
+
+                var colour = area.color;
+                colour.a = alpha;
+                area.color = colour;
+            }
         }
 
         /// <summary>Replaces everything drawn with the given effects.</summary>
@@ -73,7 +109,10 @@ namespace NonaRoyale.Unity.View
                     : ArmedZoneAreaAlpha;
 
                 foreach (var cell in effect.Covered)
-                    Spawn(cell, Primitives.Square, _layout.CellSize * 0.9f, WithAlpha(seat, areaAlpha));
+                {
+                    var area = Spawn(cell, Primitives.Square, _layout.CellSize * 0.9f, WithAlpha(seat, areaAlpha));
+                    if (!effect.IsZone) _beaconAreas.Add(area);
+                }
 
                 if (!effect.IsZone)
                 {
@@ -96,7 +135,7 @@ namespace NonaRoyale.Unity.View
             return colour;
         }
 
-        private void Spawn(CellRef cell, Sprite sprite, float size, Color colour)
+        private SpriteRenderer Spawn(CellRef cell, Sprite sprite, float size, Color colour)
         {
             var go = new GameObject($"device_{cell}");
             go.transform.SetParent(transform, false);
@@ -109,6 +148,7 @@ namespace NonaRoyale.Unity.View
             renderer.sortingOrder = Order;
 
             _markers.Add(go);
+            return renderer;
         }
     }
 }

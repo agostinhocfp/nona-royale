@@ -1,7 +1,7 @@
 # Nona Royale — Core Gameplay Pass
 
 > Location in repo: `docs/design/CORE_GAMEPLAY.md` · Project copy: `claude/CORE_GAMEPLAY.md`
-> Status: **Open, 2026-09-30.** CG1–CG7 in; the designer's list is still being written.
+> Status: **Open, 2026-09-30.** CG1–CG8 in; the designer's list is still being written.
 > Related: `HUD_PASS.md` (the tray's stable geometry, H1), `PRESENTATION.md` §4 (board-first input), `CAST_ONBOARDING.md` (CO3, hold a card to read it), `MOBILE.md` (the upright tray)
 
 ## Goal
@@ -19,6 +19,7 @@ The designer's notes from playing the match, taken one at a time. This pass chan
 | CG5 | Tab and Shift+Tab step through the operators that can act | In, 2026-10-01 |
 | CG6 | Hold F1 for every key | In, 2026-10-01 |
 | CG7 | Zoom and pan the board: pinch on touch, the wheel on a desktop | In, 2026-10-01 |
+| CG8 | Drone Strike's patch pulses slowly | In, 2026-10-01 |
 
 ### CG1 — The tray stays up off-turn
 
@@ -94,6 +95,14 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - **Every match opens on the whole board,** and the menus never zoom.
 - Labels and the piece HUD are placed from the camera in `LateUpdate`, after the zoom, so they follow it. They keep their screen size, so they do not grow with the board.
 
+### CG8 — Drone Strike's patch breathes
+
+**Designer (2026-10-01):** "Make Drone Strike's patch pulse slowly."
+
+- **`DeviceLayer`:** a beacon's area squares breathe around their resting alpha of 0.16, ±60% (0.06 to 0.26), one breath every 2.8 s, through `LightPulse.Breath` on unscaled time. The target ring and dot stay steady, so the anchor cell stays readable.
+- **Beacons only.** Zones keep their steady areas, so a coming strike and a standing zone still look different (ADR-0007). `PaintCell` is Drone Strike's alone, so in practice this is Drone Strike's patch.
+- **Reduced motion holds it still** at 0.16, set from `MatchBootstrap` beside the lighting's flag.
+
 ## Play Mode checks
 
 - [ ] Solo against CPUs: after ending your turn, your last operator stays in the tray through every CPU turn; with nothing ever selected, one of yours appears on the first CPU turn.
@@ -114,6 +123,7 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - [ ] CG7 desktop: the wheel zooms toward the cursor up to 2.5×, wheeling back out returns to the fitted board exactly, and over the log the wheel scrolls the log. Clicks, hover and the landing labels still line up while zoomed, under both the tilted and the flat camera. A big hit's shake still plays.
 - [ ] CG7 touch (Device Simulator, then a phone): pinch zooms about the fingers, two-finger drag pans, a pinch never selects or moves anything, a single tap still selects, moves and aims, a tap that slides is ignored, and a double tap still casts. Holding one finger on a CPU turn hurries it; pinching does not.
 - [ ] CG7: NEW MATCH and REMATCH open on the whole board; the title is never zoomed.
+- [ ] CG8: cast Drone Strike: its patch breathes slowly (about 3 s a breath), the ring and dot stay steady, a zone's area (Killzone) does not pulse, and Reduced motion stops the breathing.
 - [ ] CG3: start a match against CPUs, end your turn, switch to another window: the CPUs keep playing (Editor and a Windows build).
 
 ## Open
@@ -122,6 +132,7 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 
 ## Log
 
+- 2026-10-01 — **CG8 in: Drone Strike's patch breathes.** `DeviceLayer` keeps the beacon area renderers and drives their alpha in `Update`; `Spawn` returns its renderer; `Reduced` property set from `MatchBootstrap`. The view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`. Play Mode pending.
 - 2026-10-01 — **CG5–CG7 in**, from Claude's QoL list (the designer took 1, 3 and 8; 2, a second E press, was dropped once it turned out the engine already refuses End Turn while a move is owed). New: `View/BoardZoom.cs`, `View/TouchGestures.cs`, `View/KeyHelpCard.cs`. `MatchBootstrap`: `CycleOperator` and `CanAct`, `HandleKeyHelp`, the zoom's binding, fit and resets, taps on release on touch, the wheel, one-finger hurry, and the dev panel on F3. `ISettingsHost`: the dev panel row's hint. PRESENTATION §4.1 and MOBILE M4 updated. **Checked:** the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`, 0 warnings. Play Mode pending, and touch needs the Device Simulator or a phone.
 - 2026-10-01 — **CG4 in: double click to cast** on any legal target. `MatchBootstrap` only: `DoubleClickSeconds` (0.4 s), `_lastTargetClick` and its time, `IsSecondClickOn`, and the second-click branch in `AimAt`. PRESENTATION §4.1 gains the line. Not compiled against the editor DLLs; Play Mode pending.
 - 2026-09-30 — **CG3 in for desktop**: `Application.runInBackground = true` at start. Mobile resume recorded as an open item.

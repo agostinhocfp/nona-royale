@@ -1387,6 +1387,9 @@ namespace NonaRoyale.Unity.Composition
                 _lighting.Reduced = reducedMotion;
             }
 
+            // Drone Strike's patch breathes, and holds still under Reduced motion (CG8).
+            if (_devices != null) _devices.Reduced = reducedMotion;
+
             // The selection pool follows whichever piece is selected (LT2).
             if (_eventLights != null)
             {
