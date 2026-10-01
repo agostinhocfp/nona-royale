@@ -649,6 +649,29 @@ namespace NonaRoyale.Core.Bots
                 case StatusKind.Shield:
                     double pool = effect.Magnitude > 0 ? effect.Magnitude : board.Combat.ShieldPoolDefault;
                     return (Math.Min(pool, danger) + 0.3) * w.Protect;
+                // Unlike a shield, which absorbs a fixed pool, a save answers a
+                // hit of any size — so what caps its worth is how much the ally
+                // still has to lose, not a magnitude. Fragility already folds in
+                // how far along the track the ally is, which is the thing a save
+                // actually defends.
+                //
+                // The bots will still undervalue this badly, and the reason is
+                // structural rather than a weight: Danger only sees the enemies
+                // in reach at this instant, and a save is cast for the round
+                // after. A human primes the operator they expect to be attacked.
+                // Read a low cast rate here as the harness, not the ability.
+                case StatusKind.Resuscitation:
+                    // Worth nothing on an ally nothing can finish this round. A
+                    // save is the one buff whose value is all-or-nothing: a
+                    // shield that absorbs less than it could still absorbed
+                    // something, but a save that never fires is the whole cast
+                    // wasted. Without this gate the bots primed whoever was
+                    // merely under pressure, spent 6 energy 1.18 times a match
+                    // and cost Javi 1.2 points of win share (measured,
+                    // 2026-10-01) — the ability was fine and the scoring was not.
+                    if (danger < ally.Health) return 0.0;
+                    return (Math.Min(ally.Health, danger) + 0.5) * w.Protect;
+
                 case StatusKind.TechWard: return (danger * 0.35 + 0.2) * w.Protect;
                 case StatusKind.Stealth: return (danger * 0.5 + 0.3) * w.Protect;
                 case StatusKind.Evasion: return (danger * 0.3 + 0.2) * w.Protect;

@@ -133,21 +133,42 @@ namespace NonaRoyale.Core.Tests.Bots
         }
 
         [Test]
-        public void NeuralPurge_DoesNotPopABubble_UnderThreat()
+        public void Cpr_IsWorthNothing_UntilTheAllyCouldActuallyDie()
         {
+            // The gate, and the reason it exists (measured 2026-10-01). A save
+            // is all-or-nothing: a shield that absorbs less than it could still
+            // absorbed something, but a save that never fires is six energy
+            // gone. Scored on threat alone the bots primed anyone under
+            // pressure, cast it 1.18 times a match and cost Javi 1.2 points of
+            // win share. A healthy tank in a crowd is exactly that mistake.
             BringTheEnemyClose();
-            BubbleBouncer();
 
-            Assert.That(Score(_javi, Javi.NeuralPurge, _bouncer).Defence, Is.LessThanOrEqualTo(0.0));
+            Assert.That(Score(_javi, Javi.Cpr, _bouncer).Defence, Is.EqualTo(0.0),
+                "nothing on this board can finish a tank at full health");
         }
 
         [Test]
-        public void NeuralPurge_StillWashesOutAPlainStun()
+        public void Cpr_IsWorthSomething_OnAnAllyTheBoardCouldFinish()
         {
+            // The other side of the gate: same board, same ally, one hit from
+            // going down. Without this pairing the test above would pass just as
+            // well on a case that never scores at all.
             BringTheEnemyClose();
-            _match.Statuses.Apply(_bouncer, StatusKind.Stun, 1);
+            _bouncer.SetHealth(1);
 
-            Assert.That(Score(_javi, Javi.NeuralPurge, _bouncer).Defence, Is.GreaterThan(0.0));
+            Assert.That(Score(_javi, Javi.Cpr, _bouncer).Defence, Is.GreaterThan(0.0));
+        }
+
+        [Test]
+        public void Cpr_IsWorthNothing_OnAnAllyAlreadyPrimed()
+        {
+            // Buff() refuses to re-apply a status the ally already holds, which
+            // is what stops a bot spending six energy a turn on the same piece.
+            BringTheEnemyClose();
+            _bouncer.SetHealth(1);          // past the gate, so a zero here is the duplicate check
+            _match.Statuses.Apply(_bouncer, StatusKind.Resuscitation, Javi.CprTurns);
+
+            Assert.That(Score(_javi, Javi.Cpr, _bouncer).Defence, Is.EqualTo(0.0));
         }
 
         [Test]

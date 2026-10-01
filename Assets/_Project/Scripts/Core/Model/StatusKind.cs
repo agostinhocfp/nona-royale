@@ -169,6 +169,40 @@ namespace NonaRoyale.Core.Model
         /// can strip it (§1.2) — but a yarded, stunned or finished holder cannot
         /// cash: the die she cashes is a die she could have moved.
         /// </remarks>
-        HouseEdge = 15
+        HouseEdge = 15,
+
+        /// <summary>
+        /// A standing intervention. The next time the holder would be
+        /// neutralized it is not: it stays on its cell at 1 health, every status
+        /// on it is stripped, and this is spent. Javi's CPR (§10.5, 2026-10-01).
+        /// </summary>
+        /// <remarks>
+        /// <b>The only status that changes what reaching zero means.</b> Every
+        /// other defensive status here sits in the damage pipeline and reduces a
+        /// number — a shield's pool, a ward's gate, an evasion charge. This one
+        /// lets the damage land in full and then refuses the consequence, which
+        /// is why it is read in <c>NeutralizeRules.Apply</c> and nowhere else.
+        /// All four things that neutralize funnel through that one method, so a
+        /// collision, an ability, a zone tick and a bleed are all answered by it
+        /// without any of them knowing it exists.
+        ///
+        /// <b>What it defends is progress, not health.</b> A knockout resets an
+        /// operator's track progress to the yard and hands the killer a bounty;
+        /// the health is given back for free either way. So the save is worth
+        /// whatever the walk back would have cost, which is why it is the only
+        /// defensive effect in the game whose value rises the further along the
+        /// holder is.
+        ///
+        /// <b>It carries the game's only cleanse</b> (2026-10-01, when CPR
+        /// replaced Neural Purge). Stripping on the save rather than on demand is
+        /// the deliberate narrowing: a charge or a follow-up can no longer be
+        /// washed off before it lands, only survived. §2.4's companion note names
+        /// the abilities that got quietly stronger as a result.
+        ///
+        /// <b>It must be visible to opponents.</b> The ability is a bet placed a
+        /// round early, and a bet nobody can see is a trap — the attacker has to
+        /// be able to read the badge and pick a different target.
+        /// </remarks>
+        Resuscitation = 16
     }
 }

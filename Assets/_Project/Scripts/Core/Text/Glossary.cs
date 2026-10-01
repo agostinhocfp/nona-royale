@@ -62,6 +62,7 @@ namespace NonaRoyale.Core.Text
                 case StatusKind.TechWard: return "Tech Ward";
                 case StatusKind.CryoField: return "Cryo Field";
                 case StatusKind.HouseEdge: return "House Edge";
+                case StatusKind.Resuscitation: return "CPR";
                 default: return kind.ToString();
             }
         }
@@ -220,6 +221,11 @@ namespace NonaRoyale.Core.Text
                 case StatusKind.HouseEdge:
                     return line.Text("Once a turn, an unspent die the operator could have moved can be cashed for ")
                         .Number(energy.CashedDieEnergy).Text(" ").Keyword("energy", Keywords.Energy).Text(".");
+
+                case StatusKind.Resuscitation:
+                    return line.Text("The next blow that would put this operator down leaves it standing on ")
+                        .Number(1).Text(" health instead, and washes off everything else it is carrying. "
+                            + "It keeps its place on the track, and whoever struck collects nothing.");
             }
 
             return line.Text(RulesText.UnwrittenPrefix + kind + "]");

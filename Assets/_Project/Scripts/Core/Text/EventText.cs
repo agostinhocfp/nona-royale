@@ -43,7 +43,8 @@ namespace NonaRoyale.Core.Text
             typeof(DebtCalled), typeof(DebtBurned), typeof(OperatorDeployed), typeof(OperatorPityDeployed),
             typeof(OperatorMoved), typeof(CollisionResolved), typeof(DamageDealt), typeof(DamageEvaded),
             typeof(DamageAbsorbed), typeof(DamageSheltered), typeof(HealApplied), typeof(OperatorRegenerated),
-            typeof(StatusApplied), typeof(StatusExpired), typeof(OperatorNeutralized), typeof(OperatorReachedHome),
+            typeof(StatusApplied), typeof(StatusExpired), typeof(OperatorNeutralized), typeof(OperatorSaved),
+            typeof(OperatorReachedHome),
             typeof(GameWon), typeof(BeaconPlaced), typeof(BeaconFired), typeof(ZoneDeployed), typeof(ZoneTicked),
             typeof(FieldProjected), typeof(FieldTicked), typeof(FollowUpMarked), typeof(FollowUpResolved),
             typeof(WatchMarked), typeof(WatchTripped), typeof(ZeroDayAttached), typeof(ZeroDayDetonated),
@@ -215,6 +216,15 @@ namespace NonaRoyale.Core.Text
                     Name(line, down.Operator).Text(" is neutralized");
                     if (down.Cause == GameEngine.ExecuteCause) line.Text(" ").Keyword("outright", Keywords.Execute);
                     else Source(line, down.Cause, " by ");
+                    return line;
+
+                // The counterpart of the line above, and deliberately not a
+                // variation on it: the player has to read at a glance that the
+                // piece is still on the board (§10.5).
+                case OperatorSaved saved:
+                    Name(line, saved.Operator).Text(" is pulled back from the brink");
+                    if (saved.Cause == GameEngine.ExecuteCause) line.Text(" ").Keyword("outright", Keywords.Execute);
+                    else Source(line, saved.Cause, " after ");
                     return line;
 
                 case OperatorReachedHome home:

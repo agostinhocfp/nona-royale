@@ -471,6 +471,35 @@ namespace NonaRoyale.Core.Events
                 : $"{Operator.Name} is neutralized by {Cause}";
     }
 
+    /// <summary>
+    /// An operator would have been neutralized and was not: it held
+    /// <see cref="StatusKind.Resuscitation"/> and CPR spent it (§10.5). It
+    /// stands where it stood, on 1 health, with every status washed off.
+    /// </summary>
+    /// <remarks>
+    /// Its own event rather than a flag on <see cref="OperatorNeutralized"/>,
+    /// because the two mean opposite things to everything downstream: the stats
+    /// must not count a knockout, the log must not say a piece was lost, and the
+    /// view must not play the yard animation. A flag on the wrong-named event is
+    /// how all three get it wrong once and then stay wrong.
+    /// </remarks>
+    public sealed class OperatorSaved : IGameEvent
+    {
+        public OperatorSaved(OperatorState op, string cause = null)
+        {
+            Operator = op; Cause = cause;
+        }
+        public OperatorState Operator { get; }
+
+        /// <summary>What would have finished it: the same vocabulary as <see cref="OperatorNeutralized.Cause"/>.</summary>
+        public string Cause { get; }
+
+        public override string ToString() =>
+            Cause == null
+                ? $"{Operator.Name} is pulled back from zero"
+                : $"{Operator.Name} is pulled back from zero after {Cause}";
+    }
+
     public sealed class OperatorReachedHome : IGameEvent
     {
         public OperatorReachedHome(OperatorState op) { Operator = op; }

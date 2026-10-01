@@ -480,6 +480,14 @@ namespace NonaRoyale.Core
             // when badges appeared on a later refresh.
             foreach (var down in upkeep.Neutralized)
             {
+                // A bleed, a mark tick, a beacon or a charge can all be refused
+                // by CPR (§10.5), so this list is "reached zero", not "died".
+                if (down.Outcome.Saved)
+                {
+                    events.Add(new OperatorSaved(down.Operator, down.Cause));
+                    continue;
+                }
+
                 Tally(down.Operator, down.Outcome);
                 events.Add(new OperatorNeutralized(down.Operator, down.Cause, down.Outcome.CreditedTo));
 
@@ -1420,6 +1428,14 @@ namespace NonaRoyale.Core
         private void Neutralize(OperatorState op, string cause, int? killerId, List<IGameEvent> events)
         {
             var outcome = _neutralize.Apply(op, killerId);
+
+            // CPR refused it (§10.5): no knockout to count, no piece lost, and
+            // nothing else in the outcome is populated.
+            if (outcome.Saved)
+            {
+                events.Add(new OperatorSaved(op, cause));
+                return;
+            }
 
             Tally(op, outcome);
             events.Add(new OperatorNeutralized(op, cause, outcome.CreditedTo));

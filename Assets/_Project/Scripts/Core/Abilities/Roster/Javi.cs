@@ -26,7 +26,7 @@ namespace NonaRoyale.Core.Abilities
     /// half of it was adopted.
     ///
     /// <b>Ranges raised on 2026-09-15</b> (<c>e85d710</c>): Nanite Infusion
-    /// and Neural Purge 3 → 5, Trauma Plate 3 → 4. The kit was designed at 3
+    /// and Neural Purge 3 → 5 (CPR keeps the 5), Trauma Plate 3 → 4. The kit was designed at 3
     /// across the board. Neural Purge now reaches one cell short of Mimi's
     /// Translocation, which COMBAT_SYSTEMS §10.4 treats as her only
     /// compensation for 5 health — the gap to watch if either moves again.
@@ -62,6 +62,13 @@ namespace NonaRoyale.Core.Abilities
         /// radius of 2: the clause now covers everyone he could have aimed at.
         /// </summary>
         public const int RunoffRadius = 5;
+
+        /// <summary>
+        /// How many turns a primed ally stays primed (designer, 2026-10-01).
+        /// Two against CPR’s cooldown of 4: the save is a bet on the next round,
+        /// not standing cover.
+        /// </summary>
+        public const int CprTurns = 2;
 
         /// <summary>
         /// Nanites seal breached suits and cauterize wounds. Turned on an enemy
@@ -166,10 +173,12 @@ namespace NonaRoyale.Core.Abilities
         /// Every effect scoped away by the cast mode returns
         /// <c>TargetingVerdict.WrongSide</c> before payment.
         ///
-        /// <b>Neural Purge destroys it.</b> A cleanse is indiscriminate and
-        /// strips the shield along with everything else, so casting his own two
-        /// abilities in the wrong order on the same ally wastes one of them.
-        /// That is a real cost, and the badge shows the player it coming.
+        /// <b>CPR’s save destroys it (2026-10-01).</b> The save strips every
+        /// status as it fires, shields included — which no longer costs the
+        /// player anything to plan around, because by then the plate has either
+        /// been spent or failed to matter. Neural Purge used to strip it on
+        /// demand, so the two abilities could be cast in the wrong order and
+        /// waste one; that trap is gone with the cleanse.
         /// </remarks>
         public static AbilityDefinition TraumaPlate { get; } = new AbilityDefinition(
             id: 502, name: "Trauma Plate",
@@ -187,43 +196,79 @@ namespace NonaRoyale.Core.Abilities
             });
 
         /// <summary>
-        /// A cortical dampening field floods an ally's pain pathways with
-        /// inhibitory signals, and everything riding those pathways goes with it.
+        /// A field kit and two hands. He primes an ally against the hit that
+        /// would put it down, and when that hit lands he keeps it breathing.
         /// </summary>
         /// <remarks>
-        /// <b>Redesigned from damage reduction, which duplicated Trauma Plate
-        /// and lost.</b> A flat pool absorbs more than a percentage cut and does
-        /// it predictably; and a percentage forces fractional health into a
-        /// pipeline that has none — half of 3 is 1.5, and the rounding rule would
-        /// decide more than the design did.
+        /// <b>CPR replaced Neural Purge on 2026-10-01 (designer).</b> The cleanse
+        /// was the least cast ability in the game at 0.13 casts a match across
+        /// 4000 bot matches, and the slot was the obvious place to put something
+        /// that mattered. What the cleanse was, for the record: 6 energy to strip
+        /// every applied status from one ally, the only answer in the game to a
+        /// Zero-Day charge, a Hunted follow-up, Syla’s mark, a stun or a burden.
+        /// Its text and reasoning are in the 2026-10-01 entry of
+        /// COMBAT_SYSTEMS §14.
         ///
-        /// A cleanse gives him something no other operator has and no overlap
-        /// with his own shield. It is also a specific answer to two specific
-        /// threats: Syla's mark, which bills every turn and pays her squad out
-        /// when it kills, and Kurbyn's stun. Rock-paper-scissors rather than a
-        /// second defensive slab.
+        /// <b>It defends progress, which nothing else does.</b> Neutralize is a
+        /// setback rather than a removal: health comes back for free, and what is
+        /// actually lost is the track. <c>NeutralizeRules</c> resets progress to
+        /// the yard and hands the killer a bounty, and roughly half of all
+        /// movement in a match is somebody re-walking ground they had already
+        /// covered. A save is therefore worth more the further along its holder
+        /// is — the only defensive effect in the game with that property, and
+        /// the reason it reads as a support’s ultimate rather than a bigger heal.
         ///
-        /// <b>A cleansed mark is gone, and its payout goes with it.</b> That is a
-        /// rule, not an implementation detail — the mark carries the source
-        /// Tagged From Above reads, and removing the status removes the source.
+        /// <b>It is a bet placed a round early, like the rest of this game’s
+        /// best abilities.</b> Zero-Day, Drone Strike and Killzone all ask a
+        /// player to commit before they know; this asks the same question from
+        /// the other side. Cast on the wrong operator it is 6 energy for
+        /// nothing, and the badge is visible to opponents on purpose — a bet
+        /// nobody can see is a trap, and the attacker has to be able to read it
+        /// and go after somebody else.
         ///
-        /// <b>It does not re-arm an evasion charge</b> (§5.8), and it
-        /// <i>does</i> strip a friendly Trauma Plate, because
-        /// <c>StatusRegistry.ClearApplied</c> is indiscriminate on purpose.
+        /// <b>Why 1 health and no heal.</b> The save refuses the consequence, not
+        /// the damage: the pipeline has already taken the holder to zero, and
+        /// this puts it back to exactly 1. So the next blow still finishes the
+        /// job and the rescue is a reprieve rather than a second life. Pairing it
+        /// with a heal was rejected for that reason, and because Nanite Infusion
+        /// is the heal.
+        ///
+        /// <b>Duration 2 against cooldown 4.</b> Deliberately the inverse of
+        /// Trauma Plate’s 2-against-3: the plate is up half the time, this is up
+        /// two turns in four, because an always-available save is not a bet. The
+        /// cost stays at Neural Purge’s 6 — it is the most valuable thing he can
+        /// do with a turn, and at 4 or 5 he would simply always be holding one.
+        ///
+        /// <b>It carries the game’s only cleanse, narrowed.</b> The save strips
+        /// every status as it fires (<c>StatusKind.Resuscitation</c>), so the
+        /// mechanic survives with one caller — but at the moment of rescue
+        /// instead of on demand. A charge can no longer be washed off before it
+        /// blows, only survived, which makes Zero-Day and Blind Spot’s follow-up
+        /// quietly stronger than their own reasoning assumes. §2.4 and §10.8
+        /// carry that as a watch item.
+        ///
+        /// <b>Ally-only, and he can prime himself</b> (§10’s opt-in, 2026-09-17),
+        /// which is the case the bots will never find: the support who dies is
+        /// usually the one nobody plated.
         /// </remarks>
-        public static AbilityDefinition NeuralPurge { get; } = new AbilityDefinition(
-            id: 503, name: "Neural Purge",
+        public static AbilityDefinition Cpr { get; } = new AbilityDefinition(
+            id: 503, name: "CPR",
             description:
-                "Strips every status from an ally or yourself: stuns, slows, bleeding, marks, and charges or strikes waiting to land. It removes helpful ones too, shields included.",
-            energyCost: 6, cooldownTurns: 3, range: 5,
+                "Primes an ally, or yourself, for a short while. The next blow that would put them down leaves them barely standing instead, keeping their place on the track, and washes off everything they were carrying. Whoever struck them collects nothing.",
+            energyCost: 6, cooldownTurns: 4, range: 5,
             // Opts in to self-cast (§10, 2026-09-17): defensive toolkit — he
-            // washes his own stuns and marks like anyone else's.
+            // primes himself as readily as anyone else.
             allowsSelfTarget: true,
-            effects: new[] { AbilityEffect.Cleanse() });
+            effects: new[]
+            {
+                AbilityEffect.Status_(
+                    EffectScope.PrimaryTarget, StatusKind.Resuscitation,
+                    duration: CprTurns, EffectAudience.AllyOnly)
+            });
 
         /// <remarks>Cast order, and id order — 501, 502, 503.</remarks>
         public static IReadOnlyList<AbilityDefinition> All { get; } =
-            new[] { NaniteInfusion, TraumaPlate, NeuralPurge };
+            new[] { NaniteInfusion, TraumaPlate, Cpr };
 
         /// <summary>
         /// His uniform shape, for drafting. No aura, no passive — three

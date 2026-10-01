@@ -134,17 +134,15 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
-        public void NeuralPurge_OnHimself_Cleanses()
+        public void Cpr_OnHimself_Primes()
         {
-            // Not a stun: a stunned caster cannot cast at all (§5.1).
-            _statuses.Apply(_javi, StatusKind.Slow, 2);
-            _statuses.Apply(_javi, StatusKind.Bleed, 2);
-
-            var result = Use(_javi, Javi.NeuralPurge, _javi);
+            // The case the bots will never find and a player reaches for every
+            // match: the support who dies is the one nobody primed. Replaced
+            // NeuralPurge_OnHimself_Cleanses when CPR took the slot (2026-10-01).
+            var result = Use(_javi, Javi.Cpr, _javi);
 
             Assert.That(result.Approved, Is.True, result.ToString());
-            Assert.That(_statuses.Has(_javi, StatusKind.Slow), Is.False);
-            Assert.That(_statuses.Has(_javi, StatusKind.Bleed), Is.False);
+            Assert.That(_statuses.Has(_javi, StatusKind.Resuscitation), Is.True);
             Assert.That(_red.Energy, Is.EqualTo(12 - 6));
         }
 
@@ -216,7 +214,7 @@ namespace NonaRoyale.Core.Tests.Abilities
         {
             Assert.That(Legal(_javi, Javi.NaniteInfusion), Has.Member(_javi));
             Assert.That(Legal(_javi, Javi.TraumaPlate), Has.Member(_javi));
-            Assert.That(Legal(_javi, Javi.NeuralPurge), Has.Member(_javi));
+            Assert.That(Legal(_javi, Javi.Cpr), Has.Member(_javi));
             Assert.That(Legal(_lethe, Lethe.NanoCell), Has.Member(_lethe));
         }
 

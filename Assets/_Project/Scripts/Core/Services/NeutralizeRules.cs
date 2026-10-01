@@ -23,13 +23,34 @@ namespace NonaRoyale.Core.Services
             IReadOnlyList<OperatorState> hastened,
             PlayerColor? bountyPaidTo,
             EnergyGrant bounty,
-            PlayerColor? creditedTo = null)
+            PlayerColor? creditedTo = null,
+            bool saved = false)
         {
             Hastened = hastened ?? Array.Empty<OperatorState>();
             BountyPaidTo = bountyPaidTo;
             Bounty = bounty;
             CreditedTo = creditedTo;
+            Saved = saved;
         }
+
+        /// <summary>
+        /// The operator was <b>not</b> yarded: it held
+        /// <see cref="StatusKind.Resuscitation"/> and the save spent it
+        /// (§10.5). Nothing else in this struct is populated, because nothing
+        /// else happened — no payout, no bounty, no credit.
+        /// </summary>
+        /// <remarks>
+        /// Every caller must branch on this before announcing a knockout.
+        /// <c>Apply</c> is still the method to call: the save lives at the one
+        /// place every death funnels through, for the reason the class remark
+        /// gives, rather than being asked for separately by four call sites that
+        /// would each have to remember it.
+        /// </remarks>
+        public bool Saved { get; }
+
+        /// <summary>A knockout that a save refused. The operator stands where it stood.</summary>
+        public static NeutralizeOutcome TheSave() =>
+            new NeutralizeOutcome(null, null, default(EnergyGrant), null, saved: true);
 
         /// <summary>
         /// The seat the knockout counts for: the killer's owner, or null for a
@@ -131,6 +152,35 @@ namespace NonaRoyale.Core.Services
         public NeutralizeOutcome Apply(OperatorState op, int? killerOperatorId = null)
         {
             if (op == null) throw new ArgumentNullException(nameof(op));
+
+            // 0. The save, before anything else looks at the victim (§10.5).
+            // It has to come first: a saved operator did not die, so no mark
+            // pays out, no bounty is owed, no charge riding it detonates on a
+            // death cell, and its cooldowns are not reset. The damage has
+            // already taken it to zero in the pipeline — this is the one thing
+            // in the game that answers after the arithmetic rather than inside
+            // it — so the health is put back to exactly 1. Not healed: the
+            // next blow still finishes the job, which is what keeps the save
+            // from being a second life.
+            if (_statuses.Remove(op, StatusKind.Resuscitation))
+            {
+                op.SetHealth(1);
+
+                // Everything else comes off with it. This is the game's only
+                // cleanse since CPR replaced Neural Purge (2026-10-01), and it
+                // is deliberately the narrow version: statuses are washed at
+                // the moment of rescue, never on demand.
+                //
+                // The Remove above is what spends the save, not this. ClearAll
+                // would take it off too, so the two are interchangeable today
+                // and a mutation test cannot tell them apart — which is exactly
+                // why the Remove stays. If the cleanse half is ever withdrawn,
+                // a save consumed only by ClearAll would silently become
+                // permanent.
+                _statuses.ClearAll(op);
+
+                return NeutralizeOutcome.TheSave();
+            }
 
             // Read the mark before anything clears it. Neutralize strips every
             // status, so a payout resolved after ClearAll would find nothing —

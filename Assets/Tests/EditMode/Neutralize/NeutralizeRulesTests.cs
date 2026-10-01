@@ -270,5 +270,141 @@ namespace NonaRoyale.Core.Tests.Neutralize
 
             Assert.That(outcome.Hastened, Is.Empty);
         }
+
+        // ── CPR’s save (§10.5, 2026-10-01) ─────────────────────────────
+
+        /// <summary>
+        /// Takes the victim to zero the way the pipeline would, so the save is
+        /// answering the same state a real knockout answers.
+        /// </summary>
+        private void DropToZero(OperatorState op) => op.SetHealth(0);
+
+        /// <summary>
+        /// Primes an operator and leaves the clock on its own seat.
+        /// </summary>
+        /// <remarks>
+        /// The clock move is the point. A status applied outside its holder’s
+        /// own turn only takes hold on that holder’s next one (§5), and this
+        /// fixture’s victim belongs to the seat that is <i>not</i> to play. In a
+        /// real match that case cannot arise: CPR is ally-only, so the seat
+        /// priming an operator is always the seat that owns it, and the save is
+        /// live from the moment it is cast.
+        /// </remarks>
+        private void Prime(OperatorState op)
+        {
+            _clock.BeginTurnFor(op.Owner);
+            _statuses.Apply(op, StatusKind.Resuscitation, Javi.CprTurns);
+            Assert.That(_statuses.Has(op, StatusKind.Resuscitation), Is.True, "precondition: primed");
+        }
+
+        [Test]
+        public void APrimedVictim_StaysOnItsCell_AtOneHealth()
+        {
+            // The whole point: progress is what a knockout costs, and the save
+            // refuses that rather than the damage.
+            Prime(_victim);
+            DropToZero(_victim);
+
+            var outcome = _neutralize.Apply(_victim, _killer.Id);
+
+            Assert.That(outcome.Saved, Is.True);
+            Assert.That(_victim.IsInYard, Is.False, "it never went to the yard");
+            Assert.That(_victim.Progress, Is.EqualTo(12), "and it did not move");
+            Assert.That(_victim.Health, Is.EqualTo(1), "barely standing, and not healed");
+        }
+
+        [Test]
+        public void TheSave_IsSpent_SoASecondBlowFinishesTheJob()
+        {
+            // A reprieve, not a second life.
+            Prime(_victim);
+            DropToZero(_victim);
+            _neutralize.Apply(_victim, _killer.Id);
+
+            DropToZero(_victim);
+            var second = _neutralize.Apply(_victim, _killer.Id);
+
+            Assert.That(second.Saved, Is.False);
+            Assert.That(_victim.IsInYard, Is.True);
+        }
+
+        [Test]
+        public void TheSave_PaysNoBounty_AndCreditsNobody()
+        {
+            Fund(_red, 0);
+            Prime(_victim);
+            DropToZero(_victim);
+
+            var outcome = _neutralize.Apply(_victim, _killer.Id);
+
+            Assert.That(outcome.PaidABounty, Is.False, "nobody died, so nothing is owed");
+            Assert.That(outcome.CreditedTo, Is.Null, "and the knockout does not count");
+            Assert.That(_red.Energy, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void TheSave_DeniesTheMarkPayout_AndLeavesNobodyHastened()
+        {
+            // Tagged From Above pays on a kill. A rescue is not a kill, and the
+            // mark comes off with everything else, so it cannot pay later either.
+            Prime(_victim);                          // leaves the clock on Blue
+            _statuses.Apply(_victim, StatusKind.Mark, duration: 2, sourceOperatorId: _killer.Id);
+            Assert.That(_statuses.Has(_victim, StatusKind.Mark), Is.True,
+                "precondition: applied on its own turn, so it holds at once");
+            DropToZero(_victim);
+
+            var outcome = _neutralize.Apply(_victim, _killer.Id);
+
+            Assert.That(outcome.Saved, Is.True);
+            Assert.That(outcome.Hastened, Is.Empty);
+            Assert.That(_statuses.Has(_victim, StatusKind.Mark), Is.False, "washed off by the rescue");
+        }
+
+        [Test]
+        public void TheSave_WashesOffEverythingElse()
+        {
+            // It carries the game’s only cleanse since CPR replaced Neural
+            // Purge — at the moment of rescue, never on demand.
+            Prime(_victim);
+            _statuses.Apply(_victim, StatusKind.Bleed, 3);
+            _statuses.Apply(_victim, StatusKind.Slow, 3);
+            _statuses.Apply(_victim, StatusKind.ZeroDayCharge, 3, sourceOperatorId: _killer.Id);
+            DropToZero(_victim);
+
+            _neutralize.Apply(_victim, _killer.Id);
+
+            Assert.That(_statuses.Has(_victim, StatusKind.Bleed), Is.False);
+            Assert.That(_statuses.Has(_victim, StatusKind.Slow), Is.False);
+            Assert.That(_statuses.Has(_victim, StatusKind.ZeroDayCharge), Is.False);
+            Assert.That(_statuses.Has(_victim, StatusKind.Resuscitation), Is.False, "and itself");
+        }
+
+        [Test]
+        public void AnUnprimedVictim_IsYardedExactlyAsBefore()
+        {
+            // The pairing that proves the tests above measure the save rather
+            // than a neutralize that stopped working.
+            DropToZero(_victim);
+
+            var outcome = _neutralize.Apply(_victim, _killer.Id);
+
+            Assert.That(outcome.Saved, Is.False);
+            Assert.That(_victim.IsInYard, Is.True);
+            Assert.That(_victim.Health, Is.EqualTo(_victim.MaxHealth), "a yarded operator comes back whole");
+        }
+
+        [Test]
+        public void TheSave_AnswersASelfInflictedZero_WithNoKiller()
+        {
+            // All-In Mauling’s recoil and a bleed tick both reach here with no
+            // creditable killer. The save is about the victim, not the source.
+            Prime(_victim);
+            DropToZero(_victim);
+
+            var outcome = _neutralize.Apply(_victim);
+
+            Assert.That(outcome.Saved, Is.True);
+            Assert.That(_victim.IsInYard, Is.False);
+        }
     }
 }

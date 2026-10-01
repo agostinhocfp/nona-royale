@@ -27,7 +27,7 @@ namespace NonaRoyale.Core.Tests.Replay
         /// of Unity's Mono and of the .NET 8 harness, or a replay recorded in
         /// the editor could not be played back by a tool.
         /// </remarks>
-        private const string Golden = "e345f9b9";
+        private const string Golden = "2343bd74";
 
         private static string Dump() =>
             RulesFingerprint.Dump(

@@ -300,22 +300,28 @@ namespace NonaRoyale.Core.Tests.Abilities
             // It could not before 2026-09-24: the stun took its hands too.
             Bubble(_javi);
 
-            var result = _abilities.Use(_javi, Javi.NeuralPurge, _ally, _red, _board);
+            var result = _abilities.Use(_javi, Javi.Cpr, _ally, _red, _board);
 
             Assert.That(result.Approved, Is.True, result.ToString());
         }
 
         [Test]
-        public void NeuralPurge_PopsTheBubble()
+        public void ACleanse_PopsTheBubble_ButNoAbilityStillDoesItOnDemand()
         {
-            // Stated in Lethe.cs so nobody "fixes" it: the cleanse is the answer
-            // a blanket immunity needs.
+            // Lethe.cs states that the cleanse is the answer a blanket immunity
+            // needs. The rule still holds at the registry, which is where it was
+            // always implemented — but since CPR replaced Neural Purge on
+            // 2026-10-01 the only thing that reaches this path is Javi’s save,
+            // and that fires on a knockout rather than on demand. So a squad can
+            // no longer wash its own Nano Cell stun off early. Recorded as a
+            // consequence, not a regression; §10.10 carries it.
             Bubble(_ally);
+            Assert.That(_statuses.ShieldPool(_ally), Is.EqualTo(Lethe.NanoCellPool), "precondition");
 
-            var purge = _abilities.Use(_javi, Javi.NeuralPurge, _ally, _red, _board);
+            _statuses.ClearAll(_ally);
 
-            Assert.That(purge.Approved, Is.True, purge.ToString());
             Assert.That(_statuses.ShieldPool(_ally), Is.EqualTo(0));
+            Assert.That(_statuses.Has(_ally, StatusKind.Stun), Is.False, "and the price goes with it");
         }
 
         // ── Eris' Exploit ────────────────────────────────────────────────
