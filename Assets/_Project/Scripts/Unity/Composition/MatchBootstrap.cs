@@ -306,6 +306,12 @@ namespace NonaRoyale.Unity.Composition
         private DiceRoller _dice;
         private CastTell _tells;
         private CameraNudge _nudge;
+
+        /// <summary>Zoom and pan over the framed board (CORE_GAMEPLAY.md, CG7).</summary>
+        private BoardZoom _zoom;
+
+        /// <summary>The board's taps and pinches on a touch screen (CG7).</summary>
+        private readonly TouchGestures _gestures = new TouchGestures();
         private HitStop _hitStop;
         private SceneLighting _lighting;
         private RoomBackdrop _room;
@@ -416,6 +422,8 @@ namespace NonaRoyale.Unity.Composition
             // Before the first framing, which hands the camera's resting place to the nudge.
             _nudge = Ensure<CameraNudge>();
             _nudge.Bind(_motion);
+            _zoom = Ensure<BoardZoom>();
+            _zoom.Bind(_nudge);
             _hitStop = Ensure<HitStop>();
             _hitStop.Bind(_motion);
 
@@ -677,6 +685,9 @@ namespace NonaRoyale.Unity.Composition
         private void NewMatch()
         {
             StopPresentation();
+
+            // Every match opens on the whole board.
+            if (_zoom != null) _zoom.ResetView();
 
             foreach (var piece in _pieces)
                 if (piece != null) Destroy(piece.gameObject);
@@ -1188,6 +1199,9 @@ namespace NonaRoyale.Unity.Composition
             // A nudge in progress continues around the new resting place.
             if (_nudge != null) _nudge.SetBase(camera.transform.position);
 
+            // The zoom narrows the view inside this fit from now on (CG7).
+            if (_zoom != null) _zoom.SetFit(camera);
+
             // The chrome's own insets, in canvas units. The safe area is not
             // added: every layer below is parented inside HudRoot's safe-area
             // rect already, so adding it here would inset it twice.
@@ -1323,6 +1337,10 @@ namespace NonaRoyale.Unity.Composition
             if (_menuBackdrop != null) _menuBackdrop.Visible = _match == null;
 
             HandleSoundKeys();
+            HandleKeyHelp();
+
+            // The menus show the whole board; only a match zooms (CG7).
+            if (_match == null && _zoom != null) _zoom.ResetView();
 
             bool paused = ModalOpen;
 
@@ -1331,7 +1349,8 @@ namespace NonaRoyale.Unity.Composition
             if (!paused)
             {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-                if (Input.GetKeyDown(KeyCode.Tab)) showDevPanel = !showDevPanel;
+                // F3, since Tab now cycles the operators (CG5).
+                if (Input.GetKeyDown(KeyCode.F3)) showDevPanel = !showDevPanel;
 #endif
                 if (Input.GetKeyDown(KeyCode.F2)) useLegacyPanel = !useLegacyPanel;
                 if (Input.GetKeyDown(KeyCode.H)) showPieceHealth = !showPieceHealth;
@@ -1441,12 +1460,21 @@ namespace NonaRoyale.Unity.Composition
             // pieces were, not where they are.
             // A busy board or a CPU's turn still lets the player look at a
             // piece; only commands wait (core gameplay pass, 2026-09-30).
-            if (Input.GetMouseButtonDown(0))
+            // A touch screen taps on release and pinches with two fingers; the
+            // mouse clicks on press and zooms with the wheel (CG7).
+            _gestures.Tick(_zoom, PointerOverPanel);
+            bool press = ScreenLayout.Touch ? _gestures.Tapped : Input.GetMouseButtonDown(0);
+
+            if (press)
             {
                 if (!Busy && !CpuTurn) HandleBoardClick();
                 else LookAtPieceUnderPointer();
             }
             if (Input.GetMouseButtonDown(1)) StepBack();
+
+            float wheel = Input.mouseScrollDelta.y;
+            if (!ScreenLayout.Touch && _zoom != null && Mathf.Abs(wheel) > 0.01f && !PointerOverPanel())
+                _zoom.ZoomAt(Mathf.Pow(BoardZoom.WheelStep, wheel), Input.mousePosition);
 
             ReleaseBufferedIntent();
             DrivePacer();
@@ -1536,7 +1564,7 @@ namespace NonaRoyale.Unity.Composition
         /// commandable on a CPU's turn anyway.
         /// </remarks>
         private static bool Hurrying =>
-            Input.GetKey(KeyCode.Space) || (ScreenLayout.Touch && Input.touchCount > 0);
+            Input.GetKey(KeyCode.Space) || (ScreenLayout.Touch && Input.touchCount == 1);
 
         /// <summary>
         /// Lets the CPU seat act, one command at a time, through the same
@@ -1639,6 +1667,81 @@ namespace NonaRoyale.Unity.Composition
             if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1)) SelectAbilityAt(0);
             if (Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Keypad2)) SelectAbilityAt(1);
             if (Input.GetKeyDown(KeyCode.Alpha3) || Input.GetKeyDown(KeyCode.Keypad3)) SelectAbilityAt(2);
+
+            if (Input.GetKeyDown(KeyCode.Tab))
+                CycleOperator(Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift) ? -1 : 1);
+        }
+
+        /// <summary>
+        /// Tab selects the next of your operators that can act, Shift+Tab the
+        /// previous one (CORE_GAMEPLAY.md, CG5), in the squad rail's order.
+        /// </summary>
+        /// <remarks>
+        /// <b>Only operators with something to do</b>: a landing for the dice in
+        /// hand, or an ability castable at some legal aim. A yard piece is left
+        /// out, since deploying is already one click on its pulse, and so is an
+        /// operator that is home. With nobody able to act, Tab does nothing.
+        /// The search starts after the selected operator, so it wraps, and
+        /// with only the selected one able to act it stays put.
+        /// </remarks>
+        private void CycleOperator(int step)
+        {
+            var seat = _match.Engine.CurrentPlayer;
+            if (CpuTurn || seat == null) return;
+
+            var operators = seat.Operators;
+            int count = operators.Count;
+            if (count == 0) return;
+
+            int start = step > 0 ? -1 : count;
+            for (int i = 0; i < count; i++)
+                if (ReferenceEquals(operators[i], _selectedOperator)) start = i;
+
+            for (int k = 1; k <= count; k++)
+            {
+                var op = operators[((start + step * k) % count + count) % count];
+                if (!CanAct(op)) continue;
+
+                if (!ReferenceEquals(op, _selectedOperator)) Host.ToggleOperator(op);
+                MarkHudDirty();
+                return;
+            }
+        }
+
+        /// <summary>True when <paramref name="op"/> has a landing or a castable ability right now (CG5).</summary>
+        private bool CanAct(OperatorState op)
+        {
+            if (op == null || op.IsInYard || _match.Engine.IsHome(op)) return false;
+
+            foreach (var option in _moveOptions)
+                if (ReferenceEquals(option.Operator, op)) return true;
+
+            if (!_match.AbilitiesByOperator.TryGetValue(op.Id, out var abilities) || abilities == null) return false;
+
+            foreach (var ability in abilities)
+                if (TurnOptions.IsCastable(_match.Engine, op, ability)) return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// The key card, up while F1 is held (CORE_GAMEPLAY.md, CG6), on every
+        /// screen. Never on a touch screen, which has no keys to list.
+        /// </summary>
+        private void HandleKeyHelp()
+        {
+            bool held = !ScreenLayout.Touch && Input.GetKey(KeyCode.F1) && _hudRoot != null;
+            if (held == KeyHelpCard.IsOpen) return;
+
+            if (!held)
+            {
+                KeyHelpCard.Close();
+                return;
+            }
+
+            var screen = CurrentScreen;
+            bool match = _match != null && (screen == AppScreen.Match || screen == AppScreen.Paused);
+            KeyHelpCard.Show(_hudRoot.Root, match, screen == AppScreen.Draft);
         }
 
         /// <summary>

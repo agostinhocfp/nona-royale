@@ -1,7 +1,7 @@
 # Nona Royale — Core Gameplay Pass
 
 > Location in repo: `docs/design/CORE_GAMEPLAY.md` · Project copy: `claude/CORE_GAMEPLAY.md`
-> Status: **Open, 2026-09-30.** CG1–CG4 in; the designer's list is still being written.
+> Status: **Open, 2026-09-30.** CG1–CG7 in; the designer's list is still being written.
 > Related: `HUD_PASS.md` (the tray's stable geometry, H1), `PRESENTATION.md` §4 (board-first input), `CAST_ONBOARDING.md` (CO3, hold a card to read it), `MOBILE.md` (the upright tray)
 
 ## Goal
@@ -16,6 +16,9 @@ The designer's notes from playing the match, taken one at a time. This pass chan
 | CG2 | Clicking any seat's operator shows its kit | In, 2026-09-30 |
 | CG3 | The match keeps running in the background | In for desktop, 2026-09-30; mobile needs match resume (open) |
 | CG4 | A double click or double tap on a legal target casts | In, 2026-10-01 |
+| CG5 | Tab and Shift+Tab step through the operators that can act | In, 2026-10-01 |
+| CG6 | Hold F1 for every key | In, 2026-10-01 |
+| CG7 | Zoom and pan the board: pinch on touch, the wheel on a desktop | In, 2026-10-01 |
 
 ### CG1 — The tray stays up off-turn
 
@@ -63,6 +66,34 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - **Touch:** a tap arrives as a mouse click (Unity's touch-to-mouse simulation), so a double tap goes through the same path.
 - **PRESENTATION §4 still holds.** Select-then-commit was about seeing the reach before spending; the first click shows the rings and the aim, and the second commits.
 
+### CG5 — Tab through the operators
+
+**Designer (2026-10-01):** picked from Claude's QoL list, on Tab rather than the proposed Q.
+
+- **Tab selects the next operator of the seat to play that can act; Shift+Tab the previous.** "Can act" means a landing for the dice in hand, or an ability castable at some legal aim (`TurnOptions.IsCastable`). Yard pieces are left out, since deploying is one click on the pulse, and so are operators that are home.
+- **Squad-rail order**, starting after the selected operator and wrapping. With nobody able to act, Tab does nothing; with only the selected one able to act, it stays selected.
+- It goes through `ToggleOperator`, like a click, so an armed ability is let go. It waits while the board is busy, as 1–3 do.
+- **The dev panel moved from Tab to F3** (dev builds only). The settings row's key hint says F3.
+
+### CG6 — Hold F1 for the keys
+
+- **`KeyHelpCard`**: a card listing every shortcut a player can press, up while F1 is held and gone on release. It takes no input: the pointer passes through and other keys still work.
+- **Sections by screen:** Match (on the match or its pause menu), Draft (on the draft), and Anywhere (M, Shift+M, F1). Dev keys are left out.
+- **Its own canvas at sorting order 1000**, because the draft brings itself to the front every frame and would bury a sibling-order overlay.
+- Never opened on a touch screen with no keyboard.
+
+### CG7 — Zoom and pan
+
+**Designer (2026-10-01):** "Pinch-zoom and pan on phones", widened at the designer's pick to the mouse wheel on desktop too.
+
+- **`BoardZoom`** narrows the view inside the fit `FrameCamera` solves: the field of view on the tilted camera, the orthographic size on the flat one. The framing hands it the fitted pose (`SetFit`); at zoom 1 it writes that pose back unchanged. Up to 2.5×.
+- **The pan is clamped to the fitted picture,** so zooming out to 1 is also the reset. There is no reset gesture to learn. The pinch and the wheel keep the board point under the fingers or the cursor in place, so the wheel alone gets the player anywhere.
+- **It runs before `CameraNudge`** (execution order −100) and hands it the zoomed pose as its base each frame, so a hit's shake shakes the view on screen.
+- **Desktop:** the mouse wheel zooms toward the cursor, except over the HUD, where the wheel stays with the log and the panels.
+- **Touch: taps count on release** (`TouchGestures`). A board tap is cancelled when a second finger joins, when the finger travels more than about a tenth of an inch, or when it landed on the HUD. Without this, the first finger of a pinch would select, move or aim. Two fingers pinch and drag; one finger never pans. Holding a finger to hurry a CPU now needs exactly one finger.
+- **Every match opens on the whole board,** and the menus never zoom.
+- Labels and the piece HUD are placed from the camera in `LateUpdate`, after the zoom, so they follow it. They keep their screen size, so they do not grow with the board.
+
 ## Play Mode checks
 
 - [ ] Solo against CPUs: after ending your turn, your last operator stays in the tray through every CPU turn; with nothing ever selected, one of yours appears on the first CPU turn.
@@ -77,6 +108,12 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - [ ] CG4: an ally-targeted ability (a heal, Velvet Rope's pull): a double click on the ally casts.
 - [ ] CG4: click the target, click empty board, click the target within half a second: no cast. A double click on a piece that is not a legal target does nothing new.
 - [ ] CG4 on a phone or the Device Simulator: a double tap on a target casts; a single tap aims.
+- [ ] CG5: with dice in hand, Tab steps through the operators with landings or castable abilities, in rail order, and wraps; Shift+Tab goes back. A yard piece and a home piece are skipped. During a CPU turn, Tab does nothing.
+- [ ] CG5: F3 toggles the dev panel in the Editor; Tab no longer does.
+- [ ] CG6: hold F1 on the title, the draft, a match and the pause menu: the card shows the right sections, sits above everything, and closes on release. Clicks pass through it.
+- [ ] CG7 desktop: the wheel zooms toward the cursor up to 2.5×, wheeling back out returns to the fitted board exactly, and over the log the wheel scrolls the log. Clicks, hover and the landing labels still line up while zoomed, under both the tilted and the flat camera. A big hit's shake still plays.
+- [ ] CG7 touch (Device Simulator, then a phone): pinch zooms about the fingers, two-finger drag pans, a pinch never selects or moves anything, a single tap still selects, moves and aims, a tap that slides is ignored, and a double tap still casts. Holding one finger on a CPU turn hurries it; pinching does not.
+- [ ] CG7: NEW MATCH and REMATCH open on the whole board; the title is never zoomed.
 - [ ] CG3: start a match against CPUs, end your turn, switch to another window: the CPUs keep playing (Editor and a Windows build).
 
 ## Open
@@ -85,6 +122,7 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 
 ## Log
 
+- 2026-10-01 — **CG5–CG7 in**, from Claude's QoL list (the designer took 1, 3 and 8; 2, a second E press, was dropped once it turned out the engine already refuses End Turn while a move is owed). New: `View/BoardZoom.cs`, `View/TouchGestures.cs`, `View/KeyHelpCard.cs`. `MatchBootstrap`: `CycleOperator` and `CanAct`, `HandleKeyHelp`, the zoom's binding, fit and resets, taps on release on touch, the wheel, one-finger hurry, and the dev panel on F3. `ISettingsHost`: the dev panel row's hint. PRESENTATION §4.1 and MOBILE M4 updated. **Checked:** the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`, 0 warnings. Play Mode pending, and touch needs the Device Simulator or a phone.
 - 2026-10-01 — **CG4 in: double click to cast** on any legal target. `MatchBootstrap` only: `DoubleClickSeconds` (0.4 s), `_lastTargetClick` and its time, `IsSecondClickOn`, and the second-click branch in `AimAt`. PRESENTATION §4.1 gains the line. Not compiled against the editor DLLs; Play Mode pending.
 - 2026-09-30 — **CG3 in for desktop**: `Application.runInBackground = true` at start. Mobile resume recorded as an open item.
 - 2026-09-30 — **Opened, CG1 and CG2 in.** New on the host: `ShownOperator`, `CanCommand` and `ViewOperator` (`IControlPanelHost`), backed by `_viewedOperator` in `MatchBootstrap`. `ActionTray` draws the shown operator and renders it read-only when it is not the player's to command; `SquadRail` rows and chips the player cannot command show their operator on a click. Compiles; not yet played.

@@ -99,7 +99,12 @@ the two cannot overlap. Both live controls end up under the thumb.
 - **Key hints are dropped when there is no keyboard** — `Space`, `E`, `Esc`,
   `Enter`, the ability cards' 1–3 — and the prompts are rewritten as taps.
   `ScreenLayout.Key` / `KeyMarkup` / `WithKey` are the one filter.
-- **Holding a finger hurries a CPU turn,** the way holding Space does.
+- **Holding a finger hurries a CPU turn,** the way holding Space does. One
+  finger only since CG7, so a pinch on a CPU's turn zooms without hurrying.
+- **A board tap counts on release** (CG7, `TouchGestures`). It is cancelled
+  when a second finger joins, when the finger travels more than about a tenth
+  of an inch, or when it landed on the HUD. Two fingers pinch to zoom and drag
+  to pan (`BoardZoom`); one finger never pans. The mouse still clicks on press.
 - **No cursor is dressed on a touch screen.**
 
 A laptop with a touchscreen keeps its mouse, so the test is "touch and no

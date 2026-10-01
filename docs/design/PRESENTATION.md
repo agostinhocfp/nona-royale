@@ -122,7 +122,8 @@ _Added 2026-09-15, GUI phase increment E._ A stranger's first instinct is to cli
 - **A double click or double tap on a legal target casts** (2026-10-01, `CORE_GAMEPLAY.md` CG4). The first click is still the look: it aims, so the rings and the aim show before energy is spent. Cell abilities keep click, then CAST or Enter.
 - **Right-click or Esc steps back:** first the aim, then the ability, then the piece.
 - **Esc with nothing left to step back from opens the pause menu** (increment H): resume, new match, settings, main menu. The MENU button on the top bar opens it too. While it is open the clock stops and the board ignores input. Once the match is over, Esc brings back the results instead.
-- **Keys:** Space rolls, E ends the turn, 1–3 pick an ability, Enter casts.
+- **Keys:** Space rolls, E ends the turn, Tab and Shift+Tab step through the operators that can act, 1–3 pick an ability, Enter casts. Hold F1 for the full list (CG5, CG6).
+- **The board zooms** (CG7): the mouse wheel zooms toward the cursor, and on touch two fingers pinch and drag. A tap on touch counts when the finger lifts, so the first finger of a pinch never commands anything.
 - **A landing beats a piece only for the selected operator.** With nothing selected, a piece wins, so clicking your own piece never moves a different operator whose landing shares its cell.
 - **Only clickable pieces lift under the pointer**: your own, and legal targets. A lift that promised nothing would teach the player to click at random.
 - **The selection belongs to the seat that made it** and is dropped when the turn passes.
@@ -138,7 +139,7 @@ _Added 2026-09-15, GUI phase increment F._ The board sits in the rectangle the H
 | Bottom | Action tray (`ActionTray`) | Dice, Roll, End turn, the selected operator, its abilities with cost, range and when each is ready, the aim, Cast |
 | Right  | History strip (`HistoryStrip`) | One chip per action, newest on top: who acted (the piece's shape), what kind, one number. Hover for the full card. Turns divided by seat colour and round |
 
-The dev panel (`ControlPanel`) takes the left edge instead of the rail while Tab is on. It is a debugging tool: reseed and pip buttons.
+The dev panel (`ControlPanel`) takes the left edge instead of the rail while F3 is on (Tab until 2026-10-01). It is a debugging tool: reseed and pip buttons.
 
 **Over the board, not beside it** (increment F2):
 
