@@ -96,8 +96,9 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That((Nuetu.BioLinkRage.EnergyCost, Nuetu.BioLinkRage.CooldownTurns, Nuetu.BioLinkRage.Range),
                 Is.EqualTo((3, 2, 2)));
             Assert.That((Nuetu.Killzone.EnergyCost, Nuetu.Killzone.CooldownTurns, Nuetu.Killzone.Range),
-                Is.EqualTo((9, 4, 2)), "cooldown 6 → 4, 2026-09-21");
-            Assert.That(Nuetu.AblativePlating.CooldownTurns, Is.EqualTo(4), "untouched by the pass");
+                Is.EqualTo((6, 3, 3)), "cost 9 → 6, cooldown 4 → 3, range 2 → 3, all 2026-10-01");
+            Assert.That(Nuetu.AblativePlating.CooldownTurns, Is.EqualTo(3),
+                "4 → 3 on 2026-10-01: level with Trauma Plate's uptime");
         }
 
         [Test]

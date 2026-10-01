@@ -206,6 +206,9 @@ namespace NonaRoyale.Core.Text
                 case EffectScope.AlliesAroundPrimaryTarget:
                     line.Text("your allies within ").Number(effect.Radius).Text(" of the target: ");
                     break;
+                case EffectScope.AlliesAroundCaster:
+                    line.Text("you and your allies within ").Number(effect.Radius).Text(" of you: ");
+                    break;
                 case EffectScope.EnemiesInLineFromCaster:
                     line.Text("enemies on the next ").Number(effect.Radius).Text(" cells ahead of you: ");
                     break;

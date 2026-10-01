@@ -57,8 +57,15 @@ namespace NonaRoyale.Core.Abilities
         public const double Speed = 1.5;
 
         /// <summary>
+        /// How far Nanite Infusion's runoff heal reaches from <b>Javi</b>
+        /// (designer, 2026-10-01). Deliberately his cast range, not the old
+        /// radius of 2: the clause now covers everyone he could have aimed at.
+        /// </summary>
+        public const int RunoffRadius = 5;
+
+        /// <summary>
         /// Nanites seal breached suits and cauterize wounds. Turned on an enemy
-        /// they do the opposite, and the squad standing around that enemy gets
+        /// they do the opposite, and the squad standing around <b>Javi</b> gets
         /// the runoff.
         /// </summary>
         /// <remarks>
@@ -74,14 +81,39 @@ namespace NonaRoyale.Core.Abilities
         /// the All-In Mauling pattern, where a self-damage effect is enemy-only
         /// so that the friendly cast costs nothing.
         ///
-        /// The hostile mode is the interesting one: it pays a squad for standing
-        /// next to an enemy, which is exactly where Ace Shards and Dargin Pulse
-        /// punish them for standing.
+        /// <b>The runoff heal moved off the target and onto Javi (designer,
+        /// 2026-10-01).</b> It was <c>AlliesAroundPrimaryTarget</c> at radius 2
+        /// and is now <see cref="EffectScope.AlliesAroundCaster"/> at radius
+        /// <see cref="RunoffRadius"/>. Three things change, and only the first
+        /// was the brief:
+        ///
+        /// <b>1. The anchor.</b> Allies are measured from Javi, so the hostile
+        /// cast rewards a squad for grouping around its support instead of
+        /// around the enemy it is shooting at.
+        ///
+        /// <b>2. Javi always heals himself.</b> He stands at distance zero from
+        /// his own cell, so every hostile cast returns him 1 health
+        /// unconditionally — a self-heal with no positioning and no second
+        /// ability spent. The 2026-09-17 self-cast opt-in gave him a way to
+        /// treat himself for 3 energy; this gives him a smaller one for free,
+        /// attached to the cast he was making anyway.
+        ///
+        /// <b>3. The footprint quadruples.</b> Radius 2 is five cells of track,
+        /// radius 5 is eleven, so on a 52-cell loop a fifth of the board heals
+        /// rather than a tenth of it.
+        ///
+        /// <b>What was given up was the tension that justified the clause.</b>
+        /// The old scope paid a squad for standing next to an enemy, which is
+        /// exactly where Ace Shards and Dargin Pulse punish them for standing:
+        /// the heal was a reason to take a risk. Anchored on Javi it asks for
+        /// nothing a squad would not do anyway, so it is a buff at unchanged
+        /// numbers, landing on the operator the 2026-10-01 sweep had joint top
+        /// of the board. Measured below and in COMBAT_SYSTEMS §10.5.
         /// </remarks>
         public static AbilityDefinition NaniteInfusion { get; } = new AbilityDefinition(
             id: 501, name: "Nanite Infusion",
             description:
-                "Heals an ally, or yourself. Aimed at an enemy it wounds them instead, and any of your operators standing near that enemy are healed a little.",
+                "Heals an ally, or yourself. Aimed at an enemy it wounds them instead, and you and any of your operators standing near you are healed a little.",
             energyCost: 3, cooldownTurns: 2, range: 5,
             // Opts in to self-cast (§10, 2026-09-17): his toolkit is defensive,
             // and a healer who cannot treat himself is half one.
@@ -91,8 +123,8 @@ namespace NonaRoyale.Core.Abilities
                 AbilityEffect.Heal(EffectScope.PrimaryTarget, 2, EffectAudience.AllyOnly),
                 AbilityEffect.Damage(EffectScope.PrimaryTarget, 2, DamageType.Normal,
                     EffectAudience.EnemyOnly),
-                AbilityEffect.Heal(EffectScope.AlliesAroundPrimaryTarget, 1,
-                    EffectAudience.EnemyOnly, radius: 2)
+                AbilityEffect.Heal(EffectScope.AlliesAroundCaster, 1,
+                    EffectAudience.EnemyOnly, radius: RunoffRadius)
             });
 
         /// <summary>

@@ -154,23 +154,62 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(fired.Count, Is.EqualTo(1));
             Assert.That(fired[0].Cell, Is.EqualTo(CellRef.Track(20)),
                 "the detonation finds the target wherever it went");
-            Assert.That(_target.Health, Is.EqualTo(4), "1 splash plus 1 for the marked target");
-            Assert.That(_bystander.Health, Is.EqualTo(6), "left behind, outside the blast");
+            Assert.That(_target.Health, Is.EqualTo(2), "2 splash plus 2 for the marked target");
+            Assert.That(_bystander.Health, Is.EqualTo(6),
+                "left behind: eight cells back, well outside even the radius-3 blast");
         }
 
         [Test]
-        public void ZeroDay_DealsTwoToTheMarkedTarget_AndOneToTheRing()
+        public void ZeroDay_DealsFourToTheMarkedTarget_AndTwoToTheRing()
         {
+            // The designer's numbers of 2026-10-01: splash 2, bonus 2. Named in
+            // figures rather than read off the definition, so that changing the
+            // definition is a deliberate act that also updates §10.8.
             Cast(_target);
 
             AdvanceToCasterUpkeep();
             var fired = Fire();
 
-            Assert.That(fired[0].DamagePerTarget, Is.EqualTo(1));
-            Assert.That(fired[0].MarkedTargetBonus, Is.EqualTo(1));
-            Assert.That(_target.Health, Is.EqualTo(4), "splash plus the marked bonus");
-            Assert.That(_bystander.Health, Is.EqualTo(5), "splash only, safe cell or not");
+            Assert.That(fired[0].DamagePerTarget, Is.EqualTo(2));
+            Assert.That(fired[0].MarkedTargetBonus, Is.EqualTo(2));
+            Assert.That(_target.Health, Is.EqualTo(2), "splash plus the marked bonus");
+            Assert.That(_bystander.Health, Is.EqualTo(4), "splash only, safe cell or not");
             Assert.That(_ally.Health, Is.EqualTo(6), "the blast is an enemy weapon");
+        }
+
+        [Test]
+        public void TheBlast_ReachesThreeCells_WhereItUsedToReachOne()
+        {
+            // Radius 1 → 3 on 2026-10-01. The enemy this catches is the whole
+            // point of the change: at radius 1 an operator three cells from the
+            // carrier was clear, and it is now the difference between a charge
+            // and an area attack.
+            var far = AtTrack(5, "Far", PlayerColor.Blue, 6, 15);        // three past the target
+            _board.Add(far);
+
+            Cast(_target);
+            AdvanceToCasterUpkeep();
+            var fired = Fire();
+
+            Assert.That(fired[0].Caught, Does.Contain(far), "exactly at the edge still counts");
+            Assert.That(far.Health, Is.EqualTo(4), "splash, no bonus — it carries no charge");
+        }
+
+        [Test]
+        public void TheBlast_StopsAtFourCells()
+        {
+            // The pairing that keeps the radius honest: one cell further out and
+            // nothing lands, so the test above is measuring a boundary rather
+            // than a blast that reaches everybody.
+            var clear = AtTrack(6, "Clear", PlayerColor.Blue, 6, 16);    // four past the target
+            _board.Add(clear);
+
+            Cast(_target);
+            AdvanceToCasterUpkeep();
+            var fired = Fire();
+
+            Assert.That(fired[0].Caught.Contains(clear), Is.False);
+            Assert.That(clear.Health, Is.EqualTo(6));
         }
 
         [Test]
@@ -206,7 +245,7 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(fired[0].Cell, Is.EqualTo(CellRef.Track(12)), "the death cell");
             Assert.That(fired[0].MarkedTargetBonus, Is.EqualTo(0), "no living recipient for the bonus");
             Assert.That(fired[0].Caught.Contains(_target), Is.False, "the dead are not caught");
-            Assert.That(_bystander.Health, Is.EqualTo(5), "the ring still takes the splash");
+            Assert.That(_bystander.Health, Is.EqualTo(4), "the ring still takes the splash");
         }
 
         [Test]
@@ -249,7 +288,7 @@ namespace NonaRoyale.Core.Tests.Abilities
 
             Assert.That(fired.Count, Is.EqualTo(1));
             Assert.That(fired[0].SourceOperatorId, Is.EqualTo(_sanity.Id));
-            Assert.That(_target.Health, Is.EqualTo(4));
+            Assert.That(_target.Health, Is.EqualTo(2));
         }
 
         [Test]

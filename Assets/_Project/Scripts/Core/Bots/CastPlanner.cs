@@ -601,6 +601,14 @@ namespace NonaRoyale.Core.Bots
                         list.AddRange(board.AlliesNear(own, board.CellOf(target), effect.Radius));
                     break;
 
+                // The caster is one of them, so this never returns an empty
+                // list for an operator that is on the loop. Without this case
+                // the planner scored Nanite Infusion's splash heal at nothing
+                // and would have undervalued the hostile cast.
+                case EffectScope.AlliesAroundCaster:
+                    if (board.OnLoop(caster)) list.AddRange(board.AlliesNear(own, board.CellOf(caster), effect.Radius));
+                    break;
+
                 case EffectScope.EnemiesInLineFromCaster:
                     if (board.OnLoop(caster)) list.AddRange(board.EnemiesAhead(own, board.CellOf(caster), effect.Radius));
                     break;

@@ -162,9 +162,15 @@ namespace NonaRoyale.Core.Abilities
         /// At pool 2 it protects exactly as much as a plate does, and the
         /// difference between the two operators is what they can do with it.
         ///
-        /// <b>Cooldown 4 against duration 2 — 40% uptime, where Javi gets
-        /// 50%.</b> That ordering is deliberate: the support should hold the
-        /// better shield, and the bruiser should have to choose the turn.
+        /// <b>Cooldown 3 against duration 2 — 50% uptime (designer,
+        /// 2026-10-01; was cooldown 4, 40%).</b> The old note here said the
+        /// 40/50 split was deliberate, because the support should hold the
+        /// better shield and the bruiser should have to choose the turn. At
+        /// cooldown 3 the two are level: Trauma Plate is duration 2 on cooldown
+        /// 3 as well, so Nuetu now keeps a plate up half the time exactly as
+        /// Javi does, and the thing that still separates them is whose plate it
+        /// can be — Javi picks, Nuetu is stuck with himself. That is the whole
+        /// remaining distinction, and it is thinner than it was.
         ///
         /// <b>Cost 3 rather than Trauma Plate's 4, because self-only is
         /// worse.</b> Javi can put a plate on whoever is about to be hit; Nuetu
@@ -180,7 +186,7 @@ namespace NonaRoyale.Core.Abilities
             id: 702, name: "Ablative Plating",
             description:
                 "Wraps you in a shield that soaks up damage until it is used up or wears off. Atomic hits go straight through it.",
-            energyCost: 3, cooldownTurns: 4, range: 0,
+            energyCost: 3, cooldownTurns: 3, range: 0,
             targeting: AbilityTargeting.None,
             effects: new[]
             {
@@ -202,30 +208,38 @@ namespace NonaRoyale.Core.Abilities
         ///
         /// <b>Only the detonation stuns, and that is not a tuning choice.</b>
         /// Stun blocks movement (§5.1), so a zone that stunned on every tick
-        /// would hold a victim inside itself until it expired — nine energy to
+        /// would hold a victim inside itself until it expired — energy spent to
         /// remove an operator from the game for three rounds, with no answer on
-        /// the roster. Neural Purge cleanses the stun for 6, but a re-stun a
-        /// round later beats a cleanse every time. The grenade crushes once; what
+        /// the roster. Neural Purge cleanses the stun, but a re-stun a round
+        /// later beats a cleanse every time. The grenade crushes once; what
         /// lingers only grinds.
         ///
-        /// <b>1 then 1 then 1, walked back from 2 every tick and then again from
-        /// a detonation of 2.</b> Six guaranteed damage would have killed Mimi,
-        /// Syla, Javi, Kurbyn and Kian outright on top of two turns taken, which
-        /// is a deletion rather than an ultimate.
+        /// <b>2 then 2 then 2 (designer, 2026-10-01; was 1, 1 and 1).</b> Six
+        /// guaranteed damage is what the earlier note here rejected, on the
+        /// grounds that it would kill Mimi, Syla, Javi, Kurbyn and Kian outright
+        /// on top of two turns taken — a deletion rather than an ultimate. That
+        /// objection has expired: the roster-wide health rises of 2026-09-16 and
+        /// 2026-09-25 put the common figure at 8, so a full six leaves a healthy
+        /// operator on 2 rather than at zero. Inside collision range, but alive,
+        /// and nobody dies from full.
         ///
-        /// <b>At three total, the stun is carrying the ability and the damage is
-        /// a rider.</b> Nine energy buys Miracle Pull, which either executes
-        /// outright or deals 3 Atomic plus 2 splash, immediately, with no round of
-        /// warning. This deals 3 Normal over three rounds, telegraphed, to
-        /// whoever stays — so it is priced almost entirely on taking two turns
-        /// away from everyone caught. Whether that is worth 9 is exactly what the
-        /// harness has never been asked.
+        /// <b>The stun cut to 1 probably spends the third tick, and that was
+        /// predicted here before it happened.</b> The stun is the only reason a
+        /// victim is standing in the zone for the later ticks; at duration 1 they
+        /// walk out before the third, which then usually catches nobody. So the
+        /// realistic payload is the detonation's 2 plus one tick of 2, not 6, and
+        /// the 6 is the ceiling against somebody who had no move worth making.
+        /// Doubling the damage and halving the stun in the same pass partly
+        /// cancel: the stun was what made the damage collectable.
         ///
-        /// <b>The stun and the damage are not independent dials.</b> The stun is
-        /// the only reason a victim is still standing there for the second and
-        /// third ticks; at stun 1 they walk out before the third, which then
-        /// usually catches nobody and the third tick becomes dead weight. Cutting
-        /// the stun cuts the damage twice. Reasoned, unmeasured.
+        /// <b>Cost 6, cooldown 3, range 3 (designer, 2026-10-01; was 9, 4 and
+        /// 2).</b> The ultimate is no longer the roster's most expensive cast
+        /// nor its longest cooldown — it is Sadist's price on half Sadist's
+        /// timer, and range 3 means he no longer has to stand in the fight to
+        /// place it, which the old note called "the real price" of the ability.
+        /// Three of the four things that limited it moved at once, so if this
+        /// overshoots, the cooldown is the dial to put back first: it is the one
+        /// that governs how often the board has a Killzone on it at all.
         ///
         /// <b>Damage is per target, not divided.</b> The deliberate opposite of
         /// Drone Strike, which splits: a beam of fixed energy is worst against a
@@ -235,26 +249,23 @@ namespace NonaRoyale.Core.Abilities
         /// <b>Normal, so it can be answered.</b> A plate absorbs it, an evasion
         /// charge negates one tick, and a squad that scatters eats less of it.
         ///
-        /// <b>Cost 9 and cooldown 6 — once every seven turns.</b> The longest
-        /// cooldown in the game by a wide margin, which is what lets the payload
-        /// be this large. Range 2 means he has to be standing in the fight to
-        /// place it, and at 1.0 speed with no escape, that is the real price.
         /// </remarks>
         public static AbilityDefinition Killzone { get; } = new AbilityDefinition(
             id: 703, name: "Killzone",
             description:
                 "Marks an area near you and heals you a little. When your next turn begins it goes off: every enemy inside is hurt and stunned, and whoever is still inside keeps getting hurt for a while. Enemies have one turn to leave before it goes off.",
-            // Cooldown 4 since 2026-09-21 (designer), from 6. At once every
-            // seven turns the trap was almost never on the board at the moment a
+            // Cooldown 6 → 4 on 2026-09-21, then 4 → 3 with the cost 9 → 6 and
+            // the range 2 → 3 on 2026-10-01 (designer, both). The first cut was
+            // because the trap was almost never on the board at the moment a
             // fast operator chose to close, which is the only moment it answers.
-            energyCost: 9, cooldownTurns: 4, range: 2,
+            energyCost: 6, cooldownTurns: 3, range: 3,
             targeting: AbilityTargeting.Cell,
             effects: new[]
             {
                 AbilityEffect.DeployZone(
-                    detonationDamage: 1, lingerDamage: 1, lingerTicks: 2, radius: 2,
+                    detonationDamage: 2, lingerDamage: 2, lingerTicks: 2, radius: 2,
                     damageType: DamageType.Normal,
-                    detonationStatus: StatusKind.Stun, statusDuration: 2),
+                    detonationStatus: StatusKind.Stun, statusDuration: 1),
                 AbilityEffect.Heal(EffectScope.Caster, 1, EffectAudience.Any)
             });
 

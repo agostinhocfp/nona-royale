@@ -356,7 +356,14 @@ namespace NonaRoyale.Core.Tests.Abilities
         {
             // Different markers, different entries: neither reads the other's
             // resolution as a cleanse.
-            CastBlindSpot(_target);                                      // 6 → 4, Luka on 18
+            //
+            // Topped up first, because the charge deals four since 2026-10-01
+            // (§10.8) and would knock a six-health double out before the
+            // follow-up had a living recipient — which would hide the very
+            // thing this test exists to show.
+            _target.SetHealth(8);
+
+            CastBlindSpot(_target);                                      // 8 → 6, Luka on 18
             var zeroDay = _abilities.Use(_sanity, Sanity.ZeroDay, _target, _red, _board);
             Assert.That(zeroDay.Approved, Is.True, "precondition");
 
@@ -366,7 +373,7 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(fired.Count, Is.EqualTo(2));
             Assert.That(fired.Any(r => r.Cause == DeferredOperatorEffects.FollowUpCause && r.HitSomething), Is.True);
             Assert.That(fired.Any(r => r.Cause == DeferredOperatorEffects.ChargeCause), Is.True);
-            Assert.That(_target.Health, Is.EqualTo(1), "4, less the charge's two and the follow-up's one");
+            Assert.That(_target.Health, Is.EqualTo(1), "6, less the charge's four and the follow-up's one");
             Assert.That(_statuses.Has(_target, StatusKind.Hunted), Is.False);
             Assert.That(_statuses.Has(_target, StatusKind.ZeroDayCharge), Is.False);
         }
@@ -493,7 +500,7 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(fired.Count, Is.EqualTo(1));
             Assert.That(fired[0].Caught, Does.Contain(_luka), "he is in the blast");
             Assert.That(_luka.Health, Is.EqualTo(Luka.MaxHealth), "the ward ate splash and bonus");
-            Assert.That(_ally.Health, Is.EqualTo(5), "an unwarded ally took the splash");
+            Assert.That(_ally.Health, Is.EqualTo(4), "an unwarded ally took the splash of 2");
 
             _clock.BeginTurnFor(PlayerColor.Red);
             Assert.That(_statuses.Has(_luka, StatusKind.Slow), Is.True, "the slow still lands");

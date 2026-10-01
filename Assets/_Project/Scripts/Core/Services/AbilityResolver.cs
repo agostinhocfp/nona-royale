@@ -441,8 +441,21 @@ namespace NonaRoyale.Core.Services
                         if (effect.BonusInOwnZone > 0 && _cellEffects.HasActiveZoneFor(caster.Owner, caster.Id))
                             healed += effect.BonusInOwnZone;
 
+                        // Report what was restored, not what was offered
+                        // (2026-10-01). OperatorState.Heal clamps at maximum, so
+                        // a point aimed at a healthy operator lands nowhere —
+                        // and this used to report it anyway, which told the event
+                        // log and the toasts that an operator at full health had
+                        // just gained one. Harmless while the only splash heal
+                        // reached two cells around an enemy; Nanite Infusion's
+                        // runoff now reaches five cells around Javi and fires on
+                        // the whole squad every hostile cast, most of them
+                        // usually unhurt. Lifesteal already reports this way.
+                        int beforeHeal = recipient.Health;
                         recipient.Heal(healed);
-                        outcomes.Add(EffectOutcome.Healed(recipient, healed));
+                        int restored = recipient.Health - beforeHeal;
+
+                        if (restored > 0) outcomes.Add(EffectOutcome.Healed(recipient, restored));
                         break;
 
                     case EffectKind.ApplyStatus:
@@ -1444,6 +1457,14 @@ namespace NonaRoyale.Core.Services
                     if (primaryTarget == null) return Array.Empty<OperatorState>();
                     return _targeting.AlliesInArea(
                         _targeting.CellOf(primaryTarget), effect.Radius, caster.Owner, allOperators);
+
+                // Centred on the caster, which is itself an ally at distance
+                // zero, so the caster is always among the recipients. No
+                // primary target is consulted: the cast can be aimed anywhere
+                // and this half lands the same way.
+                case EffectScope.AlliesAroundCaster:
+                    return _targeting.AlliesInArea(
+                        _targeting.CellOf(caster), effect.Radius, caster.Owner, allOperators);
 
                 // Directional, and the radius carries the line's length rather
                 // than a symmetric reach.

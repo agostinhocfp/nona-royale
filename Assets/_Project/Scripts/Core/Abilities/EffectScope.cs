@@ -49,6 +49,29 @@ namespace NonaRoyale.Core.Abilities
         AlliesAroundPrimaryTarget = 5,
 
         /// <summary>
+        /// Every ally of the caster within the radius of the <b>caster</b>,
+        /// the caster itself included. Javi's Nanite Infusion since
+        /// 2026-10-01.
+        /// </summary>
+        /// <remarks>
+        /// <b>The caster is always a recipient.</b> It stands at distance zero
+        /// from itself, so unlike <see cref="AlliesAroundPrimaryTarget"/> —
+        /// which centres on an enemy and reaches the caster only when the
+        /// caster is standing that close — this scope cannot miss it. Any
+        /// effect written on it is a self-effect plus a squad effect, and that
+        /// is a deliberate property, not an accident of the geometry.
+        ///
+        /// <b>It asks the caster for nothing.</b> The target-anchored sibling
+        /// pays a squad for standing next to an enemy, which is where Ace
+        /// Shards and Dargin Pulse punish them for standing; this one pays
+        /// them for standing next to their own support, which is where they
+        /// would rather be anyway. Moving an effect from that scope to this one
+        /// removes a positioning demand, so it is a buff even at the same
+        /// numbers.
+        /// </remarks>
+        AlliesAroundCaster = 7,
+
+        /// <summary>
         /// Every enemy on the next <c>Radius</c> cells <b>ahead</b> of the
         /// caster along the loop, in the caster's own direction of travel. The
         /// caster's cell is not included. Kian's Inversion Matrix.

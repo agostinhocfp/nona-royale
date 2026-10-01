@@ -136,13 +136,26 @@ namespace NonaRoyale.Core.Abilities
         /// Neural Purge answers a 4-energy ability for 6, which is the
         /// rock-paper-scissors the cleanse exists for.
         ///
-        /// <b>1 to everyone in the blast, +1 for the marked target.</b> Two
-        /// damage on the primary and one on the ring is the inverse of Drone
-        /// Strike's split: the beacon is strongest against a crowd that
-        /// scatters its beam, and the charge is strongest against the one
-        /// operator it is riding. A target that dies before the detonation
-        /// still takes the blast with it — it goes off on the death cell, with
-        /// no living recipient for the bonus.
+        /// <b>2 to everyone in the blast, +2 for the marked target, radius 3
+        /// (designer, 2026-10-01; was 1, +1 and radius 1).</b> Four damage on
+        /// the primary and two on the ring, over seven cells of track. It keeps
+        /// the shape it always had — the inverse of Drone Strike's split, since
+        /// the beacon is strongest against a crowd that scatters its beam and
+        /// the charge is strongest against the one operator it is riding — but
+        /// it is now a real area attack as well, and at radius 3 it will
+        /// routinely catch operators nobody aimed at, the caster's own
+        /// neighbours included. A target that dies before the detonation still
+        /// takes the blast with it — it goes off on the death cell, with no
+        /// living recipient for the bonus.
+        ///
+        /// <b>This is the change that fixed him, and it is the blast that did
+        /// it, not the price.</b> Measured over 4000 bot matches: at the old
+        /// 1/+1 radius 1 he won 21.4% of the matches he was fielded in, last on
+        /// the roster; cutting the cost to 3 and leaving the blast alone moved
+        /// him to 20.6%, which is nothing, while leaving the cost at 4 and
+        /// raising the blast moved him to 25.2%. He was never short of casts —
+        /// Zero-Day's problem was what a cast was worth. The cost went back to
+        /// 4 for what the cheap version did to pacing (§12).
         ///
         /// <b>Tech, so it can be answered three ways</b> (2026-09-15). Tech is
         /// damage from a guided or remote-operated device (§2.2), and a homing
@@ -152,24 +165,40 @@ namespace NonaRoyale.Core.Abilities
         /// cleanse cancels the whole thing. Atomic would make the counterplay
         /// one-dimensional, and Atomic is deliberately concentrated.
         ///
-        /// <b>Cost 4, cooldown 3.</b> Priced under Drone Strike's 6 because
-        /// that cannot be cleansed and this can; the cooldown is the real
-        /// limiter either way (§3.1).
+        /// <b>Cost 4, cooldown 3.</b> It was dropped to 3 on 2026-10-01 and put
+        /// back the same day: at 3 the bots cast it 2.83 times a match against
+        /// 2.35 at 4, which bought 0.7 points of win share — inside noise — and
+        /// cost 0.4 turns and 0.5 knockouts a seat, against a pacing budget that
+        /// had just been cut from 34 turns to 24.7 (§12). The old note here
+        /// priced it under "Drone Strike's 6"; Drone Strike has cost 4 for some
+        /// time, so the two now sit level and the cleanse is what separates
+        /// them — this one can be answered, that one cannot. The cooldown is the
+        /// real limiter either way (§3.1).
         ///
-        /// <b>Range 3 (was 2 until 2026-09-16).</b> At 2 the slowest operator
-        /// on the roster had to stand inside the fight to throw it, the same
-        /// price Nuetu pays for his whole kit. At 3 it matches From the Hip and
-        /// Blind Spot, so he can throw it from one cell further back.
+        /// <b>Cost 3 carries no Equilibrium penalty, which is why it looked
+        /// cheaper than it was.</b> Equilibrium doubles a hit from a cast
+        /// costing 3 or less (§5.17), so 3 should have meant a doubled blast
+        /// against Revú. It does not: <c>DamageInstance.CastCost</c> is null for
+        /// anything that resolves later, and a charge detonation is a device,
+        /// not a cast. The whole cheap-cast tax the rest of the roster pays
+        /// never reaches this ability.
+        ///
+        /// <b>Range 4 (2 until 2026-09-16, then 3; designer, 2026-10-01).</b> At
+        /// 2 the slowest operator on the roster had to stand inside the fight to
+        /// throw it, the same price Nuetu pays for his whole kit. At 4 he throws
+        /// it from a cell further back than From the Hip or Blind Spot reach,
+        /// which on an operator at speed 1.0× is the difference between setting
+        /// the charge and being in range of the answer.
         /// </remarks>
         public static AbilityDefinition ZeroDay { get; } = new AbilityDefinition(
             id: 802, name: "Zero-Day",
             description:
-                "Sticks a charge on an enemy. When your next turn begins it goes off wherever they have moved, hurting them and any enemy beside them and slowing them all. A cleanse removes it before it blows.",
-            energyCost: 4, cooldownTurns: 3, range: 3,
+                "Sticks a charge on an enemy. When your next turn begins it goes off wherever they have moved, hitting them hardest, catching every enemy nearby, and slowing them all. A cleanse removes it before it blows.",
+            energyCost: 4, cooldownTurns: 3, range: 4,
             effects: new[]
             {
                 AbilityEffect.AttachCharge(
-                    splashDamage: 1, primaryBonus: 1, radius: 1,
+                    splashDamage: 2, primaryBonus: 2, radius: 3,
                     damageType: DamageType.Tech,
                     detonationStatus: StatusKind.Slow, statusDuration: 1)
             });
