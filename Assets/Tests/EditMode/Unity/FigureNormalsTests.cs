@@ -116,25 +116,5 @@ namespace NonaRoyale.Unity.Tests.View
             Assert.AreEqual(1f, mz, 0.01f);
         }
 
-        [Test]
-        public void EveryRigPart_HasNormals_TexelForTexel()
-        {
-            foreach (var rig in RigRoster.All)
-            {
-                var images = RigImages.Build(rig, OperatorLookBook.Palette);
-                foreach (var facing in new[] { images.Right, images.Left })
-                foreach (var part in facing.Parts)
-                {
-                    Assert.IsNotNull(part.StandingNormals, $"{rig.Name} {part.Part.Name}");
-                    Assert.AreEqual(part.Standing.Pixels.Length, part.StandingNormals.Length, $"{rig.Name} {part.Part.Name}");
-
-                    if (part.Seated == null) continue;
-                    Assert.IsNotNull(part.SeatedNormals, $"{rig.Name} {part.Part.Name} seated");
-                    Assert.AreEqual(part.Seated.Pixels.Length, part.SeatedNormals.Length, $"{rig.Name} {part.Part.Name} seated");
-                    if (ReferenceEquals(part.Seated, part.Standing))
-                        Assert.AreSame(part.StandingNormals, part.SeatedNormals, "uncut, the seated part shares its normals");
-                }
-            }
-        }
     }
 }

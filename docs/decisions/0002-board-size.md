@@ -1,7 +1,9 @@
 # ADR-0002: Board Size — 52-Space Circuit
 
 > Location in repo: `docs/decisions/0002-board-size.md`
-> Status: **Accepted** — 52/6, the classic Ludo cross. 48 was adopted for four amendments and could not be drawn (Amendment 6).
+> Status: **Accepted and closed** — 52/6, the classic Ludo cross, and the only board. 48 was adopted for four amendments and could not be drawn (Amendment 6). **The board question is settled as of 2026-10-01 (Amendment 7); 44/5 is evidence, not a candidate.**
+
+- 2026-10-01 — **Amendment 7. Closed by the designer: Standard 52/6, and one board.** 44/5 stays measured and unadopted, and the 15–20 minute budget is what gives instead. The designer's two reasons: 44/5 may simply be too small for the game to read as anything, and **an unestablished game should not ship a board selector** — a second profile doubles the configuration every measured figure has to be quoted against, before anyone has played the first one enough to know what it wants. The game is tuned around 52/6 from here. Reopening it is a deliberate act that also repaints the board art: ADR-0003 ties the art to the geometry, and 44/5 is a 13×13 grid against Standard's 15×15, with `BOARD_SKIN.md` already eight phases deep. COMBAT_SYSTEMS §12 struck the matching open item.
 
 - 2026-09-13 — Amendment 6 revisited. The whole drawable family measured: combat density is nearly flat across it (0.41–0.46 kills per turn from 28 cells to 60), so board size is a pacing dial and almost nothing else. **44/5 confirmed as the in-budget candidate** — 20.8 turns against Standard's 22.6, four off the p90, fractionally denser, and landing Amendment 4's readability target at 21% of the loop. Not adopted: a smaller-than-Ludo board is a felt property and wants a session. Amendment 6's own re-baseline superseded — the roster changed under it, chiefly `EvasionChance` 0.5 → 0.3.
 
@@ -336,9 +338,9 @@ So every band label in Amendments 2, 3 and 4 overstates Kurbyn by 0.5, and every
 A harness run, in this order, each sweep separable:
 
 1. 1. ~~**Re-baseline** on the fixed core and regenerate the `tools/sim/README` tripwire row.~~ **Done** — but twice, because the first re-baseline measured a board that was then found undrawable. The current figures are in Amendment 6. The `tools/sim/README` tripwire row still needs regenerating.
-2. **Rule on slow stacking.** `GameEngine` sums the status and aura speed channels, so Slow plus Intimidating Presence reaches the `MinSpeedMultiplier` floor — two half-slows becoming a hard stop, which `COMBAT_SYSTEMS` §5.2 exists to prevent. The scripted player triggers this constantly, so it distorts any measurement taken before it is settled.
+2. 2. ~~**Rule on slow stacking.**~~ **Done 2026-10-01 (designer): no slow stacking.** `GameEngine.SpeedOf` folds the two channels instead of summing them — deepest penalty, best bonus, one join (`SpeedChange.Strongest`). **This item's own description was wrong about the stakes:** it said two half-slows became "a hard stop", but at base 1.0 a single slow already lands on the `MinSpeedMultiplier` floor, so the stack was indistinguishable from one slow for ten of the twelve operators. It only ever reached Javi and Syla at 1.5×, for whom it was 0.5× against 1.0×. **The measurement-distortion warning this item carried is retired, measured rather than assumed:** 4000 bot matches before and against after put every win share within 0.2 points and turns, knockouts, abilities and collisions identical to the decimal. The floor had hidden it from ten of twelve operators and the conjunction it needs is rare, so the back catalogue is comparable after all. `SpeedStackingTests` covers it, including a band test that fails if a third operator ever goes above 1.0.
 3. **Sweep `MarkDamagePerTurn` at 1 / 2 / 3 against durations 2 / 3.** The figure to watch is not match length but _what share of marked targets die to the mark itself_ rather than to a follow-up. A high share means the payout is self-fulfilling regardless of what pacing says.
-4. **Re-check `HasteSpeedBonus`** against the corrected band.
+4. 4. ~~**Re-check `HasteSpeedBonus`** against the corrected band.~~ **Moot** — `HasteSpeedBonus` no longer exists. Haste became flat cells on 2026-09-16 (+1 at a roll of 6 or less, +2 above, capped per operator per turn), so there is no speed multiplier left to re-check (COMBAT_SYSTEMS §5.9).
 5. **Re-check `SlowSpeedPenalty`**, which was measured against 1.5–2.0 and never re-run when Amendment 4 lowered the band. At −0.5 against a 1.0 operator it now reaches the floor on its own.
 
 ---

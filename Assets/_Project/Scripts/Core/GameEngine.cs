@@ -1939,9 +1939,20 @@ namespace NonaRoyale.Core
         /// evaluated now, because an aura's truth changes with position.
         /// </summary>
         /// <remarks>
-        /// The two channels are summed, which means a slow and an enemy aura
-        /// stack even though COMBAT_SYSTEMS §5.2 says slow sources do not.
-        /// Pre-existing and unresolved — COMBAT_SYSTEMS §12.
+        /// <b>The two channels are folded, not summed</b> (designer,
+        /// 2026-10-01: "No slow stacking"). Each returns its strongest bonus
+        /// and its deepest penalty, and <see cref="SpeedChange.Strongest"/>
+        /// keeps the better bonus and the worse penalty across both — so a
+        /// cast slow and an enemy aura give one slow, the deeper of the two,
+        /// which is what COMBAT_SYSTEMS §5.2 always said and what this line
+        /// used to contradict.
+        ///
+        /// It was a `+` for a long time, and COMBAT_SYSTEMS §12 carried it as
+        /// the project's top open rules conflict because of what it did to the
+        /// evidence: the scripted player triggers slow constantly, so every
+        /// figure taken before this date was taken with the two channels
+        /// stacking. Figures from before 2026-10-01 are not comparable to
+        /// figures after it.
         ///
         /// Extracted from <c>Move</c> once <c>PreviewLandings</c> and
         /// <c>HasLegalMove</c> both needed it. Three copies of this expression
@@ -1950,7 +1961,9 @@ namespace NonaRoyale.Core
         private double SpeedOf(OperatorState op) =>
             _movement.EffectiveSpeed(
                 op.BaseSpeedMultiplier,
-                _statuses.SpeedModifier(op) + _auras.SpeedModifierFor(op, _operators));
+                SpeedChange.Strongest(
+                    _statuses.SpeedChangeFor(op),
+                    _auras.SpeedChangeFor(op, _operators)).Total);
 
         /// <summary>
         /// Cells this operator moves for <paramref name="pips"/> right now,

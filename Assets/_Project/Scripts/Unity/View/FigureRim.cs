@@ -25,7 +25,7 @@ namespace NonaRoyale.Unity.View
     /// the flips and the visibility each frame, since a facing or a seat
     /// swaps sprites on the same renderers.
     ///
-    /// Plain C# owned by the piece, like <c>RigView</c>.
+    /// Plain C# owned by the piece.
     /// </remarks>
     internal sealed class FigureRim
     {

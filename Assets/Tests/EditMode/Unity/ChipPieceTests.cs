@@ -53,9 +53,9 @@ namespace NonaRoyale.Unity.Tests.View
         }
 
         [Test]
-        public void EveryChipSoFar_HasAMeasuredAnchor_InsideItsFace()
+        public void AllTwelveChips_HaveAMeasuredAnchor_InsideTheFace()
         {
-            foreach (var name in new[] { "Luka", "Bouncer", "Syla", "Kurbyn", "Javi", "Sanity", "Mimi", "Fortuna", "Revú", "Nuetu", "Lethe" })
+            foreach (var name in new[] { "Luka", "Bouncer", "Syla", "Kurbyn", "Javi", "Sanity", "Mimi", "Fortuna", "Revú", "Nuetu", "Lethe", "Kian" })
             {
                 Assert.IsTrue(ChipArtLibrary.HasAnchor(name), name);
 
@@ -85,7 +85,6 @@ namespace NonaRoyale.Unity.Tests.View
             var piece = Bind("Mimi", PieceStyle.Chips);
 
             Assert.IsTrue(piece.ShowsChip);
-            Assert.IsFalse(piece.ShowsRig);
             Assert.IsFalse(Child(piece, "pin").enabled);
             Assert.IsNotNull(Child(piece, "body").transform.Find("chip"));
         }

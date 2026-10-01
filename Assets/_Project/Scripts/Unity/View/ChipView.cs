@@ -9,7 +9,7 @@ namespace NonaRoyale.Unity.View
     /// 2026-09-29): a shadow, the chip's thickness, a body in the seat
     /// colour with ivory edge inserts, a gilt ring, and the operator's
     /// portrait as the face. Plain C# owned by the piece, like
-    /// <see cref="RigView"/>.
+    /// the piece, as the retired <c>RigView</c> was.
     /// </summary>
     /// <remarks>
     /// <b>Flat, and made to look thick.</b> Seen from straight above a chip is

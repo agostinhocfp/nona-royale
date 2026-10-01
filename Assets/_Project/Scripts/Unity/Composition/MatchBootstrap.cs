@@ -780,8 +780,7 @@ namespace NonaRoyale.Unity.Composition
             // rest of the match builds; a piece that binds first waits for its
             // own. An operator with a rig never draws its look-book figure.
             var figureNames = _match.Operators.Select(o => o.Name).Distinct().ToList();
-            OperatorRigArt.Prewarm(figureNames);
-            OperatorLookBook.Prewarm(figureNames.Where(n => !OperatorRigArt.Has(n)));
+            OperatorLookBook.Prewarm(figureNames);
 
             foreach (var op in _match.Operators)
             {

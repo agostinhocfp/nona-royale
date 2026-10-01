@@ -62,11 +62,11 @@ namespace NonaRoyale.Core.Services
         /// before. The rule is fixed now so the first positive speed aura does
         /// not have to find the bug.
         /// </remarks>
-        public double SpeedModifierFor(OperatorState op, IReadOnlyList<OperatorState> allOperators)
+        public SpeedChange SpeedChangeFor(OperatorState op, IReadOnlyList<OperatorState> allOperators)
         {
             if (op == null) throw new ArgumentNullException(nameof(op));
             if (allOperators == null) throw new ArgumentNullException(nameof(allOperators));
-            if (!_targeting.IsInPlay(op)) return 0.0;
+            if (!_targeting.IsInPlay(op)) return SpeedChange.None;
 
             double strongestBonus = 0.0;
             double strongestPenalty = 0.0;
@@ -88,8 +88,19 @@ namespace NonaRoyale.Core.Services
             // exists to stop. Only the penalty goes; a bonus is not a slow.
             if (_sanctuary != null && _sanctuary.Resists(op, StatusKind.Slow)) strongestPenalty = 0.0;
 
-            return strongestBonus + strongestPenalty;
+            return new SpeedChange(strongestBonus, strongestPenalty);
         }
+
+        /// <summary>
+        /// What the auras add to the base multiplier on their own.
+        /// </summary>
+        /// <remarks>
+        /// Kept for callers with a single channel to read. The engine asks
+        /// <see cref="SpeedChangeFor"/>, because summing this with the status
+        /// channel is exactly how a slow and an aura used to stack.
+        /// </remarks>
+        public double SpeedModifierFor(OperatorState op, IReadOnlyList<OperatorState> allOperators) =>
+            SpeedChangeFor(op, allOperators).Total;
 
         /// <summary>
         /// Whether any aura reaching this operator right now makes it count as

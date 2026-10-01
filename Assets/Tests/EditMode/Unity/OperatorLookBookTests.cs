@@ -24,8 +24,10 @@ namespace NonaRoyale.Unity.Tests.View
             OperatorLookBook.ClearCache();
             OperatorLookBook.Enabled = true;
 
-            // Bouncer has a rig since LB5b; these tests are about the look book under it.
-            OperatorRigArt.Enabled = false;
+            // These used to switch the rig off first, because Bouncer had one
+            // since LB5b and it sat above the look book in the fallback. The
+            // rigs went on 2026-10-01, so the look book is what a figure with
+            // no render draws, full stop.
         }
 
         [TearDown]
@@ -35,7 +37,6 @@ namespace NonaRoyale.Unity.Tests.View
             OperatorArtLibrary.ClearCache();
             OperatorLookBook.ClearCache();
             OperatorLookBook.Enabled = true;
-            OperatorRigArt.Enabled = true;
         }
 
         [Test]

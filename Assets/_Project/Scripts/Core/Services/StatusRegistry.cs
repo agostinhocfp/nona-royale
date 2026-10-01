@@ -253,12 +253,28 @@ namespace NonaRoyale.Core.Services
         /// ability that stated a magnitude for it would otherwise leak into
         /// the speed channel.
         /// </remarks>
-        public double SpeedModifier(OperatorState op)
+        /// <summary>
+        /// This channel's contribution to speed, as a bonus and a penalty
+        /// resolved separately (§5.2).
+        /// </summary>
+        /// <remarks>
+        /// <b>Penalties do not stack</b> (designer, 2026-10-01). Within a kind
+        /// that was already true — a second Slow replaces the first and the
+        /// deeper one wins — but two different speed-affecting kinds used to
+        /// sum here, and this channel's total then summed again with the aura
+        /// channel's in <c>GameEngine</c>. Both joins now take the strongest of
+        /// each sign instead (<see cref="SpeedChange.Strongest"/>).
+        ///
+        /// A passive is skipped when an applied status of the same kind is
+        /// present, so a cast slow replaces a passive one rather than adding
+        /// to it. That rule predates this change and is unaffected by it.
+        /// </remarks>
+        public SpeedChange SpeedChangeFor(OperatorState op)
         {
             if (op == null) throw new ArgumentNullException(nameof(op));
 
             int ownerTurn = _clock.TurnIndexOf(op.Owner);
-            double total = 0.0;
+            var change = SpeedChange.None;
 
             _byOperator.TryGetValue(op.Id, out var applied);
             _passives.TryGetValue(op.Id, out var passives);
@@ -268,7 +284,8 @@ namespace NonaRoyale.Core.Services
                 foreach (var pair in applied)
                 {
                     if (IsNotSpeed(pair.Key)) continue;
-                    if (IsActive(pair.Value, ownerTurn)) total += pair.Value.Magnitude;
+                    if (IsActive(pair.Value, ownerTurn))
+                        change = SpeedChange.Strongest(change, SpeedChange.Of(pair.Value.Magnitude));
                 }
             }
 
@@ -278,12 +295,22 @@ namespace NonaRoyale.Core.Services
                 {
                     if (IsNotSpeed(pair.Key)) continue;
                     if (applied != null && applied.ContainsKey(pair.Key)) continue;
-                    total += pair.Value.Magnitude;
+                    change = SpeedChange.Strongest(change, SpeedChange.Of(pair.Value.Magnitude));
                 }
             }
 
-            return total;
+            return change;
         }
+
+        /// <summary>
+        /// What this channel adds to the base multiplier on its own.
+        /// </summary>
+        /// <remarks>
+        /// Kept because it is what the status tests and the view ask for. The
+        /// engine asks <see cref="SpeedChangeFor"/> instead, because it has a
+        /// second channel to fold in and a sum would stack the two.
+        /// </remarks>
+        public double SpeedModifier(OperatorState op) => SpeedChangeFor(op).Total;
 
         /// <summary>
         /// Whether <see cref="StatusKind.Hastened"/> is active on this operator

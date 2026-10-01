@@ -68,25 +68,15 @@ namespace NonaRoyale.Unity.View
     /// (<see cref="FigureLayout.FootAnchorOffset"/>); the transform's origin is
     /// still the figure's centre, which the floaters and sounds read.
     ///
-    /// <b>Rigged figures (OPERATOR_LOOKBOOK.md, LB5b).</b> An operator with a
-    /// rig and no render is drawn as parts that move at the joints
-    /// (<see cref="RigView"/>, <see cref="RigAnimator"/>). The fallback order
-    /// is a render, then the rig, then the look book, then the pawn. A rigged
-    /// figure takes the render's place in everything above - fitted by
-    /// <see cref="FigureLayout.Fit"/>, untinted over the seat disc, flashed
-    /// white - and its own motion replaces the whole-sprite tricks: the step
-    /// replaces the hop and its squash, the idle and the seated loop replace
-    /// the breathing and the sway, and a rise stands up out of a crouch
-    /// inside the same pop. It faces toward the next cell as it walks and
-    /// toward the board centre at rest (<see cref="BoardCentre"/>). The pin
-    /// rides the chest.
-    ///
-    /// <b>Event poses (LB5c).</b> A cast turns the figure to its target and
-    /// raises the device toward it, lit cyan for the hold (<see cref="Cast"/>).
-    /// A hit turns it to the striker and rocks it back (<see cref="Recoil"/>).
-    /// A knockout folds the figure before the shatter, so the shards leave a
-    /// body that has gone down rather than one standing at rest
-    /// (<see cref="Shatter"/>, <see cref="IsKnockingOut"/>).
+    /// <b>The 2D rigs are gone (2026-10-01).</b> An operator used to be
+    /// drawable as parts that moved at the joints, with its own step, idle,
+    /// facing, cast and fold - a whole animation system under
+    /// <c>View/Figures/Rig</c>, built for all twelve and never shipped. ADR-0013
+    /// replaced board pieces with portrait chips and the rigs became dead
+    /// weight the project compiled, tested and read every session. The
+    /// fallback order is now a render, then the look book, then the pawn; the
+    /// whole-sprite motion below is the only motion a figure has. The history
+    /// is in OPERATOR_LOOKBOOK.md LB5 and the tag is `archive/rigs-2d`.
     ///
     /// <b>Chips (2026-09-29).</b> Under <see cref="PieceStyle.Chips"/> every
     /// operator is a casino chip lying on the table instead of a figure
@@ -176,25 +166,11 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>
         /// Everything drawn over the figure - the pin, the bar, the halo - sits
-        /// at or above this order inside the piece's group, clear of a rig's
-        /// parts, which take two orders each from <see cref="RigBaseOrder"/>.
+        /// at or above this order inside the piece's group. It used to also have
+        /// to clear a rig's parts, which took two orders each; nothing claims
+        /// those orders now.
         /// </summary>
         private const int OverlayOrder = 40;
-
-        /// <summary>A rig's first part; with two orders a part, room for 18 parts under the overlay.</summary>
-        private const int RigBaseOrder = 4;
-
-        /// <summary>How long a rigged figure takes to stand out of its crouch on a deploy.</summary>
-        private const float RigRiseSeconds = 0.4f;
-
-        /// <summary>A rigged figure's recoil on a hit: the hit's hold in MOTION.md.</summary>
-        private const float RigHitSeconds = 0.3f;
-
-        /// <summary>A rigged figure's fold before the shatter.</summary>
-        private const float RigFoldSeconds = 0.25f;
-
-        /// <summary>How far across, in cells, a target must be before a rigged figure turns to it.</summary>
-        private const float FacingDeadZone = 0.05f;
 
         /// <summary>The seat disc under a rendered figure: width and depth, in figure units.</summary>
         private const float SeatBaseWidth = 0.9f;
@@ -299,20 +275,21 @@ namespace NonaRoyale.Unity.View
         private PieceStyle _style = PieceStyle.Figures;
         private ChipView _chip;
 
-        // ── The rig (LB5b) ──────────────────────────────────────
-        private RigView _rig;
-        private RigAnimator _animator;
-        private bool _facesLeft;
-
         /// <summary>Cells finished in the current walk, and the length of the one under way.</summary>
         private float _walkCells;
         private float _segmentCells = 1f;
 
         /// <summary>The pin's point on the chest bone, in the chest's rest space; recomputed on a pose or facing change.</summary>
-        private Vector2 _pinOnChest;
-        private bool _pinPlaced;
 
         /// <summary>Folding before the shatter (LB5c); the shards follow when the fold ends.</summary>
+        /// <summary>
+        /// Vestigial since the rigs went (2026-10-01): nothing sets it true any
+        /// more, because the rig's fold-before-shatter was its only writer.
+        /// <see cref="IsCollapsing"/> and <see cref="IsKnockingOut"/> are read
+        /// by the bootstrap, and both still answer correctly without it -
+        /// IsKnockingOut from the shard clock. Kept as the seam a future
+        /// multi-frame knockout would use rather than removed and re-added.
+        /// </summary>
         private bool _collapsing;
 
         /// <summary>Scaled seconds the shards are still flying, so the queue can wait for them.</summary>
@@ -370,20 +347,11 @@ namespace NonaRoyale.Unity.View
         /// <summary>Whether the current pose is a rendered figure rather than the procedural one. True for a rig too.</summary>
         public bool ShowsRenderedArt => _rendered;
 
-        /// <summary>Whether the figure is drawn as a rig (LB5b).</summary>
-        public bool ShowsRig => RigActive;
-
         /// <summary>Whether the operator is drawn as a chip (2026-09-29).</summary>
         public bool ShowsChip => ChipActive;
 
         /// <summary>The piece style it is drawn in.</summary>
         public PieceStyle Style => _style;
-
-        /// <summary>Whether a rigged figure faces the left of the screen.</summary>
-        public bool FacesLeft => _facesLeft;
-
-        /// <summary>Where a rigged figure looks at rest. The board's centre, set by whoever places the pieces.</summary>
-        public Vector3 BoardCentre { get; set; }
 
         /// <summary>The health the piece last showed. The HUD label reads this, so it never runs ahead of the hit.</summary>
         public int ShownHealth { get; private set; }
@@ -409,13 +377,8 @@ namespace NonaRoyale.Unity.View
             rect = default;
             if (camera == null || _body == null || _hidden) return false;
 
-            // A rig is the union of its parts; the body child draws nothing then.
             Bounds bounds;
-            if (RigActive)
-            {
-                if (!_rig.TryBounds(out bounds)) return false;
-            }
-            else if (ChipActive)
+            if (ChipActive)
             {
                 bounds = _chip.Bounds;
             }
@@ -451,7 +414,6 @@ namespace NonaRoyale.Unity.View
         public PieceMark Marks => _marks;
 
         private bool Reduced => _motion != null && _motion.ReducedMotion;
-        private bool RigActive => _rig != null && _rig.Active;
         private bool ChipActive => _chip != null && _chip.Active;
         private float Rate => _motion != null ? _motion.Rate : 1f;
 
@@ -474,9 +436,6 @@ namespace NonaRoyale.Unity.View
 
             // Pieces breathe out of step with each other.
             _idlePhase = (op.Id * 0.618f) % 1f * Mathf.PI * 2f;
-
-            // A rig breathes on the same clock, from the same phase.
-            _animator = new RigAnimator(_idlePhase / 1.8f);
 
             // Everything that stands up hangs off one child, so the lean is
             // applied once (V1b). The ground markings stay on the root, where
@@ -525,13 +484,9 @@ namespace NonaRoyale.Unity.View
             _haste.Bind(this, _figure, motion);
         }
 
-        /// <summary>
-        /// What a haste afterimage is drawn from: the render's silhouette or the
-        /// pawn. Null for a rigged figure, whose parts cannot be copied as one
-        /// sprite; its streaks carry the look alone.
-        /// </summary>
+        /// <summary>What a haste afterimage is drawn from: the render's silhouette or the pawn.</summary>
         internal Sprite GhostSprite =>
-            RigActive || _body == null ? null : ChipActive ? _chip.Silhouette : _rendered ? _flashOverlay.sprite : _body.sprite;
+            _body == null ? null : ChipActive ? _chip.Silhouette : _rendered ? _flashOverlay.sprite : _body.sprite;
 
         /// <summary>Where an afterimage is laid: the body, with its scale and lean.</summary>
         internal Transform GhostFrame => _body != null ? _body.transform : null;
@@ -557,10 +512,9 @@ namespace NonaRoyale.Unity.View
             var pose = seated ? FigurePose.Seated : FigurePose.Standing;
             bool chip = _style == PieceStyle.Chips;
 
-            // A chip, or: a render, then a rig, then the look book, then the pawn.
-            var rig = !chip && OperatorArtLibrary.Rendered(Operator.Name, pose) == null ? OperatorRigArt.For(Operator.Name) : null;
-            var art = !chip && rig == null ? OperatorArtLibrary.Figure(Operator.Name, pose) : null;
-            _rendered = chip || art != null || rig != null;
+            // A chip, or: a render, then the look book, then the pawn.
+            var art = !chip ? OperatorArtLibrary.Figure(Operator.Name, pose) : null;
+            _rendered = chip || art != null;
 
             _pin.enabled = !chip;
             _flashOverlay.sortingOrder = chip ? ChipView.FlashOrder : 4;
@@ -616,7 +570,6 @@ namespace NonaRoyale.Unity.View
             _body.transform.localPosition = new Vector3(0f, _layout.ArtY, 0f);
             _body.transform.localScale = Vector3.one * _layout.ArtScale;
 
-            ShowRig(rig, seated);
             ShowChip(chip);
 
             // A new figure: the rim is copied from it afresh (G8d).
@@ -657,7 +610,6 @@ namespace NonaRoyale.Unity.View
             // Forget the pose, so the next one is built in the new style.
             bool seated = Seated;
             _seated = null;
-            _animator?.Clear();
             SetPose(seated);
             _shapedPitch = -1f;
             Draw();
@@ -718,7 +670,6 @@ namespace NonaRoyale.Unity.View
             _path.Clear();
             _hopping = false;
             _walkCells = 0f;
-            _animator?.StopCast();
 
             foreach (var point in waypoints) _path.Enqueue(point);
 
@@ -752,9 +703,6 @@ namespace NonaRoyale.Unity.View
             DrawHealth(Operator.Health);
             StartPop(0.45f, rise: true);
 
-            // A rigged figure stands up out of a crouch inside the pop.
-            if (RigActive) _animator.Rise(_motion != null ? _motion.Tween(RigRiseSeconds) : RigRiseSeconds);
-
             var ring = UiTheme.WithAlpha(BoardLayout.ColourOf(Operator.Owner), 0.9f);
             FxSprite.Spawn(transform.parent, Primitives.Ring, ring, 2,
                 new FxPose(position, Vector3.one * (_baseScale * 0.5f)),
@@ -765,24 +713,18 @@ namespace NonaRoyale.Unity.View
         /// <summary>
         /// A knockout: the figure breaks into shards in its seat colour, a copy
         /// of it burns away under them (G8c, <see cref="FxBurn"/>), and it is
-        /// hidden until <see cref="Reappear"/>. A standing rigged figure folds
-        /// first and shatters as the fold ends (LB5c).
+        /// hidden until <see cref="Reappear"/>.
         /// </summary>
+        /// <remarks>
+        /// A standing rigged figure used to fold first and shatter as the fold
+        /// ended (LB5c). With the rigs gone the shards leave at once, which is
+        /// what every chip and every rendered figure always did.
+        /// </remarks>
         public void Shatter()
         {
             if (_haste != null) _haste.Show(false, null);
 
             if (_hidden || _collapsing) return;
-
-            if (RigActive && !Seated)
-            {
-                _collapsing = true;
-                _path.Clear();
-                _hopping = false;
-                _hold = 0f;
-                _animator.Knockout(_motion != null ? _motion.Tween(RigFoldSeconds) : RigFoldSeconds);
-                return;
-            }
 
             ShatterNow();
         }
@@ -823,19 +765,17 @@ namespace NonaRoyale.Unity.View
             _path.Clear();
             _hopping = false;
             _hold = 0f;
-            _animator?.Stop();
             _chip?.StopCast();
             Draw();
         }
 
         /// <summary>
-        /// What the knockout burns: every part of a rig; otherwise the body,
-        /// with the procedural pawn's outline and a hit flash still on it.
-        /// The pin and the ground markings just go, as before.
+        /// What the knockout burns: the chip's parts, or the body with the
+        /// procedural pawn's outline and a hit flash still on it. The pin and
+        /// the ground markings just go, as before.
         /// </summary>
         private IReadOnlyList<SpriteRenderer> BurnParts()
         {
-            if (RigActive) return _rig.Parts;
             if (ChipActive) return _chip.Parts;
             if (_body == null) return null;
 
@@ -852,7 +792,6 @@ namespace NonaRoyale.Unity.View
             _hidden = false;
             _collapsing = false;
             _shardClock = 0f;
-            _animator?.Clear();
             Place(position);
             StartPop(0.4f, rise: false);
         }
@@ -872,43 +811,35 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>
         /// A rigged figure's recoil (LB5c): it turns to face
-        /// <paramref name="from"/>, when the striker is known, and rocks back
-        /// away from it. No-op for any other figure, whose hit is the flash alone.
+        /// <paramref name="from"/>, when the striker is known, and rocked back
+        /// away from it.
         /// </summary>
+        /// <remarks>
+        /// <b>Nothing recoils since the rigs went (2026-10-01.)</b> A hit is the
+        /// white flash and the floating number, which is what it always was for
+        /// a chip and for a rendered figure. The method and its call sites are
+        /// kept rather than unpicked: the striker's position is the one piece of
+        /// information a hit reaction needs, the callers already have it, and
+        /// throwing that away would make any future reaction a plumbing job
+        /// before it was an animation job.
+        /// </remarks>
         public void Recoil(Vector3? from)
         {
-            if (!RigActive || Seated || _hidden || _collapsing) return;
-
-            if (from.HasValue) TurnToward(from.Value.x);
-            _animator.Hit(_motion != null ? _motion.Tween(RigHitSeconds) : RigHitSeconds);
         }
 
         /// <summary>
-        /// A rigged figure's cast (LB5c): it turns to <paramref name="aim"/>
-        /// and raises its device toward it, lit cyan for the hold, which ends
-        /// with a cast tell of <paramref name="tellSeconds"/>. With no aim it
-        /// casts where it faces. No-op for any other figure.
+        /// A chip lights its portrait for a cast tell of
+        /// <paramref name="tellSeconds"/> (2026-09-29). A figure does nothing.
         /// </summary>
+        /// <remarks>
+        /// A rigged figure used to turn to <paramref name="aim"/> and raise its
+        /// device toward it, lit cyan for the hold (LB5c). <paramref name="aim"/>
+        /// is kept for the same reason <see cref="Recoil"/> keeps its striker:
+        /// where the cast is pointed is the hard part to recover later.
+        /// </remarks>
         public void Cast(Vector3? aim, float tellSeconds)
         {
-            // A chip lights its portrait for the tell (2026-09-29).
-            if (ChipActive)
-            {
-                if (!_hidden) _chip.Cast(tellSeconds);
-                return;
-            }
-
-            if (!RigActive || Seated || _hidden || _collapsing) return;
-
-            float elevation = 0f;
-            if (aim.HasValue)
-            {
-                TurnToward(aim.Value.x);
-                elevation = RigAnimator.Elevation(_ground.x, _ground.y, aim.Value.x, aim.Value.y);
-            }
-
-            var pose = RigAnimator.Aimed(_rig.Current.Rig, elevation);
-            _animator.Cast(pose, RigClips.CastLengthFor(tellSeconds));
+            if (ChipActive && !_hidden) _chip.Cast(tellSeconds);
         }
 
         /// <summary>
@@ -943,7 +874,6 @@ namespace NonaRoyale.Unity.View
             SetPose(Operator.IsInYard);
 
             _body.color = _rendered ? WithAlpha(BodyColour) : WithAlpha(Color.Lerp(BodyColour, Color.white, _flash));
-            if (_rig != null) _rig.SetAlpha(_alpha);
             if (_chip != null) _chip.SetAlpha(_alpha);
             _outline.color = WithAlpha(_outline.color);
             _pin.color = WithAlpha(_pin.color);
@@ -1087,13 +1017,6 @@ namespace NonaRoyale.Unity.View
 
             if (ChipActive) _chip.Tick(rated, ChipAir);
 
-            if (RigActive)
-            {
-                _animator.Advance(idle ? delta : 0f, rated);
-                if (_collapsing && _animator.Folded) ShatterNow();
-                Face();
-            }
-
             Draw();
         }
 
@@ -1153,17 +1076,10 @@ namespace NonaRoyale.Unity.View
             _rim.Sync(colour, _alpha * strength);
         }
 
-        /// <summary>What the rim copies: every rig part's silhouette, a render's silhouette, or the pawn itself.</summary>
+        /// <summary>What the rim copies: a render's silhouette, the chip, or the pawn itself.</summary>
         private IEnumerable<FigureRim.Source> RimSources()
         {
-            if (RigActive)
-            {
-                var parts = _rig.Parts;
-                var silhouettes = _rig.Silhouettes;
-                for (int i = 0; i < parts.Count && i < silhouettes.Count; i++)
-                    yield return new FigureRim.Source(silhouettes[i], parts[i]);
-            }
-            else if (ChipActive)
+            if (ChipActive)
             {
                 // The chip's face and its edge below it: the rim follows the whole token.
                 yield return new FigureRim.Source(_chip.RimEdge, _chip.RimEdge);
@@ -1183,14 +1099,6 @@ namespace NonaRoyale.Unity.View
         private void AnimateFlash(float delta)
         {
             if (_body == null) return;
-
-            if (RigActive)
-            {
-                // Every part carries its own white silhouette.
-                if (_flash > 0f) _flash = Mathf.Max(0f, _flash - delta * 4f);
-                _rig.Flash(_flash * ArtFlashStrength * _alpha);
-                return;
-            }
 
             if (_flash <= 0f)
             {
@@ -1232,9 +1140,8 @@ namespace NonaRoyale.Unity.View
             _hopT += rated * speed / cells;
             _segmentCells = cells;
 
-            // A rigged figure steps rather than hops: no lift, no landing squash.
             // A chip hops toward the camera instead of up the screen (Draw).
-            bool hops = !Reduced && !RigActive;
+            bool hops = !Reduced;
 
             if (_hopT < 1f)
             {
@@ -1257,7 +1164,6 @@ namespace NonaRoyale.Unity.View
         private void Draw()
         {
             float sx = 1f, sy = 1f, roll = 0f;
-            bool rig = RigActive;
             bool chip = ChipActive;
 
             if (chip)
@@ -1268,8 +1174,7 @@ namespace NonaRoyale.Unity.View
                 sx = grow;
                 sy = grow;
             }
-            // A rig moves its own joints; the whole-sprite squash, breath and sway are for flat figures.
-            else if (!Reduced && !rig)
+            else if (!Reduced)
             {
                 // Stretch in the air, squash on landing.
                 float air = _hopping ? Mathf.Sin(_hopT * Mathf.PI) : 0f;
@@ -1328,7 +1233,6 @@ namespace NonaRoyale.Unity.View
             GroundMarks(scale);
             Stand();
             Depth();
-            PoseRig();
         }
 
         // ── The chip (2026-09-29) ────────────────────────────────────────
@@ -1355,103 +1259,6 @@ namespace NonaRoyale.Unity.View
             _chip.SetGlow(OperatorGlow.For(Operator.Name));
             _chip.SetAlpha(_alpha);
             _chip.Active = true;
-        }
-
-        // ── The rig (LB5b) ───────────────────────────────────────────────
-
-        /// <summary>
-        /// Shows the rig for a pose, building its view on first use, or hides
-        /// it when the pose draws something else.
-        /// </summary>
-        private void ShowRig(RigArt art, bool seated)
-        {
-            if (art == null)
-            {
-                if (_rig != null) _rig.Active = false;
-                return;
-            }
-
-            if (_rig == null || _rig.Art != art)
-            {
-                _rig?.Destroy();
-                _rig = new RigView(_body.transform, art, RigBaseOrder);
-            }
-
-            _rig.Active = true;
-            _rig.Seated = seated;
-            _rig.FacesLeft = _facesLeft;
-            _rig.SetAlpha(_alpha);
-            _animator.Seated = seated;
-            _pinPlaced = false;
-            PoseRig();
-        }
-
-        /// <summary>Turns a rigged figure toward where it is going, or toward the board centre at rest.</summary>
-        private void Face()
-        {
-            // A cast, a recoil or a fold keeps the facing it was given.
-            if (_animator.Casting || _animator.Recoiling || _animator.KnockedOut) return;
-
-            float toX;
-            if (_path.Count > 0) toX = _path.Peek().x;
-            else if (_hold > 0f) return;   // resting on a contested cell: keep looking where it went
-            else toX = BoardCentre.x;
-
-            TurnToward(toX);
-        }
-
-        /// <summary>Faces a rigged figure toward a point across the board, outside the dead zone.</summary>
-        private void TurnToward(float toX)
-        {
-            bool left = RigAnimator.FaceLeft(_ground.x, toX, _facesLeft, FacingDeadZone * _stepDistance);
-            if (left == _facesLeft) return;
-
-            _facesLeft = left;
-            _rig.FacesLeft = left;
-            _pinPlaced = false;
-
-            // A cast built for the other facing would be mirrored wrong.
-            _animator.StopCast();
-        }
-
-        /// <summary>Places the rig's parts for this frame, and the pin on its chest.</summary>
-        private void PoseRig()
-        {
-            if (!RigActive) return;
-
-            _animator.Seated = Seated;
-            _animator.ReducedMotion = Reduced;
-            _animator.WalkCells = _path.Count > 0 ? _walkCells + (_hopping ? _hopT * _segmentCells : 0f) : (float?)null;
-
-            var facing = _rig.Current;
-            if (!_pinPlaced) PlacePin(facing);
-
-            _animator.Sample(facing.Rig, facing.Crouch, out var a, out var b, out float t);
-            _rig.Powered = _animator.Powered;
-            _rig.Apply(a, b, t);
-
-            // The pin rides the chest: wherever the chest carries the point it sits on in the pose's base.
-            var at = _rig.Place(RigBones.Chest, _pinOnChest.x, _pinOnChest.y);
-            float scale = _layout.ArtScale;
-            _pin.transform.localPosition = new Vector3(at.x * scale, _layout.ArtY + at.y * scale, 0f);
-        }
-
-        /// <summary>
-        /// Finds the point on the chest bone that the layout's pin height
-        /// lands on in the base pose (rest standing, the seated pose seated).
-        /// </summary>
-        private void PlacePin(RigFacingArt facing)
-        {
-            var rig = facing.Rig;
-            var basePose = rig.Pose(Seated ? RigPoseNames.Seated : RigPoseNames.Rest);
-            var world = rig.Skeleton.Evaluate(basePose);
-            var chest = rig.Skeleton[RigBones.Chest];
-
-            float y = (_layout.PinY - _layout.ArtY) / Mathf.Max(0.0001f, _layout.ArtScale);
-            RigSkeleton.Untransform(world[RigBones.Chest], chest.PivotX, chest.PivotY, 0f, y, out float rx, out float ry);
-
-            _pinOnChest = new Vector2(rx, ry);
-            _pinPlaced = true;
         }
 
         /// <summary>
