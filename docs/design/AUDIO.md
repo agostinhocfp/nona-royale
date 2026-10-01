@@ -345,3 +345,11 @@ Stage 4 (art hookup) was skipped for now: no finished Meshy renders are in hand.
   - **Import settings kept:** each `.meta` moved with its track (`Match_5.wav.meta` → `Match_4.ogg.meta`, `Match_6.wav.meta` → `Match_5.ogg.meta`), so the GUIDs and Streaming load type carry over.
   - **Masters** (the processed WAVs) moved to `Claude outputs/au4_masters/`, ignored by git, named to the new numbering. The WAVs already pushed stay in LFS history.
   - No code change: the loader goes by name, any extension, `_2` to `_8`.
+- 2026-10-01 — **AU5: mute keys.** The designer asked for M to mute all sound and Shift+M the music only.
+  - `AudioLevels.MusicMuted` (new): `BusGain(Music)` reads 0 while it is set, so the mixer's Music fader and the no-mixer gain both go silent and the Music slider keeps its place, as Master keeps its place under Mute. `IsDefault`, `Reset`, `CopyFrom` and `SameAs` include it.
+  - Saved like Mute, under `nr.audio.muteMusic`. A missing key reads as off, so the settings version stays 3.
+  - **Sound page:** a Mute music row under Mute. Both rows carry their keys (M, Shift+M; dropped on touch through `ScreenLayout.Key`). The Music slider dims under either mute. The Settings page's Sound summary reads MUTED, MUSIC OFF, or the Master percentage.
+  - **The keys work on every screen,** title, setup, draft, guide, pause and match, because music plays on all of them. This departs from H and L, whose keys go dead under the menus because the menu mirrors them. Here a settings page that is showing is redrawn instead (`PauseMenu.RefreshSettings`, `TitleScreen.RefreshSettings`), so its rows never show the old state. A chord with Ctrl, Alt or Cmd is ignored. The frame's existing save picks the change up.
+  - No on-screen toast: the change is heard at once, and the Sound page shows the state.
+  - **Checked:** `AudioLevels` and its tests compiled and ran in the cloud (11 passing, 2 new). The view edits were not compiled against the editor DLLs.
+  - **Play Mode checklist:** on the title, M silences everything and M again brings it back. Shift+M stops only the music, and clicks still play. Open Settings → Sound and press M and Shift+M: the rows flip while you watch. Restart the game: both mutes are remembered. Restore defaults clears both. Ctrl+M does nothing.

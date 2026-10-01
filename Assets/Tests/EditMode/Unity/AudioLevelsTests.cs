@@ -50,6 +50,34 @@ namespace NonaRoyale.Unity.Tests.Audio
         }
 
         [Test]
+        public void MuteMusic_SilencesTheMusicBusOnly()
+        {
+            var levels = new AudioLevels { Master = 1f, Music = 1f, Sfx = 1f, Voice = 1f, MusicMuted = true };
+
+            Assert.AreEqual(0f, levels.BusGain(AudioBus.Music));
+            Assert.AreEqual(0f, levels.Gain(AudioBus.Music));
+            Assert.AreEqual(-80f, AudioLevels.Decibels(levels.BusGain(AudioBus.Music)), "the mixer's music fader bottoms out");
+            Assert.AreEqual(1f, levels.Gain(AudioBus.Sfx));
+            Assert.AreEqual(1f, levels.Gain(AudioBus.Ui));
+            Assert.AreEqual(1f, levels.Gain(AudioBus.Voice));
+            Assert.AreEqual(1f, levels.MasterGain);
+            Assert.AreEqual(1f, levels.Music, "the slider keeps its place");
+        }
+
+        [Test]
+        public void MuteMusic_IsCopiedAndCompared()
+        {
+            var muted = new AudioLevels { MusicMuted = true };
+            var copy = new AudioLevels();
+            Assert.IsFalse(copy.SameAs(muted));
+
+            copy.CopyFrom(muted);
+
+            Assert.IsTrue(copy.MusicMuted);
+            Assert.IsTrue(copy.SameAs(muted));
+        }
+
+        [Test]
         public void BusGain_UsesItsOwnSlider_AndClicksFollowEffects()
         {
             var levels = new AudioLevels { Master = 0.5f, Music = 0.2f, Sfx = 0.4f, Voice = 0.6f };
@@ -64,7 +92,7 @@ namespace NonaRoyale.Unity.Tests.Audio
         [Test]
         public void Reset_RestoresEveryDefault_AndUnmutes()
         {
-            var levels = new AudioLevels { Master = 0.1f, Music = 0.9f, Sfx = 0f, Voice = 0.3f, Muted = true };
+            var levels = new AudioLevels { Master = 0.1f, Music = 0.9f, Sfx = 0f, Voice = 0.3f, Muted = true, MusicMuted = true };
             Assert.IsFalse(levels.IsDefault);
 
             levels.Reset();
@@ -81,6 +109,7 @@ namespace NonaRoyale.Unity.Tests.Audio
             Assert.IsFalse(new AudioLevels { Sfx = 0.5f }.IsDefault);
             Assert.IsFalse(new AudioLevels { Voice = 0.5f }.IsDefault);
             Assert.IsFalse(new AudioLevels { Muted = true }.IsDefault);
+            Assert.IsFalse(new AudioLevels { MusicMuted = true }.IsDefault);
         }
 
         [Test]

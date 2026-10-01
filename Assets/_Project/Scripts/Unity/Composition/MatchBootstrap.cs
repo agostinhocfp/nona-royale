@@ -1315,6 +1315,8 @@ namespace NonaRoyale.Unity.Composition
             // (pause, NEW MATCH, results) keeps the match behind it.
             if (_menuBackdrop != null) _menuBackdrop.Visible = _match == null;
 
+            HandleSoundKeys();
+
             bool paused = ModalOpen;
 
             // The menu mirrors these flags, so their keys stay dead while it
@@ -1623,6 +1625,34 @@ namespace NonaRoyale.Unity.Composition
             if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1)) SelectAbilityAt(0);
             if (Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Keypad2)) SelectAbilityAt(1);
             if (Input.GetKeyDown(KeyCode.Alpha3) || Input.GetKeyDown(KeyCode.Keypad3)) SelectAbilityAt(2);
+        }
+
+        /// <summary>
+        /// M mutes all sound and Shift+M the music only (AUDIO.md, AU5), on
+        /// every screen: the title and the draft play music too, and a mute
+        /// that waited for the match would miss them.
+        /// </summary>
+        /// <remarks>
+        /// They are the Sound page's two rows pressed another way, so they
+        /// flip the same flags and the frame's save keeps them. Unlike H and L
+        /// they stay live under the menus; a settings page that is showing is
+        /// redrawn, so its rows never show the old state. A chord with Ctrl,
+        /// Alt or Cmd is left to whoever owns it.
+        /// </remarks>
+        private void HandleSoundKeys()
+        {
+            if (!Input.GetKeyDown(KeyCode.M)) return;
+            if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) ||
+                Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt) ||
+                Input.GetKey(KeyCode.LeftCommand) || Input.GetKey(KeyCode.RightCommand)) return;
+
+            if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                _levels.MusicMuted = !_levels.MusicMuted;
+            else
+                _levels.Muted = !_levels.Muted;
+
+            if (_pause != null) _pause.RefreshSettings();
+            if (_title != null) _title.RefreshSettings();
         }
 
         private void SelectAbilityAt(int index)

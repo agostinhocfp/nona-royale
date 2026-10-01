@@ -104,19 +104,21 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
-        /// The sound page (AUDIO.md decision 5): Mute, then Master, Music,
-        /// Effects and Voice, then Restore defaults (AU1f). Sliders write
-        /// straight into the levels and never rebuild; Mute and Restore
-        /// rebuild, so the sliders dim or jump.
+        /// The sound page (AUDIO.md decision 5): Mute and Mute music (AU5),
+        /// then Master, Music, Effects and Voice, then Restore defaults (AU1f).
+        /// Sliders write straight into the levels and never rebuild; the
+        /// mutes and Restore rebuild, so the sliders dim or jump. The mutes
+        /// carry their keys, M and Shift+M.
         /// </summary>
         public static void BuildSound(System.Func<string, RectTransform> slot, ISettingsHost host, System.Action rebuild)
         {
             var levels = host.Audio;
             bool muted = levels.Muted;
 
-            Row(slot, "Mute", "", muted, v => levels.Muted = v, rebuild);
+            Row(slot, "Mute", ScreenLayout.Key("M"), muted, v => levels.Muted = v, rebuild);
+            Row(slot, "Mute music", ScreenLayout.Key("Shift+M"), levels.MusicMuted, v => levels.MusicMuted = v, rebuild);
             Volume(slot, "Master", levels.Master, v => levels.Master = v, muted);
-            Volume(slot, "Music", levels.Music, v => levels.Music = v, muted);
+            Volume(slot, "Music", levels.Music, v => levels.Music = v, muted || levels.MusicMuted);
             Volume(slot, "Effects", levels.Sfx, v => levels.Sfx = v, muted);
             Volume(slot, "Voice", levels.Voice, v => levels.Voice = v, muted);
 
@@ -125,9 +127,11 @@ namespace NonaRoyale.Unity.View
             UiKit.Size(reset, height: SliderHeight);
         }
 
-        /// <summary>"80%", or "MUTED".</summary>
+        /// <summary>"80%", "MUSIC OFF", or "MUTED".</summary>
         public static string SoundSummary(AudioLevels levels) =>
-            levels.Muted ? "MUTED" : $"{AudioLevels.Percent(levels.Master)}%";
+            levels.Muted ? "MUTED"
+            : levels.MusicMuted ? "MUSIC OFF"
+            : $"{AudioLevels.Percent(levels.Master)}%";
 
         /// <summary>
         /// The display page (2026-09-17): screen mode, resolution, VSync, a
@@ -239,6 +243,7 @@ namespace NonaRoyale.Unity.View
         public const string VolumeSfx = "nr.audio.sfx";
         public const string VolumeVoice = "nr.audio.voice";
         public const string Mute = "nr.audio.mute";
+        public const string MuteMusic = "nr.audio.muteMusic";
 
         /// <summary>The volume settings' version (<see cref="AudioLevels.Version"/>). Missing means 1.</summary>
         public const string AudioVersion = "nr.audio.version";
@@ -326,6 +331,7 @@ namespace NonaRoyale.Unity.View
             into.Sfx = LoadVolume(VolumeSfx, into.Sfx);
             into.Voice = LoadVolume(VolumeVoice, into.Voice);
             into.Muted = Load(Mute, into.Muted);
+            into.MusicMuted = Load(MuteMusic, into.MusicMuted);
         }
 
         /// <summary>Writes the volume settings (AU1) and flushes them to disk.</summary>
@@ -336,6 +342,7 @@ namespace NonaRoyale.Unity.View
             PlayerPrefs.SetFloat(VolumeSfx, levels.Sfx);
             PlayerPrefs.SetFloat(VolumeVoice, levels.Voice);
             PlayerPrefs.SetInt(Mute, levels.Muted ? 1 : 0);
+            PlayerPrefs.SetInt(MuteMusic, levels.MusicMuted ? 1 : 0);
             PlayerPrefs.SetInt(AudioVersion, AudioLevels.Version);
             PlayerPrefs.Save();
         }

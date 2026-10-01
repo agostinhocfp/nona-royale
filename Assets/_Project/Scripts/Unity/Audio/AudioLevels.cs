@@ -65,13 +65,20 @@ namespace NonaRoyale.Unity.Audio
         public float Voice { get; set; } = DefaultVoice;
         public bool Muted { get; set; }
 
+        /// <summary>
+        /// The music alone is off (Shift+M, or Mute music on the Sound page).
+        /// The Music slider keeps its place, as Master keeps its place under
+        /// <see cref="Muted"/>.
+        /// </summary>
+        public bool MusicMuted { get; set; }
+
         /// <summary>The Master fader's gain: its curve, or 0 when muted.</summary>
         public float MasterGain => Muted ? 0f : Curve(Master);
 
         /// <summary>True when every value is the default, so Restore defaults has nothing to do.</summary>
         public bool IsDefault =>
             Master == DefaultMaster && Music == DefaultMusic && Sfx == DefaultSfx &&
-            Voice == DefaultVoice && !Muted;
+            Voice == DefaultVoice && !Muted && !MusicMuted;
 
         /// <summary>The slider value for a bus. UI shares the SFX slider.</summary>
         public float SliderOf(AudioBus bus)
@@ -84,8 +91,9 @@ namespace NonaRoyale.Unity.Audio
             }
         }
 
-        /// <summary>The bus's own fader gain, without Master.</summary>
-        public float BusGain(AudioBus bus) => Curve(SliderOf(bus));
+        /// <summary>The bus's own fader gain, without Master: its curve, or 0 for music that is muted.</summary>
+        public float BusGain(AudioBus bus) =>
+            bus == AudioBus.Music && MusicMuted ? 0f : Curve(SliderOf(bus));
 
         /// <summary>The linear gain a source on <paramref name="bus"/> plays at: master times bus, on a perceptual curve.</summary>
         public float Gain(AudioBus bus) => MasterGain * BusGain(bus);
@@ -98,6 +106,7 @@ namespace NonaRoyale.Unity.Audio
             Sfx = DefaultSfx;
             Voice = DefaultVoice;
             Muted = false;
+            MusicMuted = false;
         }
 
         /// <summary>Copies every value from <paramref name="other"/>.</summary>
@@ -108,11 +117,12 @@ namespace NonaRoyale.Unity.Audio
             Sfx = other.Sfx;
             Voice = other.Voice;
             Muted = other.Muted;
+            MusicMuted = other.MusicMuted;
         }
 
         public bool SameAs(AudioLevels other) =>
             Master == other.Master && Music == other.Music && Sfx == other.Sfx &&
-            Voice == other.Voice && Muted == other.Muted;
+            Voice == other.Voice && Muted == other.Muted && MusicMuted == other.MusicMuted;
 
         /// <summary>
         /// A slider position as gain: squared, which is close to how loudness

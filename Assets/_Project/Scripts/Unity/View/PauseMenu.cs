@@ -98,6 +98,15 @@ namespace NonaRoyale.Unity.View
                 done: () => { if (_root != null) _root.gameObject.SetActive(false); });
         }
 
+        /// <summary>
+        /// Redraws a settings page that is showing, after a setting changed
+        /// under it (M and Shift+M, AU5). The main page shows no settings.
+        /// </summary>
+        public void RefreshSettings()
+        {
+            if (IsOpen && !_closing && _page != Page.Main) Rebuild();
+        }
+
         /// <summary>Esc while open: a sub-page goes back a page, the main page resumes.</summary>
         public void Back()
         {
