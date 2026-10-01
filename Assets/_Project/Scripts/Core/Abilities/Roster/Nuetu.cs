@@ -64,8 +64,17 @@ namespace NonaRoyale.Core.Abilities
         /// it is the one whose effect is easiest to see at the table.
         ///
         /// Raised by 1 again on 2026-09-25 (designer, to shorten matches; COMBAT_SYSTEMS §1.1): now 8.
+        ///
+        /// <b>Nine since 2026-10-01 (designer), and it crosses a line nobody
+        /// asked it to.</b> <see cref="Luka.HeavyAbove"/> is 8, so at 9 he joins
+        /// the Bouncer, Sanity and Revú as a <i>heavy</i> target: Blind Spot's
+        /// strike and follow-up each pay their +1 into him, and a Vendetta blow
+        /// that crits against him triples instead of doubling (§2.4). That is
+        /// the fourth of twelve operators on a list meant to mean "the tanks",
+        /// and the first bruiser on it. Watch it; the dial if it reads wrong is
+        /// <c>HeavyAbove</c>, not this.
         /// </remarks>
-        public const int MaxHealth = 8;
+        public const int MaxHealth = 9;
 
         /// <summary>
         /// The band's floor, shared with Bouncer, Mimi and Kian. He closes slowly
@@ -214,23 +223,30 @@ namespace NonaRoyale.Core.Abilities
         /// later beats a cleanse every time. The grenade crushes once; what
         /// lingers only grinds.
         ///
-        /// <b>2 then 2 then 2 (designer, 2026-10-01; was 1, 1 and 1).</b> Six
-        /// guaranteed damage is what the earlier note here rejected, on the
+        /// <b>2 then 1 then 1 (designer, 2026-10-01, in two steps: 1/1/1 → 2/2/2
+        /// in the morning's pass, then the linger back to 1 the same day).</b>
+        /// Six guaranteed damage is what the original note here rejected, on the
         /// grounds that it would kill Mimi, Syla, Javi, Kurbyn and Kian outright
-        /// on top of two turns taken — a deletion rather than an ultimate. That
-        /// objection has expired: the roster-wide health rises of 2026-09-16 and
-        /// 2026-09-25 put the common figure at 8, so a full six leaves a healthy
-        /// operator on 2 rather than at zero. Inside collision range, but alive,
-        /// and nobody dies from full.
+        /// on top of two turns taken — a deletion rather than an ultimate. The
+        /// health rises of 2026-09-16 and 2026-09-25 had made that objection
+        /// expire on paper, but the measured version brought a different problem:
+        /// at 2 a tick the ability was cast three times a match and put a fifth
+        /// of September's pacing work back on the board (§12).
         ///
-        /// <b>The stun cut to 1 probably spends the third tick, and that was
-        /// predicted here before it happened.</b> The stun is the only reason a
-        /// victim is standing in the zone for the later ticks; at duration 1 they
-        /// walk out before the third, which then usually catches nobody. So the
-        /// realistic payload is the detonation's 2 plus one tick of 2, not 6, and
-        /// the 6 is the ceiling against somebody who had no move worth making.
-        /// Doubling the damage and halving the stun in the same pass partly
-        /// cancel: the stun was what made the damage collectable.
+        /// <b>So the shape is back to what it was: a crush, then a grind.</b> The
+        /// detonation keeps the doubled hit — it is the half that lands on
+        /// everyone and the half the stun guarantees — and the ticks go back to
+        /// being an incentive to leave rather than a reason to be dead. Four
+        /// guaranteed damage against a common 8, with the third tick usually
+        /// catching nobody, so the realistic payload is 3.
+        ///
+        /// <b>The stun cut to 1 spends the third tick, and that was predicted
+        /// here before it happened.</b> The stun is the only reason a victim is
+        /// standing in the zone for the later ticks; at duration 1 they walk out
+        /// before the third, which then usually catches nobody. Halving the stun
+        /// and halving the linger push the same way, which is the thing to
+        /// remember if this now reads as weak: the two were never independent,
+        /// and the dial that undoes both at once is the stun.
         ///
         /// <b>Cost 6, cooldown 3, range 3 (designer, 2026-10-01; was 9, 4 and
         /// 2).</b> The ultimate is no longer the roster's most expensive cast
@@ -263,7 +279,7 @@ namespace NonaRoyale.Core.Abilities
             effects: new[]
             {
                 AbilityEffect.DeployZone(
-                    detonationDamage: 2, lingerDamage: 2, lingerTicks: 2, radius: 2,
+                    detonationDamage: 2, lingerDamage: 1, lingerTicks: 2, radius: 2,
                     damageType: DamageType.Normal,
                     detonationStatus: StatusKind.Stun, statusDuration: 1),
                 AbilityEffect.Heal(EffectScope.Caster, 1, EffectAudience.Any)

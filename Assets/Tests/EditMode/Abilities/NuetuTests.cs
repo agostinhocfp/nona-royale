@@ -89,7 +89,12 @@ namespace NonaRoyale.Core.Tests.Abilities
         {
             // 2026-09-21. Changing them is a deliberate act that also updates
             // §10.7.
-            Assert.That(Nuetu.MaxHealth, Is.EqualTo(8)); // +1 on 2026-09-25
+            // +1 on 2026-09-25, +1 again on 2026-10-01. At 9 he is above
+            // Luka.HeavyAbove, so Blind Spot's riders and Vendetta's heavy crit
+            // now read him as a tank (§2.4) — asserted here so that the day
+            // somebody retunes either number, the coupling is visible.
+            Assert.That(Nuetu.MaxHealth, Is.EqualTo(9));
+            Assert.That(Nuetu.MaxHealth, Is.GreaterThan(Luka.HeavyAbove), "he counts as heavy");
             Assert.That(Nuetu.Speed, Is.EqualTo(1.0));
             Assert.That(Nuetu.BioLinkBurdenTurns, Is.EqualTo(2));
 
@@ -99,6 +104,26 @@ namespace NonaRoyale.Core.Tests.Abilities
                 Is.EqualTo((6, 3, 3)), "cost 9 → 6, cooldown 4 → 3, range 2 → 3, all 2026-10-01");
             Assert.That(Nuetu.AblativePlating.CooldownTurns, Is.EqualTo(3),
                 "4 → 3 on 2026-10-01: level with Trauma Plate's uptime");
+        }
+
+        [Test]
+        public void KillzonesPayload_IsTheDesignersNumbers()
+        {
+            // Killzone's figures had never been pinned anywhere: the zone
+            // mechanics are tested on a double in TurnStateMachineTests, and the
+            // ability's own numbers went 1/1/1 → 2/2/2 → 2/1/1 inside one day
+            // without a single assertion noticing. Read off the definition's
+            // packed fields (§6 — Amount is the detonation, Magnitude the
+            // lingering tick, Stacks the tick count).
+            var zone = Nuetu.Killzone.Effects.Single(e => e.Kind == EffectKind.DeployZone);
+
+            Assert.That(zone.Amount, Is.EqualTo(2), "detonation, doubled 2026-10-01");
+            Assert.That(zone.Magnitude, Is.EqualTo(1), "each lingering tick, back to 1 the same day");
+            Assert.That(zone.Stacks, Is.EqualTo(2), "two ticks after the detonation");
+            Assert.That(zone.Radius, Is.EqualTo(2));
+            Assert.That(zone.Status, Is.EqualTo(StatusKind.Stun));
+            Assert.That(zone.Duration, Is.EqualTo(1), "stun 2 → 1 on 2026-10-01");
+            Assert.That(zone.DamageType, Is.EqualTo(DamageType.Normal), "so a plate can answer it");
         }
 
         [Test]
