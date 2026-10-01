@@ -182,6 +182,13 @@ namespace NonaRoyale.Unity.Composition
 
         private OperatorState _selectedTarget;
         private CellRef? _selectedCell;
+
+        /// <summary>
+        /// The last board click on a legal target, for the double-click cast
+        /// (CORE_GAMEPLAY.md, CG4): which piece, and when, in unscaled seconds.
+        /// </summary>
+        private OperatorState _lastTargetClick;
+        private float _lastTargetClickAt = float.NegativeInfinity;
         private IReadOnlyList<CellRef> _legalCells = new List<CellRef>();
         private IReadOnlyList<OperatorState> _castTargets = new List<OperatorState>();
         private readonly List<MoveOption> _moveOptions = new List<MoveOption>();
@@ -1584,6 +1591,13 @@ namespace NonaRoyale.Unity.Composition
         private const float CellSnapRadius = 0.55f;     // cells
 
         /// <summary>
+        /// Two clicks or taps on the same legal target this close together
+        /// cast (CG4). Windows' default double-click time is 0.5 s and a
+        /// phone's double tap is nearer 0.3 s.
+        /// </summary>
+        private const float DoubleClickSeconds = 0.4f;
+
+        /// <summary>
         /// Keyboard shortcuts. Each one is a panel button pressed another way,
         /// so it goes through the same intent.
         /// </summary>
@@ -1934,6 +1948,11 @@ namespace NonaRoyale.Unity.Composition
 
         private void AimAt(Vector3 world, OperatorPiece piece)
         {
+            // Any click while aiming ends a pending double click; only a click
+            // on a legal target below starts a new one.
+            bool secondClick = piece != null && IsSecondClickOn(piece.Operator);
+            _lastTargetClick = null;
+
             if (_selectedAbility.RequiresCell)
             {
                 _selectedCell = BoardPointer.CellAt(world, _legalCells, _layout, CellSnapRadius * cellSpacing);
@@ -1943,6 +1962,20 @@ namespace NonaRoyale.Unity.Composition
 
             if (piece != null && _selectedAbility.RequiresTarget && _castTargets.Contains(piece.Operator))
             {
+                // A double click or double tap on a legal target, enemy or
+                // ally, casts (CG4). The first click aimed, so the rings and
+                // the aim were shown before anything was spent (PRESENTATION
+                // §4). The second click re-aims first: when the piece was
+                // already the target, the first click let go of it.
+                if (secondClick)
+                {
+                    if (!ReferenceEquals(_selectedTarget, piece.Operator)) Host.ToggleTarget(piece.Operator);
+                    if (Host.CastReady) Host.Cast();
+                    return;
+                }
+
+                _lastTargetClick = piece.Operator;
+                _lastTargetClickAt = Time.unscaledTime;
                 Host.ToggleTarget(piece.Operator);
                 return;
             }
@@ -1959,6 +1992,11 @@ namespace NonaRoyale.Unity.Composition
                 SelectionChanged();
             }
         }
+
+        /// <summary>True when the last board click hit <paramref name="op"/> as a legal target, just now.</summary>
+        private bool IsSecondClickOn(OperatorState op) =>
+            ReferenceEquals(op, _lastTargetClick) &&
+            Time.unscaledTime - _lastTargetClickAt <= DoubleClickSeconds;
 
         /// <summary>
         /// Moves the operator whose landing is under the pointer, if exactly

@@ -119,6 +119,7 @@ _Added 2026-09-15, GUI phase increment E._ A stranger's first instinct is to cli
 - **Click a landing** to move there. With several dice arriving on the same cell, the fewest pips win: the same result for less is never worse.
 - **Click a pulsing yard piece** to deploy it. The pulse comes from `GameEngine.CanDeploy`, the same check the command runs.
 - **With an ability selected, a click aims it.** A cell ability snaps to the nearest legal cell. A target ability takes an amber-ringed piece, and the rings come from `LegalTargetsFor`. Clicking your own non-target piece switches the selection.
+- **A double click or double tap on a legal target casts** (2026-10-01, `CORE_GAMEPLAY.md` CG4). The first click is still the look: it aims, so the rings and the aim show before energy is spent. Cell abilities keep click, then CAST or Enter.
 - **Right-click or Esc steps back:** first the aim, then the ability, then the piece.
 - **Esc with nothing left to step back from opens the pause menu** (increment H): resume, new match, settings, main menu. The MENU button on the top bar opens it too. While it is open the clock stops and the board ignores input. Once the match is over, Esc brings back the results instead.
 - **Keys:** Space rolls, E ends the turn, 1–3 pick an ability, Enter casts.

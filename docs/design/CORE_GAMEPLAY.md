@@ -1,7 +1,7 @@
 # Nona Royale — Core Gameplay Pass
 
 > Location in repo: `docs/design/CORE_GAMEPLAY.md` · Project copy: `claude/CORE_GAMEPLAY.md`
-> Status: **Open, 2026-09-30.** CG1–CG3 in; the designer's list is still being written.
+> Status: **Open, 2026-09-30.** CG1–CG4 in; the designer's list is still being written.
 > Related: `HUD_PASS.md` (the tray's stable geometry, H1), `PRESENTATION.md` §4 (board-first input), `CAST_ONBOARDING.md` (CO3, hold a card to read it), `MOBILE.md` (the upright tray)
 
 ## Goal
@@ -15,6 +15,7 @@ The designer's notes from playing the match, taken one at a time. This pass chan
 | CG1 | The tray shows an operator on other seats' turns | In, 2026-09-30 |
 | CG2 | Clicking any seat's operator shows its kit | In, 2026-09-30 |
 | CG3 | The match keeps running in the background | In for desktop, 2026-09-30; mobile needs match resume (open) |
+| CG4 | A double click or double tap on a legal target casts | In, 2026-10-01 |
 
 ### CG1 — The tray stays up off-turn
 
@@ -51,6 +52,17 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - **Desktop and the Editor:** the Player setting *Run In Background* was off, and off means Unity stops its whole loop when the window loses focus, so the CPUs froze mid-turn the moment the player looked elsewhere. `MatchBootstrap.Start` now sets `Application.runInBackground = true`. Nothing in the game paused on focus loss itself: the only focus handler re-applies the cursor. Music and sound keep playing too.
 - **Phones: not possible as asked.** iOS and Android suspend a backgrounded app's whole process; no setting keeps a Unity game's loop running there, and the OS may kill the process outright. What a phone can have instead is **resume**: save the match on `OnApplicationPause(true)` and restore it on launch. The pieces exist, a match is its seed and its command list (`Core/Replay`), so a save is small and a restore is a replay. Not built; open below.
 
+### CG4 — Double click to cast
+
+**Designer (2026-10-01):** "While an ability is selected, a double click or double tap on an enemy piece casts the ability." Widened at the designer's pick to **any legal target**, enemy or ally, so a heal or a pull is one gesture too.
+
+- **The first click aims as before** (`ToggleTarget`). The second click on the same piece within 0.4 s (`DoubleClickSeconds`, unscaled) casts through `Host.Cast`, the same intent as CAST and Enter, so the engine's checks and refusals are unchanged.
+- **The second click re-aims before casting.** When the piece was already the target, the first click let go of it; the double click still ends targeted and cast.
+- **Any other click while aiming cancels a pending double click**, so click target, click elsewhere, click target does not cast.
+- **Cell abilities are unchanged:** click to aim, then CAST or Enter. An ability that needs a target and a cell casts only once both are set.
+- **Touch:** a tap arrives as a mouse click (Unity's touch-to-mouse simulation), so a double tap goes through the same path.
+- **PRESENTATION §4 still holds.** Select-then-commit was about seeing the reach before spending; the first click shows the rings and the aim, and the second commits.
+
 ## Play Mode checks
 
 - [ ] Solo against CPUs: after ending your turn, your last operator stays in the tray through every CPU turn; with nothing ever selected, one of yours appears on the first CPU turn.
@@ -61,6 +73,10 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - [ ] Read-only cards: cooldown counts are right; the energy line uses that seat's pool; hold and tap open the peek on touch.
 - [ ] Hot seat with two humans: the second player does not start on the first player's operator.
 - [ ] Upright (phone): the same, in the stacked tray.
+- [ ] CG4: select a damage ability and double-click an amber-ringed enemy: it casts at once. Single-click it: it is only aimed, and CAST or Enter casts. With the enemy already targeted, double-click it again: it still casts.
+- [ ] CG4: an ally-targeted ability (a heal, Velvet Rope's pull): a double click on the ally casts.
+- [ ] CG4: click the target, click empty board, click the target within half a second: no cast. A double click on a piece that is not a legal target does nothing new.
+- [ ] CG4 on a phone or the Device Simulator: a double tap on a target casts; a single tap aims.
 - [ ] CG3: start a match against CPUs, end your turn, switch to another window: the CPUs keep playing (Editor and a Windows build).
 
 ## Open
@@ -69,5 +85,6 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 
 ## Log
 
+- 2026-10-01 — **CG4 in: double click to cast** on any legal target. `MatchBootstrap` only: `DoubleClickSeconds` (0.4 s), `_lastTargetClick` and its time, `IsSecondClickOn`, and the second-click branch in `AimAt`. PRESENTATION §4.1 gains the line. Not compiled against the editor DLLs; Play Mode pending.
 - 2026-09-30 — **CG3 in for desktop**: `Application.runInBackground = true` at start. Mobile resume recorded as an open item.
 - 2026-09-30 — **Opened, CG1 and CG2 in.** New on the host: `ShownOperator`, `CanCommand` and `ViewOperator` (`IControlPanelHost`), backed by `_viewedOperator` in `MatchBootstrap`. `ActionTray` draws the shown operator and renders it read-only when it is not the player's to command; `SquadRail` rows and chips the player cannot command show their operator on a click. Compiles; not yet played.
