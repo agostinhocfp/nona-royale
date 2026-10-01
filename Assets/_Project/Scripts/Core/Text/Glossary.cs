@@ -62,7 +62,11 @@ namespace NonaRoyale.Core.Text
                 case StatusKind.TechWard: return "Tech Ward";
                 case StatusKind.CryoField: return "Cryo Field";
                 case StatusKind.HouseEdge: return "House Edge";
-                case StatusKind.Resuscitation: return "CPR";
+                // Defiance needs no entry: the enum name is the display name, as
+                // it is for Stun, Slow, Bleed and Burdened. It was briefly
+                // written here as "CPR", which named the ability rather than the
+                // status — the two are not the same thing, and the glossary
+                // indexes statuses.
                 default: return kind.ToString();
             }
         }
@@ -222,7 +226,7 @@ namespace NonaRoyale.Core.Text
                     return line.Text("Once a turn, an unspent die the operator could have moved can be cashed for ")
                         .Number(energy.CashedDieEnergy).Text(" ").Keyword("energy", Keywords.Energy).Text(".");
 
-                case StatusKind.Resuscitation:
+                case StatusKind.Defiance:
                     return line.Text("The next blow that would put this operator down leaves it standing on ")
                         .Number(1).Text(" health instead, and washes off everything else it is carrying. "
                             + "It keeps its place on the track, and whoever struck collects nothing.");

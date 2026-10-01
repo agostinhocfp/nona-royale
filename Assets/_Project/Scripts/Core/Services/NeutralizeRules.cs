@@ -35,7 +35,7 @@ namespace NonaRoyale.Core.Services
 
         /// <summary>
         /// The operator was <b>not</b> yarded: it held
-        /// <see cref="StatusKind.Resuscitation"/> and the save spent it
+        /// <see cref="StatusKind.Defiance"/> and the save spent it
         /// (§10.5). Nothing else in this struct is populated, because nothing
         /// else happened — no payout, no bounty, no credit.
         /// </summary>
@@ -162,7 +162,7 @@ namespace NonaRoyale.Core.Services
             // it — so the health is put back to exactly 1. Not healed: the
             // next blow still finishes the job, which is what keeps the save
             // from being a second life.
-            if (_statuses.Remove(op, StatusKind.Resuscitation))
+            if (_statuses.Remove(op, StatusKind.Defiance))
             {
                 op.SetHealth(1);
 

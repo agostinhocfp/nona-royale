@@ -142,7 +142,7 @@ namespace NonaRoyale.Core.Tests.Abilities
             var result = Use(_javi, Javi.Cpr, _javi);
 
             Assert.That(result.Approved, Is.True, result.ToString());
-            Assert.That(_statuses.Has(_javi, StatusKind.Resuscitation), Is.True);
+            Assert.That(_statuses.Has(_javi, StatusKind.Defiance), Is.True);
             Assert.That(_red.Energy, Is.EqualTo(12 - 6));
         }
 

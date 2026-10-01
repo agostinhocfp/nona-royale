@@ -293,8 +293,8 @@ namespace NonaRoyale.Core.Tests.Neutralize
         private void Prime(OperatorState op)
         {
             _clock.BeginTurnFor(op.Owner);
-            _statuses.Apply(op, StatusKind.Resuscitation, Javi.CprTurns);
-            Assert.That(_statuses.Has(op, StatusKind.Resuscitation), Is.True, "precondition: primed");
+            _statuses.Apply(op, StatusKind.Defiance, Javi.CprTurns);
+            Assert.That(_statuses.Has(op, StatusKind.Defiance), Is.True, "precondition: primed");
         }
 
         [Test]
@@ -376,7 +376,7 @@ namespace NonaRoyale.Core.Tests.Neutralize
             Assert.That(_statuses.Has(_victim, StatusKind.Bleed), Is.False);
             Assert.That(_statuses.Has(_victim, StatusKind.Slow), Is.False);
             Assert.That(_statuses.Has(_victim, StatusKind.ZeroDayCharge), Is.False);
-            Assert.That(_statuses.Has(_victim, StatusKind.Resuscitation), Is.False, "and itself");
+            Assert.That(_statuses.Has(_victim, StatusKind.Defiance), Is.False, "and itself");
         }
 
         [Test]

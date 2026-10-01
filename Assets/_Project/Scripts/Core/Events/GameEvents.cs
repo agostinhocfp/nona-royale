@@ -473,7 +473,7 @@ namespace NonaRoyale.Core.Events
 
     /// <summary>
     /// An operator would have been neutralized and was not: it held
-    /// <see cref="StatusKind.Resuscitation"/> and CPR spent it (§10.5). It
+    /// <see cref="StatusKind.Defiance"/> and CPR spent it (§10.5). It
     /// stands where it stood, on 1 health, with every status washed off.
     /// </summary>
     /// <remarks>

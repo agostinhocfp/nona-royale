@@ -660,7 +660,7 @@ namespace NonaRoyale.Core.Bots
                 // in reach at this instant, and a save is cast for the round
                 // after. A human primes the operator they expect to be attacked.
                 // Read a low cast rate here as the harness, not the ability.
-                case StatusKind.Resuscitation:
+                case StatusKind.Defiance:
                     // Worth nothing on an ally nothing can finish this round. A
                     // save is the one buff whose value is all-or-nothing: a
                     // shield that absorbs less than it could still absorbed

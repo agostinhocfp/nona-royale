@@ -166,7 +166,7 @@ namespace NonaRoyale.Core.Tests.Bots
             // is what stops a bot spending six energy a turn on the same piece.
             BringTheEnemyClose();
             _bouncer.SetHealth(1);          // past the gate, so a zero here is the duplicate check
-            _match.Statuses.Apply(_bouncer, StatusKind.Resuscitation, Javi.CprTurns);
+            _match.Statuses.Apply(_bouncer, StatusKind.Defiance, Javi.CprTurns);
 
             Assert.That(Score(_javi, Javi.Cpr, _bouncer).Defence, Is.EqualTo(0.0));
         }

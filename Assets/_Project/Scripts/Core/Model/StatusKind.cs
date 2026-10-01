@@ -202,7 +202,22 @@ namespace NonaRoyale.Core.Model
         /// <b>It must be visible to opponents.</b> The ability is a bet placed a
         /// round early, and a bet nobody can see is a trap — the attacker has to
         /// be able to read the badge and pick a different target.
+        ///
+        /// <b>Named Defiance, not Resuscitation</b> (designer, 2026-10-01). It
+        /// shipped as <c>Resuscitation</c> for a few hours and was renamed the
+        /// same day: <b>that word is reserved for a possible true resurrection
+        /// effect</b> — something that would bring a yarded operator back onto
+        /// the board — and this is not that. It refuses a knockout before it
+        /// happens; it does not undo one. Keeping the two names apart now costs
+        /// nothing and keeps the stronger word available for the stronger
+        /// mechanic, if it is ever built.
+        ///
+        /// The enum name is also the display name, as it is for Stun and
+        /// Burdened. It is deliberately not "CPR": the ability is CPR and the
+        /// status is what the ability leaves behind, and the day a second
+        /// ability grants Defiance the badge should not be lying about where it
+        /// came from.
         /// </remarks>
-        Resuscitation = 16
+        Defiance = 16
     }
 }

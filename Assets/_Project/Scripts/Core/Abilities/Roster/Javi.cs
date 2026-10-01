@@ -240,7 +240,7 @@ namespace NonaRoyale.Core.Abilities
         /// do with a turn, and at 4 or 5 he would simply always be holding one.
         ///
         /// <b>It carries the game’s only cleanse, narrowed.</b> The save strips
-        /// every status as it fires (<c>StatusKind.Resuscitation</c>), so the
+        /// every status as it fires (<c>StatusKind.Defiance</c>), so the
         /// mechanic survives with one caller — but at the moment of rescue
         /// instead of on demand. A charge can no longer be washed off before it
         /// blows, only survived, which makes Zero-Day and Blind Spot’s follow-up
@@ -262,7 +262,7 @@ namespace NonaRoyale.Core.Abilities
             effects: new[]
             {
                 AbilityEffect.Status_(
-                    EffectScope.PrimaryTarget, StatusKind.Resuscitation,
+                    EffectScope.PrimaryTarget, StatusKind.Defiance,
                     duration: CprTurns, EffectAudience.AllyOnly)
             });
 
