@@ -204,6 +204,32 @@ namespace NonaRoyale.Unity.View
         /// <summary>What the knockout burns: the chip as it is drawn, without its shadows or the glow.</summary>
         public IReadOnlyList<SpriteRenderer> Parts => _parts;
 
+        /// <summary>
+        /// What the piece effects copy (CG16, <see cref="PieceFx"/>): the
+        /// portrait, or the emblem chip's face and gold shape. Never the body,
+        /// which carries the seat.
+        /// </summary>
+        public void FxFaces(List<SpriteRenderer> into)
+        {
+            into.Add(_face);
+            into.Add(_emblem);
+        }
+
+        /// <summary>What the Stealth shimmer re-materials (CG16): everything the chip draws but its shadows and the cast's glow.</summary>
+        public void FxParts(List<SpriteRenderer> into)
+        {
+            into.Add(_inkEdge);
+            into.Add(_inkTop);
+            into.Add(_edge);
+            into.Add(_edgeInserts);
+            into.Add(_body);
+            into.Add(_inserts);
+            into.Add(_face);
+            into.Add(_emblem);
+            into.Add(_lit);
+            into.Add(_ring);
+        }
+
         /// <summary>The white disc the hit flash and the rim are drawn from.</summary>
         public Sprite Silhouette => ChipSprites.Disc;
 

@@ -46,7 +46,25 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         public const string ChipUnlit = "ChipUnlit";
 
+        /// <summary>
+        /// The piece effects (CG16): greyscale (<c>GREYSCALE_ON</c>), the Zero-Day
+        /// hologram with its glitch (<c>HOLOGRAM_ON</c>, <c>GLITCH_ON</c>), and the
+        /// Stealth heat shimmer (<c>DISTORT_ON</c>, over the pack's seamless noise).
+        /// Each comes unlit, on the pack's plain shader, for a chip's unlit parts,
+        /// and lit, on <c>AllIn1Urp2dRenderer</c>, for a rendered figure.
+        /// </summary>
+        public const string GreyUnlit = "GreyUnlit";
+        public const string GreyLit = "GreyLit";
+        public const string HoloUnlit = "HoloUnlit";
+        public const string HoloLit = "HoloLit";
+        public const string ShimmerUnlit = "ShimmerUnlit";
+        public const string ShimmerLit = "ShimmerLit";
+
         public static readonly int ShineLocation = Shader.PropertyToID("_ShineLocation");
+
+        public static readonly int HologramStripeColor = Shader.PropertyToID("_HologramStripeColor");
+        public static readonly int HologramStripesSpeed = Shader.PropertyToID("_HologramStripesSpeed");
+        public static readonly int GlitchAmount = Shader.PropertyToID("_GlitchAmount");
 
         public static readonly int FadeAmount = Shader.PropertyToID("_FadeAmount");
         public static readonly int FadeBurnColor = Shader.PropertyToID("_FadeBurnColor");

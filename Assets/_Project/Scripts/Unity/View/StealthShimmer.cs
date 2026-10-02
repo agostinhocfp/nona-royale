@@ -8,6 +8,9 @@ namespace NonaRoyale.Unity.View
     /// How a stealthed operator looks (CORE_GAMEPLAY.md, CG14): the figure
     /// shimmers like air over hot ground, with two faint violet copies
     /// swaying either side of it out of step. It replaces the STEALTH tag.
+    /// Since CG16 it is the fallback: the pack's heat shimmer
+    /// (<see cref="PieceFx"/>) draws Stealth, and these copies show only
+    /// under Reduced motion or when the shimmer's material is missing.
     /// </summary>
     /// <remarks>
     /// <b>A shimmer, never a fade.</b> Kurbyn's Evasion already fades the

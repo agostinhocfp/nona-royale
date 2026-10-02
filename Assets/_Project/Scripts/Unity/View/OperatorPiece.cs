@@ -89,6 +89,14 @@ namespace NonaRoyale.Unity.View
     /// portrait. Everything else - the walk, the marks, the rim, the flash,
     /// the bar, the knockout - is the figure's, applied to the chip. The
     /// style can change mid-match (<see cref="ApplyStyle"/>).
+    ///
+    /// <b>The pack's effects (CG16, <see cref="PieceFx"/>).</b> A seated
+    /// operator in the yard is drawn partly greyscale, benched; a stunned one
+    /// too, under its stars. A Zero-Day carrier gets a magenta hologram with a
+    /// glitch over its portrait, besides its blinking light. Stealth is a heat
+    /// shimmer over the whole piece, with <see cref="StealthShimmer"/>'s violet
+    /// copies kept for Reduced motion and for a missing material. The seat
+    /// colour is never greyed.
     /// </remarks>
     public sealed class OperatorPiece : MonoBehaviour
     {
@@ -163,6 +171,9 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>Peak opacity of the white silhouette on a rendered figure's hit flash.</summary>
         private const float ArtFlashStrength = 0.75f;
+
+        /// <summary>The figure's flash, toward the camera in world units: over PieceFx's copies (CG16).</summary>
+        private const float FlashLift = 0.006f;
 
         /// <summary>
         /// Everything drawn over the figure - the pin, the bar, the halo - sits
@@ -280,6 +291,9 @@ namespace NonaRoyale.Unity.View
         private DefianceGlow _defiance;
         private BleedDrips _bleed;
         private StealthShimmer _stealth;
+
+        /// <summary>The pack's greyscale, hologram and shimmer (CG16).</summary>
+        private PieceFx _fx;
 
         // ── The chip (2026-09-29) ───────────────────────────────
         private PieceStyle _style = PieceStyle.Figures;
@@ -517,6 +531,36 @@ namespace NonaRoyale.Unity.View
             _bleed.Bind(this, _figure, motion);
             _stealth = gameObject.AddComponent<StealthShimmer>();
             _stealth.Bind(this, _figure, motion);
+
+            // CG16: the shader pack's looks.
+            _fx = gameObject.AddComponent<PieceFx>();
+            _fx.Bind(this, motion);
+        }
+
+        /// <summary>
+        /// What <see cref="PieceFx"/> works on (CG16): into
+        /// <paramref name="faces"/> the renderers the greyscale and the
+        /// hologram copy, into <paramref name="parts"/> the ones the shimmer
+        /// re-materials. Answers whether the faces may be greyed: not a
+        /// procedural pawn, which is drawn in the seat colour.
+        /// </summary>
+        internal bool FxParts(List<SpriteRenderer> faces, List<SpriteRenderer> parts)
+        {
+            faces.Clear();
+            parts.Clear();
+            if (_body == null) return false;
+
+            if (ChipActive)
+            {
+                _chip.FxFaces(faces);
+                _chip.FxParts(parts);
+                return true;
+            }
+
+            faces.Add(_body);
+            parts.Add(_body);
+            if (_outline != null && _outline.enabled) parts.Add(_outline);
+            return _rendered;
         }
 
         /// <summary>What a haste afterimage is drawn from: the render's silhouette or the pawn.</summary>
@@ -912,9 +956,13 @@ namespace NonaRoyale.Unity.View
             if (_haste != null) _haste.Show(hastened && !Operator.IsInYard && !_hidden, travel);
             if (_stun != null) _stun.Show(stunned && !Operator.IsInYard && !_hidden);
 
+            // CG16: benched in the yard, dazed under a stun; full colour otherwise.
+            if (_fx != null)
+                _fx.SetGrey(Operator.IsInYard ? PieceFx.YardGrey : stunned && !_hidden ? PieceFx.StunGrey : 0f);
+
             _alpha = evasive ? EvasiveAlpha : 1f;
 
-            // The pose says "waiting"; the figure keeps its full colour.
+            // The pose says "waiting"; since CG16 the yard is also partly greyscale (above).
             SetPose(Operator.IsInYard);
 
             _body.color = _rendered ? WithAlpha(BodyColour) : WithAlpha(Color.Lerp(BodyColour, Color.white, _flash));
@@ -950,7 +998,13 @@ namespace NonaRoyale.Unity.View
             if (_ward != null) _ward.Show(onBoard && Has(statuses, StatusKind.TechWard));
             if (_defiance != null) _defiance.Show(onBoard && Has(statuses, StatusKind.Defiance), flare: onBoard);
             if (_bleed != null) _bleed.Show(onBoard && Has(statuses, StatusKind.Bleed), bleedStacks);
-            if (_stealth != null) _stealth.Show(onBoard && Has(statuses, StatusKind.Stealth));
+
+            // CG16: the hologram rides with the charge light; the shimmer stands
+            // in for the violet copies when the shader can draw it.
+            bool stealth = onBoard && Has(statuses, StatusKind.Stealth);
+            bool shimmering = _fx != null && _fx.SetShimmer(stealth);
+            if (_fx != null) _fx.SetHologram(onBoard && Has(statuses, StatusKind.ZeroDayCharge));
+            if (_stealth != null) _stealth.Show(stealth && !shimmering);
         }
 
         /// <summary>Takes every drawn status cue off without a burst: the piece is leaving.</summary>
@@ -965,6 +1019,11 @@ namespace NonaRoyale.Unity.View
             if (_defiance != null) _defiance.Show(false, flare: false);
             if (_bleed != null) _bleed.Show(false, 0);
             if (_stealth != null) _stealth.Show(false);
+            if (_fx != null)
+            {
+                _fx.SetShimmer(false);
+                _fx.SetHologram(false);
+            }
         }
 
         private static bool Has(IReadOnlyList<StatusKind> statuses, StatusKind kind)
@@ -1207,6 +1266,11 @@ namespace NonaRoyale.Unity.View
                 // is laid over it instead. No silhouette (unreadable texture): no flash.
                 _flashOverlay.enabled = _flashOverlay.sprite != null && _flash > 0f;
                 _flashOverlay.color = new Color(1f, 1f, 1f, _flash * ArtFlashStrength * _alpha);
+
+                // Nearer the camera than PieceFx's copies (CG16), so a greyed or
+                // hologrammed figure still flashes white.
+                if (!ChipActive)
+                    _flashOverlay.transform.position = _body.transform.position + new Vector3(0f, 0f, -FlashLift);
             }
             else
             {
