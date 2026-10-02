@@ -209,6 +209,23 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 
 ## Open
 
+- [ ] **Parked (designer, 2026-10-02): tables catch forced movement.** The idea is that an enemy pulled, pushed or dragged across Fortuna's table by her side pays the table's 2 each time. Bouncer's Velvet Rope pulling a runner back across it is the combo. Settled so far:
+  - Only movement forced by an enemy counts; moving yourself by placement (dashes) stays free.
+  - A forced crossing charges and keeps going; it doesn't stop on the table.
+  - Dice crossings still stop each enemy only once, but every forced crossing pays.
+
+  Open:
+  - A swap charges only if it lands on the table (it is a teleport).
+  - Dice-collision bounce-backs stay free.
+
+  The work, flagged before parking:
+  - One shared movement step across the five places `AbilityResolver` moves pieces, with crossed cells worked out in both directions.
+  - A target the table knocks out mid-ability takes no further effects, and the kill goes to Fortuna.
+  - A new event so the board shows the −2.
+  - The bots don't know about it.
+  - The replay rules value changes.
+  - The Table's text and Fortuna's guide line change.
+  - Balance: Bouncer and Fortuna land 5 in one action, Eris' Exploit charges each enemy it drags across, and two tables charge 4.
 - [ ] **Match resume on mobile (CG3):** save the seed and command list when the app is backgrounded, restore by replay on the next launch, and offer "Resume match" on the title screen.
 
 ## Log
