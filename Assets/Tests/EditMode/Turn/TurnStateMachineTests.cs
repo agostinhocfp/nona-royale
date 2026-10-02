@@ -648,6 +648,7 @@ namespace NonaRoyale.Core.Tests.Turn
             Assert.That(armed[0].IsZone, Is.True);
             Assert.That(armed[0].HasDetonated, Is.False);
             Assert.That(armed[0].IsTable, Is.False, "a blast zone, not a table (CG10)");
+            Assert.That(armed[0].IsCrowdZone, Is.False, "a blast zone, not Eris' crowd zone (CG13)");
 
             machine.Roll(); machine.EndTurn();
             machine.BeginTurn(); machine.Roll(); machine.EndTurn();

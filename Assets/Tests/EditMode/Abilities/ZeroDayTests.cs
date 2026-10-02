@@ -141,6 +141,23 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
+        public void ZeroDay_BlastIsDrawnRoundTheCarrier_AndFollowsIt()
+        {
+            Cast(_target);
+
+            var shown = _operatorEffects.ChargeSnapshot();
+            Assert.That(shown.Count, Is.EqualTo(1));
+            Assert.That(shown[0].Cell, Is.EqualTo(CellRef.Track(12)));
+            Assert.That(shown[0].Covered, Has.Member(CellRef.Track(15)), "radius 3 reaches three cells on");
+            Assert.That(shown[0].Covered, Has.No.Member(CellRef.Track(16)));
+
+            _target.MoveTo(ProgressAtTrack(PlayerColor.Blue, 20));
+
+            Assert.That(_operatorEffects.ChargeSnapshot()[0].Cell, Is.EqualTo(CellRef.Track(20)),
+                "the blast is drawn where the carrier is now (CG14)");
+        }
+
+        [Test]
         public void ZeroDay_FollowsAMovedTarget_AndDetonatesOnItsNewCell()
         {
             // The opposite of a beacon: the bet is not on where the target will

@@ -274,6 +274,12 @@ namespace NonaRoyale.Unity.View
         private ShieldBubble _shield;
         private SlowFrost _slow;
         private MarkDot _mark;
+        private ChargeLight _charge;
+        private HuntedBrackets _hunted;
+        private WardRing _ward;
+        private DefianceGlow _defiance;
+        private BleedDrips _bleed;
+        private StealthShimmer _stealth;
 
         // ── The chip (2026-09-29) ───────────────────────────────
         private PieceStyle _style = PieceStyle.Figures;
@@ -497,6 +503,20 @@ namespace NonaRoyale.Unity.View
             _slow.Bind(this, _figure, motion);
             _mark = gameObject.AddComponent<MarkDot>();
             _mark.Bind(this, _figure, motion);
+
+            // CG14: the rest of the statuses an ability puts on a piece.
+            _charge = gameObject.AddComponent<ChargeLight>();
+            _charge.Bind(this, _figure, motion);
+            _hunted = gameObject.AddComponent<HuntedBrackets>();
+            _hunted.Bind(this, _figure, motion);
+            _ward = gameObject.AddComponent<WardRing>();
+            _ward.Bind(this, _figure, motion);
+            _defiance = gameObject.AddComponent<DefianceGlow>();
+            _defiance.Bind(this, _figure, motion);
+            _bleed = gameObject.AddComponent<BleedDrips>();
+            _bleed.Bind(this, _figure, motion);
+            _stealth = gameObject.AddComponent<StealthShimmer>();
+            _stealth.Bind(this, _figure, motion);
         }
 
         /// <summary>What a haste afterimage is drawn from: the render's silhouette or the pawn.</summary>
@@ -908,12 +928,15 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>
         /// Draws the statuses that show on the piece itself rather than as tags
-        /// (CG11): a shield's bubble, a slow's frost, a mark's laser dot. The
-        /// list comes from <c>ActiveStatusesOn</c>, never from events
-        /// (PRESENTATION §1). A shield that goes while the piece stays on the
-        /// board bursts.
+        /// (CG11, CG14): a shield's bubble, a slow's frost, a mark's laser dot,
+        /// a Zero-Day light, a hunt's brackets, a ward's ring, Defiance's glow,
+        /// a bleed's drips and stealth's shimmer. The list comes from
+        /// <c>ActiveStatusesOn</c> and the bleed count from
+        /// <c>BleedStacksOn</c>, never from events (PRESENTATION §1). A shield
+        /// that goes while the piece stays on the board bursts, and Defiance
+        /// flares.
         /// </summary>
-        public void ShowStatusCues(IReadOnlyList<StatusKind> statuses)
+        public void ShowStatusCues(IReadOnlyList<StatusKind> statuses, int bleedStacks = 0)
         {
             if (Operator == null) return;
 
@@ -922,6 +945,12 @@ namespace NonaRoyale.Unity.View
             if (_shield != null) _shield.Show(onBoard && Has(statuses, StatusKind.Shield), burst: onBoard);
             if (_slow != null) _slow.Show(onBoard && Has(statuses, StatusKind.Slow));
             if (_mark != null) _mark.Show(onBoard && Has(statuses, StatusKind.Mark));
+            if (_charge != null) _charge.Show(onBoard && Has(statuses, StatusKind.ZeroDayCharge));
+            if (_hunted != null) _hunted.Show(onBoard && Has(statuses, StatusKind.Hunted));
+            if (_ward != null) _ward.Show(onBoard && Has(statuses, StatusKind.TechWard));
+            if (_defiance != null) _defiance.Show(onBoard && Has(statuses, StatusKind.Defiance), flare: onBoard);
+            if (_bleed != null) _bleed.Show(onBoard && Has(statuses, StatusKind.Bleed), bleedStacks);
+            if (_stealth != null) _stealth.Show(onBoard && Has(statuses, StatusKind.Stealth));
         }
 
         /// <summary>Takes every drawn status cue off without a burst: the piece is leaving.</summary>
@@ -930,6 +959,12 @@ namespace NonaRoyale.Unity.View
             if (_shield != null) _shield.Show(false, burst: false);
             if (_slow != null) _slow.Show(false);
             if (_mark != null) _mark.Show(false);
+            if (_charge != null) _charge.Show(false);
+            if (_hunted != null) _hunted.Show(false);
+            if (_ward != null) _ward.Show(false);
+            if (_defiance != null) _defiance.Show(false, flare: false);
+            if (_bleed != null) _bleed.Show(false, 0);
+            if (_stealth != null) _stealth.Show(false);
         }
 
         private static bool Has(IReadOnlyList<StatusKind> statuses, StatusKind kind)

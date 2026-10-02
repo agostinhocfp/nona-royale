@@ -83,11 +83,17 @@ namespace NonaRoyale.Unity.View
         /// </remarks>
         /// <remarks>
         /// Since 2026-10-02 also Shield (<c>ShieldBubble</c>), Slow
-        /// (<c>SlowFrost</c>) and Mark (<c>MarkDot</c>), CG11.
+        /// (<c>SlowFrost</c>) and Mark (<c>MarkDot</c>), CG11; and Zero-Day
+        /// (<c>ChargeLight</c>), Hunted (<c>HuntedBrackets</c>), Tech Ward
+        /// (<c>WardRing</c>), Defiance (<c>DefianceGlow</c>), Bleed
+        /// (<c>BleedDrips</c>) and Stealth (<c>StealthShimmer</c>), CG14.
+        /// Only Watched, which no ability applies today, still prints a word.
         /// </remarks>
         public static bool IsDrawnOnPiece(StatusKind kind) =>
             kind == StatusKind.Evasion || kind == StatusKind.Hastened || kind == StatusKind.Stun ||
-            kind == StatusKind.Shield || kind == StatusKind.Slow || kind == StatusKind.Mark;
+            kind == StatusKind.Shield || kind == StatusKind.Slow || kind == StatusKind.Mark ||
+            kind == StatusKind.ZeroDayCharge || kind == StatusKind.Hunted || kind == StatusKind.TechWard ||
+            kind == StatusKind.Defiance || kind == StatusKind.Bleed || kind == StatusKind.Stealth;
 
         /// <summary>
         /// True for a status the board draws as an area, which therefore gets no

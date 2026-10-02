@@ -55,12 +55,29 @@ namespace NonaRoyale.Unity.View
     /// Killzone deploys a blast zone today. Reduced motion holds the lava
     /// still.
     ///
+    /// <b>A crowd zone churns with haze instead</b> (CG13): Lethe's Eris'
+    /// Exploit gets <see cref="HazeTexture"/>'s sinister green murk and her
+    /// silver wisps, drifting slowly, laid and cross-faded exactly as the
+    /// lava is, so the two zones on the board are never mistaken for each
+    /// other.
+    ///
     /// <b>A Cryo Field frosts the cells it reaches</b> (CG12): the area
     /// round Mimi the tick will bite, from <c>GameEngine.ActiveFields</c>, in
     /// <see cref="FrostTexture"/>'s pale crystals, breathing slowly. It moves
     /// with her whenever the board is redrawn. No ring and no seat tint: the
-    /// field is centred on her, so she is its mark. Reduced motion holds it
+    /// field is centred on Mimi, so she is its mark. Reduced motion holds it
     /// still.
+    ///
+    /// <b>A Zero-Day charge lights its blast</b> (CG14): the cells its
+    /// detonation will reach round the carrier, from
+    /// <c>GameEngine.ActiveCharges</c>, in a faint magenta that pulses a
+    /// little quicker than a beacon, like a timer. The carrier itself
+    /// carries the blinking light (<see cref="ChargeLight"/>).
+    ///
+    /// <b>Fortuna's table is a table</b> (CG14): <see cref="FeltTexture"/>'s
+    /// green felt with a gold rail on each cell it covers, and a short stack
+    /// of chips in the owner's seat colour on its own cell, which is how the
+    /// board says whose it is. Lit, not glowing, because it is an object.
     /// </remarks>
     public sealed class DeviceLayer : MonoBehaviour
     {
@@ -86,6 +103,18 @@ namespace NonaRoyale.Unity.View
         private const float FrostBreathDepth = 0.18f;
         private const float FrostBreathPeriod = 4.5f;
 
+        /// <summary>A Zero-Day blast: faint, ticking faster than a beacon's breath.</summary>
+        private const float ChargeAreaAlpha = 0.15f;
+        private const float ChargePulsePeriod = 1.3f;
+        private const float ChargePulseDepth = 0.55f;
+
+        /// <summary>The table: felt alpha, and its chip stack's size, rise per chip and offset toward a corner of its cell.</summary>
+        private const float FeltAlpha = 0.95f;
+        private const float ChipSize = 0.27f;
+        private const float ChipRise = 0.045f;
+        private const float ChipOffset = 0.2f;
+        private const int ChipCount = 3;
+
         /// <summary>Seconds per breath of a beacon's patch.</summary>
         private const float BeaconPulsePeriod = 2.8f;
 
@@ -96,14 +125,21 @@ namespace NonaRoyale.Unity.View
         private readonly List<SpriteRenderer> _beaconAreas = new List<SpriteRenderer>();
         private readonly List<LavaCell> _lava = new List<LavaCell>();
         private readonly List<SpriteRenderer> _frost = new List<SpriteRenderer>();
+        private readonly List<SpriteRenderer> _chargeAreas = new List<SpriteRenderer>();
 
-        /// <summary>One cell of lava: two frames cross-fading, its own start in the loop, its peak alpha.</summary>
+        /// <summary>
+        /// One cell of a flowing surface, lava or haze: two frames
+        /// cross-fading, its own start in the loop, its peak alpha, and the
+        /// frames and loop it steps through.
+        /// </summary>
         private sealed class LavaCell
         {
             public SpriteRenderer Under;
             public SpriteRenderer Over;
             public float Phase;
             public float Alpha;
+            public IReadOnlyList<Sprite> Frames;
+            public float LoopSeconds;
         }
         private BoardLayout _layout;
 
@@ -121,12 +157,14 @@ namespace NonaRoyale.Unity.View
             _beaconAreas.Clear();
             _lava.Clear();
             _frost.Clear();
+            _chargeAreas.Clear();
         }
 
         private void Update()
         {
             if (_lava.Count > 0) FlowLava();
             if (_frost.Count > 0) BreatheFrost();
+            if (_chargeAreas.Count > 0) TickCharges();
             if (_beaconAreas.Count == 0) return;
 
             float alpha = BeaconAreaAlpha *
@@ -144,9 +182,11 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>
         /// Replaces everything drawn with the given effects and, when given,
-        /// the cells each standing Cryo Field reaches (CG12).
+        /// the cells each standing Cryo Field reaches (CG12) and each pending
+        /// Zero-Day's blast (CG14).
         /// </summary>
-        public void Show(IReadOnlyList<CellEffectSnapshot> effects, IReadOnlyList<CellEffectSnapshot> fields = null)
+        public void Show(IReadOnlyList<CellEffectSnapshot> effects, IReadOnlyList<CellEffectSnapshot> fields = null,
+            IReadOnlyList<CellEffectSnapshot> charges = null)
         {
             Clear();
 
@@ -157,16 +197,32 @@ namespace NonaRoyale.Unity.View
                     foreach (var cell in field.Covered)
                         SpawnFrost(cell);
 
+            if (charges != null)
+            {
+                var magenta = StatusPalette.For(NonaRoyale.Core.Model.StatusKind.ZeroDayCharge);
+                foreach (var charge in charges)
+                    foreach (var cell in charge.Covered)
+                        _chargeAreas.Add(Spawn(cell, Primitives.Square, _layout.CellSize * 0.9f, WithAlpha(magenta, ChargeAreaAlpha)));
+            }
+
             if (effects == null) return;
 
             foreach (var effect in effects)
             {
                 var seat = BoardLayout.ColourOf(effect.Owner);
 
-                bool lava = effect.IsZone && !effect.IsTable;
+                if (effect.IsTable)
+                {
+                    DrawTable(effect, seat);
+                    continue;
+                }
+
+                bool haze = effect.IsZone && effect.IsCrowdZone;
+                bool lava = effect.IsZone && !effect.IsTable && !haze;
+                bool flows = lava || haze;
 
                 float areaAlpha = !effect.IsZone ? BeaconAreaAlpha
-                    : lava ? (effect.HasDetonated ? LingeringLavaTintAlpha : ArmedLavaTintAlpha)
+                    : flows ? (effect.HasDetonated ? LingeringLavaTintAlpha : ArmedLavaTintAlpha)
                     : effect.HasDetonated ? LingeringZoneAreaAlpha
                     : ArmedZoneAreaAlpha;
 
@@ -174,7 +230,9 @@ namespace NonaRoyale.Unity.View
                 {
                     var area = Spawn(cell, Primitives.Square, _layout.CellSize * 0.9f, WithAlpha(seat, areaAlpha));
                     if (!effect.IsZone) _beaconAreas.Add(area);
-                    if (lava) SpawnLava(cell, effect.HasDetonated ? LingeringLavaAlpha : ArmedLavaAlpha);
+                    float flowAlpha = effect.HasDetonated ? LingeringLavaAlpha : ArmedLavaAlpha;
+                    if (lava) SpawnFlow(cell, flowAlpha, LavaTexture.Frames, LavaTexture.LoopSeconds);
+                    if (haze) SpawnFlow(cell, flowAlpha, HazeTexture.Frames, HazeTexture.LoopSeconds);
                 }
 
                 if (!effect.IsZone)
@@ -193,22 +251,24 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
-        /// Lays a cell of lava: two stacked frames that cross-fade, turned a
-        /// quarter-turn multiple and flipped by the cell's own hash, so a zone's
-        /// cells are not stamped copies. Unlit where the material is there, so
-        /// it glows the same under every light in the room.
+        /// Lays a cell of a flowing surface, lava or haze: two stacked frames
+        /// that cross-fade, turned a quarter-turn multiple and flipped by the
+        /// cell's own hash, so a zone's cells are not stamped copies. Unlit
+        /// where the material is there, so it glows the same under every light
+        /// in the room.
         /// </summary>
-        private void SpawnLava(CellRef cell, float alpha)
+        private void SpawnFlow(CellRef cell, float alpha, IReadOnlyList<Sprite> frames, float loopSeconds)
         {
-            var frames = LavaTexture.Frames;
             int hash = cell.GetHashCode() * 486187739;
             unchecked { hash ^= hash >> 15; }
 
             var unlit = ShaderFx.Source(ShaderFx.ChipUnlit);
             var tile = new LavaCell
             {
-                Phase = ((hash & 0xFFFF) / 65535f) * LavaTexture.FrameCount,
+                Phase = ((hash & 0xFFFF) / 65535f) * frames.Count,
                 Alpha = alpha,
+                Frames = frames,
+                LoopSeconds = loopSeconds,
             };
 
             for (int layer = 0; layer < 2; layer++)
@@ -228,19 +288,19 @@ namespace NonaRoyale.Unity.View
         }
 
         /// <summary>
-        /// Steps every cell's lava along the loop, cross-fading between
+        /// Steps every flowing cell along its loop, cross-fading between
         /// neighbouring frames so the flow never ticks. Held on each cell's
         /// first frame under Reduced motion.
         /// </summary>
         private void FlowLava()
         {
-            var frames = LavaTexture.Frames;
-            int count = frames.Count;
-            float clock = Reduced ? 0f : Time.unscaledTime / LavaTexture.LoopSeconds * count;
-
             foreach (var tile in _lava)
             {
-                if (tile.Under == null || tile.Over == null) continue;
+                if (tile.Under == null || tile.Over == null || tile.Frames == null) continue;
+
+                var frames = tile.Frames;
+                int count = frames.Count;
+                float clock = Reduced ? 0f : Time.unscaledTime / tile.LoopSeconds * count;
 
                 float position = clock + tile.Phase;
                 int step = Mathf.FloorToInt(position);
@@ -250,6 +310,49 @@ namespace NonaRoyale.Unity.View
                 tile.Over.sprite = frames[(((step + 1) % count) + count) % count];
                 tile.Under.color = new Color(1f, 1f, 1f, tile.Alpha * (1f - blend));
                 tile.Over.color = new Color(1f, 1f, 1f, tile.Alpha * blend);
+            }
+        }
+
+        /// <summary>Felt on every covered cell, and the owner's chip stack on the table's own cell.</summary>
+        private void DrawTable(CellEffectSnapshot table, Color seat)
+        {
+            foreach (var cell in table.Covered)
+            {
+                var felt = Spawn(cell, FeltTexture.Sprite, _layout.CellSize * 0.9f, new Color(1f, 1f, 1f, FeltAlpha));
+                felt.sortingOrder = LavaOrder;
+            }
+
+            var body = Color.Lerp(seat, Color.black, 0.2f);
+            var corner = new Vector3(ChipOffset, ChipOffset, 0f) * _layout.CellSize;
+
+            for (int i = 0; i < ChipCount; i++)
+            {
+                // Each chip a hair nearer the camera than the one under it, so the
+                // stack draws bottom to top inside their shared sorting order.
+                var lift = corner + new Vector3(0f, i * ChipRise * _layout.CellSize, -0.002f * (2 * i + 1));
+
+                var chip = Spawn(table.Cell, Primitives.Disc, _layout.CellSize * ChipSize, WithAlpha(body, 1f));
+                chip.transform.position += lift;
+                chip.sortingOrder = Order;
+
+                var rim = Spawn(table.Cell, Primitives.Ring, _layout.CellSize * ChipSize, WithAlpha(UiTheme.GoldBright, 0.85f));
+                rim.transform.position += lift + new Vector3(0f, 0f, -0.001f);
+                rim.sortingOrder = Order;
+            }
+        }
+
+        /// <summary>Pulses the Zero-Day blasts together, a timer's tick; held at rest under Reduced motion.</summary>
+        private void TickCharges()
+        {
+            float alpha = ChargeAreaAlpha *
+                          LightPulse.Breath(Time.unscaledTimeAsDouble, ChargePulsePeriod, ChargePulseDepth, 0f, Reduced);
+
+            foreach (var area in _chargeAreas)
+            {
+                if (area == null) continue;
+                var colour = area.color;
+                colour.a = alpha;
+                area.color = colour;
             }
         }
 

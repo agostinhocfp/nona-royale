@@ -1893,6 +1893,20 @@ namespace NonaRoyale.Core
         public IReadOnlyList<CellEffectSnapshot> ActiveFields() =>
             _operatorEffects != null ? _operatorEffects.FieldSnapshot() : Array.Empty<CellEffectSnapshot>();
 
+        /// <summary>
+        /// Every pending Zero-Day charge, as the cells its blast will reach
+        /// (CG14). Empty when the match has no operator-effects service.
+        /// </summary>
+        public IReadOnlyList<CellEffectSnapshot> ActiveCharges() =>
+            _operatorEffects != null ? _operatorEffects.ChargeSnapshot() : Array.Empty<CellEffectSnapshot>();
+
+        /// <summary>The operator's unspent bleed stacks, for the board's drip rate (CG14). Zero when it is not bleeding.</summary>
+        public int BleedStacksOn(OperatorState op)
+        {
+            if (op == null) throw new ArgumentNullException(nameof(op));
+            return _statuses.BleedStacks(op);
+        }
+
 
         /// <summary>
         /// Whether any operator could still legally move with an unspent die.

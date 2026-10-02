@@ -298,6 +298,29 @@ namespace NonaRoyale.Core.Services
             return shown;
         }
 
+        /// <summary>
+        /// Every pending Zero-Day charge, as the cells its detonation will
+        /// reach (CORE_GAMEPLAY.md, CG14): round the carrier's cell now, or
+        /// the cell it was last seen on if it has left play, the same cell
+        /// the detonation uses. Nothing about damage is exposed.
+        /// </summary>
+        public IReadOnlyList<CellEffectSnapshot> ChargeSnapshot()
+        {
+            var shown = new List<CellEffectSnapshot>();
+
+            foreach (var entry in _pending)
+            {
+                if (entry.Shape != Shape.Charge) continue;
+
+                var cell = _targeting.IsInPlay(entry.Target) ? _targeting.CellOf(entry.Target) : entry.LastKnownCell;
+                shown.Add(new CellEffectSnapshot(
+                    cell, entry.Owner, isZone: false, hasDetonated: false,
+                    _targeting.CellsInArea(cell, entry.Radius)));
+            }
+
+            return shown;
+        }
+
         /// <summary>Whether a seat has a watch pending on this operator. For the view and for tests.</summary>
         public bool HasWatchOn(OperatorState target, PlayerColor owner)
         {

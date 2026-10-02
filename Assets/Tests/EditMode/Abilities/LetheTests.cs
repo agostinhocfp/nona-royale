@@ -587,6 +587,8 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(Seed(ZoneTrack).Approved, Is.True);
 
             Assert.That(_cellEffects.Snapshot().Count, Is.EqualTo(2));
+            Assert.That(_cellEffects.Snapshot().Count(shown => shown.IsCrowdZone), Is.EqualTo(1),
+                "Eris' zone is told apart from Killzone, so the board draws haze and lava (CG13)");
 
             AdvanceToRedsNextTurn();
             var fired = FireRed();

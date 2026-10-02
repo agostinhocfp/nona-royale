@@ -29,7 +29,7 @@ namespace NonaRoyale.Core.Services
     {
         public CellEffectSnapshot(
             CellRef cell, PlayerColor owner, bool isZone, bool hasDetonated,
-            IReadOnlyList<CellRef> covered, bool isTable = false)
+            IReadOnlyList<CellRef> covered, bool isTable = false, bool isCrowdZone = false)
         {
             Cell = cell;
             Owner = owner;
@@ -37,6 +37,7 @@ namespace NonaRoyale.Core.Services
             HasDetonated = hasDetonated;
             Covered = covered ?? Array.Empty<CellRef>();
             IsTable = isTable;
+            IsCrowdZone = isCrowdZone;
         }
 
         /// <summary>The anchored cell, at the centre of the area.</summary>
@@ -64,5 +65,13 @@ namespace NonaRoyale.Core.Services
         /// (CORE_GAMEPLAY.md, CG10).
         /// </summary>
         public bool IsTable { get; }
+
+        /// <summary>
+        /// A crowd zone (Lethe's Eris' Exploit): one that bills by how many
+        /// enemies share it. Like <see cref="IsTable"/> it names the kind of
+        /// device, not its numbers, so the board can give it its own look
+        /// (CORE_GAMEPLAY.md, CG13).
+        /// </summary>
+        public bool IsCrowdZone { get; }
     }
 }

@@ -2451,7 +2451,8 @@ namespace NonaRoyale.Unity.Composition
 
             // Beacons and zones are redrawn from the engine every time
             // (ADR-0006 decision 6), so a spent one disappears on its own.
-            if (_devices != null) _devices.Show(_match.Engine.ActiveCellEffects(), _match.Engine.ActiveFields());
+            if (_devices != null)
+                _devices.Show(_match.Engine.ActiveCellEffects(), _match.Engine.ActiveFields(), _match.Engine.ActiveCharges());
 
             string tag = _match.Engine.MatchOver ? null : SeatTag(_match.Engine.CurrentPlayer.Color);
             if (_turnStrip != null) _turnStrip.Refresh(_match.Engine, tag);
@@ -3493,7 +3494,7 @@ namespace NonaRoyale.Unity.Composition
                         hastened: hastened,
                         travel: hastened && !yard ? TravelAt(piece.Operator) : (Vector3?)null,
                         stunned: statuses.Contains(StatusKind.Stun));
-                    piece.ShowStatusCues(statuses);
+                    piece.ShowStatusCues(statuses, _match.Engine.BleedStacksOn(piece.Operator));
 
                     if (_pieceHud != null)
                     {

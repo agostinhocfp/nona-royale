@@ -1,7 +1,7 @@
 # Nona Royale — Core Gameplay Pass
 
 > Location in repo: `docs/design/CORE_GAMEPLAY.md` · Project copy: `claude/CORE_GAMEPLAY.md`
-> Status: **Open, 2026-09-30.** CG1–CG12 in; the designer's list is still being written.
+> Status: **Open, 2026-09-30.** CG1–CG14 in; the designer's list is still being written.
 > Related: `HUD_PASS.md` (the tray's stable geometry, H1), `PRESENTATION.md` §4 (board-first input), `CAST_ONBOARDING.md` (CO3, hold a card to read it), `MOBILE.md` (the upright tray)
 
 ## Goal
@@ -24,6 +24,8 @@ The designer's notes from playing the match, taken one at a time. This pass chan
 | CG10 | Killzone's cells run with lava | In, 2026-10-02 |
 | CG11 | Shield, Slow and Mark drawn on the piece; three passive tags retired | In, 2026-10-02 |
 | CG12 | Cryo Field frosts the cells it reaches | In, 2026-10-02 |
+| CG13 | Eris' Exploit gets its own silver and green haze | In, 2026-10-02 |
+| CG14 | The rest of the ability-driven looks: Zero-Day, The Table, Defiance, Hunted, Tech Ward, Bleed, Stealth | In, 2026-10-02 |
 
 ### CG1 — The tray stays up off-turn
 
@@ -143,6 +145,29 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - **`DeviceLayer`** lays **`FrostTexture`** (new): one tileable frame of pale ice cracks over a rime haze, built in code. It sits on those cells at order −1, turned and flipped per cell, breathing slowly (0.42 alpha, ±18%, 4.5 s). There is no ring and no seat tint, because the field is centred on Mimi and she is its mark. It moves with her whenever the board is redrawn, which happens at the end of each batch, not during the walk. Reduced motion holds it still.
 - The CRYO tag under Mimi is gone (`StatusPalette.IsDrawnOnBoard`).
 
+### CG13 — Eris' Exploit's haze
+
+**Designer (2026-10-02):** "Lethe's Eris' Exploit should have a different look. A slowly moving silver (her colour) and sinister green haze."
+
+- **A correction first:** Eris' Exploit deploys a zone too (`CrowdZone`), so since CG10 it had been drawn with Killzone's lava. CG10 tested only Killzone and Fortuna's table, so the shared drawing went unnoticed.
+- **`CellEffectSnapshot.IsCrowdZone`** (new, core, from `ScalesWithCrowd`) tells it apart. Like `IsTable`, it names the kind of device, not its numbers.
+- **`HazeTexture`** (new): 32 frames of 64×64 tileable haze built in code, from the lava's periodic noise. A dark poison-green murk drifts one way, and ridged wisps in Lethe's silver (`UiTheme.LookLetheSilver`, lifted toward white) curl the other. It loops every 11 s, slower than lava, and has a wider edge fade, so it reads as fog pooled on the floor.
+- **`DeviceLayer`:** the lava cell became a general flowing cell, `SpawnFlow(cell, alpha, frames, loop)`. Each cell carries its own frames and loop, so lava and haze share the cross-fade, the per-cell phase, the turn, the flip and the unlit material. Haze uses the lava's alphas: 0.6 armed, 0.34 lingering, under the same thinned seat tint and the seat ring.
+- Reduced motion holds it still.
+
+### CG14 — The rest of the ability-driven looks
+
+**Designer (2026-10-02):** "Do it all in one slice please", the remaining list after CG13.
+
+- **Zero-Day (Sanity):** `ChargeLight` is a small magenta light low and off-centre on the carrier, blinking twice and resting, like a timer. Its blast is drawn on the floor: `GameEngine.ActiveCharges()` (new, core, from `DeferredOperatorEffects.ChargeSnapshot`) gives the cells round the carrier's cell, or its last cell once it has left play, the same cell the detonation uses. `DeviceLayer` tints those cells faint magenta, pulsing a little quicker than a beacon.
+- **The Table (Fortuna):** `FeltTexture` (new) is rounded green felt with a gold rail and fine nap, near opaque and lit like the board, because it is an object. It sits on every cell the table covers, with a three-chip stack in the owner's seat colour on the table's own cell. The plain tinted area and ring are gone for tables.
+- **Defiance (Javi's CPR):** `DefianceGlow` is a warm gold glow pooled at the feet, breathing slowly. When it leaves while the piece stays on the board (it saved the operator), a gold ring grows out from the feet and fades (`GrowingRing`).
+- **Hunted (Luka's follow-up):** `HuntedBrackets` frames the piece with four crimson corner brackets that close in and ease out. It is a frame where the Mark is a dot, so the two never look alike.
+- **Tech Ward (Luka's Hermes' Ring):** `WardRing` is a thin flickering cyan ring on the floor, with an echo ring drifting outward. It sits on the floor where the Shield is round the body.
+- **Bleed:** `BleedDrips` drops dark red drips from the body to the floor, each leaving a stain that fades. The rate follows the stacks: about one a second for one stack, up to three a second, from `GameEngine.BleedStacksOn` (new, core).
+- **Stealth (Syla):** `StealthShimmer` sets two faint violet copies of the figure's silhouette swaying out of step either side of it. The body keeps its full colour, so it never reads as Evasion's fade.
+- All of them hide in the yard and on a shattered piece, and hold still or fade under Reduced motion. `StatusPalette.IsDrawnOnPiece` now covers them, so only Watched, which no ability applies, still prints a tag. `TagEverything` still brings every tag back.
+
 ## Play Mode checks
 
 - [ ] Solo against CPUs: after ending your turn, your last operator stays in the tray through every CPU turn; with nothing ever selected, one of yours appears on the first CPU turn.
@@ -171,6 +196,15 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - [ ] CG11 Mark: Tagged From Above: a red dot drifting on the target's chest; no MARKED tag.
 - [ ] CG11: Sanity, Fortuna and other passive holders show no BURDEN, BALANCE or HOUSE tag; the tray card still lists them. Setting `StatusPalette.TagEverything = true` (debugger or a temporary line) brings every tag back.
 - [ ] CG12: cast Cryo Field: the cells within 3 of Mimi frost over; when she moves, the frost follows after the move. No CRYO tag. Frost and Killzone lava on the same cell both still read.
+- [ ] CG13: cast Eris' Exploit: its cells fill with drifting green murk and silver wisps, clearly not lava. Killzone still runs with lava, and both on one cell still read. After it strikes the haze dims. Reduced motion: still haze.
+- [ ] CG14 Zero-Day: the carrier blinks magenta, the cells within 3 of it pulse magenta, and the glow follows when it moves. No 0-DAY tag.
+- [ ] CG14 The Table: felt with a gold rail and a chip stack in the owner's colour; the chips stack bottom to top under both cameras.
+- [ ] CG14 Defiance: gold underfoot on Javi's CPR target. Knock it to zero: it stays up at 1 and a gold ring flares out.
+- [ ] CG14 Hunted: crimson brackets on Blind Spot's target, clearly different from a Mark's dot (try a target with both).
+- [ ] CG14 Tech Ward: a cyan ring on the floor under Luka with Hermes' Ring, distinct from a shield's bubble.
+- [ ] CG14 Bleed: red drips, quicker with more stacks.
+- [ ] CG14 Stealth: Syla shimmers with two violet copies and keeps her full colour; Kurbyn's Evasion still fades instead.
+- [ ] CG14: no tags under pieces for any of these; Reduced motion stills them all.
 - [ ] CG3: start a match against CPUs, end your turn, switch to another window: the CPUs keep playing (Editor and a Windows build).
 
 ## Open
@@ -179,6 +213,8 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 
 ## Log
 
+- 2026-10-02 — **CG14 in: the rest of the ability-driven looks.** New: `View/ChargeLight.cs` (with `CueKit`), `View/DefianceGlow.cs` (with `GrowingRing`), `View/HuntedBrackets.cs`, `View/WardRing.cs`, `View/BleedDrips.cs` (with `FallingDrop`), `View/StealthShimmer.cs`, `View/FeltTexture.cs`. Changed: `OperatorPiece` (six more cues; `ShowStatusCues` takes the bleed count), `MatchBootstrap` (passes `BleedStacksOn` and `ActiveCharges`), `DeviceLayer` (Zero-Day blast cells, the felt table and chips), `StatusPalette.IsDrawnOnPiece`, and core `DeferredOperatorEffects.ChargeSnapshot`, `GameEngine.ActiveCharges` and `GameEngine.BleedStacksOn`. Test: `ZeroDayTests.ZeroDay_BlastIsDrawnRoundTheCarrier_AndFollowsIt`. **Checked:** core 1009 passing (cloud runner); the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`; the felt table was rendered to a still in Python. Play Mode pending.
+- 2026-10-02 — **CG13 in: Eris' Exploit's haze.** New: `View/HazeTexture.cs`. Changed: `CellEffectSnapshot.IsCrowdZone` and `DeferredCellEffects.Snapshot` (core), and `DeviceLayer` (`SpawnFlow` with per-cell frames and loop; crowd zones get haze, blast zones lava). Fixed along the way: Eris' Exploit had been drawn as lava since CG10. Tests: an `IsCrowdZone` check in `LetheTests.SquadmatesZones_OnOneCell_DoNotOverwriteEachOther` and in the zone snapshot in `TurnStateMachineTests`. **Checked:** core 1008 passing (cloud runner); the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`; the haze was rendered to a still in Python for a look. Play Mode pending.
 - 2026-10-02 — **CG11 and CG12 in.** New: `View/ShieldBubble.cs` (with `FlyingShard`), `View/SlowFrost.cs`, `View/MarkDot.cs`, `View/FrostTexture.cs`. Changed: `StatusPalette` (`IsDrawnOnPiece` adds Shield, Slow and Mark; new `IsDrawnOnBoard`, `IsRetiredTag`, `IsTaggedOnBoard` and the dormant `TagEverything`), `PieceHudLayer` (asks `IsTaggedOnBoard`), `OperatorPiece` (the three cues, `CueBody`, `ShowStatusCues`), `MatchBootstrap` (calls `ShowStatusCues`, passes `ActiveFields` to the device layer), `DeviceLayer` (frost), `LavaTexture` (`Fbm` shared), and core `DeferredOperatorEffects.FieldSnapshot` and `GameEngine.ActiveFields`. Test: `CryoFieldTests.CryoField_IsDrawnWhereItBites_AndFollowsHer`. **Checked:** core 1006 passing (cloud runner), the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`, and the frost tile was rendered in Python for a look. Play Mode pending.
 - 2026-10-02 — **CG9 and CG10 in: stun on the piece, lava in Killzone.** New: `View/StunHalo.cs`, `View/LavaTexture.cs`. Changed: `StatusPalette.IsDrawnOnPiece` (Stun), `OperatorPiece` (`StunHalo`, `CrownHeight`, `Refresh(stunned:)`), `MatchBootstrap` (passes the stun), `DeviceLayer` (lava cells, thinned tint over lava), `CellEffectSnapshot.IsTable` and `DeferredCellEffects.Snapshot` (core). Tests: `FortunaTableTests.TheBoardIsToldItIsATable`, and an `IsTable` check on the zone snapshot in `TurnStateMachineTests`. **Checked:** core 1005 passing (cloud runner); the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`; the lava algorithm was rendered to a still in Python for a look. Play Mode pending.
 - 2026-10-01 — **Off `DEVELOPMENT_BUILD`.** Unity 6.6 deprecated the define (warning UAC0009 at `MatchBootstrap.cs(460)`). All six uses now read `Debug.isDebugBuild` at runtime, which is true in the editor and in development builds: `MatchBootstrap` (release forces the dev panel off, F3, the Ctrl+Shift+Numpad 0/9 chords, and `DevChord`/`DevWin`/`DevKnockOut` no longer wrapped), `FxBurn` (the `[FxBurn]` log line) and `ISettingsHost` (the dev panel row). **Changed guarantee:** release builds now contain the dev chord code, unreachable; G7 and G8c's "compiled out of release builds" no longer holds. Not compiled against the editor DLLs; the editor recompile is the check (no UAC0009, F3 and both chords still work in Play Mode).
