@@ -10,11 +10,24 @@ using NonaRoyale.Core.Rng;
 namespace NonaRoyale.Core.Bots
 {
     /// <summary>
-    /// A CPU seat's draft pick (BOTS.md decision 5): the operator its
-    /// personality values most, nudged toward a squad with both sustain and
-    /// burst, with a little randomness. The Wildcard instead picks uniformly
-    /// at random (decision 11, <see cref="BotWeights.DraftAtRandom"/>).
+    /// A CPU seat's draft pick (BOTS.md decisions 5 and 12): a weighted
+    /// lottery over the operators it may take, leaning toward what its
+    /// personality values, toward its signature operators, and toward a squad
+    /// with both sustain and burst. The Wildcard instead picks uniformly at
+    /// random (decision 11, <see cref="BotWeights.DraftAtRandom"/>).
     /// </summary>
+    /// <remarks>
+    /// <b>A lottery, not the best score plus jitter</b> (2026-10-02). The
+    /// old pick took the top score after a 0–1.2 jitter, but the roster's
+    /// values spread from about 7 to 20, so the jitter never closed a gap:
+    /// every style drafted Nuetu, and the Brawler and Banker almost always
+    /// Revú and Sanity too. Each candidate's value is now scaled to 0–1
+    /// across what is left, so the spread is the same whatever the roster
+    /// numbers become, and turned into a weight; the best is about
+    /// e^<see cref="BotWeights.DraftValueSharpness"/> times as likely as the
+    /// worst, not certain. With no random stream the heaviest weight wins,
+    /// so tests stay deterministic.
+    /// </remarks>
     /// <remarks>
     /// Picks only from <c>Available(seat)</c> and only what <c>CanPick</c>
     /// accepts. The randomness comes from the bot's own stream, never the
@@ -44,26 +57,64 @@ namespace NonaRoyale.Core.Bots
                 hasBurst |= Burst(picked) >= BurstThreshold;
             }
 
-            OperatorDefinition best = null;
-            double bestScore = double.MinValue;
+            var candidates = new List<OperatorDefinition>();
+            var values = new List<double>();
+            double lowest = double.MaxValue;
+            double highest = double.MinValue;
 
             foreach (var candidate in draft.Available(seat))
             {
                 if (draft.CanPick(seat, candidate) != DraftRefusal.None) continue;
 
-                double score = Value(candidate, weights);
-                if (!hasSustain && HasSustain(candidate)) score += weights.DraftComposition;
-                if (!hasBurst && Burst(candidate) >= BurstThreshold) score += weights.DraftComposition;
-                if (random != null) score += random.NextDouble() * config.DraftJitter;
-
-                if (score > bestScore)
-                {
-                    bestScore = score;
-                    best = candidate;
-                }
+                double value = Value(candidate, weights);
+                candidates.Add(candidate);
+                values.Add(value);
+                lowest = Math.Min(lowest, value);
+                highest = Math.Max(highest, value);
             }
 
-            return best;
+            if (candidates.Count == 0) return null;
+
+            var lots = new double[candidates.Count];
+            double total = 0.0;
+            int heaviest = 0;
+
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                var candidate = candidates[i];
+                double share = highest > lowest ? (values[i] - lowest) / (highest - lowest) : 1.0;
+
+                double lot = Math.Exp(weights.DraftValueSharpness * share);
+                if (IsSignature(candidate, weights)) lot *= weights.DraftSignatureWeight;
+                if (!hasSustain && HasSustain(candidate)) lot *= 1.0 + weights.DraftComposition;
+                if (!hasBurst && Burst(candidate) >= BurstThreshold) lot *= 1.0 + weights.DraftComposition;
+
+                lots[i] = lot;
+                total += lot;
+                if (lot > lots[heaviest]) heaviest = i;
+            }
+
+            if (random == null || !(total > 0.0)) return candidates[heaviest];
+
+            double ticket = random.NextDouble() * total;
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                ticket -= lots[i];
+                if (ticket < 0.0) return candidates[i];
+            }
+
+            return candidates[candidates.Count - 1];
+        }
+
+        /// <summary>Whether <paramref name="op"/> is one of the personality's signature operators (BOTS.md decision 12).</summary>
+        public static bool IsSignature(OperatorDefinition op, BotWeights weights)
+        {
+            if (op == null || weights?.DraftSignatures == null) return false;
+
+            foreach (var name in weights.DraftSignatures)
+                if (string.Equals(name, op.Name, StringComparison.Ordinal)) return true;
+
+            return false;
         }
 
         /// <summary>

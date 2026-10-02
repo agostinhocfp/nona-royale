@@ -542,6 +542,68 @@ namespace NonaRoyale.Core.Tests.Bots
             }
         }
 
+        private static Dictionary<string, int> SquadCounts(BotPersonality personality, int drafts)
+        {
+            var counts = new Dictionary<string, int>();
+            foreach (var op in Roster.All) counts[op.Name] = 0;
+
+            for (int seed = 1; seed <= drafts; seed++)
+            {
+                var draft = DraftState.ForMatch(Two, DraftMode.AllPick, seed);
+                var bot = new BotBrain(personality, new SeededRandom(seed));
+
+                while (draft.CanPickAny(PlayerColor.Red) == DraftRefusal.None)
+                {
+                    var pick = bot.PickDraft(draft, PlayerColor.Red);
+                    Assert.That(draft.Pick(PlayerColor.Red, pick), Is.EqualTo(DraftRefusal.None), pick.Name);
+                    counts[pick.Name]++;
+                }
+            }
+
+            return counts;
+        }
+
+        [Test]
+        public void Signatures_NameRealOperators()
+        {
+            foreach (var personality in new[] { BotPersonality.Brawler, BotPersonality.Runner, BotPersonality.Banker })
+            {
+                var signatures = BotWeights.For(personality).DraftSignatures;
+                Assert.That(signatures.Count, Is.EqualTo(3), personality.ToString());
+
+                foreach (var name in signatures)
+                    Assert.That(Roster.ByName(name), Is.Not.Null, $"{personality}: {name}");
+            }
+        }
+
+        [Test]
+        public void Styles_DraftTheirSignaturesMoreOften_AndNoOneEveryTime()
+        {
+            const int drafts = 600;
+
+            foreach (var personality in new[] { BotPersonality.Brawler, BotPersonality.Runner, BotPersonality.Banker })
+            {
+                var weights = BotWeights.For(personality);
+                var counts = SquadCounts(personality, drafts);
+
+                double signature = 0.0, other = 0.0;
+                int signatures = 0, others = 0;
+
+                foreach (var pair in counts)
+                {
+                    // The failure the lottery fixed: one operator in every squad (2026-10-02).
+                    Assert.That(pair.Value, Is.LessThan(drafts * 0.75), $"{personality} drafts {pair.Key} almost every time");
+                    Assert.That(pair.Value, Is.GreaterThan(0), $"{personality} never drafts {pair.Key}");
+
+                    if (DraftPicker.IsSignature(Roster.ByName(pair.Key), weights)) { signature += pair.Value; signatures++; }
+                    else { other += pair.Value; others++; }
+                }
+
+                Assert.That(signature / signatures, Is.GreaterThan(other / others),
+                    $"{personality}'s signatures should come up more often than the rest");
+            }
+        }
+
         [Test]
         public void Personalities_ValueTheRosterDifferently()
         {

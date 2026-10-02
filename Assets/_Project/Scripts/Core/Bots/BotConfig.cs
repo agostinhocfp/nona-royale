@@ -1,5 +1,6 @@
 // Assets/_Project/Scripts/Core/Bots/BotConfig.cs
 using System;
+using System.Collections.Generic;
 using NonaRoyale.Core.Rng;
 
 namespace NonaRoyale.Core.Bots
@@ -184,8 +185,26 @@ namespace NonaRoyale.Core.Bots
         /// </summary>
         public double DraftTempo { get; set; } = 1.0;
 
-        /// <summary>Bonus for filling a gap: the squad's first sustain, or its first burst.</summary>
-        public double DraftComposition { get; set; } = 2.0;
+        /// <summary>
+        /// Filling a gap, the squad's first sustain or its first burst,
+        /// multiplies a candidate's lot by one plus this. 0.3 since the
+        /// lottery (2026-10-02); it was a +2.0 score bonus, which put Nuetu,
+        /// who fills both, in every squad.
+        /// </summary>
+        public double DraftComposition { get; set; } = 0.3;
+
+        /// <summary>
+        /// How strongly value steers the draft: the most valued candidate left
+        /// is e^this times as likely as the least (BOTS.md decision 12). 1.5,
+        /// about 4.5 to 1.
+        /// </summary>
+        public double DraftValueSharpness { get; set; } = 1.5;
+
+        /// <summary>The personality's signature operators, by name: a slight lean, not a lock (decision 12).</summary>
+        public IReadOnlyList<string> DraftSignatures { get; set; } = Array.Empty<string>();
+
+        /// <summary>How much a signature operator's lot is multiplied by.</summary>
+        public double DraftSignatureWeight { get; set; } = 3.0;
 
         /// <summary>
         /// The Wildcard's draft: every pickable operator equally likely, with no
@@ -216,6 +235,7 @@ namespace NonaRoyale.Core.Bots
                     w.DraftSustain = 0.8;
                     w.DraftSpeed = 1.0;
                     w.DraftControl = 0.5;
+                    w.DraftSignatures = new[] { "Kurbyn", "Luka", "Bouncer" };   // the fighters
                     break;
 
                 case BotPersonality.Runner:
@@ -235,6 +255,7 @@ namespace NonaRoyale.Core.Bots
                     w.DraftSustain = 1.6;
                     w.DraftSpeed = 4.0;
                     w.DraftControl = 0.6;
+                    w.DraftSignatures = new[] { "Syla", "Javi", "Lethe" };     // the fast ones
                     break;
 
                 case BotPersonality.Banker:
@@ -252,6 +273,7 @@ namespace NonaRoyale.Core.Bots
                     w.DraftSustain = 1.4;
                     w.DraftSpeed = 1.5;
                     w.DraftControl = 0.9;
+                    w.DraftSignatures = new[] { "Fortuna", "Kian", "Mimi" };   // big payoffs; Fortuna banks dice
                     break;
 
                 case BotPersonality.Wildcard:
@@ -307,7 +329,11 @@ namespace NonaRoyale.Core.Bots
         /// <summary>Random points added to each option, so equal choices do not always break the same way.</summary>
         public double Jitter { get; }
 
-        /// <summary>Random points added to each draft pick.</summary>
+        /// <summary>
+        /// The draft's old score jitter. Not read since the draft became a
+        /// weighted lottery (BOTS.md decision 12, 2026-10-02); kept so
+        /// existing configs and tests still construct.
+        /// </summary>
         public double DraftJitter { get; }
 
         /// <summary>
