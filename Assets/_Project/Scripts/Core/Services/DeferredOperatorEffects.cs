@@ -275,6 +275,29 @@ namespace NonaRoyale.Core.Services
             return Find(holder, owner, Shape.Field) != null;
         }
 
+        /// <summary>
+        /// Every standing field, as the cells it reaches around its holder
+        /// right now (CORE_GAMEPLAY.md, CG12): the same area the tick hits,
+        /// so the board draws exactly where it bites. A holder out of play
+        /// projects nothing. Nothing about damage is exposed.
+        /// </summary>
+        public IReadOnlyList<CellEffectSnapshot> FieldSnapshot()
+        {
+            var shown = new List<CellEffectSnapshot>();
+
+            foreach (var entry in _pending)
+            {
+                if (entry.Shape != Shape.Field || !_targeting.IsInPlay(entry.Target)) continue;
+
+                var cell = _targeting.CellOf(entry.Target);
+                shown.Add(new CellEffectSnapshot(
+                    cell, entry.Owner, isZone: true, hasDetonated: false,
+                    _targeting.CellsInArea(cell, entry.Radius)));
+            }
+
+            return shown;
+        }
+
         /// <summary>Whether a seat has a watch pending on this operator. For the view and for tests.</summary>
         public bool HasWatchOn(OperatorState target, PlayerColor owner)
         {

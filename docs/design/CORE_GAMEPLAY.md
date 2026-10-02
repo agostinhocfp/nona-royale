@@ -1,7 +1,7 @@
 # Nona Royale — Core Gameplay Pass
 
 > Location in repo: `docs/design/CORE_GAMEPLAY.md` · Project copy: `claude/CORE_GAMEPLAY.md`
-> Status: **Open, 2026-09-30.** CG1–CG10 in; the designer's list is still being written.
+> Status: **Open, 2026-09-30.** CG1–CG12 in; the designer's list is still being written.
 > Related: `HUD_PASS.md` (the tray's stable geometry, H1), `PRESENTATION.md` §4 (board-first input), `CAST_ONBOARDING.md` (CO3, hold a card to read it), `MOBILE.md` (the upright tray)
 
 ## Goal
@@ -22,6 +22,8 @@ The designer's notes from playing the match, taken one at a time. This pass chan
 | CG8 | Drone Strike's patch pulses slowly | In, 2026-10-01 |
 | CG9 | Stun is drawn on the piece, not tagged | In, 2026-10-02 |
 | CG10 | Killzone's cells run with lava | In, 2026-10-02 |
+| CG11 | Shield, Slow and Mark drawn on the piece; three passive tags retired | In, 2026-10-02 |
+| CG12 | Cryo Field frosts the cells it reaches | In, 2026-10-02 |
 
 ### CG1 — The tray stays up off-turn
 
@@ -124,6 +126,23 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - **Tables stay plain.** `CellEffectSnapshot.IsTable` (new, from `StopsMovers`) tells Fortuna's table, a trap, from a blast zone. It names a kind of device, not an outcome, so PRESENTATION §2 holds. Killzone is the only blast zone today.
 - Reduced motion holds the lava still.
 
+### CG11 — Shield, Slow and Mark on the piece; passive tags retired
+
+**Designer (2026-10-02):** took Claude's pick from the status-cue list. "Don't delete the code though, leave status code dormant."
+
+- **`ShieldBubble`:** a faint steel bubble round the piece, mostly rim with a highlight at the upper left, breathing slowly. When the shield leaves `ActiveStatusesOn` while the piece stays on the board, it bursts into nine fading shards. Absorbing a hit is the usual way that happens; an expiry or a cleanse bursts it too, which is still true. A knockout, the yard or a hidden piece drops it with no burst. Reduced motion fades it instead.
+- **`SlowFrost`:** pale rime on the floor round the feet (a child of the piece, beside the seat disc) and four ice motes climbing the figure (children of the figure's frame, so they lean with the tilt). Haste's mirror. Reduced motion keeps the rime and holds the motes still.
+- **`MarkDot`:** a small red-orange laser dot on the chest with a soft glow, drifting slowly as if a hand holds the sight. Reduced motion holds it still.
+- All three take their size from `OperatorPiece.CueBody`: a chip's own disc, or a figure's span from feet to crown. They are driven by `OperatorPiece.ShowStatusCues(statuses)`, called beside `Refresh`, and hidden in the yard and on a shattered piece.
+- **Tags retired without a replacement:** Burdened, Equilibrium and House Edge, which are permanent passives. The tray card and the guide still name them.
+- **Dormant, not deleted** (designer's condition): every colour and word in `StatusPalette` is unchanged. `StatusPalette.IsTaggedOnBoard` decides what prints, and `StatusPalette.TagEverything` (off) brings every tag back beside the drawn cues.
+
+### CG12 — Cryo Field frost
+
+- **`GameEngine.ActiveFields()`** (new, core) returns each standing field as a `CellEffectSnapshot`: its holder's cell and the cells it reaches now, from `DeferredOperatorEffects.FieldSnapshot` and the same `CellsInArea` the tick bites with. It names an area, not damage.
+- **`DeviceLayer`** lays **`FrostTexture`** (new): one tileable frame of pale ice cracks over a rime haze, built in code. It sits on those cells at order −1, turned and flipped per cell, breathing slowly (0.42 alpha, ±18%, 4.5 s). There is no ring and no seat tint, because the field is centred on Mimi and she is its mark. It moves with her whenever the board is redrawn, which happens at the end of each batch, not during the walk. Reduced motion holds it still.
+- The CRYO tag under Mimi is gone (`StatusPalette.IsDrawnOnBoard`).
+
 ## Play Mode checks
 
 - [ ] Solo against CPUs: after ending your turn, your last operator stays in the tray through every CPU turn; with nothing ever selected, one of yours appears on the first CPU turn.
@@ -147,6 +166,11 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - [ ] CG8: cast Drone Strike: its patch breathes slowly (about 3 s a breath), the ring and dot stay steady, a zone's area (Killzone) does not pulse, and Reduced motion stops the breathing.
 - [ ] CG9: stun an enemy (Killzone going off, Dargin Pulse): yellow stars circle its head, passing in front of and behind it, and there is no STUN tag under it. The tray card still says it is stunned. The stars go when the stun ends, and in the yard. Reduced motion: still stars. Check a chip piece and a rendered figure.
 - [ ] CG10: cast Killzone: its cells glow with slow lava under a faint seat tint, with the seat ring on top; the cells do not pulse in step. After it goes off the lava is dimmer. Fortuna's table keeps its plain area. Move and aim highlights still draw over the lava. Reduced motion: still lava. Note any hitch on the first cast (the frames build then).
+- [ ] CG11 Shield: shield an operator: a faint bubble round it, the figure still readable inside. Hit it with Normal damage: the bubble bursts into shards. No SHIELD tag. Under Reduced motion it fades instead.
+- [ ] CG11 Slow: slow an enemy: pale rime at its feet and motes climbing it; no SLOW tag. Check a chip and a rendered figure.
+- [ ] CG11 Mark: Tagged From Above: a red dot drifting on the target's chest; no MARKED tag.
+- [ ] CG11: Sanity, Fortuna and other passive holders show no BURDEN, BALANCE or HOUSE tag; the tray card still lists them. Setting `StatusPalette.TagEverything = true` (debugger or a temporary line) brings every tag back.
+- [ ] CG12: cast Cryo Field: the cells within 3 of Mimi frost over; when she moves, the frost follows after the move. No CRYO tag. Frost and Killzone lava on the same cell both still read.
 - [ ] CG3: start a match against CPUs, end your turn, switch to another window: the CPUs keep playing (Editor and a Windows build).
 
 ## Open
@@ -155,6 +179,7 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 
 ## Log
 
+- 2026-10-02 — **CG11 and CG12 in.** New: `View/ShieldBubble.cs` (with `FlyingShard`), `View/SlowFrost.cs`, `View/MarkDot.cs`, `View/FrostTexture.cs`. Changed: `StatusPalette` (`IsDrawnOnPiece` adds Shield, Slow and Mark; new `IsDrawnOnBoard`, `IsRetiredTag`, `IsTaggedOnBoard` and the dormant `TagEverything`), `PieceHudLayer` (asks `IsTaggedOnBoard`), `OperatorPiece` (the three cues, `CueBody`, `ShowStatusCues`), `MatchBootstrap` (calls `ShowStatusCues`, passes `ActiveFields` to the device layer), `DeviceLayer` (frost), `LavaTexture` (`Fbm` shared), and core `DeferredOperatorEffects.FieldSnapshot` and `GameEngine.ActiveFields`. Test: `CryoFieldTests.CryoField_IsDrawnWhereItBites_AndFollowsHer`. **Checked:** core 1006 passing (cloud runner), the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`, and the frost tile was rendered in Python for a look. Play Mode pending.
 - 2026-10-02 — **CG9 and CG10 in: stun on the piece, lava in Killzone.** New: `View/StunHalo.cs`, `View/LavaTexture.cs`. Changed: `StatusPalette.IsDrawnOnPiece` (Stun), `OperatorPiece` (`StunHalo`, `CrownHeight`, `Refresh(stunned:)`), `MatchBootstrap` (passes the stun), `DeviceLayer` (lava cells, thinned tint over lava), `CellEffectSnapshot.IsTable` and `DeferredCellEffects.Snapshot` (core). Tests: `FortunaTableTests.TheBoardIsToldItIsATable`, and an `IsTable` check on the zone snapshot in `TurnStateMachineTests`. **Checked:** core 1005 passing (cloud runner); the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`; the lava algorithm was rendered to a still in Python for a look. Play Mode pending.
 - 2026-10-01 — **Off `DEVELOPMENT_BUILD`.** Unity 6.6 deprecated the define (warning UAC0009 at `MatchBootstrap.cs(460)`). All six uses now read `Debug.isDebugBuild` at runtime, which is true in the editor and in development builds: `MatchBootstrap` (release forces the dev panel off, F3, the Ctrl+Shift+Numpad 0/9 chords, and `DevChord`/`DevWin`/`DevKnockOut` no longer wrapped), `FxBurn` (the `[FxBurn]` log line) and `ISettingsHost` (the dev panel row). **Changed guarantee:** release builds now contain the dev chord code, unreachable; G7 and G8c's "compiled out of release builds" no longer holds. Not compiled against the editor DLLs; the editor recompile is the check (no UAC0009, F3 and both chords still work in Play Mode).
 - 2026-10-01 — **CG8 in: Drone Strike's patch breathes.** `DeviceLayer` keeps the beacon area renderers and drives their alpha in `Update`; `Spawn` returns its renderer; `Reduced` property set from `MatchBootstrap`. The view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`. Play Mode pending.

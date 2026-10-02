@@ -185,7 +185,8 @@ namespace NonaRoyale.Unity.View
         /// Sets the statuses shown under a piece. The list comes from
         /// <c>GameEngine.ActiveStatusesOn</c>, never from events (§1), and is
         /// copied, so the caller's list can be reused. Statuses the piece draws
-        /// itself (<see cref="StatusPalette.IsDrawnOnPiece"/>) get no tag.
+        /// itself, the board draws as an area, or that are retired passives get no
+        /// tag (<see cref="StatusPalette.IsTaggedOnBoard"/>).
         /// </summary>
         public void ShowStatuses(OperatorPiece piece, IReadOnlyList<StatusKind> statuses)
         {
@@ -197,7 +198,7 @@ namespace NonaRoyale.Unity.View
             if (statuses != null)
             {
                 foreach (var kind in statuses)
-                    if (!StatusPalette.IsDrawnOnPiece(kind)) _tagged.Add(kind);
+                    if (StatusPalette.IsTaggedOnBoard(kind)) _tagged.Add(kind);
             }
 
             statuses = _tagged;

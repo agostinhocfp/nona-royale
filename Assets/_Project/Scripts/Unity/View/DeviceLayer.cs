@@ -54,6 +54,13 @@ namespace NonaRoyale.Unity.View
     /// step. A table is a trap, not a blast, and keeps its plain area. Only
     /// Killzone deploys a blast zone today. Reduced motion holds the lava
     /// still.
+    ///
+    /// <b>A Cryo Field frosts the cells it reaches</b> (CG12): the area
+    /// round Mimi the tick will bite, from <c>GameEngine.ActiveFields</c>, in
+    /// <see cref="FrostTexture"/>'s pale crystals, breathing slowly. It moves
+    /// with her whenever the board is redrawn. No ring and no seat tint: the
+    /// field is centred on her, so she is its mark. Reduced motion holds it
+    /// still.
     /// </remarks>
     public sealed class DeviceLayer : MonoBehaviour
     {
@@ -74,6 +81,11 @@ namespace NonaRoyale.Unity.View
         /// <summary>Under the tint (0) and over every board layer (−10 and below).</summary>
         private const int LavaOrder = -1;
 
+        /// <summary>A Cryo Field's frost: at rest, how far it breathes either side, and how slowly.</summary>
+        private const float FrostAlpha = 0.42f;
+        private const float FrostBreathDepth = 0.18f;
+        private const float FrostBreathPeriod = 4.5f;
+
         /// <summary>Seconds per breath of a beacon's patch.</summary>
         private const float BeaconPulsePeriod = 2.8f;
 
@@ -83,6 +95,7 @@ namespace NonaRoyale.Unity.View
         private readonly List<GameObject> _markers = new List<GameObject>();
         private readonly List<SpriteRenderer> _beaconAreas = new List<SpriteRenderer>();
         private readonly List<LavaCell> _lava = new List<LavaCell>();
+        private readonly List<SpriteRenderer> _frost = new List<SpriteRenderer>();
 
         /// <summary>One cell of lava: two frames cross-fading, its own start in the loop, its peak alpha.</summary>
         private sealed class LavaCell
@@ -107,11 +120,13 @@ namespace NonaRoyale.Unity.View
             _markers.Clear();
             _beaconAreas.Clear();
             _lava.Clear();
+            _frost.Clear();
         }
 
         private void Update()
         {
             if (_lava.Count > 0) FlowLava();
+            if (_frost.Count > 0) BreatheFrost();
             if (_beaconAreas.Count == 0) return;
 
             float alpha = BeaconAreaAlpha *
@@ -127,12 +142,22 @@ namespace NonaRoyale.Unity.View
             }
         }
 
-        /// <summary>Replaces everything drawn with the given effects.</summary>
-        public void Show(IReadOnlyList<CellEffectSnapshot> effects)
+        /// <summary>
+        /// Replaces everything drawn with the given effects and, when given,
+        /// the cells each standing Cryo Field reaches (CG12).
+        /// </summary>
+        public void Show(IReadOnlyList<CellEffectSnapshot> effects, IReadOnlyList<CellEffectSnapshot> fields = null)
         {
             Clear();
 
-            if (_layout == null || effects == null) return;
+            if (_layout == null) return;
+
+            if (fields != null)
+                foreach (var field in fields)
+                    foreach (var cell in field.Covered)
+                        SpawnFrost(cell);
+
+            if (effects == null) return;
 
             foreach (var effect in effects)
             {
@@ -226,6 +251,34 @@ namespace NonaRoyale.Unity.View
                 tile.Under.color = new Color(1f, 1f, 1f, tile.Alpha * (1f - blend));
                 tile.Over.color = new Color(1f, 1f, 1f, tile.Alpha * blend);
             }
+        }
+
+        /// <summary>Lays a cell of frost, turned and flipped by the cell's hash so neighbours differ.</summary>
+        private void SpawnFrost(CellRef cell)
+        {
+            int hash = cell.GetHashCode() * 668265263;
+            unchecked { hash ^= hash >> 13; }
+
+            var renderer = Spawn(cell, FrostTexture.Sprite, _layout.CellSize * 0.9f, new Color(1f, 1f, 1f, FrostAlpha));
+            renderer.sortingOrder = LavaOrder;
+            renderer.transform.localRotation = Quaternion.Euler(0f, 0f, 90f * ((hash >> 17) & 3));
+            renderer.flipX = ((hash >> 19) & 1) == 1;
+            renderer.flipY = ((hash >> 20) & 1) == 1;
+
+            var unlit = ShaderFx.Source(ShaderFx.ChipUnlit);
+            if (unlit != null) renderer.sharedMaterial = unlit;
+
+            _frost.Add(renderer);
+        }
+
+        /// <summary>Breathes the frost's alpha, one shared slow breath; held at rest under Reduced motion.</summary>
+        private void BreatheFrost()
+        {
+            float alpha = FrostAlpha *
+                          LightPulse.Breath(Time.unscaledTimeAsDouble, FrostBreathPeriod, FrostBreathDepth, 0f, Reduced);
+
+            foreach (var frost in _frost)
+                if (frost != null) frost.color = new Color(1f, 1f, 1f, alpha);
         }
 
         private static Color WithAlpha(Color colour, float alpha)

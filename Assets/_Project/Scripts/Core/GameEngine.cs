@@ -1886,6 +1886,13 @@ namespace NonaRoyale.Core
         /// </remarks>
         public IReadOnlyList<CellEffectSnapshot> ActiveCellEffects() => _cellEffects.Snapshot();
 
+        /// <summary>
+        /// Every standing Cryo Field, as the cells it reaches around its holder
+        /// now (CG12). Empty when the match has no operator-effects service.
+        /// </summary>
+        public IReadOnlyList<CellEffectSnapshot> ActiveFields() =>
+            _operatorEffects != null ? _operatorEffects.FieldSnapshot() : Array.Empty<CellEffectSnapshot>();
+
 
         /// <summary>
         /// Whether any operator could still legally move with an unspent die.

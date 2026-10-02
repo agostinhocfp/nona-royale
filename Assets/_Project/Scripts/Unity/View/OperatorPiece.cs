@@ -271,6 +271,9 @@ namespace NonaRoyale.Unity.View
         /// <summary>Lime streaks and afterimages while the engine reports haste (2026-09-24).</summary>
         private HasteTrail _haste;
         private StunHalo _stun;
+        private ShieldBubble _shield;
+        private SlowFrost _slow;
+        private MarkDot _mark;
 
         // ── The chip (2026-09-29) ───────────────────────────────
         private PieceStyle _style = PieceStyle.Figures;
@@ -486,6 +489,14 @@ namespace NonaRoyale.Unity.View
 
             _stun = gameObject.AddComponent<StunHalo>();
             _stun.Bind(this, _figure, motion);
+
+            // CG11: the statuses that lost their tags to a look.
+            _shield = gameObject.AddComponent<ShieldBubble>();
+            _shield.Bind(this, _figure, motion);
+            _slow = gameObject.AddComponent<SlowFrost>();
+            _slow.Bind(this, _figure, motion);
+            _mark = gameObject.AddComponent<MarkDot>();
+            _mark.Bind(this, _figure, motion);
         }
 
         /// <summary>What a haste afterimage is drawn from: the render's silhouette or the pawn.</summary>
@@ -504,6 +515,23 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>The top of the head in figure units, where the stun's stars circle (CG9).</summary>
         internal float CrownHeight => Mathf.Max(_layout.Top, _layout.HeadY);
+
+        /// <summary>
+        /// The body as a circle in figure units, for the cues drawn round it
+        /// (CG11): a chip's own disc, or a figure's span from feet to crown.
+        /// </summary>
+        internal void CueBody(out float centre, out float radius)
+        {
+            if (ChipActive)
+            {
+                centre = 0f;
+                radius = ChipDiameter * 0.5f;
+                return;
+            }
+
+            centre = (_layout.Feet + _layout.Top) * 0.5f;
+            radius = Mathf.Max(0.3f, _layout.Height * 0.5f);
+        }
 
         /// <summary>
         /// Seated in the yard, standing anywhere else. Swaps the figure, then
@@ -716,6 +744,7 @@ namespace NonaRoyale.Unity.View
         {
             if (_haste != null) _haste.Show(false, null);
             if (_stun != null) _stun.Show(false);
+            HideStatusCues();
 
             if (_hidden || _collapsing) return;
 
@@ -875,6 +904,40 @@ namespace NonaRoyale.Unity.View
             TintSeatBase();
 
             DrawHealth(Operator.Health);
+        }
+
+        /// <summary>
+        /// Draws the statuses that show on the piece itself rather than as tags
+        /// (CG11): a shield's bubble, a slow's frost, a mark's laser dot. The
+        /// list comes from <c>ActiveStatusesOn</c>, never from events
+        /// (PRESENTATION §1). A shield that goes while the piece stays on the
+        /// board bursts.
+        /// </summary>
+        public void ShowStatusCues(IReadOnlyList<StatusKind> statuses)
+        {
+            if (Operator == null) return;
+
+            bool onBoard = !Operator.IsInYard && !_hidden;
+
+            if (_shield != null) _shield.Show(onBoard && Has(statuses, StatusKind.Shield), burst: onBoard);
+            if (_slow != null) _slow.Show(onBoard && Has(statuses, StatusKind.Slow));
+            if (_mark != null) _mark.Show(onBoard && Has(statuses, StatusKind.Mark));
+        }
+
+        /// <summary>Takes every drawn status cue off without a burst: the piece is leaving.</summary>
+        private void HideStatusCues()
+        {
+            if (_shield != null) _shield.Show(false, burst: false);
+            if (_slow != null) _slow.Show(false);
+            if (_mark != null) _mark.Show(false);
+        }
+
+        private static bool Has(IReadOnlyList<StatusKind> statuses, StatusKind kind)
+        {
+            if (statuses == null) return false;
+            for (int i = 0; i < statuses.Count; i++)
+                if (statuses[i] == kind) return true;
+            return false;
         }
 
         private void DrawHealth(int shown)

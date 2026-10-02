@@ -108,8 +108,8 @@ namespace NonaRoyale.Unity.View
             return Color.Lerp(molten, core, (heat - 0.75f) / 0.25f);
         }
 
-        /// <summary>Fractal value noise, periodic over [0, 1) in both axes, in about [0, 1].</summary>
-        private static float Fbm(float u, float v, int period, int octaves, int seed)
+        /// <summary>Fractal value noise, periodic over [0, 1) in both axes, in about [0, 1]. Shared with <see cref="FrostTexture"/>.</summary>
+        internal static float Fbm(float u, float v, int period, int octaves, int seed)
         {
             float sum = 0f;
             float amplitude = 0.5f;

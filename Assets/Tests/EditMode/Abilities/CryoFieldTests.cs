@@ -133,6 +133,23 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
+        public void CryoField_IsDrawnWhereItBites_AndFollowsHer()
+        {
+            Cast();
+
+            var shown = _operatorEffects.FieldSnapshot();
+            Assert.That(shown.Count, Is.EqualTo(1));
+            Assert.That(shown[0].Owner, Is.EqualTo(PlayerColor.Red));
+            Assert.That(shown[0].Covered, Has.Member(CellRef.Track(13)), "the edge the tick reaches");
+            Assert.That(shown[0].Covered, Has.No.Member(CellRef.Track(14)), "one step past it");
+
+            _mimi.MoveTo(ProgressAtTrack(PlayerColor.Red, 11));
+
+            Assert.That(_operatorEffects.FieldSnapshot()[0].Covered, Has.Member(CellRef.Track(14)),
+                "the frost moves with her (CG12)");
+        }
+
+        [Test]
         public void CryoField_RequiresNoTarget()
         {
             // A self-origin field asks the player for nothing — no operator, no

@@ -81,8 +81,41 @@ namespace NonaRoyale.Unity.View
         /// the first turn; a stun is better seen on the piece that cannot act
         /// than read beside it. The tray's operator card still names all three.
         /// </remarks>
+        /// <remarks>
+        /// Since 2026-10-02 also Shield (<c>ShieldBubble</c>), Slow
+        /// (<c>SlowFrost</c>) and Mark (<c>MarkDot</c>), CG11.
+        /// </remarks>
         public static bool IsDrawnOnPiece(StatusKind kind) =>
-            kind == StatusKind.Evasion || kind == StatusKind.Hastened || kind == StatusKind.Stun;
+            kind == StatusKind.Evasion || kind == StatusKind.Hastened || kind == StatusKind.Stun ||
+            kind == StatusKind.Shield || kind == StatusKind.Slow || kind == StatusKind.Mark;
+
+        /// <summary>
+        /// True for a status the board draws as an area, which therefore gets no
+        /// tag: Cryo Field, whose reach is frosted on the cells round its holder
+        /// (<c>DeviceLayer</c>, CG12).
+        /// </summary>
+        public static bool IsDrawnOnBoard(StatusKind kind) => kind == StatusKind.CryoField;
+
+        /// <summary>
+        /// Permanent passives whose tags are retired (CG11): Burdened,
+        /// Equilibrium and House Edge sit under the same pieces all match, so
+        /// the tag taught nothing after the first turn, the reason haste lost
+        /// its tag. The tray's operator card and the guide still name them.
+        /// </summary>
+        public static bool IsRetiredTag(StatusKind kind) =>
+            kind == StatusKind.Burdened || kind == StatusKind.Equilibrium || kind == StatusKind.HouseEdge;
+
+        /// <summary>
+        /// Dormant switch (designer, 2026-10-02: leave the status code dormant,
+        /// do not delete it). True prints a tag for every status again,
+        /// beside the drawn cues, with the colours and words below untouched.
+        /// Off in play.
+        /// </summary>
+        public static bool TagEverything { get; set; }
+
+        /// <summary>Whether a status still prints a tag under the piece on the board.</summary>
+        public static bool IsTaggedOnBoard(StatusKind kind) =>
+            TagEverything || !(IsDrawnOnPiece(kind) || IsDrawnOnBoard(kind) || IsRetiredTag(kind));
 
         /// <summary>The word printed on the tag.</summary>
         public static string Label(StatusKind kind)
