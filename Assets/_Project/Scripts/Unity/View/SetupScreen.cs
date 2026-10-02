@@ -402,10 +402,12 @@ namespace NonaRoyale.Unity.View
             }
         }
 
+        /// <summary>WILDCARD → BRAWLER → RUNNER → BANKER → WILDCARD.</summary>
         private static BotPersonality NextPersonality(BotPersonality personality) =>
-            personality == BotPersonality.Brawler ? BotPersonality.Runner
+            personality == BotPersonality.Wildcard ? BotPersonality.Brawler
+            : personality == BotPersonality.Brawler ? BotPersonality.Runner
             : personality == BotPersonality.Runner ? BotPersonality.Banker
-            : BotPersonality.Brawler;
+            : BotPersonality.Wildcard;
 
         private void SquadOption(Transform row, SquadMode mode)
         {

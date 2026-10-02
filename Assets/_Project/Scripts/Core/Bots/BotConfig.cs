@@ -187,6 +187,12 @@ namespace NonaRoyale.Core.Bots
         /// <summary>Bonus for filling a gap: the squad's first sustain, or its first burst.</summary>
         public double DraftComposition { get; set; } = 2.0;
 
+        /// <summary>
+        /// The Wildcard's draft: every pickable operator equally likely, with no
+        /// weights, no squad bonuses and no jitter (BOTS.md decision 11).
+        /// </summary>
+        public bool DraftAtRandom { get; set; }
+
         public BotWeights Clone() => (BotWeights)MemberwiseClone();
 
         /// <summary>The preset for a personality.</summary>
@@ -246,6 +252,11 @@ namespace NonaRoyale.Core.Bots
                     w.DraftSustain = 1.4;
                     w.DraftSpeed = 1.5;
                     w.DraftControl = 0.9;
+                    break;
+
+                case BotPersonality.Wildcard:
+                    // The base weights for the match, untouched; only the draft changes.
+                    w.DraftAtRandom = true;
                     break;
             }
 

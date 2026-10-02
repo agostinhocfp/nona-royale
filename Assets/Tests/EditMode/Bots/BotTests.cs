@@ -495,6 +495,54 @@ namespace NonaRoyale.Core.Tests.Bots
         }
 
         [Test]
+        public void Wildcard_DraftsAtRandom_AndOnlyTheStylesWeigh()
+        {
+            Assert.That(BotWeights.For(BotPersonality.Wildcard).DraftAtRandom, Is.True);
+            Assert.That(BotWeights.For(BotPersonality.Brawler).DraftAtRandom, Is.False);
+            Assert.That(BotWeights.For(BotPersonality.Runner).DraftAtRandom, Is.False);
+            Assert.That(BotWeights.For(BotPersonality.Banker).DraftAtRandom, Is.False);
+        }
+
+        [Test]
+        public void Wildcard_FirstPicks_SpreadAcrossTheRoster()
+        {
+            var seen = new HashSet<string>();
+
+            for (int seed = 1; seed <= 300; seed++)
+            {
+                var draft = DraftState.ForMatch(Two, DraftMode.AllPick, seed);
+                var bot = new BotBrain(BotPersonality.Wildcard, new SeededRandom(seed));
+                var pick = bot.PickDraft(draft, PlayerColor.Red);
+
+                Assert.That(pick, Is.Not.Null);
+                Assert.That(draft.CanPick(PlayerColor.Red, pick), Is.EqualTo(DraftRefusal.None), pick.Name);
+                seen.Add(pick.Name);
+            }
+
+            // Uniform over the roster: 300 draws all but certainly show every operator.
+            Assert.That(seen.Count, Is.EqualTo(Roster.All.Count));
+        }
+
+        [Test]
+        public void Wildcard_FillsASquad_WithLegalPicksOnly()
+        {
+            for (int seed = 1; seed <= 50; seed++)
+            {
+                var draft = DraftState.ForMatch(Two, DraftMode.AllPick, seed);
+                var bot = new BotBrain(BotPersonality.Wildcard, new SeededRandom(seed));
+
+                while (draft.CanPickAny(PlayerColor.Red) == DraftRefusal.None)
+                {
+                    var pick = bot.PickDraft(draft, PlayerColor.Red);
+                    Assert.That(pick, Is.Not.Null);
+                    Assert.That(draft.Pick(PlayerColor.Red, pick), Is.EqualTo(DraftRefusal.None), pick.Name);
+                }
+
+                Assert.That(bot.PickDraft(draft, PlayerColor.Red), Is.Null, "a full squad picks nothing");
+            }
+        }
+
+        [Test]
         public void Personalities_ValueTheRosterDifferently()
         {
             var runner = BotWeights.For(BotPersonality.Runner);

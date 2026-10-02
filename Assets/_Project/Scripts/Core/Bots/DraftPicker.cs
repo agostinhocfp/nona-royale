@@ -12,7 +12,8 @@ namespace NonaRoyale.Core.Bots
     /// <summary>
     /// A CPU seat's draft pick (BOTS.md decision 5): the operator its
     /// personality values most, nudged toward a squad with both sustain and
-    /// burst, with a little randomness.
+    /// burst, with a little randomness. The Wildcard instead picks uniformly
+    /// at random (decision 11, <see cref="BotWeights.DraftAtRandom"/>).
     /// </summary>
     /// <remarks>
     /// Picks only from <c>Available(seat)</c> and only what <c>CanPick</c>
@@ -32,6 +33,8 @@ namespace NonaRoyale.Core.Bots
             config = config ?? BotConfig.Default;
 
             if (draft.CanPickAny(seat) != DraftRefusal.None) return null;
+
+            if (weights.DraftAtRandom) return AtRandom(draft, seat, random);
 
             bool hasSustain = false;
             bool hasBurst = false;
@@ -61,6 +64,21 @@ namespace NonaRoyale.Core.Bots
             }
 
             return best;
+        }
+
+        /// <summary>
+        /// Any operator the seat may take, each equally likely, drawn from the
+        /// bot's own stream. With no stream, the first pickable one, so a
+        /// caller without randomness still gets a legal pick.
+        /// </summary>
+        private static OperatorDefinition AtRandom(DraftState draft, PlayerColor seat, IRandom random)
+        {
+            var pickable = new List<OperatorDefinition>();
+            foreach (var candidate in draft.Available(seat))
+                if (draft.CanPick(seat, candidate) == DraftRefusal.None) pickable.Add(candidate);
+
+            if (pickable.Count == 0) return null;
+            return random != null ? pickable[random.NextInt(0, pickable.Count)] : pickable[0];
         }
 
         /// <summary>What an operator is worth to a personality, before the squad is considered.</summary>

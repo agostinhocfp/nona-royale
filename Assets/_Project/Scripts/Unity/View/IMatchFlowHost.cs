@@ -162,7 +162,7 @@ namespace NonaRoyale.Unity.View
 
         public bool IsCpu(PlayerColor seat) => Has(seat) && KindOf(seat) == SeatKind.Cpu;
 
-        /// <summary>The seat's CPU style. Defaults differ by seat, so a table of CPUs is mixed.</summary>
+        /// <summary>The seat's CPU style: the Wildcard unless the player chose another (BOTS.md decision 11).</summary>
         public BotPersonality PersonalityOf(PlayerColor seat) =>
             _personalities.TryGetValue(seat, out var personality) ? personality : DefaultPersonality(seat);
 
@@ -179,8 +179,12 @@ namespace NonaRoyale.Unity.View
             }
         }
 
-        public static BotPersonality DefaultPersonality(PlayerColor seat) =>
-            (BotPersonality)(((int)seat % 3 + 3) % 3);
+        /// <summary>
+        /// Every CPU seat starts as a Wildcard (2026-10-02). Until then the
+        /// default was mixed by seat, so a table of CPUs fielded one of each
+        /// style, but all three drafted near the same squad.
+        /// </summary>
+        public static BotPersonality DefaultPersonality(PlayerColor seat) => BotPersonality.Wildcard;
 
         /// <summary>Copies who plays each seat, and how, from another settings object.</summary>
         public void CopySeatsFrom(MatchSettings other)
