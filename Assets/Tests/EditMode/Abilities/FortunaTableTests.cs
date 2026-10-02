@@ -77,6 +77,18 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
+        public void TheBoardIsToldItIsATable()
+        {
+            _cellEffects.SetTable(CellRef.Track(22), PlayerColor.Red, 10, Fortuna.TableDamage, 2);
+
+            var shown = _cellEffects.Snapshot();
+
+            Assert.That(shown.Count, Is.EqualTo(1));
+            Assert.That(shown[0].IsZone, Is.True);
+            Assert.That(shown[0].IsTable, Is.True, "drawn as a trap, not as Killzone's lava (CG10)");
+        }
+
+        [Test]
         public void ItStopsEachOperatorOnce()
         {
             var first = At(1, "First", PlayerColor.Blue, 7, 5);

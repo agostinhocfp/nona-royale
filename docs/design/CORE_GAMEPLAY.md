@@ -1,7 +1,7 @@
 # Nona Royale — Core Gameplay Pass
 
 > Location in repo: `docs/design/CORE_GAMEPLAY.md` · Project copy: `claude/CORE_GAMEPLAY.md`
-> Status: **Open, 2026-09-30.** CG1–CG8 in; the designer's list is still being written.
+> Status: **Open, 2026-09-30.** CG1–CG10 in; the designer's list is still being written.
 > Related: `HUD_PASS.md` (the tray's stable geometry, H1), `PRESENTATION.md` §4 (board-first input), `CAST_ONBOARDING.md` (CO3, hold a card to read it), `MOBILE.md` (the upright tray)
 
 ## Goal
@@ -20,6 +20,8 @@ The designer's notes from playing the match, taken one at a time. This pass chan
 | CG6 | Hold F1 for every key | In, 2026-10-01 |
 | CG7 | Zoom and pan the board: pinch on touch, the wheel on a desktop | In, 2026-10-01 |
 | CG8 | Drone Strike's patch pulses slowly | In, 2026-10-01 |
+| CG9 | Stun is drawn on the piece, not tagged | In, 2026-10-02 |
+| CG10 | Killzone's cells run with lava | In, 2026-10-02 |
 
 ### CG1 — The tray stays up off-turn
 
@@ -103,6 +105,25 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - **Beacons only.** Zones keep their steady areas, so a coming strike and a standing zone still look different (ADR-0007). `PaintCell` is Drone Strike's alone, so in practice this is Drone Strike's patch.
 - **Reduced motion holds it still** at 0.16, set from `MatchBootstrap` beside the lighting's flag.
 
+### CG9 — Stun on the piece
+
+**Designer (2026-10-02):** "Remove the stun tag on operators during matches. Effective and seamless visual cues is the path. Just like the haste effect, it works."
+
+- **`StunHalo`** (new, attached beside `HasteTrail` on every piece): three small yellow five-point stars circling the crown of the head, one lap every 1.8 s, each spinning slowly.
+- **Depth from the draw order:** the orbit is a flat ellipse. A star on the near half draws in front of the figure (order 5), one on the far half behind it (order 2), smaller and dimmer.
+- **`StatusPalette.IsDrawnOnPiece`** now includes Stun, so the board's tag row drops it. The tray's operator card still names it, as it still names Evasion and Haste.
+- Hidden in the yard, on a shattered piece, and when the stun expires. The status comes from `ActiveStatusesOn`, through `OperatorPiece.Refresh(stunned:)`. Reduced motion holds the three stars still on the near side.
+
+### CG10 — Killzone's lava
+
+**Designer (2026-10-02):** "Add a subtle lava effect to Nuetu's Killzone."
+
+- **`LavaTexture`** (new): 32 frames of 64×64 tileable lava, drawn in code once on first use. Domain-warped, ridged value noise gives molten veins under a dark crust. Every layer is periodic and drifts a whole period per 8 s loop, so it loops with no seam. Edges fade out, and alpha follows heat, so the crust lets the board show through.
+- **`DeviceLayer`:** each covered cell of a blast zone gets two stacked lava frames that cross-fade, at order −1, under the seat tint. Each cell starts at its own point in the loop and is turned and flipped by its own hash, so neighbours are not stamped copies. Drawn with the unlit sprite material where it loads, so it glows the same under every light.
+- **Armed vs lingering kept apart** (ADR-0007): lava at 0.6 alpha while armed, 0.34 once it only lingers. The seat tint over lava thins to 0.12 / 0.07, so it colours the lava instead of hiding it; the ring still says whose zone it is.
+- **Tables stay plain.** `CellEffectSnapshot.IsTable` (new, from `StopsMovers`) tells Fortuna's table, a trap, from a blast zone. It names a kind of device, not an outcome, so PRESENTATION §2 holds. Killzone is the only blast zone today.
+- Reduced motion holds the lava still.
+
 ## Play Mode checks
 
 - [ ] Solo against CPUs: after ending your turn, your last operator stays in the tray through every CPU turn; with nothing ever selected, one of yours appears on the first CPU turn.
@@ -124,6 +145,8 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - [ ] CG7 touch (Device Simulator, then a phone): pinch zooms about the fingers, two-finger drag pans, a pinch never selects or moves anything, a single tap still selects, moves and aims, a tap that slides is ignored, and a double tap still casts. Holding one finger on a CPU turn hurries it; pinching does not.
 - [ ] CG7: NEW MATCH and REMATCH open on the whole board; the title is never zoomed.
 - [ ] CG8: cast Drone Strike: its patch breathes slowly (about 3 s a breath), the ring and dot stay steady, a zone's area (Killzone) does not pulse, and Reduced motion stops the breathing.
+- [ ] CG9: stun an enemy (Killzone going off, Dargin Pulse): yellow stars circle its head, passing in front of and behind it, and there is no STUN tag under it. The tray card still says it is stunned. The stars go when the stun ends, and in the yard. Reduced motion: still stars. Check a chip piece and a rendered figure.
+- [ ] CG10: cast Killzone: its cells glow with slow lava under a faint seat tint, with the seat ring on top; the cells do not pulse in step. After it goes off the lava is dimmer. Fortuna's table keeps its plain area. Move and aim highlights still draw over the lava. Reduced motion: still lava. Note any hitch on the first cast (the frames build then).
 - [ ] CG3: start a match against CPUs, end your turn, switch to another window: the CPUs keep playing (Editor and a Windows build).
 
 ## Open
@@ -132,6 +155,7 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 
 ## Log
 
+- 2026-10-02 — **CG9 and CG10 in: stun on the piece, lava in Killzone.** New: `View/StunHalo.cs`, `View/LavaTexture.cs`. Changed: `StatusPalette.IsDrawnOnPiece` (Stun), `OperatorPiece` (`StunHalo`, `CrownHeight`, `Refresh(stunned:)`), `MatchBootstrap` (passes the stun), `DeviceLayer` (lava cells, thinned tint over lava), `CellEffectSnapshot.IsTable` and `DeferredCellEffects.Snapshot` (core). Tests: `FortunaTableTests.TheBoardIsToldItIsATable`, and an `IsTable` check on the zone snapshot in `TurnStateMachineTests`. **Checked:** core 1005 passing (cloud runner); the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`; the lava algorithm was rendered to a still in Python for a look. Play Mode pending.
 - 2026-10-01 — **Off `DEVELOPMENT_BUILD`.** Unity 6.6 deprecated the define (warning UAC0009 at `MatchBootstrap.cs(460)`). All six uses now read `Debug.isDebugBuild` at runtime, which is true in the editor and in development builds: `MatchBootstrap` (release forces the dev panel off, F3, the Ctrl+Shift+Numpad 0/9 chords, and `DevChord`/`DevWin`/`DevKnockOut` no longer wrapped), `FxBurn` (the `[FxBurn]` log line) and `ISettingsHost` (the dev panel row). **Changed guarantee:** release builds now contain the dev chord code, unreachable; G7 and G8c's "compiled out of release builds" no longer holds. Not compiled against the editor DLLs; the editor recompile is the check (no UAC0009, F3 and both chords still work in Play Mode).
 - 2026-10-01 — **CG8 in: Drone Strike's patch breathes.** `DeviceLayer` keeps the beacon area renderers and drives their alpha in `Update`; `Spawn` returns its renderer; `Reduced` property set from `MatchBootstrap`. The view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`. Play Mode pending.
 - 2026-10-01 — **CG5–CG7 in**, from Claude's QoL list (the designer took 1, 3 and 8; 2, a second E press, was dropped once it turned out the engine already refuses End Turn while a move is owed). New: `View/BoardZoom.cs`, `View/TouchGestures.cs`, `View/KeyHelpCard.cs`. `MatchBootstrap`: `CycleOperator` and `CanAct`, `HandleKeyHelp`, the zoom's binding, fit and resets, taps on release on touch, the wheel, one-finger hurry, and the dev panel on F3. `ISettingsHost`: the dev panel row's hint. PRESENTATION §4.1 and MOBILE M4 updated. **Checked:** the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`, 0 warnings. Play Mode pending, and touch needs the Device Simulator or a phone.

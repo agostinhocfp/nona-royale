@@ -270,6 +270,7 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>Lime streaks and afterimages while the engine reports haste (2026-09-24).</summary>
         private HasteTrail _haste;
+        private StunHalo _stun;
 
         // ── The chip (2026-09-29) ───────────────────────────────
         private PieceStyle _style = PieceStyle.Figures;
@@ -344,7 +345,7 @@ namespace NonaRoyale.Unity.View
         /// <summary>Whether the piece is drawn seated. Follows the presentation, not the engine.</summary>
         public bool Seated => _seated ?? true;
 
-        /// <summary>Whether the current pose is a rendered figure rather than the procedural one. True for a rig too.</summary>
+        /// <summary>Whether the current pose is a rendered figure or a chip rather than the procedural one.</summary>
         public bool ShowsRenderedArt => _rendered;
 
         /// <summary>Whether the operator is drawn as a chip (2026-09-29).</summary>
@@ -482,6 +483,9 @@ namespace NonaRoyale.Unity.View
 
             _haste = gameObject.AddComponent<HasteTrail>();
             _haste.Bind(this, _figure, motion);
+
+            _stun = gameObject.AddComponent<StunHalo>();
+            _stun.Bind(this, _figure, motion);
         }
 
         /// <summary>What a haste afterimage is drawn from: the render's silhouette or the pawn.</summary>
@@ -497,6 +501,9 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>Mid-body in figure units, where the haste streaks run.</summary>
         internal float TrailHeight => _layout.HeadY * 0.55f;
+
+        /// <summary>The top of the head in figure units, where the stun's stars circle (CG9).</summary>
+        internal float CrownHeight => Mathf.Max(_layout.Top, _layout.HeadY);
 
         /// <summary>
         /// Seated in the yard, standing anywhere else. Swaps the figure, then
@@ -526,21 +533,6 @@ namespace NonaRoyale.Unity.View
                 _body.sprite = null;
                 _flashOverlay.sprite = ChipSprites.Disc;
                 _outline.enabled = false;
-            }
-            else if (rig != null)
-            {
-                _layout = FigureLayout.Fit(
-                    seated ? rig.SeatedBottom : rig.RestBottom,
-                    seated ? rig.SeatedTop : rig.RestTop,
-                    frame,
-                    seated ? ArtSeatedHeightScale : ArtStandingHeightScale,
-                    seated ? FigureLayout.SeatedChest : FigureLayout.StandingChest);
-
-                _body.sprite = null;
-                _flashOverlay.sprite = null;
-                _outline.enabled = false;
-                _pin.transform.localPosition = new Vector3(0f, _layout.PinY, 0f);
-                _pin.transform.localScale = Vector3.one * ArtPinSize;
             }
             else if (art != null)
             {
@@ -723,6 +715,7 @@ namespace NonaRoyale.Unity.View
         public void Shatter()
         {
             if (_haste != null) _haste.Show(false, null);
+            if (_stun != null) _stun.Show(false);
 
             if (_hidden || _collapsing) return;
 
@@ -861,12 +854,14 @@ namespace NonaRoyale.Unity.View
         /// </param>
         /// <param name="hastened">Whether the engine reports Hastened: drawn as streaks, not a tag.</param>
         /// <param name="travel">The world direction to the next cell on the piece's path, for the streaks.</param>
-        public void Refresh(bool evasive, bool hastened = false, Vector3? travel = null)
+        /// <param name="stunned">Whether the engine reports Stun: drawn as circling stars, not a tag (CG9).</param>
+        public void Refresh(bool evasive, bool hastened = false, Vector3? travel = null, bool stunned = false)
         {
             if (Operator == null || _body == null) return;
 
-            // A seated or vanished figure has nowhere to rush to.
+            // A seated or vanished figure has nowhere to rush to, and nothing to be dazed on.
             if (_haste != null) _haste.Show(hastened && !Operator.IsInYard && !_hidden, travel);
+            if (_stun != null) _stun.Show(stunned && !Operator.IsInYard && !_hidden);
 
             _alpha = evasive ? EvasiveAlpha : 1f;
 
@@ -1206,7 +1201,7 @@ namespace NonaRoyale.Unity.View
                     : Mathf.Lerp(1.15f, 1f, (t - 0.55f) / 0.45f);
 
                 // A rise stands up: taller before it is wider. A chip just pops.
-                if (_popRise && !rig && !chip) sy *= 1f + 0.18f * Mathf.Sin(t * Mathf.PI);
+                if (_popRise && !chip) sy *= 1f + 0.18f * Mathf.Sin(t * Mathf.PI);
             }
 
             float scale = _hidden ? 0f : _baseScale * _hover * pop;

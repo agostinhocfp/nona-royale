@@ -3483,15 +3483,16 @@ namespace NonaRoyale.Unity.Composition
                     else piece.Settle(position);
 
                     // Statuses come from the engine, never from replaying
-                    // StatusApplied/StatusExpired (PRESENTATION §1). Evasion and
-                    // haste are drawn on the piece; everything else is a tag.
+                    // StatusApplied/StatusExpired (PRESENTATION §1). Evasion, haste
+                    // and stun are drawn on the piece; everything else is a tag.
                     var statuses = _match.Engine.ActiveStatusesOn(piece.Operator);
                     bool hastened = statuses.Contains(StatusKind.Hastened);
 
                     piece.Refresh(
                         evasive: statuses.Contains(StatusKind.Evasion),
                         hastened: hastened,
-                        travel: hastened && !yard ? TravelAt(piece.Operator) : (Vector3?)null);
+                        travel: hastened && !yard ? TravelAt(piece.Operator) : (Vector3?)null,
+                        stunned: statuses.Contains(StatusKind.Stun));
 
                     if (_pieceHud != null)
                     {

@@ -73,13 +73,16 @@ namespace NonaRoyale.Unity.View
         /// True for a status the piece itself shows, which therefore gets no tag.
         /// </summary>
         /// <remarks>
-        /// Evasion, which fades the silhouette (<c>OperatorPiece</c>), and since
-        /// 2026-09-24 Hastened, which trails lime streaks (<c>HasteTrail</c>).
-        /// Both sit on the same pieces most of the match — passives, and
-        /// Catalyst's wake — so as tags they taught nothing after the first turn.
+        /// Evasion, which fades the silhouette (<c>OperatorPiece</c>); since
+        /// 2026-09-24 Hastened, which trails lime streaks (<c>HasteTrail</c>);
+        /// and since 2026-10-02 Stun, which circles stars round the head
+        /// (<c>StunHalo</c>, CORE_GAMEPLAY.md CG9). The first two sit on the
+        /// same pieces most of the match, so as tags they taught nothing after
+        /// the first turn; a stun is better seen on the piece that cannot act
+        /// than read beside it. The tray's operator card still names all three.
         /// </remarks>
         public static bool IsDrawnOnPiece(StatusKind kind) =>
-            kind == StatusKind.Evasion || kind == StatusKind.Hastened;
+            kind == StatusKind.Evasion || kind == StatusKind.Hastened || kind == StatusKind.Stun;
 
         /// <summary>The word printed on the tag.</summary>
         public static string Label(StatusKind kind)

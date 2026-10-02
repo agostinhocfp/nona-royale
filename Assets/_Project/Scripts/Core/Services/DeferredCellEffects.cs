@@ -255,7 +255,7 @@ namespace NonaRoyale.Core.Services
             {
                 shown.Add(new CellEffectSnapshot(
                     entry.Cell, entry.Owner, entry.IsZone, entry.HasDetonated,
-                    _targeting.CellsInArea(entry.Cell, entry.Radius)));
+                    _targeting.CellsInArea(entry.Cell, entry.Radius), entry.StopsMovers));
             }
 
             return shown;

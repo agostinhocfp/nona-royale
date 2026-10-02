@@ -29,13 +29,14 @@ namespace NonaRoyale.Core.Services
     {
         public CellEffectSnapshot(
             CellRef cell, PlayerColor owner, bool isZone, bool hasDetonated,
-            IReadOnlyList<CellRef> covered)
+            IReadOnlyList<CellRef> covered, bool isTable = false)
         {
             Cell = cell;
             Owner = owner;
             IsZone = isZone;
             HasDetonated = hasDetonated;
             Covered = covered ?? Array.Empty<CellRef>();
+            IsTable = isTable;
         }
 
         /// <summary>The anchored cell, at the centre of the area.</summary>
@@ -55,5 +56,13 @@ namespace NonaRoyale.Core.Services
 
         /// <summary>Every outer-track cell the effect will strike, the anchor included.</summary>
         public IReadOnlyList<CellRef> Covered { get; }
+
+        /// <summary>
+        /// A table (Fortuna's The Table): a zone that stops movers instead of
+        /// going off. It says what kind of device this is, not what it does to
+        /// anyone, so the view can draw a trap and a blast differently
+        /// (CORE_GAMEPLAY.md, CG10).
+        /// </summary>
+        public bool IsTable { get; }
     }
 }
