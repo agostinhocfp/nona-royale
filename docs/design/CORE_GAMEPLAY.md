@@ -1,7 +1,7 @@
 # Nona Royale — Core Gameplay Pass
 
 > Location in repo: `docs/design/CORE_GAMEPLAY.md` · Project copy: `claude/CORE_GAMEPLAY.md`
-> Status: **Open, 2026-09-30.** CG1–CG14 in; the designer's list is still being written.
+> Status: **Open, 2026-09-30.** CG1–CG16 in; the designer's list is still being written.
 > Related: `HUD_PASS.md` (the tray's stable geometry, H1), `PRESENTATION.md` §4 (board-first input), `CAST_ONBOARDING.md` (CO3, hold a card to read it), `MOBILE.md` (the upright tray)
 
 ## Goal
@@ -26,6 +26,8 @@ The designer's notes from playing the match, taken one at a time. This pass chan
 | CG12 | Cryo Field frosts the cells it reaches | In, 2026-10-02 |
 | CG13 | Eris' Exploit gets its own silver and green haze | In, 2026-10-02 |
 | CG14 | The rest of the ability-driven looks: Zero-Day, The Table, Defiance, Hunted, Tech Ward, Bleed, Stealth | In, 2026-10-02 |
+| CG15 | Cryo Field's frost looks like frost | In, 2026-10-02 |
+| CG16 | The shader pack on the pieces: greyscale for the yard and stuns, a hologram on Zero-Day, a heat shimmer for Stealth | In, 2026-10-03 |
 
 ### CG1 — The tray stays up off-turn
 
@@ -144,6 +146,7 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - **`GameEngine.ActiveFields()`** (new, core) returns each standing field as a `CellEffectSnapshot`: its holder's cell and the cells it reaches now, from `DeferredOperatorEffects.FieldSnapshot` and the same `CellsInArea` the tick bites with. It names an area, not damage.
 - **`DeviceLayer`** lays **`FrostTexture`** (new): one tileable frame of pale ice cracks over a rime haze, built in code. It sits on those cells at order −1, turned and flipped per cell, breathing slowly (0.42 alpha, ±18%, 4.5 s). There is no ring and no seat tint, because the field is centred on Mimi and she is its mark. It moves with her whenever the board is redrawn, which happens at the end of each batch, not during the walk. Reduced motion holds it still.
 - The CRYO tag under Mimi is gone (`StatusPalette.IsDrawnOnBoard`).
+- The tile itself was redrawn in CG15.
 
 ### CG13 — Eris' Exploit's haze
 
@@ -167,6 +170,56 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - **Bleed:** `BleedDrips` drops dark red drips from the body to the floor, each leaving a stain that fades. The rate follows the stacks: about one a second for one stack, up to three a second, from `GameEngine.BleedStacksOn` (new, core).
 - **Stealth (Syla):** `StealthShimmer` sets two faint violet copies of the figure's silhouette swaying out of step either side of it. The body keeps its full colour, so it never reads as Evasion's fade.
 - All of them hide in the yard and on a shattered piece, and hold still or fade under Reduced motion. `StatusPalette.IsDrawnOnPiece` now covers them, so only Watched, which no ability applies, still prints a tag. `TagEverything` still brings every tag back.
+
+### CG15 — Cryo Field's frost looks like frost
+
+**Designer (2026-10-02):** "We can change Mimi's ground effect to look like actual frost. Are you using the asset pack I bought? Is it useful in this case?"
+
+- **The asset pack:** the board uses All In 1 Sprite Shader for two things only, the knockout burn (`BurnLit`, `FADE_ON`) and the powered-cell glint (`ShineLit`, `SHINE_ON`). Its 70-odd effects have no frost or ice. Its nearest fit, the travelling Shine, already means a powered cell on this board, and it needs the lit shader while the frost is unlit. Not used here.
+- **Why CG12 missed:** its tile was ridged noise, which reads as cracked ice. Real frost is crystal growth.
+- **`FrostTexture` redrawn** (128×128, from a fixed seed, so it is the same in every build):
+  - 14 fern-like feathers rooted along the border and reaching in. Each is a slightly curving tapered stem that puts out barbs at 60°, the ice lattice's angle, with barbs on the barbs, three levels deep.
+  - Two small six-armed crystals loose in the middle.
+  - A blue-white rime crust, thickest at the rim, a soft bloom round every line, and a fine glitter of ice grains.
+  - The middle stays clearer, where a piece stands, and the rim outlines the field's reach cell by cell.
+- **Glints (new):** `FrostTexture.Glints` is 12 frames that hold only four-pointed sparkles, at up to 14 crystal tips, each with its own phase. `DeviceLayer` cross-fades them over the frost on a 5 s loop with the flowing-cell machinery. The glints are turned the same way as their cell's frost, so each sits on its tip, and lifted a hair toward the camera so they draw on top. They are a separate layer so the cross-fade never dims the frost itself.
+- **`DeviceLayer`:**
+  - The frost goes from 0.42 to 0.6 alpha. It breathes less, ±10% instead of ±18%, now that the glints carry the life.
+  - `SpawnFlow` takes a size and returns its cell.
+  - The per-cell turn and flip are shared by the frost and the flowing cells (`CellHash`, `Orient`), so the frost's turn per cell differs from CG12's.
+- Reduced motion holds the glints still on their first frame.
+
+### CG16 — The shader pack on the pieces
+
+**Designer (2026-10-03):** asked whether the All In 1 Sprite Shader pack was used at all, then "Do it all in one slice please" for Claude's five suggestions.
+
+- **Two of the five already existed,** so they stay code-drawn:
+  - **Hit flash:** `OperatorPiece.Flash()` is a white silhouette over the chip or figure.
+  - **Outline:** the G8d rim (`FigureRim`) for the selected piece and the aimed target, plus the amber ring for candidates.
+  - The pack's `HITEFFECT_ON` and `OUTBASE_ON` would look the same, so swapping them in would replace working code with an equivalent.
+- **Six new saved materials** in `Art/Resources/Art/Fx/`, one unlit and one lit per effect:
+  - `GreyUnlit`/`GreyLit`: `GREYSCALE_ON`.
+  - `HoloUnlit`/`HoloLit`: `HOLOGRAM_ON` and `GLITCH_ON`.
+  - `ShimmerUnlit`/`ShimmerLit`: `DISTORT_ON` over the pack's `seamlessNoise`.
+  - Unlit uses the pack's plain shader, for a chip's unlit parts. Lit uses `AllIn1Urp2dRenderer`, for rendered figures and the chip's ink.
+  - They were written by `tools/art/make_fx_materials.py`, in the same hand-authored YAML as `BurnLit`. The script won't overwrite an existing material, so its guid stays stable.
+- **`PieceFx`** (new) runs all three effects:
+  - **Greyscale and hologram are copies drawn on top,** never a swap of the piece's own material. A copy of the portrait (a chip's face and emblem, or a rendered figure's body) is drawn a hair nearer the camera. The copy's alpha is the effect's strength, so the effects stack with each other and with everything already on the piece. The chip's body and ring are never copied, so the seat colour always reads; neither is a procedural pawn.
+  - **Yard:** 70% grey (`PieceFx.YardGrey`), benched but still recognisable.
+  - **Stun:** 55% grey (`StunGrey`), under the stars. Both ease in and out.
+  - **Zero-Day carrier:** magenta stripes (`StatusPalette` ZeroDayCharge) and a glitch over the portrait, alongside `ChargeLight`.
+  - **Stealth:** the heat shimmer re-materials every part of the chip (ink, edge, body, inserts, face, ring) or the figure while it lasts, and restores the parts when it ends. `StealthShimmer`'s violet copies are now the fallback, for Reduced motion and for a missing material.
+- **Reduced motion:** the hologram's stripes hold still and its glitch is off; the shimmer gives way to the copies.
+- **The shader clock is real time,** like the lava and the haze, so the shimmer and the hologram keep moving while the game is paused.
+- **A known gap:** a copy is not distorted. A stealthed piece that is also stunned or carrying a charge shows the copy steady over the shimmer.
+- **`OperatorPiece`:**
+  - `FxParts` tells `PieceFx` what to work on.
+  - `Refresh` sets the grey.
+  - `ShowStatusCues` sets the hologram and the shimmer.
+  - `HideStatusCues` clears both before a knockout's burn.
+  - A rendered figure's flash now sits nearer the camera than the copies, so a grey figure still flashes white.
+- **`ChipView`:** `FxFaces` and `FxParts`.
+- **`ShaderFx`:** the six names and three property ids.
 
 ## Play Mode checks
 
@@ -205,6 +258,14 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - [ ] CG14 Bleed: red drips, quicker with more stacks.
 - [ ] CG14 Stealth: Syla shimmers with two violet copies and keeps her full colour; Kurbyn's Evasion still fades instead.
 - [ ] CG14: no tags under pieces for any of these; Reduced motion stills them all.
+- [ ] CG15: cast Cryo Field: each cell reads as frost, with white feathers creeping in from the rim, a clearer middle and a few sparkles twinkling at the crystal tips, out of step from cell to cell. Mimi and the other pieces stay readable on it. Lava or haze on a frosted cell still reads. Reduced motion: the sparkles hold still. Note any hitch on the first cast.
+- [ ] CG16: the console shows no `[ShaderFx]` warning for GreyUnlit, GreyLit, HoloUnlit, HoloLit, ShimmerUnlit or ShimmerLit. If one shows, open that material once in the Inspector and check its shader and keywords.
+- [ ] CG16 yard: at the start every portrait in the yard is partly grey and still recognisable, and the chip bodies keep their seat colours. Deploying one brings its colour back in a moment. A knocked-out operator comes back grey.
+- [ ] CG16 stun: a stunned chip greys a little under its stars and recovers when the stun ends.
+- [ ] CG16 Zero-Day: the carrier's portrait gets magenta stripes and a glitch, with the blinking light still on. Reduced motion stills the stripes and stops the glitch.
+- [ ] CG16 Stealth: Syla's whole chip ripples like heat haze and keeps its colour. No violet copies. Under Reduced motion the violet copies come back instead.
+- [ ] CG16: hits still flash white on a grey, hologrammed or shimmering piece, and a knockout still burns cleanly. Switch to FIGURES mid-match: the effects follow on the rendered figures, lit by the room.
+- [ ] CG16 performance: no visible cost with nine pieces on the board, and no hitch on the first stun, charge or stealth (the materials load then).
 - [ ] CG3: start a match against CPUs, end your turn, switch to another window: the CPUs keep playing (Editor and a Windows build).
 
 ## Open
@@ -230,6 +291,8 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 
 ## Log
 
+- 2026-10-03 — **CG16 in: the shader pack on the pieces.** New: `View/PieceFx.cs` and six materials under `Art/Resources/Art/Fx/` (`GreyUnlit`, `GreyLit`, `HoloUnlit`, `HoloLit`, `ShimmerUnlit`, `ShimmerLit`). Changed: `OperatorPiece` (`FxParts`, grey from the yard and the stun, the hologram and the shimmer from the statuses, the figure's flash lifted over the copies), `ChipView` (`FxFaces`, `FxParts`), `ShaderFx` (names and property ids) and `StealthShimmer` (now the fallback). Not done: the hit flash and the outline, which already exist in code. **Checked:** the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`, 0 warnings; the device files match the compiled copy; the materials' keywords and property names were checked against the pack's shaders. The materials were written by hand, not saved by the editor, so the first editor import is the real check. Play Mode pending.
+- 2026-10-02 — **CG15 in: Cryo Field's frost looks like frost.** Changed: `View/FrostTexture.cs` (rewritten: grown feathers, crystals and rime at 128×128, plus `Glints`), `View/DeviceLayer.cs` (frost alpha 0.6, breath ±10%, the glint layer, `SpawnFlow` size and return, shared `CellHash`/`Orient`). The asset pack has no frost effect, so it isn't used here. **Checked:** the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`; the real `Grow` and `Paint` were run outside Unity and their output rendered over a dark board for a look. Play Mode pending.
 - 2026-10-02 — **CG14 in: the rest of the ability-driven looks.** New: `View/ChargeLight.cs` (with `CueKit`), `View/DefianceGlow.cs` (with `GrowingRing`), `View/HuntedBrackets.cs`, `View/WardRing.cs`, `View/BleedDrips.cs` (with `FallingDrop`), `View/StealthShimmer.cs`, `View/FeltTexture.cs`. Changed: `OperatorPiece` (six more cues; `ShowStatusCues` takes the bleed count), `MatchBootstrap` (passes `BleedStacksOn` and `ActiveCharges`), `DeviceLayer` (Zero-Day blast cells, the felt table and chips), `StatusPalette.IsDrawnOnPiece`, and core `DeferredOperatorEffects.ChargeSnapshot`, `GameEngine.ActiveCharges` and `GameEngine.BleedStacksOn`. Test: `ZeroDayTests.ZeroDay_BlastIsDrawnRoundTheCarrier_AndFollowsIt`. **Checked:** core 1009 passing (cloud runner); the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`; the felt table was rendered to a still in Python. Play Mode pending.
 - 2026-10-02 — **CG13 in: Eris' Exploit's haze.** New: `View/HazeTexture.cs`. Changed: `CellEffectSnapshot.IsCrowdZone` and `DeferredCellEffects.Snapshot` (core), and `DeviceLayer` (`SpawnFlow` with per-cell frames and loop; crowd zones get haze, blast zones lava). Fixed along the way: Eris' Exploit had been drawn as lava since CG10. Tests: an `IsCrowdZone` check in `LetheTests.SquadmatesZones_OnOneCell_DoNotOverwriteEachOther` and in the zone snapshot in `TurnStateMachineTests`. **Checked:** core 1008 passing (cloud runner); the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`; the haze was rendered to a still in Python for a look. Play Mode pending.
 - 2026-10-02 — **CG11 and CG12 in.** New: `View/ShieldBubble.cs` (with `FlyingShard`), `View/SlowFrost.cs`, `View/MarkDot.cs`, `View/FrostTexture.cs`. Changed: `StatusPalette` (`IsDrawnOnPiece` adds Shield, Slow and Mark; new `IsDrawnOnBoard`, `IsRetiredTag`, `IsTaggedOnBoard` and the dormant `TagEverything`), `PieceHudLayer` (asks `IsTaggedOnBoard`), `OperatorPiece` (the three cues, `CueBody`, `ShowStatusCues`), `MatchBootstrap` (calls `ShowStatusCues`, passes `ActiveFields` to the device layer), `DeviceLayer` (frost), `LavaTexture` (`Fbm` shared), and core `DeferredOperatorEffects.FieldSnapshot` and `GameEngine.ActiveFields`. Test: `CryoFieldTests.CryoField_IsDrawnWhereItBites_AndFollowsHer`. **Checked:** core 1006 passing (cloud runner), the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`, and the frost tile was rendered in Python for a look. Play Mode pending.

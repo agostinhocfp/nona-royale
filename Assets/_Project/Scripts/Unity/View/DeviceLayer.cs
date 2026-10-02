@@ -63,10 +63,11 @@ namespace NonaRoyale.Unity.View
     ///
     /// <b>A Cryo Field frosts the cells it reaches</b> (CG12): the area
     /// round Mimi the tick will bite, from <c>GameEngine.ActiveFields</c>, in
-    /// <see cref="FrostTexture"/>'s pale crystals, breathing slowly. It moves
-    /// with her whenever the board is redrawn. No ring and no seat tint: the
-    /// field is centred on Mimi, so she is its mark. Reduced motion holds it
-    /// still.
+    /// <see cref="FrostTexture"/>'s grown ice feathers and rime, breathing
+    /// slowly, with glints twinkling at the crystal tips (CG15) laid over it
+    /// as a second, flowing layer. It moves with her whenever the board is
+    /// redrawn. No ring and no seat tint: the field is centred on Mimi, so
+    /// she is its mark. Reduced motion holds it still.
     ///
     /// <b>A Zero-Day charge lights its blast</b> (CG14): the cells its
     /// detonation will reach round the carrier, from
@@ -99,9 +100,21 @@ namespace NonaRoyale.Unity.View
         private const int LavaOrder = -1;
 
         /// <summary>A Cryo Field's frost: at rest, how far it breathes either side, and how slowly.</summary>
-        private const float FrostAlpha = 0.42f;
-        private const float FrostBreathDepth = 0.18f;
+        private const float FrostAlpha = 0.6f;
+        private const float FrostBreathDepth = 0.1f;
         private const float FrostBreathPeriod = 4.5f;
+
+        /// <summary>The frost's glints, at their brightest (CG15).</summary>
+        private const float FrostGlintAlpha = 0.9f;
+
+        /// <summary>A frost cell's size, as a share of the cell: the frost and its glints must match.</summary>
+        private const float FrostSize = 0.9f;
+
+        /// <summary>A flowing cell's size, as a share of the cell.</summary>
+        private const float FlowSize = 0.88f;
+
+        /// <summary>Toward the camera, so a layer drawn at the same order lands on top (the chip stack's rule).</summary>
+        private const float Lift = -0.001f;
 
         /// <summary>A Zero-Day blast: faint, ticking faster than a beacon's breath.</summary>
         private const float ChargeAreaAlpha = 0.15f;
@@ -257,10 +270,10 @@ namespace NonaRoyale.Unity.View
         /// where the material is there, so it glows the same under every light
         /// in the room.
         /// </summary>
-        private void SpawnFlow(CellRef cell, float alpha, IReadOnlyList<Sprite> frames, float loopSeconds)
+        private LavaCell SpawnFlow(CellRef cell, float alpha, IReadOnlyList<Sprite> frames, float loopSeconds,
+            float size = FlowSize)
         {
-            int hash = cell.GetHashCode() * 486187739;
-            unchecked { hash ^= hash >> 15; }
+            int hash = CellHash(cell);
 
             var unlit = ShaderFx.Source(ShaderFx.ChipUnlit);
             var tile = new LavaCell
@@ -273,11 +286,9 @@ namespace NonaRoyale.Unity.View
 
             for (int layer = 0; layer < 2; layer++)
             {
-                var renderer = Spawn(cell, frames[0], _layout.CellSize * 0.88f, new Color(1f, 1f, 1f, 0f));
+                var renderer = Spawn(cell, frames[0], _layout.CellSize * size, new Color(1f, 1f, 1f, 0f));
                 renderer.sortingOrder = LavaOrder;
-                renderer.transform.localRotation = Quaternion.Euler(0f, 0f, 90f * ((hash >> 17) & 3));
-                renderer.flipX = ((hash >> 19) & 1) == 1;
-                renderer.flipY = ((hash >> 20) & 1) == 1;
+                Orient(renderer, hash);
                 if (unlit != null) renderer.sharedMaterial = unlit;
 
                 if (layer == 0) tile.Under = renderer;
@@ -285,6 +296,23 @@ namespace NonaRoyale.Unity.View
             }
 
             _lava.Add(tile);
+            return tile;
+        }
+
+        /// <summary>A cell's own scrambled hash: what turns and flips its tiles.</summary>
+        private static int CellHash(CellRef cell)
+        {
+            int hash = cell.GetHashCode() * 486187739;
+            unchecked { hash ^= hash >> 15; }
+            return hash;
+        }
+
+        /// <summary>A quarter-turn multiple and a flip each way, from the cell's hash, so a field's cells are not stamped copies.</summary>
+        private static void Orient(SpriteRenderer renderer, int hash)
+        {
+            renderer.transform.localRotation = Quaternion.Euler(0f, 0f, 90f * ((hash >> 17) & 3));
+            renderer.flipX = ((hash >> 19) & 1) == 1;
+            renderer.flipY = ((hash >> 20) & 1) == 1;
         }
 
         /// <summary>
@@ -356,22 +384,26 @@ namespace NonaRoyale.Unity.View
             }
         }
 
-        /// <summary>Lays a cell of frost, turned and flipped by the cell's hash so neighbours differ.</summary>
+        /// <summary>
+        /// Lays a cell of frost, turned and flipped by the cell's hash so
+        /// neighbours differ, and its glints over it (CG15): a flowing layer
+        /// turned the same way, so each sparkle sits on its crystal's tip, and
+        /// lifted a hair so it draws on top.
+        /// </summary>
         private void SpawnFrost(CellRef cell)
         {
-            int hash = cell.GetHashCode() * 668265263;
-            unchecked { hash ^= hash >> 13; }
-
-            var renderer = Spawn(cell, FrostTexture.Sprite, _layout.CellSize * 0.9f, new Color(1f, 1f, 1f, FrostAlpha));
+            var renderer = Spawn(cell, FrostTexture.Sprite, _layout.CellSize * FrostSize, new Color(1f, 1f, 1f, FrostAlpha));
             renderer.sortingOrder = LavaOrder;
-            renderer.transform.localRotation = Quaternion.Euler(0f, 0f, 90f * ((hash >> 17) & 3));
-            renderer.flipX = ((hash >> 19) & 1) == 1;
-            renderer.flipY = ((hash >> 20) & 1) == 1;
+            Orient(renderer, CellHash(cell));
 
             var unlit = ShaderFx.Source(ShaderFx.ChipUnlit);
             if (unlit != null) renderer.sharedMaterial = unlit;
 
             _frost.Add(renderer);
+
+            var glints = SpawnFlow(cell, FrostGlintAlpha, FrostTexture.Glints, FrostTexture.GlintLoopSeconds, FrostSize);
+            glints.Under.transform.position += new Vector3(0f, 0f, Lift);
+            glints.Over.transform.position += new Vector3(0f, 0f, Lift);
         }
 
         /// <summary>Breathes the frost's alpha, one shared slow breath; held at rest under Reduced motion.</summary>
