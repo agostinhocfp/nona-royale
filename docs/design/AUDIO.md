@@ -375,3 +375,14 @@ Stage 4 (art hookup) was skipped for now: no finished Meshy renders are in hand.
 - 2026-10-03 — **Velvet Rope renamed Apophis** (designer; ADR-0011).
   - Slug `101` is now `Bouncer_Apophis`, and the signature recipes are `Bouncer_Apophis_Tell` and `Bouncer_Apophis_Impact`. Decision 1 lets a renamed ability keep its old slug, but no recorded file used it, so the slug follows the name for free. A file dropped in later must use the new name.
   - The synthesized sound is unchanged. This log keeps the old name in entries written before the rename.
+- 2026-10-03 — **The Shapeforms free pack, and a page to audition it.**
+  - The designer imported *Shapeforms Audio Free Sound Effects* into `Assets/Shapeforms Audio Free Sound Effects/`: 129 WAVs (81 MB) in seven folders, one per Shapeforms library (Arcane Activations, Cassette, Dystopia, Hit and Punch, Sci Fi Weapons Cyberpunk Arsenal, The Mint, Type). The Sci Fi Weapons folder holds 52 sounds from decision 7's candidate library, so the pack doubles as a test of it.
+  - **Formats:** all stereo; 96 kHz/24-bit (Cassette, Hit and Punch), 48 kHz/24-bit (Dystopia, Sci Fi Weapons), 44.1 kHz/16-bit (the rest). Mastered hot: most one-shots peak at full scale, so a pick gets trimmed and levelled like the Kenney files.
+  - **Licence:** the pack has no licence file, only a thank-you PDF. From the Unity Asset Store it falls under the Standard Unity Asset Store EULA. One `PROVENANCE.md` row per file that ships, as always.
+  - **Repo weight (open):** the folder is outside `Resources`, so nothing in it ships unless referenced, but its 81 MB sit in `Assets/` and go to git with the project unless ignored. The Sonniss bundle was kept outside the repo for that reason. Picks are copied into `Audio/Resources/Audio/SFX/` anyway, so the folder can move out or be ignored without loss.
+  - **Audition page:** `_NonaRoyale_audition/audition_shapeforms.html`, beside the Sonniss page, which is unchanged.
+    - It plays the files where they are, through a relative path into the Unity project; if the page or the pack moves, a folder picker takes over.
+    - **By cue:** a shortlist for the 18 generic cues and 43 ability moments, chosen by file name and measurement, not by ear. **Whole pack:** every file, assignable to any cue or to any ability's Tell, Impact or Assist.
+    - Level-matched playback (loudest 50 ms to −22 dB), waveforms, a heard marker, a note per pick for trims, picks kept in the browser, and **Copy picks** as `Cue: Pack/File (note)` lines.
+  - **Checked** in headless Chromium against a copy of the folder layout: all 129 paths resolve; picks, notes, Whole pack assignment, copy, persistence across a reload, the folder fallback and the keyboard work; no horizontal scroll at 390 px.
+  - Nothing in the game changed.
