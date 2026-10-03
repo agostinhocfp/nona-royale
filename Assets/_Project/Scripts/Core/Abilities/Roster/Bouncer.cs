@@ -99,7 +99,7 @@ namespace NonaRoyale.Core.Abilities
             id: 101, name: "Apophis",
             description:
                 "Hooks an enemy in reach and drags them to the cell beside you, with a hit no shield can stop. They land inside your Intimidating Presence. On an ally, it pulls them to your side unharmed.",
-            energyCost: 6, cooldownTurns: 2, range: 3,
+            energyCost: 5, cooldownTurns: 2, range: 4,
             effects: new[]
             {
                 AbilityEffect.Pull(EffectAudience.Any),
@@ -165,7 +165,7 @@ namespace NonaRoyale.Core.Abilities
             energyCost: 4, cooldownTurns: 1, range: 2,
             effects: new[]
             {
-                AbilityEffect.Damage(EffectScope.PrimaryTarget, 3, DamageType.Normal, EffectAudience.EnemyOnly),
+                AbilityEffect.Damage(EffectScope.PrimaryTarget, 4, DamageType.Normal, EffectAudience.EnemyOnly),
                 AbilityEffect.Damage(EffectScope.Caster, 1, DamageType.Normal, EffectAudience.EnemyOnly),
                 AbilityEffect.Heal(EffectScope.PrimaryTarget, 2, EffectAudience.AllyOnly)
             });
