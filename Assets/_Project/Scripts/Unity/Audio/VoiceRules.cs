@@ -19,6 +19,14 @@ namespace NonaRoyale.Unity.Audio
         HitTaken,
         Cast,
         Kill,
+
+        /// <summary>
+        /// An operator reaches HOME (CG17). A moment, between a kill and a
+        /// death: it never gives way to chatter, and the match's victory line
+        /// still cuts it off when the arrival wins.
+        /// </summary>
+        Home,
+
         Death,
         Victory,
 

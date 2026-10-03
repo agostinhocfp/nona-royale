@@ -120,6 +120,8 @@ namespace NonaRoyale.Unity.Audio
                 // AU3: the layers sit under the impact they belong to, never over it.
                 case SoundCue.LayerTech: return new CueSpec(0.6f, 0.05f, 0.04f);
                 case SoundCue.LayerAtomic: return new CueSpec(0.8f, 0.03f, 0.05f);
+                // CG17: a payout, on the cast's level; two arrivals in one batch play it once.
+                case SoundCue.Home: return new CueSpec(0.8f, 0.03f, 0.25f);
                 default: return new CueSpec(0.6f, 0f, 0.05f);
             }
         }

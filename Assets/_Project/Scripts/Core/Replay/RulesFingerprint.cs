@@ -98,6 +98,7 @@ namespace NonaRoyale.Core.Replay
             d.Line("CombatConfig.HasteBonusCellCap", combat.HasteBonusCellCap);
             d.Line("CombatConfig.SpeedBonusCellCap", combat.SpeedBonusCellCap);
             d.Line("CombatConfig.NeutralizeEnergyBounty", combat.NeutralizeEnergyBounty);
+            d.Line("CombatConfig.HomeEnergyBounty", combat.HomeEnergyBounty);
             d.Line("CombatConfig.ShieldPoolDefault", combat.ShieldPoolDefault);
             d.Line("CombatConfig.RegenEveryTurns", combat.RegenEveryTurns);
             d.Line("CombatConfig.RegenAmount", combat.RegenAmount);

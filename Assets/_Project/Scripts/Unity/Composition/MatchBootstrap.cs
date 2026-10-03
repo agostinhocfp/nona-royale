@@ -266,6 +266,9 @@ namespace NonaRoyale.Unity.Composition
         /// <summary>How long a knockout burst shows before the piece returns to its yard, in scaled seconds.</summary>
         private const float KnockoutHoldSeconds = 0.45f;
 
+        /// <summary>How long an arrival's payout (CG17) owns the board before the settle, in scaled seconds.</summary>
+        private const float HomeHoldSeconds = 0.55f;
+
         /// <summary>
         /// The silence before an execute lands (AUDIO.md AU3), in scaled
         /// seconds like the other holds, so it shortens with the queue.
@@ -2265,6 +2268,7 @@ namespace NonaRoyale.Unity.Composition
             DiceRolled roll = null;
             bool walks = false, hits = false, knockouts = false, refused = false, home = false, executed = false;
             var rises = new List<KeyValuePair<OperatorState, CellRef>>();
+            var arrivals = new List<OperatorReachedHome>();
 
             foreach (var e in events)
             {
@@ -2276,7 +2280,7 @@ namespace NonaRoyale.Unity.Composition
                     case OperatorDeployed deployed: rises.Add(new KeyValuePair<OperatorState, CellRef>(deployed.Operator, deployed.Cell)); break;
                     case OperatorPityDeployed pity: rises.Add(new KeyValuePair<OperatorState, CellRef>(pity.Operator, pity.Cell)); break;
                     case OperatorNeutralized _: knockouts = true; break;
-                    case OperatorReachedHome _: home = true; break;
+                    case OperatorReachedHome reached: home = true; arrivals.Add(reached); break;
                     case DamageDealt damaged when damaged.Amount > 0: hits = true; break;
                     case DamageDealt dealt when dealt.Cause == GameEngine.ExecuteCause: executed = true; break;
                     case DamageEvaded _:
@@ -2363,14 +2367,45 @@ namespace NonaRoyale.Unity.Composition
                     () => !AnyPieceKnockingOut(),
                     hold: _motion.Tween(KnockoutHoldSeconds));
 
+            // CG17: the arrival is paid where the walk ended, before the settle
+            // moves the piece onto its HOME slot.
+            if (home)
+                _queue.Enqueue(PresentationBeat.Home, () => PlayArrivals(arrivals),
+                    hold: _motion.Tween(HomeHoldSeconds));
+
             _queue.Enqueue(PresentationBeat.Settle,
-                () =>
-                {
-                    // The vault answers an arrival as the walk lands (LT2).
-                    if (home && _eventLights != null) _eventLights.VaultSwell();
-                    SettleBatch(events, immediate: false, castBy, cast, fromBot);
-                },
+                () => SettleBatch(events, immediate: false, castBy, cast, fromBot),
                 essential: true);
+        }
+
+        /// <summary>
+        /// The payout for each operator that reached HOME in the batch
+        /// (CORE_GAMEPLAY CG17): the chips and the figure on the piece, the
+        /// chip-stack sound, the vault's swell (LT2), and the arriving
+        /// operator's line. The figure is the engine's
+        /// (<c>OperatorReachedHome.Bounty</c>); the view computes nothing.
+        /// </summary>
+        private void PlayArrivals(List<OperatorReachedHome> arrivals)
+        {
+            if (arrivals == null || arrivals.Count == 0) return;
+
+            if (_eventLights != null) _eventLights.VaultSwell();
+
+            foreach (var arrival in arrivals)
+            {
+                var piece = PieceFor(arrival.Operator);
+                if (piece == null) continue;
+
+                var at = piece.transform.position;
+                if (_feedback != null)
+                    _feedback.HomePayout(at, BoardLayout.ColourOf(arrival.Operator.Owner), arrival.Bounty, _motion);
+
+                Sound(SoundCue.Home, at);
+            }
+
+            // One line for the batch; the rules keep a winning arrival's
+            // victory line ahead of it.
+            Speak(VoiceSlot.Home, arrivals[0].Operator);
         }
 
         /// <summary>

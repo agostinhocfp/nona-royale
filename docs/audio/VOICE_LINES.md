@@ -6,7 +6,7 @@
 
 ## How lines are used
 
-Eight slots, lowest priority first. A higher slot cuts off a lower one; only one operator speaks at a time.
+Nine slots, lowest priority first. A higher slot cuts off a lower one; only one operator speaks at a time.
 
 | Slot (file name part) | When it plays | Rules |
 | --- | --- | --- |
@@ -15,6 +15,7 @@ Eight slots, lowest priority first. A higher slot cuts off a lower one; only one
 | `HitTaken` | The operator is hit and still standing | Cooldown |
 | `Cast` | The operator uses any ability | Cooldown |
 | `Kill` | The operator's action knocks someone out | Always; plays straight after the victim's death line |
+| `Home` | The operator reaches HOME and its seat is paid (CG17, 2026-10-03) | Always; a winning arrival's `Victory` line cuts it off |
 | `Death` | The operator is knocked out | Always |
 | `Victory` | The operator's seat wins; the last one home speaks | Always, over the win sting |
 | `Quit` | A live match is abandoned from the pause menu | Always |
@@ -46,7 +47,7 @@ A slot is not tied to one ability, so a `Cast` line has to fit all three of an o
 - The only heat is in the kill lines, and even there it's quiet.
 - Think of a fighter talking between rounds, not an announcer.
 
-**Energy by slot** (1 is under the breath, 5 is full voice): Move 1 · Deploy 2 · Cast 2 · HitTaken 3 · Kill 3 · Death 3 · Victory 4 · Quit 1
+**Energy by slot** (1 is under the breath, 5 is full voice): Move 1 · Deploy 2 · Cast 2 · HitTaken 3 · Kill 3 · Home 2 · Death 3 · Victory 4 · Quit 1
 
 | File | Line | Direction |
 | --- | --- | --- |

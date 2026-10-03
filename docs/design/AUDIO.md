@@ -367,3 +367,8 @@ Stage 4 (art hookup) was skipped for now: no finished Meshy renders are in hand.
   - The designer's verdict: the takes aren't good enough for sounds heard constantly, and the current effects are a good fit, so a replacement has to be great.
   - Combat abilities may take a sci-fi character; the board stays physical. `SFX_PROMPTS.md`'s camp table was rewritten.
   - Nothing in the game changed. The audition scripts (`audition.py`, `make_page.py`) are in the project's `Temp/` and will be lost on the next Unity clean; they are throwaway.
+- 2026-10-03 — **CG17: the home payout has a sound and a voice slot.**
+  - `SoundCue.Home`, appended last so every earlier cue keeps its seed. `SfxRecipes.Home` is five clay chips counted onto a stack, quickening, then the stack squared on the felt, in the AU1d palette (jittered, never stepped, so it isn't a scale). `SoundBank` plays it at 0.8 with a 0.25 s gap, so two arrivals in one batch play it once. A file named `Home` in `Audio/SFX/` replaces it.
+  - `VoiceSlot.Home` sits between `Kill` and `Death`. It's a moment, so it never yields to chatter, and a winning arrival's `Victory` cuts it off. `VoiceBlips` has a `HomeShape`. The file name part is `Home` (`VOICE_LINES.md`).
+  - **Side effect:** inserting the slot shifts the enum values of `Death`, `Victory` and `Quit`, and the blips seed on that value, so those three placeholder chirps come out slightly different. Recorded files are matched by name and are unaffected.
+  - **Checked:** `SfxRecipesTests`, `VoiceBlipsTests` and `VoiceRulesTests` (31) pass in a cloud harness against the built view assembly. `VoiceRulesTests` gained the Home order and moment checks.

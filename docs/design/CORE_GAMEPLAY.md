@@ -1,7 +1,7 @@
 # Nona Royale — Core Gameplay Pass
 
 > Location in repo: `docs/design/CORE_GAMEPLAY.md` · Project copy: `claude/CORE_GAMEPLAY.md`
-> Status: **Open, 2026-09-30.** CG1–CG16 in; the designer's list is still being written.
+> Status: **Open, 2026-09-30.** CG1–CG17 in; the designer's list is still being written.
 > Related: `HUD_PASS.md` (the tray's stable geometry, H1), `PRESENTATION.md` §4 (board-first input), `CAST_ONBOARDING.md` (CO3, hold a card to read it), `MOBILE.md` (the upright tray)
 
 ## Goal
@@ -28,6 +28,7 @@ The designer's notes from playing the match, taken one at a time. This pass chan
 | CG14 | The rest of the ability-driven looks: Zero-Day, The Table, Defiance, Hunted, Tech Ward, Bleed, Stealth | In, 2026-10-02 |
 | CG15 | Cryo Field's frost looks like frost | In, 2026-10-02 |
 | CG16 | The shader pack on the pieces: greyscale for the yard and stuns, a hologram on Zero-Day, a heat shimmer for Stealth | In, 2026-10-03 |
+| CG17 | Bringing an operator home pays 3 energy, with a payout moment | In, 2026-10-03 |
 
 ### CG1 — The tray stays up off-turn
 
@@ -221,6 +222,32 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - **`ChipView`:** `FxFaces` and `FxParts`.
 - **`ShaderFx`:** the six names and three property ids.
 
+### CG17 — Home pays
+
+**Designer (2026-10-03):** "We currently do not reward the player for bringing a piece home." From the picker: **+3 energy** (recommended over an extra roll, both, or presentation only), and **a payout moment**.
+
+- **The rule** (COMBAT_SYSTEMS §8):
+  - Each operator that reaches HOME pays its own seat `CombatConfig.HomeEnergyBounty` = 3.
+  - It uses the kill bounty's arithmetic: it fills to the cap, and the remainder is never earned rather than burned.
+  - It pays in the combat currency, so finishing feeds the operators still fighting instead of pulling the game toward a race.
+- **The engine:**
+  - `GameEngine.ArriveHome` pays through `TurnStateMachine.PayHome` → `EnergyLedger.GrantHome`.
+  - It reports `OperatorReachedHome` with the new `Bounty`, then the pool's `EnergyGranted`.
+  - `GameEngine.HomeEnergyBounty` is exposed for the bots and the rules text. `DevForceWin` doesn't pay.
+- **The bots:** `MoveScorer` adds the energy a finishing landing would store, valued like a cashed die.
+- **The text:**
+  - The glossary's Energy line: "…a knockout pays a bounty of 3, and each operator that reaches home pays 3."
+  - The event line: "Javi reaches home: 3 energy".
+  - The history's HOME item shows "+3e" in the energy cyan.
+- **The moment** (a new `PresentationBeat.Home` before the settle, 0.55 s hold):
+  - `FeedbackLayer.HomePayout`: a fan of five chips in the seat colour tossed up off the piece, a gold ring, and "+3 ENERGY" rising in cyan ("HOME" in gold when the pool was full).
+  - The vault's swell (LT2) moved here from the settle.
+  - `SoundCue.Home`, a synthesized stack of chips being counted out.
+  - The operator's new `Home` voice line.
+  - Reduced motion keeps the ring and the figure and drops the chip toss.
+- **Replays:** the rules fingerprint moves (`58eed81a`), so replays recorded before this are refused.
+- **Unmeasured:** no bots sweep yet. Two things worth watching are whether matches get shorter and whether the race-leaning styles gain.
+
 ## Play Mode checks
 
 - [ ] Solo against CPUs: after ending your turn, your last operator stays in the tray through every CPU turn; with nothing ever selected, one of yours appears on the first CPU turn.
@@ -266,6 +293,9 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - [ ] CG16 Stealth: Syla's whole chip ripples like heat haze and keeps its colour. No violet copies. Under Reduced motion the violet copies come back instead.
 - [ ] CG16: hits still flash white on a grey, hologrammed or shimmering piece, and a knockout still burns cleanly. Switch to FIGURES mid-match: the effects follow on the rendered figures, lit by the room.
 - [ ] CG16 performance: no visible cost with nine pieces on the board, and no hitch on the first stun, charge or stealth (the materials load then).
+- [ ] CG17: walk an operator into HOME. The chips toss up off it, a gold ring opens, "+3 ENERGY" rises in cyan, the chip-stack sound plays and the operator speaks (a chirp until voices are recorded). The seat's pool shows +3, and the history's HOME item reads "+3e".
+- [ ] CG17: at a full pool, "HOME" in gold instead and the pool unchanged. The last operator home: its line is cut off by the victory line, and the win plays as before.
+- [ ] CG17: Reduced motion: the ring and the figure without the chip toss. A CPU's arrival plays the same moment. Holding the hurry key skips it cleanly.
 - [ ] CG3: start a match against CPUs, end your turn, switch to another window: the CPUs keep playing (Editor and a Windows build).
 
 ## Open
@@ -291,6 +321,7 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 
 ## Log
 
+- 2026-10-03 — **CG17 in: home pays 3 energy, with a payout moment.** Core: `CombatConfig.HomeEnergyBounty`, `EnergyLedger.GrantHome`, `TurnStateMachine.PayHome`, `GameEngine.ArriveHome`/`HomeEnergyBounty`, `OperatorReachedHome.Bounty`, `RulesFingerprint`, `Glossary`, `EventText`, `MoveScorer`. View: `PresentationBeat.Home`, `MatchBootstrap.PlayArrivals`, `FeedbackLayer.HomePayout`, `HistoryFeed`, `SoundCue.Home` with its recipe and spec, `VoiceSlot.Home` with its blip shape. Tests: new `HomeBountyTests` (7); `RulesFingerprintTests` golden hash and dial count; `VoiceRulesTests` order. **Checked:** core harness 1009 → 1016, all passing; the audio tests (31) pass against the built view; the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`, 0 warnings; the device files match the tested copy. Play Mode pending; bots sweep not run.
 - 2026-10-03 — **CG16 in: the shader pack on the pieces.** New: `View/PieceFx.cs` and six materials under `Art/Resources/Art/Fx/` (`GreyUnlit`, `GreyLit`, `HoloUnlit`, `HoloLit`, `ShimmerUnlit`, `ShimmerLit`). Changed: `OperatorPiece` (`FxParts`, grey from the yard and the stun, the hologram and the shimmer from the statuses, the figure's flash lifted over the copies), `ChipView` (`FxFaces`, `FxParts`), `ShaderFx` (names and property ids) and `StealthShimmer` (now the fallback). Not done: the hit flash and the outline, which already exist in code. **Checked:** the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`, 0 warnings; the device files match the compiled copy; the materials' keywords and property names were checked against the pack's shaders. The materials were written by hand, not saved by the editor, so the first editor import is the real check. Play Mode pending.
 - 2026-10-02 — **CG15 in: Cryo Field's frost looks like frost.** Changed: `View/FrostTexture.cs` (rewritten: grown feathers, crystals and rime at 128×128, plus `Glints`), `View/DeviceLayer.cs` (frost alpha 0.6, breath ±10%, the glint layer, `SpawnFlow` size and return, shared `CellHash`/`Orient`). The asset pack has no frost effect, so it isn't used here. **Checked:** the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`; the real `Grow` and `Paint` were run outside Unity and their output rendered over a dark board for a look. Play Mode pending.
 - 2026-10-02 — **CG14 in: the rest of the ability-driven looks.** New: `View/ChargeLight.cs` (with `CueKit`), `View/DefianceGlow.cs` (with `GrowingRing`), `View/HuntedBrackets.cs`, `View/WardRing.cs`, `View/BleedDrips.cs` (with `FallingDrop`), `View/StealthShimmer.cs`, `View/FeltTexture.cs`. Changed: `OperatorPiece` (six more cues; `ShowStatusCues` takes the bleed count), `MatchBootstrap` (passes `BleedStacksOn` and `ActiveCharges`), `DeviceLayer` (Zero-Day blast cells, the felt table and chips), `StatusPalette.IsDrawnOnPiece`, and core `DeferredOperatorEffects.ChargeSnapshot`, `GameEngine.ActiveCharges` and `GameEngine.BleedStacksOn`. Test: `ZeroDayTests.ZeroDay_BlastIsDrawnRoundTheCarrier_AndFollowsIt`. **Checked:** core 1009 passing (cloud runner); the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`; the felt table was rendered to a still in Python. Play Mode pending.

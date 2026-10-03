@@ -248,6 +248,18 @@ namespace NonaRoyale.Core.Services
         }
 
         /// <summary>
+        /// Pays a seat for an operator reaching HOME (CG17), filling to the cap.
+        /// The engine decides when an operator has arrived; this owns only the
+        /// money, because the ledger lives here.
+        /// </summary>
+        public EnergyGrant PayHome(PlayerState player, int amount)
+        {
+            if (player == null) throw new ArgumentNullException(nameof(player));
+
+            return _energy.GrantHome(player, amount);
+        }
+
+        /// <summary>
         /// Grants the extra roll a <i>dealt</i> double is owed (§6.8), inside the
         /// same budget a rolled one obeys. Returns whether the roll was granted.
         /// Fortuna's Boxcars.

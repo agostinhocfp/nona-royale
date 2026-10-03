@@ -26,6 +26,8 @@ namespace NonaRoyale.Unity.View
         Hush,
         /// <summary>An operator is knocked out.</summary>
         Knockout,
+        /// <summary>An operator reaches HOME and its seat is paid (CORE_GAMEPLAY CG17).</summary>
+        Home,
         /// <summary>The board and the HUD catch up with the engine.</summary>
         Settle,
     }

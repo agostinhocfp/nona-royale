@@ -122,6 +122,62 @@ namespace NonaRoyale.Unity.View
             Pulse(at, seatColour, 4.2f);
         }
 
+        // ── Home (CORE_GAMEPLAY CG17) ─────────────────────────────────────
+
+        /// <summary>How many chips the payout throws, and how far.</summary>
+        private const int PayoutChips = 5;
+        private const float PayoutReach = 0.95f;
+        private const float PayoutSeconds = 0.6f;
+
+        /// <summary>
+        /// An operator reaching HOME: a fan of chips in its seat colour tossed
+        /// up off it, a gold ring, and what the arrival paid rising in the
+        /// energy colour ("+3 ENERGY"), or "HOME" when the pool was full.
+        /// </summary>
+        /// <remarks>
+        /// <b>The payout, not a firework.</b> The board's other moments are
+        /// small and physical; this is chips leaving the table, the same
+        /// material as the pieces. Reduced motion keeps the ring and the figure
+        /// and drops the toss.
+        /// </remarks>
+        public void HomePayout(Vector3 at, Color seatColour, int bounty, MotionSettings motion)
+        {
+            FloatingText.Spawn(
+                transform, at,
+                bounty > 0 ? $"+{bounty} ENERGY" : "HOME",
+                bounty > 0 ? UiTheme.Cyan : UiTheme.GoldBright,
+                _scale * 1.15f);
+
+            Pulse(at, UiTheme.WithAlpha(UiTheme.GoldBright, 0.9f), 3.4f);
+
+            if (motion != null && motion.ReducedMotion) return;
+
+            float seconds = motion != null ? motion.Tween(PayoutSeconds) : PayoutSeconds;
+            var up = BoardTilt.ScreenUp;
+            var side = Vector3.Cross(Vector3.forward, up).normalized;
+            if (side.sqrMagnitude < 0.5f) side = Vector3.right;
+
+            for (int i = 0; i < PayoutChips; i++)
+            {
+                // A fan over the top, -50 degrees to +50, each a little later than the last.
+                float t = PayoutChips == 1 ? 0.5f : i / (float)(PayoutChips - 1);
+                float angle = Mathf.Lerp(-50f, 50f, t) * Mathf.Deg2Rad;
+                var direction = up * Mathf.Cos(angle) + side * Mathf.Sin(angle);
+                var to = at + direction * (_scale * PayoutReach * (0.8f + 0.25f * Mathf.Sin(i * 2.1f)));
+
+                float size = _scale * 0.2f;
+                float delay = i * 0.035f;
+                float spin = (i % 2 == 0 ? 1f : -1f) * 160f;
+
+                FxSprite.Spawn(transform, Primitives.Disc, seatColour, FigureTilt.FeedbackOrder,
+                    new FxPose(at, Vector3.one * size), new FxPose(to, Vector3.one * (size * 0.7f), spin, 0f),
+                    seconds, motion, delay);
+                FxSprite.Spawn(transform, Primitives.Ring, UiTheme.GoldBright, FigureTilt.FeedbackOrder + 1,
+                    new FxPose(at, Vector3.one * size), new FxPose(to, Vector3.one * (size * 0.7f), spin, 0f),
+                    seconds, motion, delay);
+            }
+        }
+
         // ── Debt (COMBAT_SYSTEMS §3.3) ───────────────────────────────────
 
         /// <summary>

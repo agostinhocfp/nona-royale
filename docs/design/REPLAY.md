@@ -120,7 +120,7 @@ Line 1 is the header. Each later line is one accepted command, in order. Every l
 
 `RulesFingerprint.Current` is FNV-1a 32 over a canonical dump of every dial in `GameConfig`, `CombatConfig` and `EnergyConfig`, the `RosterSpeeds`, `Roster.SquadSize`, and every operator in roster order. For each operator it covers health, speed, both passives, the haste cap, the aura, and each ability in id order with its effects in declared order. **Text is left out** (names, descriptions, passive and aura copy), so rewording a kit doesn't invalidate replays. Doubles are written as invariant text plus their exact bits.
 
-**The golden hash is `f7820c60`.** `Fingerprint_MatchesTheGoldenHash` fails on any rules change. When it does, update the constant **on purpose**: every replay recorded before that change will be refused from then on.
+**The golden hash is `58eed81a`** (2026-10-03, CG17's home bounty; it was `f7820c60` when this was written and `fa6373a0` just before). `Fingerprint_MatchesTheGoldenHash` fails on any rules change. When it does, update the constant **on purpose**: every replay recorded before that change will be refused from then on.
 
 ### Tests — `Assets/Tests/EditMode/Replay/`, 57 new
 

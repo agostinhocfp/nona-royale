@@ -502,9 +502,18 @@ namespace NonaRoyale.Core.Events
 
     public sealed class OperatorReachedHome : IGameEvent
     {
-        public OperatorReachedHome(OperatorState op) { Operator = op; }
+        public OperatorReachedHome(OperatorState op, int bounty = 0) { Operator = op; Bounty = bounty; }
         public OperatorState Operator { get; }
-        public override string ToString() => $"{Operator.Name} is home";
+
+        /// <summary>
+        /// Energy the arrival stored in the operator's seat (CG17): the home
+        /// bounty, or less at the cap, or 0. The pool change itself is the
+        /// <see cref="EnergyGranted"/> that follows; this is here so the view can
+        /// show the payout on the piece without pairing the two. Read by no rule.
+        /// </summary>
+        public int Bounty { get; }
+
+        public override string ToString() => Bounty > 0 ? $"{Operator.Name} is home (+{Bounty} energy)" : $"{Operator.Name} is home";
     }
 
     public sealed class TurnEnded : IGameEvent

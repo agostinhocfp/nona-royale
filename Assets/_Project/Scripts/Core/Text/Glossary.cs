@@ -102,8 +102,9 @@ namespace NonaRoyale.Core.Text
                 .Text("The start of a seat's turn, before it rolls. Bleed, marks, beacons, zones, charges, fields and follow-ups resolve here."));
             Term(list, Keywords.Energy, "Energy", new RulesLine()
                 .Text("Your seat's shared pool: every ability is paid from it, and it holds at most ")
-                .Number(energy.EnergyCap).Text(". It refills from your rolls, and a knockout pays a bounty of ")
-                .Number(combat.NeutralizeEnergyBounty).Text("."));
+                .Number(energy.EnergyCap).Text(". It refills from your rolls, a knockout pays a bounty of ")
+                .Number(combat.NeutralizeEnergyBounty).Text(", and each operator that reaches home pays ")
+                .Number(combat.HomeEnergyBounty).Text("."));
             Term(list, Keywords.Debt, "Debt", new RulesLine()
                 .Text("What your seat owes an enemy. It is never paid: each time your turn ends it grows by ")
                 .Number(energy.DebtInterest).Text(", never past ").Number(energy.DebtCap)

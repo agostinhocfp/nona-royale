@@ -105,7 +105,19 @@ namespace NonaRoyale.Core.Bots
 
             double score = cells * weights.Progress;
 
-            if (map.HasFinished(to)) score += weights.ReachHome;
+            if (map.HasFinished(to))
+            {
+                score += weights.ReachHome;
+
+                // CG17: the arrival pays the seat, valued like any other energy
+                // the brain is offered (a cashed die), up to what the pool can hold.
+                var seat = board.Engine.CurrentPlayer;
+                if (seat != null)
+                {
+                    int room = Math.Max(0, board.Engine.EnergyCap - seat.Energy);
+                    score += Math.Min(board.Engine.HomeEnergyBounty, room) * weights.EnergyGain;
+                }
+            }
             else if (map.IsInHomeColumn(to) && !map.IsInHomeColumn(from)) score += weights.HomeEntry;
 
             // Where the piece stands afterwards, against where it stands now.

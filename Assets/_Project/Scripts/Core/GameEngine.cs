@@ -234,6 +234,9 @@ namespace NonaRoyale.Core
         /// <summary>What one cashed die pays the seat (§3.4). Read by the tray and the bots.</summary>
         public int CashedDieEnergy => _turns.CashedDieEnergy;
 
+        /// <summary>What an operator reaching HOME pays its seat (CG17). Read by the bots and the rules text.</summary>
+        public int HomeEnergyBounty => _config.HomeEnergyBounty;
+
         /// <summary>The most a seat can owe (§3.3). Read by the bots and the rules text.</summary>
         public int DebtCap => _turns.DebtCap;
 
@@ -1163,7 +1166,28 @@ namespace NonaRoyale.Core
             }
 
             if (_win.HasFinished(op))
-                events.Add(new OperatorReachedHome(op));
+                ArriveHome(op, events);
+        }
+
+        /// <summary>
+        /// An operator reached HOME: its seat collects the home bounty (CG17),
+        /// reported on the arrival and as the pool's <see cref="EnergyGranted"/>.
+        /// </summary>
+        /// <remarks>
+        /// Only a dice move arrives (§8): placement never enters a home column
+        /// (§4.3). <see cref="DevForceWin"/> sends pieces home without it, since
+        /// a cheat that also paid would make the tallies it leaves behind lie
+        /// in one more way.
+        /// </remarks>
+        private void ArriveHome(OperatorState op, List<IGameEvent> events)
+        {
+            var seat = _config.HomeEnergyBounty > 0 ? PlayerOf(op.Owner) : null;
+            var grant = seat != null ? _turns.PayHome(seat, _config.HomeEnergyBounty) : default;
+
+            events.Add(new OperatorReachedHome(op, seat != null ? grant.Stored : 0));
+
+            if (seat != null && grant.Stored > 0)
+                events.Add(new EnergyGranted(op.Owner, grant.Stored, grant.Burned, grant.Total));
         }
 
         private void UseAbility(UseAbilityCommand command, List<IGameEvent> events)

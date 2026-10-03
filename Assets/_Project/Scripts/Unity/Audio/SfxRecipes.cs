@@ -30,6 +30,13 @@ namespace NonaRoyale.Unity.Audio
 
         /// <summary>Under an Atomic hit: a sub drop and a pressure crack, so it sounds like nothing stopped it (AU3).</summary>
         LayerAtomic,
+
+        /// <summary>
+        /// An operator reaches HOME and its seat is paid (CG17): a stack of
+        /// chips counted out onto the felt. Last in the list, so the cues
+        /// before it keep the seeds their sounds were tuned with.
+        /// </summary>
+        Home,
     }
 
     /// <summary>
@@ -92,6 +99,7 @@ namespace NonaRoyale.Unity.Audio
                 case SoundCue.UiClick: return UiClick(random, variant);
                 case SoundCue.LayerTech: return LayerTech(random);
                 case SoundCue.LayerAtomic: return LayerAtomic(random);
+                case SoundCue.Home: return Home(random);
                 default: throw new ArgumentOutOfRangeException(nameof(cue), cue, null);
             }
         }
@@ -403,6 +411,32 @@ namespace NonaRoyale.Unity.Audio
 
             Synth.Darken(b, 7000f);
             Synth.Normalize(b, 0.7f);
+            return b;
+        }
+
+        private static float[] Home(SynthRandom r)
+        {
+            // A payout: five clay chips counted onto a stack, quickening, then
+            // the stack squared on the felt. The AU1d palette: every chip a
+            // knock with no pitch of its own, jittered rather than stepped, so
+            // the run never reads as a scale.
+            var b = Synth.Buffer(0.62f);
+            float t = 0f;
+            float gap = 0.085f;
+
+            for (int i = 0; i < 5; i++)
+            {
+                Clack(b, t, 0.9f - 0.1f * i, 2300f * r.Range(0.93f, 1.07f), r);
+                Thud(b, t, 0.07f, 240f, r);
+                t += gap;
+                gap *= 0.78f;
+            }
+
+            Swish(b, t, 0.08f, 0.14f, 900f, 600f, 0.01f, 0.04f, r);
+            Thud(b, t + 0.03f, 0.55f, 170f, r, ring: 1.2f);
+
+            Synth.Darken(b, 6000f);
+            Synth.Normalize(b, 0.85f);
             return b;
         }
 

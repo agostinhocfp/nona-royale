@@ -110,6 +110,12 @@ namespace NonaRoyale.Unity.Audio
             new Syllable(0.08f, 5f, 5f), new Syllable(0.08f, 7f, 7f), new Syllable(0.22f, 12f, 10f),
         };
 
+        /// <summary>CG17: arriving, satisfied: a lift, then a long settle.</summary>
+        private static readonly Syllable[] HomeShape =
+        {
+            new Syllable(0.1f, 3f, 5f), new Syllable(0.32f, 7f, 4f),
+        };
+
         private static readonly Syllable[] DeathShape =
         {
             new Syllable(0.1f, 5f, 3f, 0.9f), new Syllable(0.45f, 3f, -12f),
@@ -242,6 +248,7 @@ namespace NonaRoyale.Unity.Audio
                 case VoiceSlot.HitTaken: return HitTakenShape;
                 case VoiceSlot.Cast: return CastShape;
                 case VoiceSlot.Kill: return KillShape;
+                case VoiceSlot.Home: return HomeShape;
                 case VoiceSlot.Death: return DeathShape;
                 case VoiceSlot.Victory: return VictoryShape;
                 case VoiceSlot.Quit: return QuitShape;

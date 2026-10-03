@@ -159,10 +159,12 @@ namespace NonaRoyale.Unity.Tests.Audio
             Assert.Less(VoiceSlot.Deploy, VoiceSlot.HitTaken);
             Assert.Less(VoiceSlot.HitTaken, VoiceSlot.Cast);
             Assert.Less(VoiceSlot.Cast, VoiceSlot.Kill);
-            Assert.Less(VoiceSlot.Kill, VoiceSlot.Death);
+            Assert.Less(VoiceSlot.Kill, VoiceSlot.Home);
+            Assert.Less(VoiceSlot.Home, VoiceSlot.Death);
             Assert.Less(VoiceSlot.Death, VoiceSlot.Victory);
             Assert.IsFalse(VoiceRules.IsMoment(VoiceSlot.Cast));
             Assert.IsTrue(VoiceRules.IsMoment(VoiceSlot.Kill));
+            Assert.IsTrue(VoiceRules.IsMoment(VoiceSlot.Home), "CG17: an arrival is a moment, never chatter");
         }
     }
 }

@@ -228,7 +228,9 @@ namespace NonaRoyale.Core.Text
                     return line;
 
                 case OperatorReachedHome home:
-                    return Name(line, home.Operator).Text(" reaches home");
+                    Name(line, home.Operator).Text(" reaches home");
+                    if (home.Bounty > 0) line.Text(": ").Number(home.Bounty).Text(" ").Keyword("energy", Keywords.Energy);
+                    return line;
 
                 case GameWon won:
                     for (int i = 0; i < won.Seats.Count; i++)

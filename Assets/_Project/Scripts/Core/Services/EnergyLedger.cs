@@ -127,6 +127,13 @@ namespace NonaRoyale.Core.Services
         public EnergyGrant GrantCash(PlayerState player, int amount) => GrantBounty(player, amount);
 
         /// <summary>
+        /// Credits an operator's arrival at HOME to its seat's pool (CG17).
+        /// The bounty's arithmetic, like <see cref="GrantCash"/>, under its own
+        /// name for the same reason.
+        /// </summary>
+        public EnergyGrant GrantHome(PlayerState player, int amount) => GrantBounty(player, amount);
+
+        /// <summary>
         /// Puts a seat in debt to <paramref name="creditorId"/> (§3.3), within
         /// the cap, and reports what was actually added. Revú's Leech Round.
         /// </summary>

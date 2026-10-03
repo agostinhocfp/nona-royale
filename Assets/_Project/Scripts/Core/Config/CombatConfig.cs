@@ -33,7 +33,8 @@ namespace NonaRoyale.Core.Config
             int burdenCellsAboveThreshold = 2,
             int equilibriumCheapCostMax = 3,
             int equilibriumDearCostMin = 6,
-            int speedBonusCellCap = 2)
+            int speedBonusCellCap = 2,
+            int homeEnergyBounty = 3)
         {
             if (slowSpeedPenalty < 0) throw new ArgumentOutOfRangeException(nameof(slowSpeedPenalty));
             if (collisionDamage < 0) throw new ArgumentOutOfRangeException(nameof(collisionDamage));
@@ -67,6 +68,9 @@ namespace NonaRoyale.Core.Config
             if (equilibriumDearCostMin <= equilibriumCheapCostMax)
                 throw new ArgumentOutOfRangeException(nameof(equilibriumDearCostMin),
                     "The dear band must start above the cheap one, or a cost would be both.");
+            if (homeEnergyBounty < 0)
+                throw new ArgumentOutOfRangeException(nameof(homeEnergyBounty),
+                    "Reaching home cannot take energy away; zero disables the pay.");
             if (speedBonusCellCap < 0)
                 throw new ArgumentOutOfRangeException(nameof(speedBonusCellCap),
                     "Zero means speed pays no bonus at all; pass int.MaxValue to lift the cap.");
@@ -90,6 +94,7 @@ namespace NonaRoyale.Core.Config
             EquilibriumCheapCostMax = equilibriumCheapCostMax;
             EquilibriumDearCostMin = equilibriumDearCostMin;
             SpeedBonusCellCap = speedBonusCellCap;
+            HomeEnergyBounty = homeEnergyBounty;
         }
 
         /// <summary>
@@ -328,6 +333,29 @@ namespace NonaRoyale.Core.Config
         /// but a loop, and it has never been run.
         /// </remarks>
         public int NeutralizeEnergyBounty { get; }
+
+        /// <summary>
+        /// Energy an operator's own seat collects when it reaches HOME
+        /// (COMBAT_SYSTEMS §8, CORE_GAMEPLAY CG17). The kill bounty's figure and
+        /// its arithmetic: it fills the pool to the cap, and the remainder is
+        /// never earned rather than burned (<c>EnergyLedger.GrantHome</c>).
+        /// </summary>
+        /// <remarks>
+        /// <b>Paid in the combat currency, on purpose</b> (designer,
+        /// 2026-10-03). The race had no reward of its own: an operator walked
+        /// home and simply left play. An extra roll would have paid in tempo,
+        /// which pulls the game toward racing and compounds for the leader. Energy
+        /// pays the operators still on the board to fight, so finishing helps the
+        /// 70% combat side rather than competing with it.
+        ///
+        /// <b>Every arrival pays, the last one too.</b> The seat that brings its
+        /// last operator home has won and never spends it; there is no special
+        /// case for that.
+        ///
+        /// <b>Unmeasured</b>, like the kill bounty was when it landed. Zero turns
+        /// it off.
+        /// </remarks>
+        public int HomeEnergyBounty { get; }
 
         /// <summary>
         /// Damage a <c>StatusKind.Shield</c> absorbs when whatever granted it

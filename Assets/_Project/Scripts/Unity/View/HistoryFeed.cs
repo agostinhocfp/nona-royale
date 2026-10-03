@@ -219,7 +219,10 @@ namespace NonaRoyale.Unity.View
             else if (moved != null && home != null)
             {
                 item = New(HistoryKind.Home, moved.Operator, round, "HOME", $"{moved.Operator.Name} reaches home");
-                item.Value = "";
+
+                // CG17: what the arrival paid, in the energy colour, as a cast prints its cost.
+                item.Value = home.Bounty > 0 ? $"+{home.Bounty}e" : "";
+                item.ValueColour = UiTheme.Cyan;
                 item.Toast = true;
             }
             else if (moved != null)
