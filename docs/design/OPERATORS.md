@@ -92,7 +92,9 @@ A cryogenics rig and a coordinate-swap device. She freezes the ground out from u
 
 She is the most fragile operator on the roster and moves at the same speed as the tank, so she cannot run from anything. What she has instead is reach — she can open an exchange from further out than any other operator can answer from, and she can leave one the same way. A player who treats her as a damage dealer will lose her in two hits; a player who treats her as a lever will move the whole board with her.
 
-Her entire kit is one damage type, deliberately: she is the answer to an opponent who hides behind barriers, and she is helpless against one who simply doesn't get hit.
+Her entire kit is one damage type, deliberately, and the cost of that is the whole of it: she is helpless against an opponent who simply doesn't get hit.
+
+**She was recorded as "the answer to an opponent who hides behind barriers", and she is not** (2026-10-03). That line sat here for eighteen days alongside an admission, four lines below, that the identity was still unexpressed — and the reason it was never expressed is that it was never true of her kit. Tech is Normal plus one counter, and that counter is Luka's ward working *against* her, not a barrier she works through. The role went to Kian, whose Inversion Matrix tears a shield off before it fires (`COMBAT_SYSTEMS.md` §5.8, §10.6); he was last in the bots sweep and she was not. If she is ever given a barrier answer of her own it needs to be an ability, not a damage type.
 
 Read at the table: _the one who is never where you left her._
 
@@ -101,7 +103,7 @@ Read at the table: _the one who is never where you left her._
 **All three blockers are cleared:**
 
 - ~~**A swap effect.**~~ **Done.** It needed a sixth effect kind, and it forced the §7.4 amendment that had been overdue since Apophis' clamp went undocumented. The arithmetic also exposed a case nobody had noticed — a placement running _forwards_ into a home column — and produced the rule that placement moving one operator clamps while placement moving two refuses.
-- ~~**The Tech damage type.**~~ **Done (2026-09-15)**, with Luka. Her damage is now Tech, which Luka's Hermes' Ring blocks and nothing else does. Her identity as the answer to barriers is still unexpressed: Tech is Normal plus that one counter until something amplifies it (`COMBAT_SYSTEMS.md` §2.2).
+- ~~**The Tech damage type.**~~ **Done (2026-09-15)**, with Luka. Her damage is now Tech, which Luka's Hermes' Ring blocks and nothing else does. Tech is Normal plus that one counter until something amplifies it (`COMBAT_SYSTEMS.md` §2.2), and no amplifier exists. The "answer to barriers" claim this bullet used to carry is struck (2026-10-03, above).
 - ~~**A field that damages on a duration.**~~ **Done (2026-09-16).** It arrived as the field shape of the operator-anchored deferred registry (`COMBAT_SYSTEMS.md` §6.6): a self-anchored `CryoField` status (§5.14) that bills enemies near her at each of her upkeeps, follows her when she moves, and ends when she does. The tick is 1 Normal — the design table left the amount blank, and it is flagged for tuning.
 
 Her fiction is also the strongest argument in the tech-level question below. Everyone else has a gauntlet, a rig or a drone; she has a singularity core and tachyon targeting.

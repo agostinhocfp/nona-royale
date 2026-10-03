@@ -148,7 +148,10 @@ namespace NonaRoyale.Core.Abilities
         /// the convention every non-status effect already followed, since
         /// <see cref="Status"/> defaults to <see cref="StatusKind.Stun"/>.
         /// Read this before reading <see cref="Status"/> on anything but
-        /// <see cref="EffectKind.ApplyStatus"/>.
+        /// <see cref="EffectKind.ApplyStatus"/> — and on
+        /// <see cref="EffectKind.StripStatus"/>, the one kind that names a
+        /// status it is <i>removing</i>, where this is false and
+        /// <see cref="Status"/> still means something.
         /// </summary>
         public bool CarriesStatus => Duration > 0;
 
@@ -328,6 +331,31 @@ namespace NonaRoyale.Core.Abilities
         public static AbilityEffect Cleanse(EffectAudience audience = EffectAudience.AllyOnly) =>
             new AbilityEffect(EffectKind.RemoveStatuses, EffectScope.PrimaryTarget, audience,
                 0, default, 0, default, 0, 0, 0, 0, 0, 0);
+
+        /// <summary>
+        /// Remove one named status from everyone in scope, and nothing else
+        /// (§5.8). Kian's Inversion Matrix.
+        /// </summary>
+        /// <remarks>
+        /// <b>A factory, not a copy method on <see cref="Cleanse"/>.</b> The
+        /// three copy methods on this type all narrow a damage effect without
+        /// changing what it is. A strip is not a narrowed cleanse: it is aimed
+        /// at the other side, scored as offence rather than defence, and worded
+        /// differently in the rules text. <see cref="EffectKind.StripStatus"/>
+        /// has the full argument.
+        ///
+        /// <b>Takes a scope, like <see cref="Push"/>.</b> The first use of it is
+        /// an area that already has no chosen target.
+        ///
+        /// <see cref="Duration"/> stays zero, so <see cref="CarriesStatus"/>
+        /// reads false: this effect removes a status, it does not apply one.
+        /// </remarks>
+        public static AbilityEffect Strip(
+            EffectScope scope, StatusKind status,
+            EffectAudience audience = EffectAudience.EnemyOnly,
+            int radius = 0) =>
+            new AbilityEffect(EffectKind.StripStatus, scope, audience,
+                0, default, radius, status, 0, 0, 0, 0, 0, 0);
 
         public static AbilityEffect Status_(
             EffectScope scope, StatusKind status, int duration,

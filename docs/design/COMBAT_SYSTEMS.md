@@ -361,6 +361,13 @@ Not a status — the absence of them. A cleanse removes every **applied** status
 - **The evasion charge is untouched.** Neutralize clears it because the operator is leaving the board; a cleanse must not, or it would silently re-arm an ally's evasion mid-round as a benefit nobody asked the ability for.
 - **A saved operator keeps nothing and gains nothing.** The save strips, puts it on 1 health and leaves it where it stood (§10.5). It is not healed, and the rescue is not a heal effect, so nothing that reads healing reads it.
 
+**A strip is the named opposite, and a separate kind (2026-10-03).** `EffectKind.StripStatus` removes **one** status the ability names and leaves the rest. It exists because a cleanse pointed at an enemy would be a gift: it would hand the victim back its bleed, its mark, its slow, its stun and its pending charges, and the counterplay a cleanse provides to the operator holding it (§5.10, §5.13, §5.14, §5.15) would start working for the side that cast it. The two are not one effect with a filter — nothing downstream reads them the same way. The rules it shares with a cleanse are the registry's: passives survive, and a status that has not taken hold yet comes off like any other.
+
+- **Only Kian's Inversion Matrix strips, and only `Shield`** (§10.6). Before this the game had no on-demand answer to a shield at all: three abilities grant one (Trauma Plate, Ablative Plating, Nano Cell) and the only thing that removed one was the indiscriminate cleanse, which is ally-only and, since 2026-10-01, fires only on CPR's save.
+- **It is declared before the damage it clears the way for.** Effects resolve in declared order, and a strip after the hit would tear the pool off after the pool had eaten it.
+- **A strip is not damage, so nothing that stops damage stops it.** A ward blocks the beam and not the strip; safe ground shelters against damage and not against this. The consequence is recorded with Kian: against a warded Luka the strip lands and the beam does nothing (§5.12).
+- **Measured, and it almost never fires.** A 4000-match bots sweep (2026-10-03) cast Inversion Matrix 9824 times and stripped a shield on **247 of them — 2.5%** — and never two shields in one cast. §12 records this as the open item: the mechanism is right and the trigger is the narrowest in the game.
+
 ### 5.9 Hastened
 
 - **Effect:** **+1 extra cell if the roll totals 6 or less, +2 if it totals 7 or more** (`HasteRollThreshold`, `HasteCellsAtOrBelowThreshold`, `HasteCellsAboveThreshold`), for `HasteDurationTurns` (2) of the holder's own turns. Not a speed change: the cells are added after the move's own speed and rounding (§6.3).
@@ -793,7 +800,7 @@ Noun-based, per `CONVENTIONS.md`. Each owns one rule family and nothing else.
 
 **`StatusRegistry` reports damage, it never applies it.** The pipeline consults the registry for evasion and shields, so a registry that called the pipeline would close a dependency cycle. Bleed and mark ticks are therefore _queried_ — the registry says what the tick owes and the caller pushes it through the pipeline as Atomic. The registry decides what damage is owed, the pipeline decides how damage lands, and neither knows the other exists.
 
-**An ability is a list of effects, and there are nineteen kinds:** Damage, Heal, ApplyStatus, PullToCaster, Execute, SwapWithCaster, RemoveStatuses, PushFromCaster, PaintCell, DeployZone, AttachCharge, DashToTarget, FollowUp, ProjectField, Watch, IncurDebt, DebtDamage, DealDice, SetTable. The resolver never branches on which ability is being cast. A new operator that cannot be expressed in those fifteen gets an amendment to this document and a new kind — never an `if`. Ten have been added in earnest: the swap for Mimi, the cleanse for Javi, the push and the two cell-anchored deferred kinds for Kian and Nuetu, the operator-anchored charge and the dash for Sanity (§10.8), the follow-up for Luka (§10.9), the self-anchored field for Mimi's Cryo Field (§10.4, §6.6), and the watch for Kurbyn's Predator's Read (§10.3, §6.7). Luka's critical hits are a field on the Damage kind (§2.4), not a kind of their own. Lethe added none (§10.10): Eris' Exploit is a `DeployZone` with a crowd setting (ADR-0007 Amendment 1). Revú added two, reworked 2026-09-24 into the debt and the debt-scaled hit (§3.3, §10.11), the first effects that reach past an operator into a player. Fortuna added two more (§10.12): the dealt dice, the first effect whose subject is the roll (§6.8), and the table, the first that reads the cells a move passes through (§7.7).
+**An ability is a list of effects, and there are twenty-one kinds:** Damage, Heal, ApplyStatus, PullToCaster, Execute, SwapWithCaster, RemoveStatuses, PushFromCaster, PaintCell, DeployZone, AttachCharge, DashToTarget, FollowUp, ProjectField, Watch, IncurDebt, DebtDamage, DealDice, SetTable, DrawToCell, StripStatus. The resolver never branches on which ability is being cast. A new operator that cannot be expressed in those twenty-one gets an amendment to this document and a new kind — never an `if`. Five are the originals (Damage, Heal, ApplyStatus, PullToCaster, Execute); the other sixteen were each added for a named ability. Ten came with the operators: the swap for Mimi, the cleanse for Javi, the push and the two cell-anchored deferred kinds for Kian and Nuetu, the operator-anchored charge and the dash for Sanity (§10.8), the follow-up for Luka (§10.9), the self-anchored field for Mimi's Cryo Field (§10.4, §6.6), and the watch for Kurbyn's Predator's Read (§10.3, §6.7). Luka's critical hits are a field on the Damage kind (§2.4), not a kind of their own. Lethe added one (§10.10): Eris' Exploit is a `DeployZone` with a crowd setting (ADR-0007 Amendment 1), but its draw is `DrawToCell` (§7.4, 2026-09-24) — this paragraph said "Lethe added none" for nine days after that shipped. Revú added two, reworked 2026-09-24 into the debt and the debt-scaled hit (§3.3, §10.11), the first effects that reach past an operator into a player. Fortuna added two more (§10.12): the dealt dice, the first effect whose subject is the roll (§6.8), and the table, the first that reads the cells a move passes through (§7.7). Kian added the twenty-first on 2026-10-03: `StripStatus`, the named removal (§5.8) and the first kind whose whole purpose is to undo another kind's work.
 
 **The engine reports every move a roll could make, not just one.** `PreviewLandings` returns, per operator, the pooled landing and one per distinct unspent face. A preview that showed only the pooled option would hide exactly the choice §6.3 prices, and the view must not compute any of it itself (`PRESENTATION.md` §1).
 
@@ -835,13 +842,13 @@ Twelve operators are in the draft pool, and **all twelve are complete**. Fortuna
 
 ### 10.1 Bouncer — Tank
 
-**HP 10 · Speed 1.0× · Range in path steps**
+**HP 11 · Speed 1.0× · Range in path steps**
 
 | #   | Ability                   | Type    | Cost | CD  | Range | Effect                                                                                               |
 | --- | ------------------------- | ------- | ---- | --- | ----- | ---------------------------------------------------------------------------------------------------- |
-| 1   | **Apophis**           | Active  | 6    | 2   | 3     | Pull target to the cell adjacent to Bouncer (§7.4). Enemy: **3 Atomic**. Ally: pull only, no damage. |
+| 1   | **Apophis**           | Active  | 5    | 2   | 4     | Pull target to the cell adjacent to Bouncer (§7.4). Enemy: **3 Atomic**. Ally: pull only, no damage. |
 | 2   | **Intimidating Presence** | Passive | —    | —   | 3     | Enemies within range: speed multiplier **−0.5** (floor 0.5, §5.2).                                   |
-| 3   | **All-In Mauling**        | Active  | 4    | 1   | 2     | Enemy: **3 Normal** to target **and 1 direct to Bouncer** (§2.3). Ally: **heal 2**.                  |
+| 3   | **All-In Mauling**        | Active  | 4    | 1   | 2     | Enemy: **4 Normal** to target **and 1 direct to Bouncer** (§2.3). Ally: **heal 2**.                  |
 
 Intimidating Presence is an aura, not a status: it is evaluated when an affected operator's movement is calculated, so there is no duration to track and no application event.
 
@@ -863,6 +870,13 @@ Bouncer's kit is priced on **positioning, not energy** — the roster's slowest 
 
 It is now the cheap brawl: shorter than Apophis, Normal rather than Atomic so a plate or an evasion charge answers it, and it costs blood. **Cooldown 1 rather than 0** — at 4 energy the cap would otherwise buy three casts in a banked turn. Apophis into Mauling still works; they share no cooldown.
 
+**2026-10-03 pass (designer, `0567f86`): Apophis 6 → 5 energy and range 3 → 4; All-In Mauling primary 3 → 4 and its cost cut by one.** The table above is updated. Two things the commit did not account for, found when the test harness was next run:
+
+- **Apophis left Equilibrium's dear band.** Revú's passive doubles a cast costing `EquilibriumCheapCostMax` (3) or less and halves one costing `EquilibriumDearCostMin` (6) or more, leaving 4 and 5 untouched (§5.17). At 6 energy Apophis' 3 Atomic was halved to 1 against Revú; at 5 it lands whole. **Threefold, against the one operator the ability was dearest against**, as a side effect of a cost change rather than a decision about Revú. Pinned by `Equilibrium_LeavesApophisAlone_SinceItsCostLeftTheDearBand`; if the halving is wanted back, the dial is `EquilibriumDearCostMin` 6 → 5, not Apophis' cost. All-In Mauling's cut stayed inside the neutral band, so that half of the pass is clean.
+- **"Reach and aura are one kit" is broken again.** Intimidating Presence is 3 and Apophis is now 4, so for the first time there is something he can pull that his aura has not already slowed. The note above says to move the other when one moves; it was not moved. Left as the designer's call rather than changed here.
+
+The pass also shipped with three red tests — the two expectations above and the unre-pinned fingerprint — and with no entry in this log. Both are repaired in the 2026-10-03 fifth-pass entry below.
+
 **Measured, 800 matches per row.** Bots cast it 1.40 → 2.33 times a match, so the reprice did what it was meant to. It also made the game bloodier — standard sweep neutralizes 3.4 → 4.8 and turns 21.2 → 22.1; four-bot knockouts 13.9 → 14.9 — and **Bouncer's own win share fell 28% → 24%**, because a bot that casts it twice as often pays twice the blood.
 
 **Self-damage 2 → 1 (2026-09-18, designer), the answer to that.** It was 1 against 12 health — twelve casts, flavour text — and rose to 2 when health fell to 9; at ten health and twice the casting rate, 2 a cast was giving his match away. At 1 it is ten casts, and it still bites the wounded Bouncer who was going to cast anyway.
@@ -873,7 +887,7 @@ It is now the cheap brawl: shorter than Apophis, Normal rather than Atomic so a 
 
 ### 10.2 Syla, The Blood Hound — Assassin
 
-**HP 7 · Speed 1.5×**
+**HP 8 · Speed 1.5×**
 
 | #   | Ability               | Type         | Cost | CD  | Range                | Effect                                                                                                                                                                                                                                                  |
 | --- | --------------------- | ------------ | ---- | --- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -897,7 +911,7 @@ Two numbers here have been walked back under measurement. The squad buff was **+
 
 ### 10.3 Kurbyn, DarkGrave — Brawler
 
-**HP 7 · Speed 1.0× with permanent haste (+1 on a roll of 6 or less, +2 above, capped at 2 cells a turn) · two actives and the passive since 2026-09-17 · no evasion since 2026-09-24**
+**HP 8 · Speed 1.0× with permanent haste (+1 on a roll of 6 or less, +2 above, capped at 2 cells a turn) · two actives and the passive since 2026-09-17 · no evasion since 2026-09-24**
 
 | #   | Ability              | Type         | Cost | CD  | Range                | Effect                                                                                                                                                                                              |
 | --- | -------------------- | ------------ | ---- | --- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -943,7 +957,7 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 ### 10.4 Mimi — Controller
 
-**HP 7 · Speed 1.0× · Complete — all three abilities implemented since 2026-09-16**
+**HP 8 · Speed 1.0× · Complete — all three abilities implemented since 2026-09-16**
 
 > Her direct damage is **Tech** (2026-09-15, §2.2); Cryo Field is a self-centred emission and stays **Normal** under the same rule, so a warded Luka no longer shuts her out (§5.12). Her old identity as the anti-shield operator is still unexpressed — nothing amplifies Tech yet.
 
@@ -1059,11 +1073,11 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 ### 10.6 Kian — Artillery
 
-**HP 7 · Speed 1.0× · Complete — all three abilities implemented**
+**HP 8 · Speed 1.0× · Complete — all three abilities implemented**
 
 | #   | Ability              | Type   | Cost | CD  | Range                     | Effect                                                                                                                                                |
 | --- | -------------------- | ------ | ---- | --- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Inversion Matrix** | Active | 3    | 3   | 4 (line ahead, no target) | **2 Tech** and **Stun 1 turn** to every enemy on the next 4 cells **ahead of him** along his own direction of travel.                                 |
+| 1   | **Inversion Matrix** | Active | 3    | 3   | 4 (line ahead, no target) | **Strips `Shield`**, then **2 Tech** and **Stun 1 turn**, to every enemy on the next 4 cells **ahead of him** along his own direction of travel.      |
 | 2   | **Sonic Disrupter**  | Active | 3    | 3   | 3 (AOE, self-origin)      | **2 Tech**, **Slow 1 turn**, then **push 2 cells** away from him (§7.4), to every enemy within 3. The push never carries anyone into a home column.   |
 | 3   | **Drone Strike**     | Active | 4    | 2   | unlimited (cell)          | Paint any outer-track cell (ADR-0006). At Kian's next upkeep a beam deals **4 Tech in total**, **divided** among the enemies within 1 of the cell.    |
 
@@ -1097,6 +1111,20 @@ Bots sweep, 800 matches, before → after (noise about ±1.5 points):
 | Javi     | 32%    | 30%   |
 
 Casts per match: Drone Strike 4.58 → 5.87, Sonic Disrupter 2.72 → 3.70, Inversion Matrix 1.82 → 3.05. Mimi's drop is just outside noise: at 6 health she is the operator a wider 2-damage wave hurts most. Watch it.
+
+**2026-10-03 (designer): Inversion Matrix tears shields off before its own damage.** `EffectKind.StripStatus`, the twenty-first kind (§5.8). The strip is declared first, so the beam lands on health rather than on a pool. It is the roster's only on-demand answer to a shield, and it was given to Kian rather than to Mimi — whose recorded identity had claimed the anti-barrier role without ever expressing it — because he was last in the sweep and she was not. `OPERATORS.md` no longer gives her that line.
+
+**It does nothing to a warded Luka**, and that is worth stating plainly rather than leaving as an inference: Hermes' Ring blocks Tech outright and terminally (§5.12), before a shield is ever consulted. So against the one operator with a total answer to Kian, the strip removes the pool and the beam still arrives at nothing.
+
+**The cost did not move, and the measurement says the change is inert.** 4000-match bots sweep, same seeds before and after:
+
+| Operator | Before | After | Wins (of 3992–4074 appearances) |
+| -------- | ------ | ----- | ------------------------------- |
+| Lethe    | 27%    | 27%   | 1092 → 1083                     |
+| Nuetu    | 26%    | 26%   | 1075 → 1076                     |
+| Kian     | 22%    | 22%   | 886 → 893                       |
+
+Seven wins on 3992 appearances is a quarter of one standard error; Inversion Matrix's cast rate moved 2.44 → 2.46. **The reason is the coincidence rate, not the mechanism:** instrumented over the same 4000 matches, the ability was cast 9824 times and stripped something **247 times (2.5%)**, never more than one shield at once. The theoretical ceiling in `Kian.cs` — three pools for three energy — did not happen once. For a strip to land, a shielded enemy has to be standing in 4 of 52 cells, directly ahead, in the window the shield is live. Of his three abilities this is the only one that cannot be aimed; **Drone Strike can be pointed at any cell on the board and is the most-cast ability in the game (4.88/match)**, which is where a counter would actually meet its target. **Moving it there, or onto Sonic Disrupter, was offered and declined** (designer, same day): it stays here, read as flavour and a rare swing rather than as the answer to his win share. §12 records the decision and keeps Kian's standing as the open item instead.
 
 ### 10.7 Nuetu — Bruiser
 
@@ -1216,7 +1244,7 @@ Casts per match: Drone Strike 4.58 → 5.87, Sonic Disrupter 2.72 → 3.70, Inve
 
 ### 10.9 Luka — Duelist
 
-**HP 7 · Speed 1.0× · Complete — all three abilities implemented** _(added 2026-09-15)_
+**HP 8 · Speed 1.0× · Complete — all three abilities implemented** _(added 2026-09-15)_
 
 > **He arrived with three amendments:** the Tech type (§2.2), critical hits (§2.4) and the follow-up strike (§6.5), plus two statuses (§5.12, §5.13). The teleport is Collision's landing (§7.6) with no path damage, not a new mechanic.
 >
@@ -1258,7 +1286,7 @@ Casts per match: Drone Strike 4.58 → 5.87, Sonic Disrupter 2.72 → 3.70, Inve
 
 ### 10.10 Lethe — Catalyst
 
-**HP 7 · Speed 1.0× (permanently Hastened) · Complete — both abilities and the aura implemented** _(added 2026-09-17)_
+**HP 8 · Speed 1.0× (permanently Hastened) · Complete — both abilities and the aura implemented** _(added 2026-09-17)_
 
 > **Bouncer's shape, pointed the other way:** two actives, with an aura in the middle slot. His aura slows enemies near him; hers hastens allies near her. Nano Cell uses existing effects, Catalyst is an aura with a side, a haste flag and — since 2026-09-24 — a trail, and Eris' Exploit is a `DrawToCell` (new 2026-09-24, §7.4) followed by a `DeployZone` with a crowd setting (ADR-0007 Amendment 1).
 
@@ -1353,7 +1381,7 @@ Casts per match: Drone Strike 4.58 → 5.87, Sonic Disrupter 2.72 → 3.70, Inve
 
 ### 10.11 Revú — Loan Shark
 
-**HP 8 · Speed 1.0× · Complete — both abilities and the passive implemented** _(added 2026-09-17, from `OPERATOR_DRAFTS.md` §3; tuned the same day, below)_
+**HP 9 · Speed 1.0× · Complete — both abilities and the passive implemented** _(added 2026-09-17, from `OPERATOR_DRAFTS.md` §3; tuned the same day, below)_
 
 > **The punishment web, run as a loan book** (2026-09-24). His basic ability puts the target's seat in debt, which grows every turn it is owed; his ultimate collects it; his passive makes the cheap answers to him the dangerous ones. **Bouncer's shape:** two actives with a named passive in the middle slot, ids 1101 and 1102. The draft planned 1101–1103 under the operator-number scheme; Fuse and Ghost's planned ids are now Luka's and Lethe's.
 
@@ -1450,7 +1478,7 @@ Casts per match: Drone Strike 4.58 → 5.87, Sonic Disrupter 2.72 → 3.70, Inve
 
 ### 10.12 Fortuna — Dealer
 
-**HP 7 · Speed 1.0× · Complete — three abilities and the House Edge** _(added 2026-09-18)_
+**HP 8 · Speed 1.0× · Complete — three abilities and the House Edge** _(added 2026-09-18)_
 
 | #   | Ability            | Type         | Cost | CD  | Range      | Effect                                                                                                                                                                  |
 | --- | ------------------ | ------------ | ---- | --- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -1714,6 +1742,16 @@ The designer's read: games take too long, possibly because there are a lot of ki
 - **Ungated regen reopens what §5.11 closed:** it heals on safe cells (free parking), refunds chip damage such as bleed, and undercuts Javi's heal. The gates answered those, and the measurement shows the gates are also why regen does almost nothing.
 - **The Sanity pass pushes the other way:** +1.7 turns per seat (§10.8).
 - **Not measured yet:** lower collision damage; +1 health on the 5- and 6-health operators only.
+
+### The shield strip stays on Inversion Matrix (2026-10-03, decided)
+
+Inversion Matrix strips `Shield` before its own damage (§5.8, §10.6). The mechanism is right, tested and mutation-checked, and it is the game's only on-demand answer to a shield. **It fires on 2.5% of its own casts** — 247 of 9824 over 4000 bot matches, never more than one shield at a time — and the win shares moved by 7 wins on 3992 appearances, a quarter of a standard error.
+
+The limit is the trigger, not the effect. A strip has to coincide with a live shield, and Inversion Matrix is the narrowest trigger in the game: 4 of 52 cells, directly ahead, no aim. Two alternatives were put up and **declined (designer, 2026-10-03)**: moving it to Sonic Disrupter (seven cells rather than four, self-centred, still not aimed) and moving it to Drone Strike (unlimited range, any cell, the most-cast ability in the game at 4.88 a match — the only one of his three that can be *pointed at* the operator holding the pool, at the price of new engine work in `DeferredCellEffects` and a strip that resolves a round late).
+
+**The decision is that it stays where it is**, read as flavour and a rare swing rather than as a fix: when it does land on a full Ablative Plating it is worth more than the beam it precedes. **Kian's 22% is a separate brief**, and the open item is his, not the strip's — he has been bottom-third in every sweep taken since 2026-09-17, when a pass took him 19% → 23%, and that has since been eaten. Do not reach for another counter to carry him; find what is holding him down first.
+
+**Still genuinely open: the draft does not value a counter at all.** `DraftPicker.Value` counts damage, control and tempo, so an operator whose kit answers another operator's kit drafts exactly as he did before. Adding a counter axis is a bigger change than this one and would confound any sweep taken across it, so it was deliberately left out of this commit.
 
 ### Struck
 
@@ -2001,6 +2039,21 @@ The watch machinery (§6.7) is dormant: `PredatorsReadTests` and `WatchBotTests`
 - `SonicDisrupter_ReachesThreeCells_AndNoFurther`
 - `Kian_Numbers_AreTheDesignersOf20260917`
 
+**The shield strip — `AbilityResolverTests`, `ShieldStripPricingTests`** (§5.8, §10.6)
+
+- `InversionMatrix_TearsTheShieldOff_BeforeItsOwnDamage` — the pool is 2 and the beam is 2, so the health figure is what proves the order
+- `InversionMatrix_StripsTheShield_AndLeavesEveryOtherStatus` — bleed, stacks, mark and a pending charge all survive; this is the pairing that separates a strip from a cleanse
+- `InversionMatrix_StripsEveryShieldInTheLine_AndNoneBehindIt`
+- `InversionMatrix_StripsAWardedTarget_AndTheWardStillBlocksTheBeam` (§5.12)
+- `InversionMatrix_DeclaresTheStripFirst` — a reorder is otherwise silent
+- `TheShieldCostsTheCastNothing_BecauseTheCastTakesItOff`, `AStrippedShield_ScoresTheKillItUncovers`, `AShieldBehindHim_IsWorthNothing`, `TheStrippedEstimate_IgnoresThePool_AndNothingElse`
+
+**The Bouncer's 2026-10-03 pass, re-pinned** (§10.1, `0567f86`)
+
+- `AllInMauling_WoundsTheTargetAndTheBouncer` — the +1 primary; the expectation shipped stale
+- `Equilibrium_HalvesAtomicToo` — moved off Apophis onto Miracle Pull's Atomic splash, because Apophis' cost cut took it out of Equilibrium's dear band
+- `Equilibrium_LeavesApophisAlone_SinceItsCostLeftTheDearBand` — new, pinning that side effect so the next cost change decides it on purpose
+
 **Fortuna — `FortunaTests`, `FortunaTableTests`, `FortunaBotTests`** (§3.4, §6.8, §7.7, §10.12)
 
 - `Cash_TakesTheDieAndPaysTheHouse`, `Cash_IsOnceATurn`, `Cash_IsHersAlone`, `Cash_RefusedWhileStunned`
@@ -2118,3 +2171,11 @@ The watch machinery (§6.7) is dormant: `PredatorsReadTests` and `WatchBotTests`
   - Code: `Bouncer.VelvetRope` → `Bouncer.Apophis`, the display name, the sound slug `Bouncer_VelvetRope` → `Bouncer_Apophis` (no recorded file used it), `SignatureRecipes.ApophisTell` and `ApophisImpact`, the guide's two lines and every comment that named it. Test names follow (§13's list above).
   - Id 101 is unchanged, and names are not in the fingerprint, so it stays `a48228fb`. Core harness 1022 passing; the audio tests (46) pass in the cloud harness.
   - This log keeps the old name in entries written before the rename.
+- 2026-10-03 (fifth pass) — **The shield strip** (designer: "Kian's Inversion Matrix now removes shields before his damage effect").
+  - **§5.8 gains the strip.** `EffectKind.StripStatus`, the twenty-first kind: removes the **one** status the ability names and nothing else. A separate kind rather than a filter on `RemoveStatuses`, because a cleanse aimed at an enemy is a gift — it hands the victim back its bleed, its mark and its pending charges — and because `StatusKind.Stun` is zero, so a filter could not have been expressed on the existing kind at all without every current cleanse reading as "strip stun only". `AbilityEffect.Strip` is a factory, not a copy method: the three copy methods on that type narrow a damage effect, and this is not a narrowed cleanse. §9.1's kind list corrected on the way past — it said nineteen, listed nineteen and was missing `DrawToCell`, which had shipped with Eris' Exploit nine days earlier, and the same sentence still read "Lethe added none".
+  - **Inversion Matrix declares it first**, ahead of its 2 Tech and its stun, so the beam lands on health rather than on a pool (§10.6). The roster's only on-demand answer to a shield since CPR narrowed the cleanse to a save (2026-10-01): three abilities grant one and nothing took one away. **It does nothing to a warded Luka** — Hermes' Ring blocks Tech outright and before the shield is consulted (§5.12) — which is pinned rather than argued.
+  - **Kian took it rather than Mimi** (designer's call, offered as a choice). `OPERATORS.md` had recorded "she is the answer to an opponent who hides behind barriers" and, four lines later, that the identity "is still unexpressed". That line is struck rather than left with two operators claiming the role; Kian was last in the sweep and she was not.
+  - **The bots price it, in the same commit.** `CastPlanner.StripValue` differences two runs of `HitFromThisCast`, with and without the pool, through `Hit` — so a strip that turns "shrugs it off" into "dies to it" scores the kill rather than two points of damage. `BotBoard.ExpectedHit` gains `shieldStripped`. Without this the planner would have read a shielded enemy as immune to the very ability built to answer the shield, and the sweep would have said the change did nothing for the wrong reason.
+  - **Measured, and it is inert.** 4000-match bots sweep on the same seeds: Kian 886 → 893 wins of 3992 appearances (22% either way), Lethe 1092 → 1083, Nuetu 1075 → 1076. Instrumented over the same matches, Inversion Matrix was cast 9824 times and stripped a shield **247 times (2.5%)**, never two at once — so the "three pools for three energy" ceiling in `Kian.cs` never happened. **The trigger is the limit, not the mechanism.** Moving it to Sonic Disrupter (seven cells) or to Drone Strike (any cell, most-cast in the game, the only one of his three that can be aimed at the pool) was offered and **declined** the same day: it stays on Inversion Matrix as flavour and a rare swing. §12 closes that question and keeps **Kian's 22%** as the open item instead — bottom-third in every sweep since the 2026-09-17 pass, which has since been eaten. The cost did not move.
+  - Fingerprint `a48228fb` → `157dce4f`: a new kind in the effect list moves the hash, so replays recorded before this are refused. Core harness 1022 → 1032 passing (six Kian tests in `AbilityResolverTests`, four in the new `ShieldStripPricingTests`). Six mutants killed; the two that survive — the clamp in `StripValue` and its `Has` guard — are equivalent by construction and now say so in the code.
+  - **Nine stale `HP` headers in §10 corrected** on the way past: Bouncer 10 → 11, Syla, Kurbyn, Mimi, Kian, Luka, Lethe and Fortuna 7 → 8, Revú 8 → 9. The 2026-09-25 roster-wide +1 reached the code and not these lines; the only three that were right are the three touched by hand since. Not a rule change — a correction.

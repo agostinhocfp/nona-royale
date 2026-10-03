@@ -119,6 +119,8 @@ namespace NonaRoyale.Core.Text
                 .Text("Neutralized outright: sent to the yard whatever its health, if it was below the ability's line when the cast began."));
             Term(list, Keywords.Cleanse, "Cleanse", new RulesLine()
                 .Text("Removes every status from the target, helpful ones included. Passives stay."));
+            Term(list, Keywords.Strip, "Strip", new RulesLine()
+                .Text("Removes the one status the ability names and leaves the rest alone. Passives stay."));
             Term(list, Keywords.Placement, "Placement", new RulesLine()
                 .Text("Moved by an ability rather than by dice. It never collides and never triggers anything on the cells it passes."));
             Term(list, Keywords.Mode, "Enemy and ally casts", new RulesLine()

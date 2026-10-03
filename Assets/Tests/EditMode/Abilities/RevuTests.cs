@@ -431,14 +431,41 @@ namespace NonaRoyale.Core.Tests.Abilities
         [Test]
         public void Equilibrium_HalvesAtomicToo()
         {
-            // Apophis is 6: 3 Atomic becomes 1.
+            // Miracle Pull is 9, so its Atomic splash of 2 becomes 1. Moved off
+            // Apophis on 2026-10-03: Apophis left the dear band when 0567f86 cut
+            // it to 5 energy, and the rule under test is that Atomic is not
+            // exempt from Equilibrium — not that one particular ability is dear.
+            // The test below pins what happened to Apophis.
+            BringEnemyRevuTo(14);                                    // inside the splash, off _near's cell
+            var kurbyn = AtTrack(20, "Kurbyn", PlayerColor.Red, Kurbyn.MaxHealth, 11);
+            _board.Add(kurbyn);
+
+            _abilities.Use(kurbyn, Kurbyn.MiraclePull, _target, _red, _board);
+
+            Assert.That(_enemyRevu.Health, Is.EqualTo(Revu.MaxHealth - 1));
+        }
+
+        [Test]
+        public void Equilibrium_LeavesApophisAlone_SinceItsCostLeftTheDearBand()
+        {
+            // 0567f86 cut Apophis from 6 energy to 5. Equilibrium doubles at or
+            // below EquilibriumCheapCostMax and halves at or above
+            // EquilibriumDearCostMin, which leaves 4 and 5 untouched — so its 3
+            // Atomic was 1 against Revú and now lands whole. A threefold swing
+            // against the one operator the ability was dearest against, and a
+            // side effect of a cost change rather than a decision about Revú.
+            // Pinned so the next cost change to Apophis has to make the call on
+            // purpose.
+            Assert.That(Bouncer.Apophis.EnergyCost, Is.LessThan(CombatConfig.Default.EquilibriumDearCostMin));
+            Assert.That(Bouncer.Apophis.EnergyCost, Is.GreaterThan(CombatConfig.Default.EquilibriumCheapCostMax));
+
             BringEnemyRevuTo(12);
             var bouncer = AtTrack(20, "Bouncer", PlayerColor.Red, Bouncer.MaxHealth, 11);
             _board.Add(bouncer);
 
             _abilities.Use(bouncer, Bouncer.Apophis, _enemyRevu, _red, _board);
 
-            Assert.That(_enemyRevu.Health, Is.EqualTo(Revu.MaxHealth - 1));
+            Assert.That(_enemyRevu.Health, Is.EqualTo(Revu.MaxHealth - 3));
         }
 
         [Test]

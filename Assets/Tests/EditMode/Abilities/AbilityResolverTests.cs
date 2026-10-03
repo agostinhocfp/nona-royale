@@ -401,18 +401,18 @@ namespace NonaRoyale.Core.Tests.Abilities
         [Test]
         public void AllInMauling_WoundsTheTargetAndTheBouncer()
         {
-            // 3 out and 1 back since the 2026-09-18 pass (4 energy, cooldown 1,
-            // self-damage cut 2 → 1 after the bots gave away Bouncer's match
-            // paying it). Apophis into Mauling was 3 Atomic plus 3 and killed
-            // either 6-health operator from full; at 3 plus 3 against 7 health
-            // it leaves 1, so it is still a setup rather than an execution.
-            // Ten casts of self-damage neutralize a full-health Bouncer.
+            // 4 out and 1 back since the 2026-10-03 Bouncer pass (0567f86:
+            // primary 3 → 4, cost 5 → 4, keeping the cooldown of 1 and the
+            // self-damage of 1 set on 2026-09-18 after the bots gave away
+            // Bouncer's match paying it). Against a 6-health operator it now
+            // leaves 2 — still a setup rather than an execution, and still ten
+            // casts of self-damage to neutralize a full-health Bouncer.
             _bouncer.MoveTo(ProgressAtTrack(PlayerColor.Red, 11));   // range 2 to track 12
 
             var result = Use(_bouncer, Bouncer.AllInMauling, _enemy);
 
             Assert.That(result.Approved, Is.True);
-            Assert.That(_enemy.Health, Is.EqualTo(3));
+            Assert.That(_enemy.Health, Is.EqualTo(2));
             Assert.That(_bouncer.Health, Is.EqualTo(Bouncer.MaxHealth - 1));
         }
 
@@ -697,6 +697,127 @@ namespace NonaRoyale.Core.Tests.Abilities
             Use(kian, Kian.InversionMatrix);
 
             Assert.That(sharing.Health, Is.EqualTo(6));
+        }
+
+        /// <summary>Puts a live shield on a Blue operator, on Blue's own turn.</summary>
+        /// <remarks>
+        /// Applied on the holder's turn and handed back to Red deliberately. A
+        /// status applied outside its holder's turn does not take hold until
+        /// that holder's next one (§5), so a shield cast onto an enemy during
+        /// Red's turn absorbs nothing during Red's turn — and a test that did
+        /// that would pass whether the strip worked or not.
+        /// </remarks>
+        private void ShieldUp(OperatorState blue)
+        {
+            _clock.BeginTurnFor(PlayerColor.Blue);
+            _statuses.Apply(blue, StatusKind.Shield, duration: 3);
+            _clock.BeginTurnFor(PlayerColor.Red);
+
+            Assert.That(_statuses.Has(blue, StatusKind.Shield), Is.True, "the fixture's shield is live");
+            Assert.That(_statuses.ShieldPool(blue), Is.EqualTo(CombatConfig.Default.ShieldPoolDefault));
+        }
+
+        [Test]
+        public void InversionMatrix_TearsTheShieldOff_BeforeItsOwnDamage()
+        {
+            // The whole point of the 2026-10-03 change, and the reason the strip
+            // is declared first. The default pool is 2 and the beam is 2, so
+            // with the shield still up the enemy takes nothing at all; the
+            // health figure is what proves the order, not the effect list.
+            var kian = KianAt(10);
+            ShieldUp(_enemy);
+
+            var result = Use(kian, Kian.InversionMatrix);
+
+            Assert.That(result.Approved, Is.True);
+            Assert.That(_statuses.Has(_enemy, StatusKind.Shield), Is.False, "stripped");
+            Assert.That(_enemy.Health, Is.EqualTo(4), "the beam landed on health, not on the pool");
+        }
+
+        [Test]
+        public void InversionMatrix_StripsTheShield_AndLeavesEveryOtherStatus()
+        {
+            // The reason this is EffectKind.StripStatus and not a cleanse aimed
+            // at an enemy. A cleanse would hand the victim back its bleed, its
+            // mark and its pending charges — counterplay built for the other
+            // side (§5.10, §5.13, §5.14, §5.15) working for the wrong one.
+            var kian = KianAt(10);
+            ShieldUp(_enemy);
+
+            _clock.BeginTurnFor(PlayerColor.Blue);
+            _statuses.Apply(_enemy, StatusKind.Bleed, duration: 3, stacks: 2);
+            _statuses.Apply(_enemy, StatusKind.Mark, duration: 3);
+            _statuses.Apply(_enemy, StatusKind.ZeroDayCharge, duration: 3);
+            _clock.BeginTurnFor(PlayerColor.Red);
+
+            Use(kian, Kian.InversionMatrix);
+
+            Assert.That(_statuses.Has(_enemy, StatusKind.Shield), Is.False);
+            Assert.That(_statuses.Has(_enemy, StatusKind.Bleed), Is.True, "bleed survives the strip");
+            Assert.That(_statuses.BleedStacks(_enemy), Is.EqualTo(2), "and keeps its stacks");
+            Assert.That(_statuses.Has(_enemy, StatusKind.Mark), Is.True, "the mark survives");
+            Assert.That(_statuses.Has(_enemy, StatusKind.ZeroDayCharge), Is.True, "a pending charge survives");
+        }
+
+        [Test]
+        public void InversionMatrix_StripsEveryShieldInTheLine_AndNoneBehindIt()
+        {
+            // Three pools for three energy is the ceiling the ability was
+            // priced against; the one behind him is the floor.
+            var kian = KianAt(10);
+            var behind = AtTrack(12, "Behind", PlayerColor.Blue, 6, 8);
+            _board.Add(behind);
+
+            ShieldUp(_enemy);
+            ShieldUp(_enemyTwo);
+            ShieldUp(behind);
+
+            Use(kian, Kian.InversionMatrix);
+
+            Assert.That(_statuses.Has(_enemy, StatusKind.Shield), Is.False);
+            Assert.That(_statuses.Has(_enemyTwo, StatusKind.Shield), Is.False);
+            Assert.That(_enemy.Health, Is.EqualTo(4));
+            Assert.That(_enemyTwo.Health, Is.EqualTo(4));
+
+            Assert.That(_statuses.Has(behind, StatusKind.Shield), Is.True, "the line does not reach backwards");
+            Assert.That(behind.Health, Is.EqualTo(6));
+        }
+
+        [Test]
+        public void InversionMatrix_StripsAWardedTarget_AndTheWardStillBlocksTheBeam()
+        {
+            // Hermes' Ring blocks Tech outright and terminally, before a shield
+            // is ever consulted (§5.12), so against a warded Luka the strip
+            // takes the pool and the beam still does nothing. The one operator
+            // this change does not reach, pinned rather than argued.
+            var kian = KianAt(10);
+            ShieldUp(_enemy);
+
+            _clock.BeginTurnFor(PlayerColor.Blue);
+            _statuses.Apply(_enemy, StatusKind.TechWard, duration: 3);
+            _clock.BeginTurnFor(PlayerColor.Red);
+
+            Use(kian, Kian.InversionMatrix);
+
+            Assert.That(_statuses.Has(_enemy, StatusKind.Shield), Is.False, "the strip is not damage; the ward does not stop it");
+            Assert.That(_statuses.Has(_enemy, StatusKind.TechWard), Is.True, "and the ward is not what was named");
+            Assert.That(_enemy.Health, Is.EqualTo(6), "the ward blocked the beam");
+        }
+
+        [Test]
+        public void InversionMatrix_DeclaresTheStripFirst()
+        {
+            // Declared order is resolution order, and a reorder here is silent:
+            // the pool would eat the beam and the strip would then tear off an
+            // empty shield. Pinned beside the health assertion above, which
+            // catches the same mistake from the other end.
+            Assert.That(Kian.InversionMatrix.Effects[0].Kind, Is.EqualTo(EffectKind.StripStatus));
+            Assert.That(Kian.InversionMatrix.Effects[0].Status, Is.EqualTo(StatusKind.Shield));
+            Assert.That(Kian.InversionMatrix.Effects[0].Radius, Is.EqualTo(4));
+            Assert.That(Kian.InversionMatrix.Effects[0].CarriesStatus, Is.False,
+                "a strip removes a status; it does not apply one");
+            Assert.That(Kian.InversionMatrix.Effects[1].Kind, Is.EqualTo(EffectKind.Damage));
+            Assert.That(Kian.InversionMatrix.Effects[2].Kind, Is.EqualTo(EffectKind.ApplyStatus));
         }
 
         [Test]

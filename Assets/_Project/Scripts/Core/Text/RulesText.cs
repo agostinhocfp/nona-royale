@@ -244,6 +244,14 @@ namespace NonaRoyale.Core.Text
                     line.Keyword("cleanse", Keywords.Cleanse).Text(": every status is removed");
                     return;
 
+                // Named, unlike a cleanse, so the line says which one goes and
+                // the player can read that the rest stays.
+                case EffectKind.StripStatus:
+                    line.Keyword("strip", Keywords.Strip).Text(": ")
+                        .Keyword(Glossary.TitleOf(e.Status), Keywords.Status(e.Status))
+                        .Text(" is removed");
+                    return;
+
                 case EffectKind.Execute: Execute(line, e); return;
                 case EffectKind.PaintCell: Beacon(line, e); return;
                 case EffectKind.DeployZone: Zone(line, e); return;

@@ -494,6 +494,25 @@ namespace NonaRoyale.Core.Services
                             outcomes.Add(EffectOutcome.StatusRemoved(recipient, kind));
                         break;
 
+                    // One named status and nothing else (§5.8). Reported with
+                    // the same outcome a cleanse reports, because what a
+                    // spectator sees is identical — a status leaving an
+                    // operator — and the log already names which one.
+                    //
+                    // No down-recipient guard, unlike Damage and Execute:
+                    // stripping a status off something already at zero changes
+                    // nothing and reports nothing, since the entry is gone with
+                    // it at the end of the cast either way.
+                    //
+                    // §5's "takes hold next turn" rule is about when a status
+                    // starts counting, not about whether it is there. A shield
+                    // applied this turn by its own holder is already an entry,
+                    // and so is one that has not taken hold yet; both come off.
+                    case EffectKind.StripStatus:
+                        if (_statuses.Remove(recipient, effect.Status))
+                            outcomes.Add(EffectOutcome.StatusRemoved(recipient, effect.Status));
+                        break;
+
                     case EffectKind.Execute:
                         if (IsAlreadyDown(recipient)) break;
                         outcomes.Add(RunExecute(effect, caster, recipient));

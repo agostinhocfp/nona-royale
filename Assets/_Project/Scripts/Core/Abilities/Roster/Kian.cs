@@ -95,15 +95,49 @@ namespace NonaRoyale.Core.Abilities
         /// thumb (Tech is a guided or remote device); the emitters are read as
         /// a device he fires. A warded Luka now takes none of it, and a Revú
         /// takes it doubled (§5.17, cost 3).
+        ///
+        /// <b>Designer change, 2026-10-03: it tears shields off first.</b> The
+        /// strip is declared ahead of the damage, so the beam lands on bare
+        /// health rather than on a pool — and the roster's only on-demand answer
+        /// to a shield now exists. Three abilities grant one (Javi's Trauma
+        /// Plate, Nuetu's Ablative Plating, Lethe's Nano Cell) and until now
+        /// nothing in the game could take one away except an indiscriminate
+        /// cleanse, which is ally-only and has exactly one caster.
+        ///
+        /// <b>It strips a shield and leaves everything else.</b>
+        /// <see cref="EffectKind.StripStatus"/>, not a cleanse: a cleanse aimed
+        /// at an enemy would hand it back its bleed, its mark, its slow and its
+        /// pending charges, and the ally-side counterplay a cleanse provides
+        /// (§5.10, §5.13, §5.14, §5.15) would start working for the wrong side.
+        ///
+        /// <b>Order is a rule here as it is on Sonic Disrupter.</b> Strip,
+        /// damage, stun. Declaring the strip second buys nothing at all, since
+        /// the pool would already have eaten the hit.
+        ///
+        /// <b>It does nothing to a warded Luka.</b> Hermes' Ring blocks Tech
+        /// outright and terminally (§5.12), before a shield is ever consulted,
+        /// so the strip is wasted on the one operator in the game whose answer
+        /// to this ability is total. It is aimed at Nuetu and Lethe, the two
+        /// operators holding the top of the sweep, and at the one time a
+        /// 3-energy cast can strip up to three pools at once.
+        ///
+        /// <b>The cost did not move, and that is a measurement to take rather
+        /// than a claim.</b> He was last at 22.6% before this; a strip that
+        /// lands on nobody costs nothing and changes nothing, and one that lands
+        /// on a full Ablative Plating is worth more than the beam it precedes.
         /// </remarks>
         public static AbilityDefinition InversionMatrix { get; } = new AbilityDefinition(
             id: 601, name: "Inversion Matrix",
             description:
-                "Hits every enemy on the cells straight ahead of you on the track and stuns them for their next turn. It fires from where you stand, with nothing to aim.",
+                "Tears the shield off every enemy on the cells straight ahead of you on the track, then hits them and stuns them for their next turn. It fires from where you stand, with nothing to aim.",
             energyCost: 3, cooldownTurns: 3, range: 4,
             targeting: AbilityTargeting.None,
             effects: new[]
             {
+                // Before the damage, deliberately: the beam is meant to land on
+                // health, not on a pool. See the remarks above.
+                AbilityEffect.Strip(EffectScope.EnemiesInLineFromCaster, StatusKind.Shield,
+                    EffectAudience.EnemyOnly, radius: 4),
                 AbilityEffect.Damage(EffectScope.EnemiesInLineFromCaster, 2, DamageType.Tech,
                     EffectAudience.EnemyOnly, radius: 4),
                 AbilityEffect.Status_(EffectScope.EnemiesInLineFromCaster, StatusKind.Stun,

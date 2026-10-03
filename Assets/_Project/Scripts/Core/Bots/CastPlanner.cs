@@ -259,6 +259,21 @@ namespace NonaRoyale.Core.Bots
                         defence += HarmfulWorth(board, target) * w.Cleanse;
                     break;
 
+                // Offence, not defence — the cleanse's opposite number (§5.8).
+                case EffectKind.StripStatus:
+                    foreach (var r in Recipients(board, caster, target, effect))
+                    {
+                        // The Has check is a cost guard, not a correctness one:
+                        // StripValue already answers zero for an enemy carrying
+                        // nothing, since the two estimates it differences are
+                        // then the same number. Dropping it survives mutation
+                        // (2026-10-03) and makes every scored cast walk the
+                        // ability's damage effects twice per enemy in the line.
+                        if (!board.IsEnemy(r, own) || !board.Has(r, effect.Status)) continue;
+                        offence += StripValue(board, w, caster, ability, target, r, effect);
+                    }
+                    break;
+
                 case EffectKind.PushFromCaster:
                     foreach (var r in Recipients(board, caster, target, effect))
                     {
@@ -554,17 +569,68 @@ namespace NonaRoyale.Core.Bots
         }
 
         /// <summary>Expected damage the cast's own damage effects land on one recipient.</summary>
+        /// <param name="shieldStripped">
+        /// Price every hit as though the recipient's shield were already gone —
+        /// what <see cref="StripValue"/> compares against.
+        /// </param>
         private static double HitFromThisCast(
-            BotBoard board, OperatorState caster, AbilityDefinition ability, OperatorState target, OperatorState recipient)
+            BotBoard board, OperatorState caster, AbilityDefinition ability, OperatorState target, OperatorState recipient,
+            bool shieldStripped = false)
         {
             double total = 0.0;
             foreach (var effect in ability.Effects)
             {
                 if (effect.Kind != EffectKind.Damage || effect.Scope == EffectScope.Caster) continue;
                 foreach (var r in Recipients(board, caster, target, effect))
-                    if (r.Id == recipient.Id) total += board.ExpectedHit(r, effect.Amount, effect.DamageType, ability.EnergyCost);
+                    if (r.Id == recipient.Id)
+                        total += board.ExpectedHit(r, effect.Amount, effect.DamageType, ability.EnergyCost, shieldStripped);
             }
             return total;
+        }
+
+        /// <summary>
+        /// What tearing one status off an enemy is worth: the damage this same
+        /// cast now gets through, less what it would have landed with the status
+        /// still on.
+        /// </summary>
+        /// <remarks>
+        /// <b>Priced from the cast it belongs to, like the push is.</b> A strip
+        /// does nothing by itself; what it is worth is what it unblocks, and the
+        /// only damage the planner can be sure of is this ability's own. So the
+        /// figure is the difference between two runs of
+        /// <see cref="HitFromThisCast"/> — and because <see cref="Hit"/> turns a
+        /// lethal total into <see cref="Kill"/>, a strip that takes an enemy
+        /// from "shrugs it off" to "dies to it" is scored as the kill it is,
+        /// rather than as two more points of damage.
+        ///
+        /// <b>Only the shield is priced.</b> It is the only status whose removal
+        /// changes a damage estimate, and the kind is checked rather than
+        /// assumed so the next strip to be written does not silently inherit a
+        /// number that was reasoned about a pool.
+        ///
+        /// <b>The bots will undervalue this, and the reason is structural.</b>
+        /// A human strips a bubble so that <i>the rest of the squad</i> can get
+        /// through it this round; the planner scores one cast at a time and
+        /// cannot see the squadmate's turn. Read a low cast rate as the harness,
+        /// not the ability — the same limit Defiance runs into in
+        /// <see cref="Buff"/>, and for the same reason.
+        /// </remarks>
+        private static double StripValue(
+            BotBoard board, BotWeights w, OperatorState caster, AbilityDefinition ability,
+            OperatorState target, OperatorState recipient, AbilityEffect effect)
+        {
+            if (effect.Status != StatusKind.Shield) return 0.0;
+
+            double blocked = HitFromThisCast(board, caster, ability, target, recipient);
+            double bare = HitFromThisCast(board, caster, ability, target, recipient, shieldStripped: true);
+
+            // The clamp cannot fire today and is kept anyway: ExpectedHit only
+            // ever subtracts a pool, never adds one, so bare is never below
+            // blocked. Dropping it survives mutation (2026-10-03). What it
+            // guards against is a future layer that makes a strip read as a
+            // reduction, which would otherwise score as negative offence —
+            // a cast the bots would pay to avoid.
+            return Math.Max(0.0, Hit(board, w, recipient, bare) - Hit(board, w, recipient, blocked));
         }
 
         /// <summary>Who an effect lands on, by its scope, as far as the bot can tell.</summary>

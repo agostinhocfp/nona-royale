@@ -282,13 +282,20 @@ namespace NonaRoyale.Core.Bots
         /// The ability's cost for a hit that lands as it is cast, so
         /// Equilibrium can rescale it (§5.17); null for anything else.
         /// </param>
-        public double ExpectedHit(OperatorState target, int amount, DamageType type, int? castCost = null)
+        /// <param name="shieldStripped">
+        /// Price the hit as though the target's shield pool were already gone —
+        /// for a cast that strips it on the way in (§5.8). Every other layer
+        /// still applies: a ward still blocks, Equilibrium still rescales.
+        /// </param>
+        public double ExpectedHit(
+            OperatorState target, int amount, DamageType type, int? castCost = null,
+            bool shieldStripped = false)
         {
             // Safe ground voids every hit, Atomic included (§4.4, third
             // amendment) — asked of the engine, never restated here.
             if (Engine.IsSheltered(target)) return 0.0;
 
-            return ExpectedHitOnceExposed(target, amount, type, castCost);
+            return ExpectedHitOnceExposed(target, amount, type, castCost, shieldStripped);
         }
 
         /// <summary>
@@ -296,7 +303,9 @@ namespace NonaRoyale.Core.Bots
         /// left the cell it stands on now — a landing after a push. Mitigation
         /// only: where it will be standing is the caller's question.
         /// </summary>
-        public double ExpectedHitOnceExposed(OperatorState target, int amount, DamageType type, int? castCost = null)
+        public double ExpectedHitOnceExposed(
+            OperatorState target, int amount, DamageType type, int? castCost = null,
+            bool shieldStripped = false)
         {
             if (castCost.HasValue && Has(target, StatusKind.Equilibrium))
                 amount = Combat.EquilibriumScale(castCost.Value, amount);
@@ -306,7 +315,8 @@ namespace NonaRoyale.Core.Bots
             if (type == DamageType.Tech && Has(target, StatusKind.TechWard)) return 0.0;
 
             double landed = amount;
-            if (Has(target, StatusKind.Shield)) landed = Math.Max(0.0, landed - ShieldPool(target));
+            if (!shieldStripped && Has(target, StatusKind.Shield))
+                landed = Math.Max(0.0, landed - ShieldPool(target));
             // Only the hit that gets the round's roll is discounted, Normal or
             // Tech as the pipeline has it (§5.5). Until 2026-09-24 every Normal
             // hit on a holder was priced at 88%, charge spent or not, and about

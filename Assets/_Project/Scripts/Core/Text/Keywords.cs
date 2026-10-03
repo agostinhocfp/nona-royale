@@ -18,6 +18,7 @@ namespace NonaRoyale.Core.Text
         public const string Upkeep = "term:upkeep";
         public const string Execute = "term:execute";
         public const string Cleanse = "term:cleanse";
+        public const string Strip = "term:strip";
         public const string Energy = "term:energy";
         public const string Debt = "term:debt";
         public const string Placement = "term:placement";

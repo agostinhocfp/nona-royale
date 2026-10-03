@@ -333,6 +333,39 @@ namespace NonaRoyale.Core.Abilities
         /// <see cref="DeployZone"/>, and it must be declared before the zone so
         /// the zone strikes the crowd it made.
         /// </remarks>
-        DrawToCell = 19
+        DrawToCell = 19,
+
+        /// <summary>
+        /// Removes one named status — <c>AbilityEffect.Status</c> — from each
+        /// recipient, and nothing else (§5.8, 2026-10-03). Kian's Inversion
+        /// Matrix, which strips shields ahead of its own damage.
+        /// </summary>
+        /// <remarks>
+        /// <b><see cref="RemoveStatuses"/>'s opposite number, and a separate
+        /// kind rather than a flag on it.</b> A cleanse is indiscriminate by
+        /// definition — that is the whole of its design (§5.8) — and an
+        /// indiscriminate removal aimed at an <i>enemy</i> would hand that enemy
+        /// its bleed, its mark, its slow, its stun and its pending charges back.
+        /// The two are not one effect with a filter; they are opposites, and
+        /// everything downstream reads them differently: the rules text says
+        /// different words, the draft reader counts a cleanse as support and a
+        /// strip as nothing, and the bots score a cleanse as defence and a strip
+        /// as offence.
+        ///
+        /// <b>It reads <c>Status</c>, which <see cref="AbilityEffect.CarriesStatus"/>
+        /// says nothing about.</b> That flag asks whether an effect <i>applies</i>
+        /// a status, so it is false here, and it is false for the right reason:
+        /// a strip takes one away. Nothing else in the vocabulary reads
+        /// <c>Status</c> without a duration beside it, which is exactly why this
+        /// needed its own kind — on <see cref="RemoveStatuses"/> a filter could
+        /// not have been expressed at all, since
+        /// <see cref="StatusKind.Stun"/> is zero and every existing cleanse
+        /// would have read as "strip stun only".
+        ///
+        /// <b>Passives are out of reach, as with a cleanse.</b> It removes an
+        /// applied entry; a passive is who an operator is (§1.2, §5.1). It
+        /// removes at most one entry per recipient, since a kind never holds two.
+        /// </remarks>
+        StripStatus = 20
     }
 }
