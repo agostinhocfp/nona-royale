@@ -55,7 +55,7 @@ Straight from §5.1. Each row becomes an `OperatorLook`. The implementing sessio
 | --- | --- | --- | --- |
 | Luka | four-point X, forward wedge | warm light torso (camel) | cyan signet ring |
 | Syla | downward triangle | light core inside a dark frame | cyan drone slits |
-| Bouncer | wide low slab | black mass split by a hard white V | aged-brass gauntlet |
+| Bouncer | wide low slab | black mass split by a hard white V | gunmetal-steel gauntlet (brass until 2026-09-29) |
 | Kurbyn | coiled four-point | mid-dark, broken by bare forearms | brass, nape cyan |
 | Javi | upright cross | dark waistcoat block, two white sleeves | frosted canister seals |
 | Sanity | octagon | large mid-brown mass | brass, prod cyan |

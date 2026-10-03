@@ -3,7 +3,8 @@ namespace NonaRoyale.Unity.View
 {
     /// <summary>
     /// Bouncer (ART_DIRECTION §5.1, row 3): a black mass split by a hard white
-    /// V, the wide low slab, the aged-brass gauntlet (ADR-0011).
+    /// V, the wide low slab, the gunmetal-steel gauntlet (ADR-0011; brass
+    /// until 2026-09-29, when the chips showed a brass fist reading as Thanos).
     /// </summary>
     /// <remarks>
     /// Promoted from the LB0 sketch. Dark on a near-black floor, so the rim
@@ -66,7 +67,7 @@ namespace NonaRoyale.Unity.View
             drawing.Block(FigureShape.Polygon(
                 -0.04f, 2.30f, 0.04f, 2.30f, 0.055f, 1.78f, 0f, 1.68f, -0.055f, 1.78f), p.BouncerSuit);
 
-            drawing.Block(gauntlet, p.Brass);
+            drawing.Block(gauntlet, p.BouncerSteel);
 
             // ── Shade and light: three values per material ─────────────
             var shadow = FigureShape.Union(

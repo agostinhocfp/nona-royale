@@ -22,7 +22,7 @@ namespace NonaRoyale.Unity.View
         /// </summary>
         public System.Collections.Generic.IReadOnlyList<FigureColour> Metals() => new[]
         {
-            Brass, FortunaGold, FortunaGoldLight, LetheSilver, JaviSteel, SanitySteel, MimiSteel,
+            Brass, BouncerSteel, FortunaGold, FortunaGoldLight, LetheSilver, JaviSteel, SanitySteel, MimiSteel,
         };
 
         // ── Shared: the §2.2 drawn light and the §3 swatches ────────────
@@ -60,6 +60,9 @@ namespace NonaRoyale.Unity.View
         // ── Bouncer: black mass split by a hard white V ─────────────────
         public FigureColour BouncerSuit;
         public FigureColour BouncerSkin;
+
+        /// <summary>His gauntlet, gunmetal steel since 2026-09-29 (ADR-0011).</summary>
+        public FigureColour BouncerSteel;
 
         // ── Syla: light core in a dark frame ────────────────────────────
         public FigureColour SylaGown;

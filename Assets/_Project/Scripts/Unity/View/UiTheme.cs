@@ -527,6 +527,13 @@ namespace NonaRoyale.Unity.View
         public static readonly Color LookBouncerSuit = Hex("221D26");
         public static readonly Color LookBouncerSkin = Hex("7A5140");
 
+        /// <summary>
+        /// Bouncer's gauntlet: gunmetal steel (ART_DIRECTION §3's operator-steel
+        /// row, ADR-0011 decision 4, 2026-09-29), the one operator device that is
+        /// not aged brass. A big brass fist read as Thanos.
+        /// </summary>
+        public static readonly Color LookBouncerSteel = Hex("3B3F45");
+
         // Syla: light core in a dark frame.
         public static readonly Color LookSylaGown = Hex("E4DCCB");
         public static readonly Color LookSylaCape = Hex("121014");

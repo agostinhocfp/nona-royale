@@ -164,6 +164,7 @@ namespace NonaRoyale.Unity.View
             Obsidian = F(UiTheme.Obsidian),
             BouncerSuit = F(UiTheme.LookBouncerSuit),
             BouncerSkin = F(UiTheme.LookBouncerSkin),
+            BouncerSteel = F(UiTheme.LookBouncerSteel),
             SylaGown = F(UiTheme.LookSylaGown),
             SylaCape = F(UiTheme.LookSylaCape),
             SylaSkin = F(UiTheme.LookSylaSkin),

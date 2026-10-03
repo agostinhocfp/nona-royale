@@ -15,7 +15,8 @@ namespace NonaRoyale.Unity.Audio
     /// Each camp has a material, so a player can tell who acted without
     /// looking:
     /// <list type="bullet">
-    ///   <item>Bouncer, the house: aged brass, hydraulics, weight.</item>
+    ///   <item>Bouncer, the house: his gauntlet's gunmetal steel, hydraulics,
+    ///   weight (ADR-0011; aged brass until 2026-09-29).</item>
     ///   <item>Syla, a contractor: obsidian and cold air. Glass, darkened so it
     ///   never rings like chimes.</item>
     ///   <item>Kurbyn, the house: the neural rig, electrical.</item>
@@ -101,9 +102,13 @@ namespace NonaRoyale.Unity.Audio
             }
         }
 
-        // ── Bouncer: aged brass, hydraulics, weight ──────────────────────
+        // ── Bouncer: gunmetal steel, hydraulics, weight ──────────────────
 
-        /// <summary>A brass plate: a hard knock with a short, dull metallic ring. No clean pitch.</summary>
+        /// <summary>
+        /// One of the gauntlet's steel plates: a hard knock with a short, dull
+        /// metallic ring. No clean pitch. Tuned when the gauntlet was brass; a
+        /// dull worked steel plate sounds the same, so it was left as it is.
+        /// </summary>
         private static void Plate(float[] b, float at, float gain, float hz, SynthRandom r)
         {
             SfxRecipes.Clack(b, at, gain, hz, r);
@@ -113,7 +118,7 @@ namespace NonaRoyale.Unity.Audio
 
         private static float[] VelvetRopeTell(SynthRandom r)
         {
-            // The arm's plates unlocking down its length, faster as they go,
+            // The gauntlet's plates unlocking down its length, faster as they go,
             // over a hydraulic hiss that swells and bleeds off at the end.
             var b = Synth.Buffer(0.62f);
 

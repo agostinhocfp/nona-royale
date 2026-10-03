@@ -52,10 +52,10 @@ namespace NonaRoyale.Core.Abilities
         /// <summary>Enemies within this many steps of Bouncer are slowed.</summary>
         /// <remarks>
         /// Equal to Velvet Rope's reach, which is the relationship worth keeping:
-        /// everything he can rope is already slowed, and everything he ropes
+        /// everything he can pull is already slowed, and everything he pulls
         /// stays slowed once it arrives. The two were briefly out of step when
-        /// the rope went to 4 and back. Reach and aura are one kit (§10.1) — if
-        /// one moves, move the other.
+        /// Velvet Rope went to 4 and back. Reach and aura are one kit (§10.1) —
+        /// if one moves, move the other.
         /// </remarks>
         public const int IntimidatingPresenceRadius = 3;
 
@@ -123,12 +123,12 @@ namespace NonaRoyale.Core.Abilities
         /// incidental, which the numbers denied).</item>
         /// </list>
         ///
-        /// <b>Now it is the cheap brawl.</b> Cheaper and shorter than the rope,
+        /// <b>Now it is the cheap brawl.</b> Cheaper and shorter than Velvet Rope,
         /// Normal rather than Atomic, so a plate or an evasion charge answers
-        /// it, and it costs blood. The rope is the reach and the execute tool;
+        /// it, and it costs blood. Velvet Rope is the reach and the execute tool;
         /// this is what he does standing next to somebody.
         ///
-        /// <b>The one-turn kill stays gone, deliberately.</b> Rope into Mauling
+        /// <b>The one-turn kill stays gone, deliberately.</b> Velvet Rope into Mauling
         /// was 3 Atomic plus 3, and six damage killed either 6-health operator
         /// from full for the price of a banked pool. At 3 plus 3 against 7
         /// health it leaves 1 — a setup rather than an execution, and something
@@ -148,7 +148,7 @@ namespace NonaRoyale.Core.Abilities
         /// combo and bought almost nothing: at 6 energy the cap allowed two
         /// casts for 4 damage and 4 self-damage. At 4 energy it would allow
         /// three, which is the shape §3.1 keeps cooldowns for. One turn between
-        /// casts keeps the rope-into-maul combo (different abilities, no shared
+        /// casts keeps the Velvet-Rope-into-Mauling combo (different abilities, no shared
         /// cooldown) and drops the double maul.
         /// </remarks>
         public static AbilityDefinition AllInMauling { get; } = new AbilityDefinition(

@@ -30,7 +30,7 @@ Camp materials, so a player can name the camp with their eyes closed:
 
 | Camp | Material | Never |
 | --- | --- | --- |
-| House (Bouncer, Kurbyn) | Aged brass, hydraulics, heavy mechanism; Kurbyn's rig is electrical: arcs, discharges, energy impacts (since 2026-10-03) | Toy zaps, 8-bit blips |
+| House (Bouncer, Kurbyn) | Aged brass livery and Bouncer's gunmetal-steel gauntlet (ADR-0011, 2026-09-29), hydraulics, heavy mechanism; Kurbyn's rig is electrical: arcs, discharges, energy impacts (since 2026-10-03) | Toy zaps, 8-bit blips |
 | Contractors (Syla, Mimi, Javi, Kian, Nuetu, Sanity) | Each their own tech, sci-fi welcome (since 2026-10-03): obsidian glass, cryo, nanites, drones, energy weapons, shields, explosions | Chimes, bells, anything that rings in tune; toy or 8-bit sounds |
 | Owners (Lethe, Revú, Fortuna) | Money: clay chips, dice, coins, slow clockwork | Cash-register cartoon sounds |
 | Luka | Cyan radio interference, scanlines dropping out, targeting locks | Clean digital beeps |
@@ -40,10 +40,10 @@ Camp materials, so a player can name the camp with their eyes closed:
 ### 1. Bouncer — Velvet Rope (`Bouncer_VelvetRope`)
 
 **Tell** (0.6 s):
-> Six heavy aged-brass plates unlocking one after another down a mechanical arm, each clack faster than the last, over a hydraulic hiss that swells and bleeds off, ending in one solid thunk.
+> Six heavy dark gunmetal-steel plates unlocking one after another down a mechanical gauntlet, each clack faster than the last, over a hydraulic hiss that swells and bleeds off, ending in one solid thunk.
 
 **Impact** (0.8 s):
-> A heavy brass clamp latching shut on a body, then a person dragged a short way across a felt card table, cloth under weight, a little grit.
+> A heavy steel clamp latching shut on a body, then a person dragged a short way across a felt card table, cloth under weight, a little grit.
 
 ### 2. Bouncer — All-In Mauling (`Bouncer_AllInMauling`)
 

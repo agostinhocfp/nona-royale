@@ -50,11 +50,11 @@ Four operators work for the house: Bouncer on the door, Kurbyn sent after whoeve
 
 ### Bouncer — Tank
 
-The house's muscle, in a tailored dinner jacket. He does not chase; he decides who gets past. His kit is built around a rope that drags people where he wants them and a grapple that hurts him as much as his target — a man who spends himself to control a doorway.
+The house's muscle, in a tailored dinner jacket. He does not chase; he decides who gets past. His kit is built around a machine that drags people where he wants them and a grapple that hurts him as much as his target — a man who spends himself to control a doorway.
 
 Mechanically he is the squad's roadblock: the one operator who can absorb repeated collisions and hold a contested cell. He is also the slowest, which is the real price of his abilities — his costs are paid in the turns it takes to be standing next to someone, not in energy.
 
-His rope is also the roster's direct answer to an opponent who cannot be hit, which was not the original plan — it became one after the first human sessions, and it is the reason he reads as a counter-pick rather than a default.
+His pull is also the roster's direct answer to an opponent who cannot be hit, which was not the original plan — it became one after the first human sessions, and it is the reason he reads as a counter-pick rather than a default.
 
 He came down on every axis after human play: health, reach and damage together. If he now reads as weak, the reach is the first thing to restore, because it is the only one of the three that also governs what his aura can catch.
 
@@ -104,7 +104,7 @@ Read at the table: _the one who is never where you left her._
 - ~~**The Tech damage type.**~~ **Done (2026-09-15)**, with Luka. Her damage is now Tech, which Luka's Hermes' Ring blocks and nothing else does. Her identity as the answer to barriers is still unexpressed: Tech is Normal plus that one counter until something amplifies it (`COMBAT_SYSTEMS.md` §2.2).
 - ~~**A field that damages on a duration.**~~ **Done (2026-09-16).** It arrived as the field shape of the operator-anchored deferred registry (`COMBAT_SYSTEMS.md` §6.6): a self-anchored `CryoField` status (§5.14) that bills enemies near her at each of her upkeeps, follows her when she moves, and ends when she does. The tick is 1 Normal — the design table left the amount blank, and it is flagged for tuning.
 
-Her fiction is also the strongest argument in the tech-level question below. Everyone else has a rope, a rig or a drone; she has a singularity core and tachyon targeting.
+Her fiction is also the strongest argument in the tech-level question below. Everyone else has a gauntlet, a rig or a drone; she has a singularity core and tachyon targeting.
 
 ### Javi — Support
 
@@ -246,7 +246,7 @@ _(Added 2026-09-18. Her mechanics are `COMBAT_SYSTEMS.md` §10.12; the design re
 - [ ] **Finish Javi** — a shield with a per-ability value, which lands with the mitigation pass.
 - [ ] **Measure both.** They are in the pool and nothing has ever dealt them: the harness still fields the alpha three, so not one of their four live abilities has run in a simulated match. Three questions wait on it — whether Cryo-Pulse outclasses its peer at the same cost, whether Translocation is as strong a denial tool as it looks, and whether a healer turns a combat game into a race.
 - [x] ~~**Ratify or break the house split.**~~ Ratified 2026-09-15: four house, four contractors (Syla, Mimi, Kian, Nuetu), and Luka on his own.
-- [ ] Settle the **tech level**. Bouncer has a rope and Kurbyn has a neural-prediction rig; Mimi has a singularity core and tachyon targeting. Those are not the same world. Either the ceiling moves up for everyone or Mimi's fiction comes down to meet the others — but nine operators should not be spread across three centuries by accident.
+- [ ] Settle the **tech level**. Bouncer has a strapped-on steel gauntlet (ADR-0011) and Kurbyn has a neural-prediction rig; Mimi has a singularity core and tachyon targeting. Those are not the same world. Either the ceiling moves up for everyone or Mimi's fiction comes down to meet the others — but nine operators should not be spread across three centuries by accident.
 - [ ] Write the remaining **four operators**, mechanically and in flavour.
 - [ ] Backstory and world placement — how the five connect to the casino, to each other, and to whoever runs the house.
 - [ ] Strengths, weaknesses, synergies, counters, playstyle notes per operator. Deferred to the balance pass; they are currently implied by the kits rather than stated.

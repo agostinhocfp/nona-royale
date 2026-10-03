@@ -849,7 +849,7 @@ Bouncer's kit is priced on **positioning, not energy** — the roster's slowest 
 
 **He came down on all three axes at once after human play.** Health 12 → 9, Velvet Rope's range 4 → 3, All-In Mauling 3 → 2 damage with self-damage 1 → 2. Any one of those alone would have been measurable; together they are not separable, and if he now reads as weak the **reach is the first thing to restore** — it is the only one of the three that also governs what his aura can catch.
 
-**Reach and aura are one kit.** Intimidating Presence at 3 equals Velvet Rope's reach again: everything he can rope is already slowed, and everything he ropes stays slowed once it arrives. They were briefly out of step when the rope went to 4 and back. If one moves, move the other.
+**Reach and aura are one kit.** Intimidating Presence at 3 equals Velvet Rope's reach again: everything he can pull is already slowed, and everything he pulls stays slowed once it arrives. They were briefly out of step when Velvet Rope went to 4 and back. If one moves, move the other.
 
 **Velvet Rope is Atomic, which makes Bouncer the roster's direct counter to Evasion** (§2.2). This was a targeted answer to Kurbyn dominating early play, chosen over weakening Evasion itself: a counter preserves the rock-paper-scissors, a nerf flattens it. It is also the **only single-cast route through Evasive Protocol** — Syla's is a two-ability sequence — which is why shortening it is a larger change than the number suggests.
 
@@ -859,15 +859,15 @@ Bouncer's kit is priced on **positioning, not energy** — the roster's slowest 
 - **Three energy a point was the worst rate on the roster**, with blood on top. Nuetu's Bio-Link Rage is 3 energy for 3 at the same range and heals him 1.
 - **Its ally heal was the largest in the game**, above the dedicated healer's (§1.1).
 
-It is now the cheap brawl: shorter than the rope, Normal rather than Atomic so a plate or an evasion charge answers it, and it costs blood. **Cooldown 1 rather than 0** — at 4 energy the cap would otherwise buy three casts in a banked turn. Rope into maul still works; they share no cooldown.
+It is now the cheap brawl: shorter than Velvet Rope, Normal rather than Atomic so a plate or an evasion charge answers it, and it costs blood. **Cooldown 1 rather than 0** — at 4 energy the cap would otherwise buy three casts in a banked turn. Velvet Rope into Mauling still works; they share no cooldown.
 
 **Measured, 800 matches per row.** Bots cast it 1.40 → 2.33 times a match, so the reprice did what it was meant to. It also made the game bloodier — standard sweep neutralizes 3.4 → 4.8 and turns 21.2 → 22.1; four-bot knockouts 13.9 → 14.9 — and **Bouncer's own win share fell 28% → 24%**, because a bot that casts it twice as often pays twice the blood.
 
 **Self-damage 2 → 1 (2026-09-18, designer), the answer to that.** It was 1 against 12 health — twelve casts, flavour text — and rose to 2 when health fell to 9; at ten health and twice the casting rate, 2 a cast was giving his match away. At 1 it is ten casts, and it still bites the wounded Bouncer who was going to cast anyway.
 
-**It recovers about a point, not four.** Bots: Bouncer 24% → 25%, casts 2.33 → 2.40, knockouts 14.9 → 14.7, turns per seat 28.3 → 28.1; standard sweep back to 21.6 turns and 4.3 neutralizes (from 22.1 and 4.8, against 21.2 and 3.4 before the reprice). So most of his drop was not the blood — a cheaper Normal hit cast twice as often is simply worth less to a bot than the rope. Judge the rest in human games rather than chasing it in the sweep.
+**It recovers about a point, not four.** Bots: Bouncer 24% → 25%, casts 2.33 → 2.40, knockouts 14.9 → 14.7, turns per seat 28.3 → 28.1; standard sweep back to 21.6 turns and 4.3 neutralizes (from 22.1 and 4.8, against 21.2 and 3.4 before the reprice). So most of his drop was not the blood — a cheaper Normal hit cast twice as often is simply worth less to a bot than Velvet Rope. Judge the rest in human games rather than chasing it in the sweep.
 
-**The rope-into-Mauling one-turn kill stays gone by design.** It was 3 Atomic plus 3, and six damage killed either 6-health operator from full for the price of a banked pool. At 3 plus 3 against 7 health it leaves them at 1: a setup rather than an execution, and something the victim's owner gets a turn to answer. The zero cooldown still buys back-to-back casts at the cap, now for 4 self-damage against 9 health, which is most of what he can pay.
+**The Velvet-Rope-into-Mauling one-turn kill stays gone by design.** It was 3 Atomic plus 3, and six damage killed either 6-health operator from full for the price of a banked pool. At 3 plus 3 against 7 health it leaves them at 1: a setup rather than an execution, and something the victim's owner gets a turn to answer. The zero cooldown still buys back-to-back casts at the cap, now for 4 self-damage against 9 health, which is most of what he can pay.
 
 ### 10.2 Syla, The Blood Hound — Assassin
 
@@ -2107,3 +2107,7 @@ The watch machinery (§6.7) is dormant: `PredatorsReadTests` and `WatchBotTests`
   - `MoveScorer` adds the roll's value.
   - `RegenTests`' fixture stops rolling once its mover is home: it now declines the home roll, which only the subject could spend.
   - **Fingerprint `58eed81a` → `a48228fb`.** `HomeBountyTests` 7 → 13. Core harness 1016 → 1022, all passing. Bots sweep not run.
+- 2026-10-03 (third pass) — **Velvet Rope's original concept archived to match today's character** (designer; ADR-0011 amended).
+  - §10.1 no longer uses "rope" as the physical object. The five places ADR-0011's follow-up list pointed at now say "pull" or "Velvet Rope".
+  - Nothing mechanical changed: no number, no rule, no test. The ability keeps its name, and the fingerprint stays `a48228fb`, because rules text is not in it.
+  - The device is the gunmetal-steel gauntlet (2026-09-29). The rope, the hip spool, the aged brass and the figure-era S-curve tell live in ADR-0011's Archive.

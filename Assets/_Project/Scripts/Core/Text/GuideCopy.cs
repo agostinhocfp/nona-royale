@@ -78,7 +78,7 @@ namespace NonaRoyale.Core.Text
                 "and it drags them into your squad's reach; aimed at an ally, it pulls them out of trouble. " +
                 "All-In Mauling costs you blood too, so spend it when the hit or the heal is worth it.",
                 "Don't fight him where he wants to stand: go around him, or stay out of his reach. " +
-                "His slow only works close to him and the rope is his only way to reach you, " +
+                "His slow only works close to him and Velvet Rope is his only way to reach you, " +
                 "so bait it out and move while it is cooling down."),
 
             ["Syla"] = new GuideCopyEntry(Camp.Contractor,
