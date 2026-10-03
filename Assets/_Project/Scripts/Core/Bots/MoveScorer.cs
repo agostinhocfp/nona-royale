@@ -116,6 +116,15 @@ namespace NonaRoyale.Core.Bots
                 {
                     int room = Math.Max(0, board.Engine.EnergyCap - seat.Energy);
                     score += Math.Min(board.Engine.HomeEnergyBounty, room) * weights.EnergyGain;
+
+                    // CG17b: and another roll, valued as a dealt double's is
+                    // (CastPlanner.DiceValue): another hand of pips, a turn away.
+                    int owed = (board.Engine.CanRollAgain ? 1 : 0);
+                    if (board.Game.HomeExtraRolls > 0 && board.Engine.RollsRemaining > owed)
+                    {
+                        double mean = (board.Game.DiceSides + 1) / 2.0;
+                        score += board.Game.DicePerRoll * mean * weights.Progress * weights.DelayedDiscount;
+                    }
                 }
             }
             else if (map.IsInHomeColumn(to) && !map.IsInHomeColumn(from)) score += weights.HomeEntry;

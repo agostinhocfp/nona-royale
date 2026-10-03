@@ -2380,9 +2380,9 @@ namespace NonaRoyale.Unity.Composition
 
         /// <summary>
         /// The payout for each operator that reached HOME in the batch
-        /// (CORE_GAMEPLAY CG17): the chips and the figure on the piece, the
-        /// chip-stack sound, the vault's swell (LT2), and the arriving
-        /// operator's line. The figure is the engine's
+        /// (CORE_GAMEPLAY CG17): the chips and the figure on the piece ("ROLL
+        /// AGAIN" too when it earned one, CG17b), the chip-stack sound, the
+        /// vault's swell (LT2), and the arriving operator's line. The figure is the engine's
         /// (<c>OperatorReachedHome.Bounty</c>); the view computes nothing.
         /// </summary>
         private void PlayArrivals(List<OperatorReachedHome> arrivals)
@@ -2398,7 +2398,8 @@ namespace NonaRoyale.Unity.Composition
 
                 var at = piece.transform.position;
                 if (_feedback != null)
-                    _feedback.HomePayout(at, BoardLayout.ColourOf(arrival.Operator.Owner), arrival.Bounty, _motion);
+                    _feedback.HomePayout(at, BoardLayout.ColourOf(arrival.Operator.Owner), arrival.Bounty,
+                        arrival.GrantsAnotherRoll, _motion);
 
                 Sound(SoundCue.Home, at);
             }

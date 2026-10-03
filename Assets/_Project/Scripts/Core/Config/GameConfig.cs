@@ -25,7 +25,8 @@ namespace NonaRoyale.Core.Config
             double speedMultiplierMax = 2.5,
             int diceSides = 6,
             int dicePerRoll = 2,
-            int pityDeployAfterTurns = 2)
+            int pityDeployAfterTurns = 2,
+            int homeExtraRolls = 1)
         {
             if (diceSides < 2)
                 throw new ArgumentOutOfRangeException(nameof(diceSides));
@@ -44,6 +45,9 @@ namespace NonaRoyale.Core.Config
             if (pityDeployAfterTurns < 0)
                 throw new ArgumentOutOfRangeException(nameof(pityDeployAfterTurns),
                     "Negative makes no sense; zero disables the mechanic.");
+            if (homeExtraRolls < 0)
+                throw new ArgumentOutOfRangeException(nameof(homeExtraRolls),
+                    "Negative makes no sense; zero disables the extra roll.");
 
             DeployRequirement = deployRequirement;
             MaxRollsPerTurn = maxRollsPerTurn;
@@ -53,7 +57,17 @@ namespace NonaRoyale.Core.Config
             DiceSides = diceSides;
             DicePerRoll = dicePerRoll;
             PityDeployAfterTurns = pityDeployAfterTurns;
+            HomeExtraRolls = homeExtraRolls;
         }
+
+        /// <summary>
+        /// Rolls an operator earns its seat by reaching HOME (COMBAT_SYSTEMS §8,
+        /// CORE_GAMEPLAY CG17b; designer, 2026-10-03, on top of the 3-energy
+        /// home bounty). They're owed like a doubles roll: inside
+        /// <see cref="MaxRollsPerTurn"/>, with no energy (§3.1), taken after the
+        /// dice in hand are spent, and declinable while a runner could still move.
+        /// </summary>
+        public int HomeExtraRolls { get; }
 
         /// <summary>A die must show this face to deploy an operator (ADR-0003).</summary>
         public int DeployRequirement { get; }

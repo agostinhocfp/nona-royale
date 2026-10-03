@@ -97,7 +97,7 @@ namespace NonaRoyale.Core.Text
                 case CoachTip.Goal: return engine.Phase == TurnPhase.AwaitingRoll;
                 case CoachTip.Deploy: return engine.Phase == TurnPhase.Action && engine.MustDeploy;
                 case CoachTip.Landings: return engine.Phase == TurnPhase.Action && engine.CanMove;
-                case CoachTip.Doubles: return engine.CanRollAgain;
+                case CoachTip.Doubles: return engine.CanRollAgain && engine.RollAgainFromDoubles;
                 case CoachTip.Ability: return engine.Phase == TurnPhase.Action && AnyCastable(match);
                 default: return false;
             }
@@ -174,7 +174,9 @@ namespace NonaRoyale.Core.Text
                         .Text(": no collisions, no damage, and no enemy can pick you out with a single-target ability. A good place to end a turn.");
 
                 case CoachTip.HomeColumn:
-                    return line.Text("In your home column an operator is out of the fight: nothing can hit it, and it cannot cast. Any roll that reaches home is enough; you don't need an exact count.");
+                    return line.Text("In your home column an operator is out of the fight: nothing can hit it, and it cannot cast. Any roll that reaches home is enough; you don't need an exact count. Reaching home pays your seat ")
+                        .Number(combat.HomeEnergyBounty).Text(" ").Keyword("energy", Keywords.Energy)
+                        .Text(" and another roll.");
 
                 default:
                     return line;

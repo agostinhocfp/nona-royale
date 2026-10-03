@@ -389,7 +389,7 @@ namespace NonaRoyale.Unity.View
                 case TurnPhase.Action:
                     if (dice.Count == 0)
                         return engine.CanRollAgain
-                            ? "Doubles — roll again"
+                            ? RollAgainLine(engine)
                             : touch ? "Dice spent — cast, or END TURN" : "Dice spent — cast, or press <b>E</b> to end the turn";
 
                     // Spawn or move (2026-09-25): a held 6 with nothing that can
@@ -408,7 +408,7 @@ namespace NonaRoyale.Unity.View
                             : $"Move <b>{Join(dice)}</b> — click a piece, then where it lands";
 
                     if (engine.CanRollAgain)
-                        return "Doubles — roll again";
+                        return RollAgainLine(engine);
 
                     return touch
                         ? $"No legal move for {Join(dice)} — tap END TURN"
@@ -418,6 +418,10 @@ namespace NonaRoyale.Unity.View
                     return "";
             }
         }
+
+        /// <summary>Why the seat rolls again: its doubles, or an operator that reached HOME (CG17b).</summary>
+        private static string RollAgainLine(Core.GameEngine engine) =>
+            engine.RollAgainFromDoubles ? "Doubles — roll again" : "Home — roll again";
 
         private static string Join(System.Collections.Generic.IReadOnlyList<int> dice)
         {

@@ -132,7 +132,8 @@ namespace NonaRoyale.Unity.View
         /// <summary>
         /// An operator reaching HOME: a fan of chips in its seat colour tossed
         /// up off it, a gold ring, and what the arrival paid rising in the
-        /// energy colour ("+3 ENERGY"), or "HOME" when the pool was full.
+        /// energy colour ("+3 ENERGY"), or "HOME" when the pool was full, with
+        /// "ROLL AGAIN" in gold above it when it earned a roll (CG17b).
         /// </summary>
         /// <remarks>
         /// <b>The payout, not a firework.</b> The board's other moments are
@@ -140,13 +141,17 @@ namespace NonaRoyale.Unity.View
         /// material as the pieces. Reduced motion keeps the ring and the figure
         /// and drops the toss.
         /// </remarks>
-        public void HomePayout(Vector3 at, Color seatColour, int bounty, MotionSettings motion)
+        public void HomePayout(Vector3 at, Color seatColour, int bounty, bool rollAgain, MotionSettings motion)
         {
             FloatingText.Spawn(
                 transform, at,
                 bounty > 0 ? $"+{bounty} ENERGY" : "HOME",
                 bounty > 0 ? UiTheme.Cyan : UiTheme.GoldBright,
                 _scale * 1.15f);
+
+            // Above the energy, so the two never overprint as they rise.
+            if (rollAgain)
+                FloatingText.Spawn(transform, AboveHit(at), "ROLL AGAIN", UiTheme.GoldBright, _scale);
 
             Pulse(at, UiTheme.WithAlpha(UiTheme.GoldBright, 0.9f), 3.4f);
 

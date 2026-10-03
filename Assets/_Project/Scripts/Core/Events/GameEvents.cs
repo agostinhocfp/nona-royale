@@ -502,8 +502,20 @@ namespace NonaRoyale.Core.Events
 
     public sealed class OperatorReachedHome : IGameEvent
     {
-        public OperatorReachedHome(OperatorState op, int bounty = 0) { Operator = op; Bounty = bounty; }
+        public OperatorReachedHome(OperatorState op, int bounty = 0, bool grantsAnotherRoll = false)
+        {
+            Operator = op;
+            Bounty = bounty;
+            GrantsAnotherRoll = grantsAnotherRoll;
+        }
+
         public OperatorState Operator { get; }
+
+        /// <summary>
+        /// Whether the arrival earned the seat another roll (CG17b): false at the
+        /// roll budget, and when the seat has nobody left to move. Read by no rule.
+        /// </summary>
+        public bool GrantsAnotherRoll { get; }
 
         /// <summary>
         /// Energy the arrival stored in the operator's seat (CG17): the home
@@ -513,7 +525,8 @@ namespace NonaRoyale.Core.Events
         /// </summary>
         public int Bounty { get; }
 
-        public override string ToString() => Bounty > 0 ? $"{Operator.Name} is home (+{Bounty} energy)" : $"{Operator.Name} is home";
+        public override string ToString() =>
+            $"{Operator.Name} is home" + (Bounty > 0 ? $" (+{Bounty} energy)" : "") + (GrantsAnotherRoll ? ", roll again" : "");
     }
 
     public sealed class TurnEnded : IGameEvent

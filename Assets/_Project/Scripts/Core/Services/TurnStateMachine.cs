@@ -139,7 +139,24 @@ namespace NonaRoyale.Core.Services
         /// streak cannot run forever.
         /// </summary>
         public bool CanRollAgain =>
-            Phase == TurnPhase.Action && _lastRollWasDouble && RollsRemaining > 0;
+            Phase == TurnPhase.Action && (_lastRollWasDouble || _homeRolls > 0) && RollsRemaining > 0;
+
+        /// <summary>Whether the roll owed now is a doubles one (rolled or dealt), as opposed to only a home roll (CG17b).</summary>
+        public bool RollAgainFromDoubles => _lastRollWasDouble;
+
+        /// <summary>Home rolls still owed this turn (CG17b).</summary>
+        public int HomeRollsOwed => _homeRolls;
+
+        /// <summary>Rolls one arrival at HOME earns (<see cref="GameConfig.HomeExtraRolls"/>).</summary>
+        public int HomeExtraRolls => _config.HomeExtraRolls;
+
+        /// <summary>
+        /// Rolls earned by reaching HOME this turn and not yet taken (CG17b).
+        /// Counted apart from the doubles flag, because a roll's own faces
+        /// overwrite that flag, and a home roll must survive a re-roll that
+        /// comes up plain.
+        /// </summary>
+        private int _homeRolls;
 
         /// <summary>
         /// Starts the next seat's turn and runs upkeep: bleed ticks, then mark
@@ -168,6 +185,7 @@ namespace NonaRoyale.Core.Services
 
             _rollsThisTurn = 0;
             _lastRollWasDouble = false;
+            _homeRolls = 0;
 
             var ticks = new List<DamageResult>();
             var neutralized = new List<UpkeepNeutralize>();
@@ -221,6 +239,10 @@ namespace NonaRoyale.Core.Services
                         : $"Cannot roll during {Phase}.");
             }
 
+            // A re-roll spends what it was owed: a double's roll first (the new
+            // faces overwrite that flag either way), else a home roll (CG17b).
+            if (Phase == TurnPhase.Action && !_lastRollWasDouble && _homeRolls > 0) _homeRolls--;
+
             var roll = DiceRoll.Roll(_random, _config);
             _rollsThisTurn++;
             _lastRollWasDouble = roll.IsDouble;
@@ -228,7 +250,11 @@ namespace NonaRoyale.Core.Services
             var grant = _energy.GrantForTurn(CurrentPlayer, roll);
 
             Phase = TurnPhase.Action;
-            return new RollReport(roll, grant, CanRollAgain, RollsRemaining);
+
+            // GrantsAnotherRoll keeps meaning "these faces bought one" (the event
+            // text says "doubles, roll again"); a home roll still owed is
+            // CanRollAgain's business, not this roll's.
+            return new RollReport(roll, grant, _lastRollWasDouble && RollsRemaining > 0, RollsRemaining);
         }
 
         /// <summary>
@@ -275,6 +301,23 @@ namespace NonaRoyale.Core.Services
             if (Phase != TurnPhase.Action || RollsRemaining <= 0) return false;
 
             _lastRollWasDouble = true;
+            return true;
+        }
+
+        /// <summary>
+        /// Owes the seat a roll for an operator reaching HOME (CG17b), inside the
+        /// turn's roll budget. Returns whether it was granted: false outside the
+        /// action phase, or when the rolls already owed fill what the budget has
+        /// left, since a roll the budget can't pay for is no roll at all.
+        /// </summary>
+        public bool GrantHomeRoll()
+        {
+            if (Phase != TurnPhase.Action) return false;
+
+            int owed = (_lastRollWasDouble ? 1 : 0) + _homeRolls;
+            if (owed >= RollsRemaining) return false;
+
+            _homeRolls++;
             return true;
         }
 

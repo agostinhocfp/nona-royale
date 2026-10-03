@@ -75,6 +75,7 @@ namespace NonaRoyale.Core.Replay
 
             d.Line("GameConfig.DeployRequirement", game.DeployRequirement);
             d.Line("GameConfig.MaxRollsPerTurn", game.MaxRollsPerTurn);
+            d.Line("GameConfig.HomeExtraRolls", game.HomeExtraRolls);
             d.Line("GameConfig.MinSpeedMultiplier", game.MinSpeedMultiplier);
             d.Line("GameConfig.SpeedMultiplierMin", game.SpeedMultiplierMin);
             d.Line("GameConfig.SpeedMultiplierMax", game.SpeedMultiplierMax);

@@ -15,12 +15,13 @@ namespace NonaRoyale.Core.Tests.Engine
     /// <summary>
     /// An operator reaching HOME pays its seat the home bounty (CORE_GAMEPLAY
     /// CG17, COMBAT_SYSTEMS §8): 3 energy, filling to the cap, reported on the
-    /// arrival and as the pool's grant.
+    /// arrival and as the pool's grant; and another roll (CG17b), owed like a
+    /// doubles roll inside the turn's budget.
     /// </summary>
     public class HomeBountyTests
     {
         private static MatchFactory.Match Rolled(Func<DiceRoll, bool> wanted, out DiceRoll roll,
-            CombatConfig combat = null, EnergyConfig energy = null)
+            CombatConfig combat = null, EnergyConfig energy = null, GameConfig game = null)
         {
             var squads = new Dictionary<PlayerColor, IReadOnlyList<OperatorDefinition>>
             {
@@ -30,7 +31,7 @@ namespace NonaRoyale.Core.Tests.Engine
             for (int seed = 1; seed < 3000; seed++)
             {
                 var match = MatchFactory.Create(new[] { PlayerColor.Red }, seed, squads,
-                    combatConfig: combat, energyConfig: energy, openingDeployments: 3);
+                    gameConfig: game, combatConfig: combat, energyConfig: energy, openingDeployments: 3);
                 match.Engine.Start();
 
                 var rolled = match.Engine.Execute(new RollDiceCommand()).OfType<DiceRolled>().FirstOrDefault();
@@ -134,6 +135,103 @@ namespace NonaRoyale.Core.Tests.Engine
         {
             var match = Rolled(r => true, out _);
             Assert.That(match.Engine.HomeEnergyBounty, Is.EqualTo(CombatConfig.Default.HomeEnergyBounty));
+        }
+
+        // ── The extra roll (CG17b) ───────────────────────────────────────
+
+        [Test]
+        public void TheDesignersRoll()
+        {
+            Assert.That(GameConfig.Default.HomeExtraRolls, Is.EqualTo(1),
+                "2026-10-03: one roll on top of the energy. Changing it should also update §8 and CG17b.");
+        }
+
+        [Test]
+        public void ReachingHome_OwesAnotherRoll_WithNoEnergyOnIt()
+        {
+            var match = Rolled(r => !r.IsDouble, out _);
+            var events = WalkHome(match, out _, out _);
+
+            Assert.That(events.OfType<OperatorReachedHome>().Single().GrantsAnotherRoll, Is.True);
+            Assert.That(match.Engine.CanRollAgain, Is.True);
+            Assert.That(match.Engine.RollAgainFromDoubles, Is.False, "the coach's doubles tip stays quiet");
+
+            int pool = match.Engine.CurrentPlayer.Energy;
+            var rolled = match.Engine.Execute(new RollDiceCommand());
+
+            Assert.That(rolled.OfType<CommandRejected>(), Is.Empty);
+            Assert.That(rolled.OfType<DiceRolled>().Count(), Is.EqualTo(1));
+            Assert.That(rolled.OfType<EnergyGranted>(), Is.Empty, "only the turn's first roll adds energy (§3.1)");
+            Assert.That(match.Engine.CurrentPlayer.Energy, Is.EqualTo(pool));
+        }
+
+        [Test]
+        public void AfterADouble_TheHomeRoll_SurvivesAPlainReRoll()
+        {
+            // A double owes one roll and the arrival another; the budget (3) has two left.
+            for (int seed = 1; seed < 6000; seed++)
+            {
+                var squads = new Dictionary<PlayerColor, IReadOnlyList<OperatorDefinition>>
+                {
+                    [PlayerColor.Red] = new[] { Bouncer.Definition, Mimi.Definition, Javi.Definition }
+                };
+                var match = MatchFactory.Create(new[] { PlayerColor.Red }, seed, squads, openingDeployments: 3);
+                match.Engine.Start();
+
+                var first = match.Engine.Execute(new RollDiceCommand()).OfType<DiceRolled>().FirstOrDefault();
+                if (first == null || !first.Roll.IsDouble) continue;
+
+                WalkHome(match, out _, out _);
+                Assert.That(match.Engine.CanRollAgain, Is.True);
+
+                var second = match.Engine.Execute(new RollDiceCommand()).OfType<DiceRolled>().FirstOrDefault();
+                Assert.That(second, Is.Not.Null, "the doubles roll is taken");
+                if (second.Roll.IsDouble) continue;
+
+                // The doubles roll is spent; the home roll is still owed once the dice are used.
+                TurnKit.PayWhatIsOwed(match.Engine);
+                Assert.That(match.Engine.CanRollAgain, Is.True, "the home roll outlives a plain re-roll");
+                Assert.That(match.Engine.RollAgainFromDoubles, Is.False);
+                return;
+            }
+
+            Assert.Fail("No seed produced a double followed by a plain roll.");
+        }
+
+        [Test]
+        public void AtTheRollBudget_NoRollIsOwed()
+        {
+            var match = Rolled(r => !r.IsDouble, out _, game: new GameConfig(maxRollsPerTurn: 1));
+            var events = WalkHome(match, out _, out _);
+
+            Assert.That(events.OfType<OperatorReachedHome>().Single().GrantsAnotherRoll, Is.False);
+            Assert.That(match.Engine.CanRollAgain, Is.False);
+            Assert.That(events.OfType<OperatorReachedHome>().Single().Bounty, Is.EqualTo(3), "the energy still pays");
+        }
+
+        [Test]
+        public void TheLastOperatorHome_OwesNoRoll()
+        {
+            // A seat with nobody left to move would be forced to roll for nothing.
+            var match = Rolled(r => !r.IsDouble, out _);
+            foreach (var other in match.Operators.Where(o => o.Owner == PlayerColor.Red && o.Name != "Bouncer"))
+                other.MoveTo(match.Map.Profile.Journey);
+
+            var events = WalkHome(match, out _, out _);
+
+            Assert.That(events.OfType<OperatorReachedHome>().Single().GrantsAnotherRoll, Is.False);
+            Assert.That(match.Engine.CanRollAgain, Is.False);
+        }
+
+        [Test]
+        public void ZeroRolls_TurnsItOff()
+        {
+            var match = Rolled(r => !r.IsDouble, out _, game: new GameConfig(homeExtraRolls: 0));
+            var events = WalkHome(match, out _, out _);
+
+            Assert.That(events.OfType<OperatorReachedHome>().Single().GrantsAnotherRoll, Is.False);
+            Assert.That(match.Engine.CanRollAgain, Is.False);
+            Assert.Throws<ArgumentOutOfRangeException>(() => new GameConfig(homeExtraRolls: -1));
         }
     }
 }

@@ -757,6 +757,14 @@ A player wins when **all three of their operators have reached HOME**. Reaching 
 - The bots value it like any other energy they're offered (`MoveScorer`: what the pool can still hold × `EnergyGain`).
 - **Unmeasured.** Zero turns it off.
 
+**And another roll** (`GameConfig.HomeExtraRolls` = 1; designer, 2026-10-03, CG17b, "on top of the 3 energy paid"):
+- **Owed like a doubles roll:** inside `MaxRollsPerTurn`, with no energy on it (§3.1), taken after the dice in hand are spent, and declinable while a runner could still move. Forced only when nothing can move, which leaves a free chance at a 6.
+- **Counted apart from the doubles flag** (`TurnStateMachine._homeRolls`), because a re-roll's own faces overwrite that flag. A re-roll spends a double's roll first, then a home roll, so a home roll survives a plain re-roll.
+- **Not granted** when the rolls already owed fill what the budget has left, or when the arrival leaves its seat with nobody to move. That arrival has won, and a forced roll with nothing on the board would make the winner roll for nothing.
+- Reported as `OperatorReachedHome.GrantsAnotherRoll`. `DiceRolled.GrantsAnotherRoll` keeps meaning "these faces were a double".
+- The bots value it as a dealt double's roll is valued (`CastPlanner.DiceValue`).
+- **Unmeasured, and it pulls toward the race**, which the energy alone did not. The designer chose it with that on the table.
+
 Home entry is automatic on the MVP (ADR-0003). The opt-out-to-pursue flag is post-MVP — see `_HANDOFF_opt_out_home_entry.md`.
 
 ---
@@ -2093,3 +2101,9 @@ The watch machinery (§6.7) is dormant: `PredatorsReadTests` and `WatchBotTests`
   - `MoveScorer` adds the capped energy to a landing that finishes. The glossary's Energy line and the event text name it.
   - **The rules fingerprint moves: `fa6373a0` → `58eed81a`.** Every replay recorded before this is refused.
   - New fixture `HomeBountyTests` (7). Core harness 1009 → 1016, all passing. **Unmeasured in the bots sweep:** run one before reading anything into win shares.
+- 2026-10-03 (second pass) — **Reaching HOME also earns another roll** (designer; §8, CORE_GAMEPLAY CG17b).
+  - The pieces: `GameConfig.HomeExtraRolls` = 1 (a new dial, appended), `TurnStateMachine.GrantHomeRoll`, `HomeRollsOwed` and `RollAgainFromDoubles`, and `GameEngine.RollAgainFromDoubles`. `OperatorReachedHome` gains `GrantsAnotherRoll`.
+  - The text: two refusals are reworded, the coach's doubles tip shows only for doubles, and its home-column tip names both rewards. The event line reads "…: 3 energy and another roll".
+  - `MoveScorer` adds the roll's value.
+  - `RegenTests`' fixture stops rolling once its mover is home: it now declines the home roll, which only the subject could spend.
+  - **Fingerprint `58eed81a` → `a48228fb`.** `HomeBountyTests` 7 → 13. Core harness 1016 → 1022, all passing. Bots sweep not run.

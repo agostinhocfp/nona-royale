@@ -600,14 +600,15 @@ namespace NonaRoyale.Unity.View
         {
             if (engine.MatchOver) return "Match over.";
             if (engine.Phase == TurnPhase.AwaitingRoll) return "Roll to start your turn.";
-            if (canRoll) return "Doubles — roll again.";
+            if (canRoll) return engine.RollAgainFromDoubles ? "Doubles — roll again." : "Home — roll again.";
 
             // The top bar already says to move a piece; saying it twice is what
             // H1 exists to stop. Only the states the top bar does not cover
             // get a line here.
             // Doubles with dice still to spend (G7c): the top bar says to move,
             // and nothing said a second roll was coming until they were gone.
-            if (unspent > 0 && engine.CanRollAgain) return "Doubles: you roll again after these.";
+            if (unspent > 0 && engine.CanRollAgain)
+                return engine.RollAgainFromDoubles ? "Doubles: you roll again after these." : "Home: you roll again after these.";
 
             if (unspent > 0 && engine.MustSpendRoll) return "";
             if (canEnd) return unspent > 0 ? "No legal move." : "All spent.";

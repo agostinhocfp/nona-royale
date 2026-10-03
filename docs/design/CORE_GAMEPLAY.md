@@ -29,6 +29,7 @@ The designer's notes from playing the match, taken one at a time. This pass chan
 | CG15 | Cryo Field's frost looks like frost | In, 2026-10-02 |
 | CG16 | The shader pack on the pieces: greyscale for the yard and stuns, a hologram on Zero-Day, a heat shimmer for Stealth | In, 2026-10-03 |
 | CG17 | Bringing an operator home pays 3 energy, with a payout moment | In, 2026-10-03 |
+| CG17b | …and another roll | In, 2026-10-03 |
 
 ### CG1 — The tray stays up off-turn
 
@@ -248,6 +249,25 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - **Replays:** the rules fingerprint moves (`58eed81a`), so replays recorded before this are refused.
 - **Unmeasured:** no bots sweep yet. Two things worth watching are whether matches get shorter and whether the race-leaning styles gain.
 
+### CG17b — …and another roll
+
+**Designer (2026-10-03):** "Let's add a dice roll on top of the 3 energy paid please."
+
+- **The rule** (COMBAT_SYSTEMS §8): an arrival owes its seat `GameConfig.HomeExtraRolls` = 1 roll. It's owed like a doubles roll:
+  - inside the 3-roll budget, with no energy on it;
+  - taken after the dice in hand are spent;
+  - declinable while a runner could move, forced only when nothing can.
+- **When it isn't granted:** when the budget is already spoken for, and on the arrival that leaves the seat with nobody to move (it has won).
+- **A home roll survives a plain re-roll.** Doubles first, then the home roll.
+- **The words:**
+  - The top bar and the tray say "Home — roll again" where doubles say "Doubles — roll again".
+  - The payout floats "ROLL AGAIN" in gold above "+3 ENERGY".
+  - The history toast reads "Javi reaches home, rolls again", and the event line "…: 3 energy and another roll".
+  - The coach's doubles tip stays quiet for a home roll; the home-column tip now names both rewards.
+- **The bots** value the roll like a dealt double's.
+- **Replays:** fingerprint `a48228fb`.
+- **Unmeasured,** and unlike the energy it pulls toward the race. Run the bots sweep before judging it.
+
 ## Play Mode checks
 
 - [ ] Solo against CPUs: after ending your turn, your last operator stays in the tray through every CPU turn; with nothing ever selected, one of yours appears on the first CPU turn.
@@ -296,6 +316,8 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - [ ] CG17: walk an operator into HOME. The chips toss up off it, a gold ring opens, "+3 ENERGY" rises in cyan, the chip-stack sound plays and the operator speaks (a chirp until voices are recorded). The seat's pool shows +3, and the history's HOME item reads "+3e".
 - [ ] CG17: at a full pool, "HOME" in gold instead and the pool unchanged. The last operator home: its line is cut off by the victory line, and the win plays as before.
 - [ ] CG17: Reduced motion: the ring and the figure without the chip toss. A CPU's arrival plays the same moment. Holding the hurry key skips it cleanly.
+- [ ] CG17b: walk an operator home with a plain roll: "ROLL AGAIN" floats above "+3 ENERGY", the button reads ROLL AGAIN, and the top bar says "Home — roll again". The extra roll adds no energy. Ending the turn without taking it still works while another runner could move.
+- [ ] CG17b: arrive home on a double: two more rolls are owed, and after a plain re-roll the bar still says "Home — roll again". At the third roll of the turn, no roll is owed and nothing floats it. The last operator home floats no roll, and the turn ends into the win as before.
 - [ ] CG3: start a match against CPUs, end your turn, switch to another window: the CPUs keep playing (Editor and a Windows build).
 
 ## Open
@@ -321,6 +343,7 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 
 ## Log
 
+- 2026-10-03 — **CG17b in: home also earns another roll.** Core: `GameConfig.HomeExtraRolls`, `TurnStateMachine.GrantHomeRoll`/`HomeRollsOwed`/`RollAgainFromDoubles`, `GameEngine.ArriveHome` and `RollAgainFromDoubles`, `OperatorReachedHome.GrantsAnotherRoll`, `EventText`, `Coach`, `RulesFingerprint`, `MoveScorer`. View: `TurnStrip`, `ActionTray`, `FeedbackLayer.HomePayout`, `HistoryFeed`, `MatchBootstrap.PlayArrivals`. Tests: `HomeBountyTests` +6, `RulesFingerprintTests` hash and dial count, `RegenTests` fixture. **Checked:** core harness 1022 passing; the audio tests (31) pass; the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`, 0 warnings; the device files match the tested copy. Play Mode pending; bots sweep not run.
 - 2026-10-03 — **CG17 in: home pays 3 energy, with a payout moment.** Core: `CombatConfig.HomeEnergyBounty`, `EnergyLedger.GrantHome`, `TurnStateMachine.PayHome`, `GameEngine.ArriveHome`/`HomeEnergyBounty`, `OperatorReachedHome.Bounty`, `RulesFingerprint`, `Glossary`, `EventText`, `MoveScorer`. View: `PresentationBeat.Home`, `MatchBootstrap.PlayArrivals`, `FeedbackLayer.HomePayout`, `HistoryFeed`, `SoundCue.Home` with its recipe and spec, `VoiceSlot.Home` with its blip shape. Tests: new `HomeBountyTests` (7); `RulesFingerprintTests` golden hash and dial count; `VoiceRulesTests` order. **Checked:** core harness 1009 → 1016, all passing; the audio tests (31) pass against the built view; the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`, 0 warnings; the device files match the tested copy. Play Mode pending; bots sweep not run.
 - 2026-10-03 — **CG16 in: the shader pack on the pieces.** New: `View/PieceFx.cs` and six materials under `Art/Resources/Art/Fx/` (`GreyUnlit`, `GreyLit`, `HoloUnlit`, `HoloLit`, `ShimmerUnlit`, `ShimmerLit`). Changed: `OperatorPiece` (`FxParts`, grey from the yard and the stun, the hologram and the shimmer from the statuses, the figure's flash lifted over the copies), `ChipView` (`FxFaces`, `FxParts`), `ShaderFx` (names and property ids) and `StealthShimmer` (now the fallback). Not done: the hit flash and the outline, which already exist in code. **Checked:** the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`, 0 warnings; the device files match the compiled copy; the materials' keywords and property names were checked against the pack's shaders. The materials were written by hand, not saved by the editor, so the first editor import is the real check. Play Mode pending.
 - 2026-10-02 — **CG15 in: Cryo Field's frost looks like frost.** Changed: `View/FrostTexture.cs` (rewritten: grown feathers, crystals and rime at 128×128, plus `Glints`), `View/DeviceLayer.cs` (frost alpha 0.6, breath ±10%, the glint layer, `SpawnFlow` size and return, shared `CellHash`/`Orient`). The asset pack has no frost effect, so it isn't used here. **Checked:** the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`; the real `Grow` and `Paint` were run outside Unity and their output rendered over a dark board for a look. Play Mode pending.

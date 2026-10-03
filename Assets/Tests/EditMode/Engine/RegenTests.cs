@@ -55,7 +55,9 @@ namespace NonaRoyale.Core.Tests.Engine
             _engine.Execute(new RollDiceCommand());
             _engine.Execute(new MoveCommand(_mover.Id));
 
-            while (_engine.CanRollAgain)
+            // Once the mover is home its arrival owes a roll (CG17b) that only
+            // the subject could spend; it is declined, since a runner could move.
+            while (_engine.CanRollAgain && !_engine.IsHome(_mover))
             {
                 _engine.Execute(new RollDiceCommand());
                 _engine.Execute(new MoveCommand(_mover.Id));

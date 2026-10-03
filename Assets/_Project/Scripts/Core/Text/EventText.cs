@@ -230,6 +230,7 @@ namespace NonaRoyale.Core.Text
                 case OperatorReachedHome home:
                     Name(line, home.Operator).Text(" reaches home");
                     if (home.Bounty > 0) line.Text(": ").Number(home.Bounty).Text(" ").Keyword("energy", Keywords.Energy);
+                    if (home.GrantsAnotherRoll) line.Text(home.Bounty > 0 ? " and another roll" : ": another roll");
                     return line;
 
                 case GameWon won:

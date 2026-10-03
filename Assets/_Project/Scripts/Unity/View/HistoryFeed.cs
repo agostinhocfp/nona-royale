@@ -218,7 +218,8 @@ namespace NonaRoyale.Unity.View
             }
             else if (moved != null && home != null)
             {
-                item = New(HistoryKind.Home, moved.Operator, round, "HOME", $"{moved.Operator.Name} reaches home");
+                item = New(HistoryKind.Home, moved.Operator, round, "HOME",
+                    home.GrantsAnotherRoll ? $"{moved.Operator.Name} reaches home, rolls again" : $"{moved.Operator.Name} reaches home");
 
                 // CG17: what the arrival paid, in the energy colour, as a cast prints its cost.
                 item.Value = home.Bounty > 0 ? $"+{home.Bounty}e" : "";
