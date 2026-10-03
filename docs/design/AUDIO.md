@@ -386,3 +386,45 @@ Stage 4 (art hookup) was skipped for now: no finished Meshy renders are in hand.
     - Level-matched playback (loudest 50 ms to −22 dB), waveforms, a heard marker, a note per pick for trims, picks kept in the browser, and **Copy picks** as `Cue: Pack/File (note)` lines.
   - **Checked** in headless Chromium against a copy of the folder layout: all 129 paths resolve; picks, notes, Whole pack assignment, copy, persistence across a reload, the folder fallback and the keyboard work; no horizontal scroll at 390 px.
   - Nothing in the game changed.
+  - **The designer's picks** (same day): 34 files across 38 cues and moments. Only these files, their `.meta` files and their folders' `.meta` files are committed; the other 95 stay on disk untracked. The pathspec used for the commit is `_NonaRoyale_audition/shapeforms_picks.pathspec`. Nothing is wired yet: each pick still has to be trimmed, levelled and copied into `Audio/Resources/Audio/SFX/` (abilities under `Abilities/`) under its cue name, with a `PROVENANCE.md` row, and the board picks still face decision 7's "clearly better" test in Play Mode.
+
+    | Cue or moment | Pick (Shapeforms folder / file) |
+    | --- | --- |
+    | `UiClick` | Type / Laptop_Keystroke_82 |
+    | `TurnStart` | Arcane Activations / UI Message Appear 01 |
+    | `Step` | The Mint / Bank Card Placed Down 03 |
+    | `Rise` | Sci Fi Weapons / MECHClik_Mine Deploy_02 |
+    | `Doubles` | The Mint / Coin Dropped on Ceramic Dish |
+    | `Hit` | Hit and Punch / PUNCH_CLEAN_HEAVY_10, PUNCH_PERCUSSIVE_HEAVY_08 |
+    | `HitBig` | Hit and Punch / PUNCH_DESIGNED_HEAVY_86 |
+    | `Miss` | Hit and Punch / WHOOSH_ARM_SWING_01 |
+    | `Block` | Sci Fi Weapons / BLLTRico_Ricochet Metallic_04 |
+    | `Knockout` | Sci Fi Weapons / DSGNStngr_Kill Confirm Metallic_02 |
+    | `LayerTech` | Hit and Punch / PUNCH_ELECTRIC_HEAVY_02 |
+    | `LayerAtomic` | Dystopia / SUB_DROP_DEEP |
+    | `Bouncer_Apophis_Tell` | Sci Fi Weapons / BLLTRico_Ricochet Metallic_04, GUNMech_Mechanical_12, SCIMisc_Arm Weapon Heavy_01 |
+    | `Bouncer_AllInMauling_Impact` | Hit and Punch / PUNCH_PERCUSSIVE_HEAVY_09, PUNCH_DESIGNED_HEAVY_86 |
+    | `Kurbyn_DarginPulse_Tell` | Sci Fi Weapons / LASRGun_Electron Impeller Charged Fire_02 |
+    | `Kurbyn_DarginPulse_Impact` | Hit and Punch / PUNCH_ELECTRIC_HEAVY_02 |
+    | `Kurbyn_MiraclePull_Impact` | Sci Fi Weapons / EXPLDsgn_Implode_15 |
+    | `Kurbyn_EvasiveProtocol_Impact` | Hit and Punch / WHOOSH_AIRY_FLUTTER_01 |
+    | `Javi_NaniteInfusion_Assist` | Sci Fi Weapons / SCIEnrg_Energy Orb_05 |
+    | `Javi_TraumaPlate_Tell` | Arcane Activations / Activate Glyph Forcefield |
+    | `Javi_NeuralPurge_Tell` | Cassette / TAPE STOP_15 |
+    | `Sanity_ShortCircuit_Impact` | Cassette / EMF_TAPE_RECORDING_06 |
+    | `Sanity_ZeroDay_Tell` | Sci Fi Weapons / BEEPTimer_Anticipation Beeps_05 |
+    | `Sanity_ZeroDay_Impact` | Sci Fi Weapons / EXPLDsgn_Explosion Rumble Distorted_01 |
+    | `Sanity_Collision_Tell` | Sci Fi Weapons / CREAMnstr_Beast Vocalisation_09 |
+    | `Sanity_Collision_Impact` | Sci Fi Weapons / UIBeep_Lock On_05 |
+    | `Syla_FromTheHip_Tell` | Hit and Punch / HIGH_SNAP_02 |
+    | `Syla_AceShards_Tell` | Hit and Punch / WHOOSH_AIRY_FLUTTER_01 |
+    | `Syla_TaggedFromAbove_Tell` | Sci Fi Weapons / BEEP_Targeting Loop_06 |
+    | `Mimi_CryoPulse_Impact` | Sci Fi Weapons / EXPLDsgn_Implode_15 |
+    | `Mimi_Translocation_Tell` | Cassette / SLOW DOWN SPEED UP_05 |
+    | `Mimi_CryoField_Tell` | Arcane Activations / Activate Glyph Forcefield |
+    | `Kian_InversionMatrix_Tell` | Sci Fi Weapons / SCIMisc_Reload Alien Tech_02 |
+    | `Kian_DroneStrike_Tell` | Sci Fi Weapons / BEEPTimer_Anticipation Beeps_05 |
+    | `Kian_DroneStrike_Impact` | Sci Fi Weapons / EXPLDsgn_Explosion Impact_14 |
+    | `Luka_Vendetta_Impact` | Hit and Punch / PUNCH_PERCUSSIVE_HEAVY_09 |
+    | `Fortuna_DealAgain_Tell` | The Mint / Receipt Handled 03 |
+    | `Fortuna_Boxcars_Tell` | The Mint / Coin Dropped on Wood Rattle |
