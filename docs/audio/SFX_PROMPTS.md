@@ -24,14 +24,16 @@ End every prompt with this line; it keeps the takes in the AU1d palette:
 
 > Close-miked foley in a quiet, dry room, no music, no melody, no musical notes, no reverb tail, no voice, single sound effect.
 
+**Amended 2026-10-03 (AUDIO.md decision 7):** combat abilities may sound sci-fi: energy, weapons, shields and impacts. The board and the interface stay physical and quiet, and the current board sounds stay unless a replacement is clearly better. For the combat abilities, a coherent library (the candidate is Shapeforms' *Sci Fi Weapons Cyberpunk Arsenal*) takes priority over generating takes one by one.
+
 Camp materials, so a player can name the camp with their eyes closed:
 
 | Camp | Material | Never |
 | --- | --- | --- |
-| House (Bouncer, Kurbyn) | Aged brass, hydraulics, heavy mechanism; Kurbyn's rig is electrical | Sci-fi lasers, synth zaps |
-| Contractors (Syla, Mimi, Javi, Kian, Nuetu, Sanity) | Each their own tech: obsidian glass, cryo, nanites, drones | Chimes, bells, anything that rings in tune |
+| House (Bouncer, Kurbyn) | Aged brass, hydraulics, heavy mechanism; Kurbyn's rig is electrical: arcs, discharges, energy impacts (since 2026-10-03) | Toy zaps, 8-bit blips |
+| Contractors (Syla, Mimi, Javi, Kian, Nuetu, Sanity) | Each their own tech, sci-fi welcome (since 2026-10-03): obsidian glass, cryo, nanites, drones, energy weapons, shields, explosions | Chimes, bells, anything that rings in tune; toy or 8-bit sounds |
 | Owners (Lethe, Revú, Fortuna) | Money: clay chips, dice, coins, slow clockwork | Cash-register cartoon sounds |
-| Luka | Cyan radio interference, scanlines dropping out | Clean digital beeps |
+| Luka | Cyan radio interference, scanlines dropping out, targeting locks | Clean digital beeps |
 
 ## The alpha three
 

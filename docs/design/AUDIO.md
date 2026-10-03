@@ -1,7 +1,7 @@
 # Nona Royale — Audio (Stage 5)
 
 > Location in repo: `docs/design/AUDIO.md` · Project copy: `claude/AUDIO.md`
-> Status: **Reopened 2026-09-21 for AU3** (ability signatures, committed) **and AU4** (the match playlist), in the repo, Play Mode pending. AU1 to AU1f and AU2 closed 2026-09-16 after Play Mode.
+> Status: **Reopened 2026-09-21 for AU3** (ability signatures, committed) **and AU4** (the match playlist), in the repo, Play Mode pending. AU1 to AU1f and AU2 closed 2026-09-16 after Play Mode. **Decision 7 (2026-10-03):** the sound pass is parked; the current sounds stay, and anything that replaces them must be great.
 > Related: `NEXT_PHASES.md` (Stage 5), `MOTION.md` (Stage 3, whose presentation steps the sounds follow), `PRESENTATION.md` §3.1, `ART_PIPELINE.md` §8 (licensing)
 
 ## Goal
@@ -65,6 +65,15 @@ Stage 4 (art hookup) was skipped for now: no finished Meshy renders are in hand.
    - **The damage type travels on the event.** `DamageDealt.Type` (and `DamageResult.Type`), optional and appended, read by no rule, so the view still computes nothing.
    - **An execute is preceded by silence:** the mix drops for 0.2 s before the knockout.
    - AI sound generators are allowed, like Lyria: after a licence check, with a `PROVENANCE.md` row per file.
+
+7. **The sound pass: the bar is "great", not "real" (designer, 2026-10-03; parked until sound is the step).**
+   - **The board stays as it is.** The current effects (the synthesized AU1d palette, the Kenney chip steps and the dice) are a good fit. Nothing replaces one of them unless the replacement is clearly better, not merely recorded. Players hear these hundreds of times a match.
+   - **Combat abilities may sound sci-fi.** Most of the roster's combat abilities are tech (Drone Strike, Killzone, Short Circuit, Dargin Pulse, Zero-Day, the shields), so energy, weapon and impact sounds fit them. The board and the interface stay physical and quiet. `SFX_PROMPTS.md`'s camp table was rewritten to match.
+   - **Source: one coherent library over a sampler.**
+     - The candidate for the combat set is Shapeforms' *Sci Fi Weapons Cyberpunk Arsenal*, on itch.io: about 1,400 sounds, royalty-free, no generative AI, $29.40 on 2026-10-03 (40% off $49).
+     - Its shields, impacts, hit markers, targeting, explosions and energy melee are the useful part. Its 733 gun sounds mostly aren't, since the game has no guns.
+     - Browse the store carefully when the pass starts.
+   - **The Sonniss GDC 2026 bundle is gap filler only.** The designer judged its takes not good enough for constant play, partly because Claude's audition cuts were automatic and unmixed. The bundle is at `C:\Users\agost\Documents\dev\gamedev\unity\assets\audio\sonniss-gdc-2026\`, outside the repo, and Boom Library's Destruction Bundle sits next to it in its own folder. Its licence: royalty-free, commercial use, no attribution, no AI/ML training. 123 audition takes and a picking page (`_NonaRoyale_audition/audition.html`) are there, unused.
 
 ## Increments
 
@@ -353,3 +362,8 @@ Stage 4 (art hookup) was skipped for now: no finished Meshy renders are in hand.
   - No on-screen toast: the change is heard at once, and the Sound page shows the state.
   - **Checked:** `AudioLevels` and its tests compiled and ran in the cloud (11 passing, 2 new). The view edits were not compiled against the editor DLLs.
   - **Play Mode checklist:** on the title, M silences everything and M again brings it back. Shift+M stops only the music, and clicks still play. Open Settings → Sound and press M and Shift+M: the rows flip while you watch. Restart the game: both mutes are remembered. Restore defaults clears both. Ctrl+M does nothing.
+- 2026-10-03 — **Decision 7: the sound pass is parked, with its bar and direction set.**
+  - The designer imported the Sonniss GDC 2026 bundle. Claude cut 123 audition takes for the 14 generic cues and 16 ability moments, with a local picking page, and re-cut the continuous sources whole after the first pass chopped them.
+  - The designer's verdict: the takes aren't good enough for sounds heard constantly, and the current effects are a good fit, so a replacement has to be great.
+  - Combat abilities may take a sci-fi character; the board stays physical. `SFX_PROMPTS.md`'s camp table was rewritten.
+  - Nothing in the game changed. The audition scripts (`audition.py`, `make_page.py`) are in the project's `Temp/` and will be lost on the next Unity clean; they are throwaway.
