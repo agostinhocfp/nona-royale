@@ -1,4 +1,5 @@
 // Assets/_Project/Scripts/Unity/View/ActionTray.cs
+using System.Collections.Generic;
 using NonaRoyale.Core.Abilities;
 using NonaRoyale.Core.Board;
 using NonaRoyale.Core.Model;
@@ -250,12 +251,20 @@ namespace NonaRoyale.Unity.View
         private OperatorState _barOperator;
         private float _barFraction = -1f;
 
+        /// <summary>
+        /// The cooldown share each card's sweep last showed, by operator and
+        /// ability, so a rebuilt card's sweep carries on from where the old
+        /// one stood (<see cref="CooldownSweep"/>).
+        /// </summary>
+        private readonly Dictionary<long, float> _sweepShown = new Dictionary<long, float>();
+
         public void Bind(RectTransform canvasRect, IControlPanelHost host)
         {
             _host = host;
             _canvas = canvasRect;
             _barOperator = null;
             _barFraction = -1f;
+            _sweepShown.Clear();
             if (_tray == null) Build();
             _dirty = true;
         }
@@ -865,6 +874,12 @@ namespace NonaRoyale.Unity.View
         /// be cast the dimmed frame with the reason after its meta. The READY
         /// word said what the frame already did.
         ///
+        /// <b>A cooldown shows as a sweep</b> (<see cref="CooldownSweep"/>,
+        /// designer 2026-10-03): a cyan veil over the share still to run,
+        /// whose hand turns clockwise a step each of the caster's turns, like
+        /// a radar, and clears the card on the turn it is ready. "Ready in N
+        /// turns" stays in the meta for the exact count.
+        ///
         /// <b>The rules line lives on the card</b>, so a player reads what an
         /// ability does before choosing it, not after. It is the same
         /// <see cref="RulesText"/> line the draft and the dossier print, never
@@ -922,6 +937,13 @@ namespace NonaRoyale.Unity.View
             EqualShare(button);
 
             var card = (RectTransform)button.transform;
+
+            // The cooldown sweep, under the words: a veil over the share of
+            // the cooldown still to run, turning clockwise a step each of the
+            // caster's turns. Attached at zero too, so a cast has a "before".
+            if (ability.CooldownTurns > 0)
+                CooldownSweep.Attach(card, engine.TurnsUntilReady(op, ability), ability.CooldownTurns,
+                    _sweepShown, CooldownSweepGeometry.KeyOf(op.Id, ability.Id));
 
             // Hold any card to read it, without arming it (CO3); a card that
             // can't be cast opens it on a tap too, having nothing to arm.

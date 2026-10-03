@@ -1,7 +1,7 @@
 # Nona Royale — UI Motion and Type
 
 > Location in repo: `docs/design/UI_MOTION.md`
-> Status: **Open.** U1–U4 written 2026-09-17, Play Mode pending. U5 is parked until after the stranger test (`STRANGER_TEST.md`).
+> Status: **Open.** U1–U4 written 2026-09-17, Play Mode pending. U5 is parked until after the stranger test (`STRANGER_TEST.md`). U6 written 2026-10-03, Play Mode pending.
 > Related: `GUI_PHASE.md` (the skin this animates), `MOTION.md` (board-side motion, MO1–MO2), `ART_DIRECTION.md` §8 (UI registers), ADR-0008 (uGUI rules)
 
 ## Goal
@@ -19,6 +19,7 @@ Each increment ends with a Play Mode check and a commit.
 | U3 | **Typography**                        | Cinzel (OFL) as the display face on titles, the wordmark and the draft clock (`UiFonts`, loaded from Resources, degrades to the default face with one warning). `FloatingText` moves from the legacy `TextMesh` to TMP, with a birth pop. **The other half — a data face for everything numeric — landed as GUI increment G5 (`GUI_PHASE.md`), which also fixed the clock: Cinzel's figures are not tabular.** |
 | U4 | **Elevation**                         | Floating panels cast a two-part shadow and take a whisper of sheen across the top (`UiTheme` tokens, `DecoSprites.PanelSheen`, `UiKit.Elevate`). |
 | U5 | **Deeper juice**                      | Parked until after the stranger test; scoped from what testers react to. |
+| U6 | **Cooldown sweep**                    | An ability card on cooldown carries a radar sweep: a faint cyan veil over the share still to run, clipped to the card's chamfer, whose hand turns clockwise one step each of the caster's turns and clears the card on the turn it is ready (`CooldownSweep`, designer 2026-10-03). |
 
 ## Rules that hold throughout
 
@@ -38,6 +39,13 @@ Each increment ends with a Play Mode check and a commit.
   - Elevation: `UiTheme.PanelShadowNear`/`Far` (with offsets) and `PanelSheen`; `UiKit.Panel` elevates and sheens every floating panel.
   - 67 passing in the stand-in run (the csc harness: `dotnet restore` is broken machine-wide, SDK 10.0.401, so the harness compiles straight with csc — see `Temp/audio-tests`).
 - 2026-09-17 — **Presence pass, after the first Play Mode look** ("not seeing much different"). The first tuning was too quiet to perceive: 0.18 s fades, black shadows at 0.30/0.16 on a near-black theme, a 0.045 sheen. Strengthened: screen fades 0.28 s with a 28-unit rise, cascade 0.055 s per row, page swaps 0.18 s, panel shadows 0.55/0.32 at −8/−24, sheen 0.10, button dip 0.93, slider knob ×1.3/×1.5. The display face now also covers every `UiKit.Heading` (DICE, OPERATOR, ABILITIES, …), not just titles — the one change visible on every screen at rest.
+- 2026-10-03 — **U6: the cooldown sweep** (designer: "a semi-transparent clockwise overlay that sweeps across the icon like a radar to represent time passing").
+  - The ability cards carry words, not icons (block 6 of `ART_PROMPTS.md` was retired from the tray), so the sweep covers the card face, under its text, so the words stay legible.
+  - **Time is turns.** A cooldown counts the caster's own turns, so the veil holds still between them and sweeps when one passes. Its share is turns left over cooldown + 1, because the turn of the cast counts (`AbilityResolver.PutOnCooldown`): a cooldown of 2 reads full, two thirds, one third, clear. A continuous real-time radar was rejected, because it would suggest time passes in seconds.
+  - **Drawing:** `CooldownSweep`, a `MaskableGraphic` that builds a triangle fan from the card's centre to its chamfered outline (cut 6, `DecoSprites.ButtonFill`), with the corners added exactly, and a 1.5-unit hand on top. A filled `Image` would have stretched the sliced sprite and bent the corners. The veil is brightest along the hand and fades into the plain wash over 32°.
+  - **Colours:** `UiTheme.CooldownVeil` (cyan 0.10), `CooldownGlow` (cyan 0.28), `CooldownHand` (cyan 0.80). They are cyan because ART_DIRECTION §8 lists cooldowns among the live states in the cool register.
+  - **Motion:** a shrinking share sweeps over 0.35 s plus 0.9 s per whole circle, easing out (shorter under reduced motion). A growing share (a cast) appears whole with a 0.15 s fade, because a hand turning backwards would read as time reversing. The tray remembers the last share shown per operator and ability (`ActionTray._sweepShown`), so a rebuilt card picks up where the old sweep stood. An operator you return to after its turn has passed sweeps the step you missed.
+  - `CooldownSweepGeometry` keeps the maths free of the UI assembly. `CooldownSweepTests` has 11 tests (share, hand angle, outline on and inside the chamfer, the corners, fan order, keys), all passing in the cloud harness. Core harness 1022 passing. The view compiles with and without `DEVELOPMENT_BUILD`.
 
 ## Play Mode checklist
 
@@ -48,3 +56,4 @@ Each increment ends with a Play Mode check and a commit.
 - Cinzel shows on titles, the wordmark and the draft clock; damage numbers match the HUD face.
 - Reduced motion (settings): everything above shortens, and nothing overshoots.
 - `FloatingText.FontSize` (3.8) was matched on paper to the old TextMesh — check a damage number against the board and tune.
+- **U6:** cast an ability with cooldown 2. The card is veiled whole at once, the words stay readable, and the chamfered corners stay clean. On the caster's next turn the hand sweeps clockwise to two thirds left, then one third, then the card clears as it becomes ready. Other seats' turns move nothing. Selecting another operator and coming back neither replays nor skips a step. Check the veil's strength against the dimmed card upright on a phone; tune `CooldownVeil`/`CooldownGlow` if it is too faint or too loud.

@@ -136,6 +136,20 @@ namespace NonaRoyale.Unity.View
         public static readonly Color ButtonFill = Hex("352A31");
         public static readonly Color ButtonOff = Hex("120E11");
 
+        // ── Cooldown sweep (CooldownSweep) ──
+        // A cooldown is a live state, so it is drawn in the cool register
+        // (ART_DIRECTION §8): a faint cyan veil over the share still to run,
+        // brightest along its hand, which is a hairline of cyan.
+
+        /// <summary>The veil over the share of a cooldown still to run.</summary>
+        public static readonly Color CooldownVeil = WithAlpha(Cyan, 0.10f);
+
+        /// <summary>The veil's edge along the hand, fading into the plain veil.</summary>
+        public static readonly Color CooldownGlow = WithAlpha(Cyan, 0.28f);
+
+        /// <summary>The hand: the veil's leading edge, from the card's centre to its rim.</summary>
+        public static readonly Color CooldownHand = WithAlpha(Cyan, 0.80f);
+
         // ── Match bars (G9b) ──
 
         /// <summary>A match bar's lacquer: lit at the top, near black at the foot.</summary>
