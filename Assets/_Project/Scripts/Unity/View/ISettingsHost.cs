@@ -171,10 +171,14 @@ namespace NonaRoyale.Unity.View
             UiKit.Size(cap, height: RowHeight);
 
             // What the other choice offers, only while it is the other one.
-            var camera = UiKit.ChoiceRow(slot("cycle"), "Board camera",
-                display.Camera == BoardCamera.Tilted ? "" : "tilted shows more board",
-                display.CameraLabel(), () => { display.CycleCamera(); rebuild(); });
-            UiKit.Size(camera, height: RowHeight);
+            // Not offered while the tilt is archived (2026-10-03).
+            if (DisplaySettings.TiltOffered)
+            {
+                var camera = UiKit.ChoiceRow(slot("cycle"), "Board camera",
+                    display.Camera == BoardCamera.Tilted ? "" : "tilted shows more board",
+                    display.CameraLabel(), () => { display.CycleCamera(); rebuild(); });
+                UiKit.Size(camera, height: RowHeight);
+            }
 
             // The board skin (BS2, BOARD_SKIN.md): Classic as built, or the Deco
             // skin being brought to the visual target. Switching redraws the board.
@@ -358,7 +362,8 @@ namespace NonaRoyale.Unity.View
             if (PlayerPrefs.HasKey(DisplayHeight)) into.Height = PlayerPrefs.GetInt(DisplayHeight);
             if (PlayerPrefs.HasKey(DisplayVSync)) into.VSync = PlayerPrefs.GetInt(DisplayVSync) != 0;
             if (PlayerPrefs.HasKey(DisplayFrameCap)) into.FrameCap = PlayerPrefs.GetInt(DisplayFrameCap);
-            if (PlayerPrefs.HasKey(DisplayCamera)) into.Camera = (BoardCamera)PlayerPrefs.GetInt(DisplayCamera);
+            // A saved "tilted" is ignored while the tilt is archived, so the next save writes top-down.
+            if (DisplaySettings.TiltOffered && PlayerPrefs.HasKey(DisplayCamera)) into.Camera = (BoardCamera)PlayerPrefs.GetInt(DisplayCamera);
             if (PlayerPrefs.HasKey(DisplaySkin)) into.Skin = (BoardSkin)PlayerPrefs.GetInt(DisplaySkin);
             if (PlayerPrefs.HasKey(DisplayPieces)) into.Pieces = (PieceStyle)PlayerPrefs.GetInt(DisplayPieces);
             into.Sanitize();

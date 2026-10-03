@@ -1182,7 +1182,12 @@ namespace NonaRoyale.Unity.Composition
             // down. The room goes with the tilt, and goes quietly: RoomBackdrop
             // hides itself under a flat camera rather than draw a wall edge-on.
             // Setup, draft and the end card keep the salon.
-            bool wantsTilt = !title && (!hud || _display.Camera == BoardCamera.Tilted);
+            //
+            // Archived, dormant, since 2026-10-03 (DisplaySettings.TiltOffered):
+            // every screen frames top-down, the room hides itself under the
+            // flat camera, and the code below the switch stays as it was.
+            bool wantsTilt = DisplaySettings.TiltOffered &&
+                             !title && (!hud || _display.EffectiveCamera == BoardCamera.Tilted);
             bool tilted = wantsTilt &&
                           FrameTilted(camera, extent, aspect, left, 1f - right, bottom, 1f - top, hud);
 
@@ -1426,7 +1431,7 @@ namespace NonaRoyale.Unity.Composition
                 useLegacyPanel != _framedLegacy ||
                 (_match != null) != _framedWithHud ||
                 (_title != null && _title.IsShowing) != _framedOnTitle ||
-                _display.Camera != _framedCamera ||
+                _display.EffectiveCamera != _framedCamera ||
                 ScreenLayout.Version != _framedLayout ||
                 (_hudRoot != null && !Mathf.Approximately(_hudRoot.ScaleFactor, _framedScale)))
             {

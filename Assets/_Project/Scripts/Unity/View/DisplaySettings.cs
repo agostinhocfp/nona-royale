@@ -19,6 +19,14 @@ namespace NonaRoyale.Unity.View
     /// default: the tilt is the newer path, and a player whose machine or taste
     /// disagrees with it has somewhere to go. The tilt fits about half again as
     /// much board into the same screen (<see cref="TiltFraming"/>).
+    ///
+    /// <b>The tilt is archived, dormant (designer, 2026-10-03).</b> The pieces
+    /// are chips lying on the table now, and the tilt was built for figures
+    /// standing up out of it. <see cref="DisplaySettings.TiltOffered"/> is off:
+    /// every screen frames top-down, the setting row is gone and a saved
+    /// "tilted" is ignored. All the tilt code still compiles and runs if the
+    /// switch is turned back on. To be settled before launch (VISUAL_PASS.md):
+    /// almost certainly top-down only, and the tilt code then removed.
     /// </remarks>
     public enum BoardCamera
     {
@@ -42,9 +50,10 @@ namespace NonaRoyale.Unity.View
     }
 
     /// <summary>
-    /// How operators are drawn on the board (2026-09-29): as figures, the
-    /// rigs and renders built through LB5, or as casino chips carrying a
-    /// portrait (<see cref="ChipView"/>).
+    /// How operators are drawn on the board (2026-09-29): as figures - a
+    /// render where one exists, otherwise the look book's procedural figure -
+    /// or as casino chips carrying a portrait (<see cref="ChipView"/>). The
+    /// rigs that sat between those two went on 2026-10-01.
     /// </summary>
     /// <remarks>
     /// <b>Both stay</b> while the chips are playtested, like the board skin:
@@ -104,6 +113,16 @@ namespace NonaRoyale.Unity.View
 
         /// <summary>Straight down, or the tilted view (VISUAL_PASS.md, V1).</summary>
         public BoardCamera Camera { get; set; } = DefaultCamera;
+
+        /// <summary>
+        /// Whether the tilted camera is offered at all. Off since 2026-10-03:
+        /// archived, dormant. Read-only rather than const, so the code behind
+        /// it still compiles without unreachable-code warnings.
+        /// </summary>
+        public static readonly bool TiltOffered = false;
+
+        /// <summary>The camera the board is actually framed with: <see cref="Camera"/>, or top-down while the tilt is archived.</summary>
+        public BoardCamera EffectiveCamera => TiltOffered ? Camera : BoardCamera.TopDown;
 
         /// <summary>Classic or Deco (BS2).</summary>
         public BoardSkin Skin { get; set; } = DefaultSkin;

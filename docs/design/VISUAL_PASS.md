@@ -1,7 +1,7 @@
 # Nona Royale — Visual Pass
 
 > Location in repo: `docs/design/VISUAL_PASS.md` · Project copy: `claude/VISUAL_PASS.md`
-> Status: **Closed, 2026-09-20.** V0 passed and is retired; V1a, V1b, V1c, V2, V3a, V3b, V4 and V5 are all in and all passed Play Mode. The title is the one screen that is **flat**, and the salon stands the right way up.
+> Status: **Closed, 2026-09-20.** V0 passed and is retired; V1a, V1b, V1c, V2, V3a, V3b, V4 and V5 are all in and all passed Play Mode. The title is the one screen that is **flat**, and the salon stands the right way up. **Amended 2026-10-03: the tilt is archived, dormant** (see the log): every screen is top-down, so the salon and the table body no longer show. Pre-launch: settle it, almost certainly top-down only with the tilt code removed.
 > Related: `ART_DIRECTION.md` §3, §6, §6.1, ADR-0009 (figures rendered looking down about 25°), ADR-0010 (URP 2D Renderer), `LIGHTING.md`, `GUI_PHASE.md` (G2–G4)
 
 ## Goal
@@ -373,3 +373,13 @@ V0 passed, so neither fallback was needed: "top-down, deeper" and moving the boa
     - `tools/mockup/title.py` and `tools/mockup/scene.py` still draw the pre-V3b lockup with its tagline, and a room with chandeliers in it. They did their job in the V3 review; nothing depends on them now.
     - `brightness` and `velvet` on the MatchBootstrap object were dragged into place against the inverted room. They pass as they are, but they were never re-tuned against the corrected one.
     - V5's sheen is painted because `Light2D.normalMapQuality` is read-only in this URP. If the light rig ever moves to an authored prefab, real normal maps become available and this decision is worth revisiting.
+- 2026-10-03 — **The tilted camera is archived, dormant** (designer: "Considering the fact that we settled on chips for our characters, we can archive the tilted board").
+  - The tilt was built for figures standing up out of the table (V1b). Chips lie flat, so it adds nothing they need.
+  - The designer chose dormant over tag-and-delete for now: "remind me to re-address this issue pre-launch … almost certainly top-down will be the only camera mode."
+  - `DisplaySettings.TiltOffered` (static read-only, `false`) gates all of it:
+    - `MatchBootstrap.FrameCamera` frames every screen flat. That includes the setup, draft and end cards and the pause card over a match, which used to tilt into the salon.
+    - The Board camera row is gone from Display settings, and a saved "tilted" is ignored on load.
+    - `EffectiveCamera` is what the reframe check compares, so a stale preference can't make it reframe every frame.
+  - Everything behind the switch stays and compiles: `BoardTilt`, `FigureTilt`, `TiltFraming`, `TableBody`, `RoomBackdrop`, `RoomArt`, their tests, and the lean, depth and pointer branches. `RoomBackdrop` and `TableBody` already hide under a flat camera.
+  - **Pre-launch decision:** delete it (tag `archive/board-tilt` first, as with the rigs) or turn the switch back on.
+  - **Checked:** the view compiles against the Unity 6000.6 DLLs with and without `DEVELOPMENT_BUILD`, 0 warnings. Play Mode pending: the Display page has no Board camera row; the match, the pause card, the results card, setup and draft are all top-down; nothing reframes in a loop with an old "tilted" preference saved.
