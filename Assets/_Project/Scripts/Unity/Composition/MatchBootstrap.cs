@@ -2639,7 +2639,7 @@ namespace NonaRoyale.Unity.Composition
         /// scopes every effect away — Neural Purge aimed at an enemy was never
         /// a legal cast — which is most of what keeps the list short.
         ///
-        /// Allies are included because they always were legal: Velvet Rope
+        /// Allies are included because they always were legal: Apophis
         /// pulls a friend, All-In Mauling heals one, Nanite Infusion and Neural
         /// Purge exist for them, and Translocation swaps with one. The first
         /// target list showed enemies only, so the roster's healing had never

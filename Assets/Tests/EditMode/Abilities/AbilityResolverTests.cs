@@ -145,16 +145,16 @@ namespace NonaRoyale.Core.Tests.Abilities
         [Test]
         public void CooldownOfTwo_MakesAbilityUnusableForTwoOwnerTurns()
         {
-            Use(_bouncer, Bouncer.VelvetRope, _enemy);      // cooldown 2
+            Use(_bouncer, Bouncer.Apophis, _enemy);      // cooldown 2
 
             _clock.BeginTurnFor(PlayerColor.Red);
-            Assert.That(_abilities.IsReady(_bouncer, Bouncer.VelvetRope), Is.False, "first blocked turn");
+            Assert.That(_abilities.IsReady(_bouncer, Bouncer.Apophis), Is.False, "first blocked turn");
 
             _clock.BeginTurnFor(PlayerColor.Red);
-            Assert.That(_abilities.IsReady(_bouncer, Bouncer.VelvetRope), Is.False, "second blocked turn");
+            Assert.That(_abilities.IsReady(_bouncer, Bouncer.Apophis), Is.False, "second blocked turn");
 
             _clock.BeginTurnFor(PlayerColor.Red);
-            Assert.That(_abilities.IsReady(_bouncer, Bouncer.VelvetRope), Is.True);
+            Assert.That(_abilities.IsReady(_bouncer, Bouncer.Apophis), Is.True);
         }
 
         [Test]
@@ -180,13 +180,13 @@ namespace NonaRoyale.Core.Tests.Abilities
         public void AllInMauling_SitsOutOneTurn()
         {
             // Cooldown 1 since 2026-09-18: the double maul in a banked turn is
-            // gone, the rope-into-maul combo is not (different abilities).
+            // gone, the Apophis-into-Mauling combo is not (different abilities).
             _bouncer.MoveTo(ProgressAtTrack(PlayerColor.Red, 11));   // inside range 2
 
             Use(_bouncer, Bouncer.AllInMauling, _enemy);
 
             Assert.That(_abilities.IsReady(_bouncer, Bouncer.AllInMauling), Is.False, "the cast turn");
-            Assert.That(_abilities.IsReady(_bouncer, Bouncer.VelvetRope), Is.True, "no shared cooldown");
+            Assert.That(_abilities.IsReady(_bouncer, Bouncer.Apophis), Is.True, "no shared cooldown");
 
             _clock.BeginTurnFor(PlayerColor.Red);
             Assert.That(_abilities.IsReady(_bouncer, Bouncer.AllInMauling), Is.False, "the turn it sits out");
@@ -212,12 +212,12 @@ namespace NonaRoyale.Core.Tests.Abilities
         [Test]
         public void NeutralizedOperator_HasItsCooldownsReset()
         {
-            Use(_bouncer, Bouncer.VelvetRope, _enemy);
-            Assert.That(_abilities.IsReady(_bouncer, Bouncer.VelvetRope), Is.False);
+            Use(_bouncer, Bouncer.Apophis, _enemy);
+            Assert.That(_abilities.IsReady(_bouncer, Bouncer.Apophis), Is.False);
 
             _abilities.ResetCooldowns(_bouncer);
 
-            Assert.That(_abilities.IsReady(_bouncer, Bouncer.VelvetRope), Is.True);
+            Assert.That(_abilities.IsReady(_bouncer, Bouncer.Apophis), Is.True);
         }
 
         // ── Caster legality ──────────────────────────────────────────────
@@ -307,7 +307,7 @@ namespace NonaRoyale.Core.Tests.Abilities
         // ── Bouncer ──────────────────────────────────────────────────────
 
         [Test]
-        public void VelvetRope_PlacesTargetAdjacentOnTheSideItCameFrom()
+        public void Apophis_PlacesTargetAdjacentOnTheSideItCameFrom()
         {
             // Bouncer on track 2; the target approaches from track 4 and lands
             // on 3 — beside him, on the side it came from, never on his cell.
@@ -315,7 +315,7 @@ namespace NonaRoyale.Core.Tests.Abilities
             _board.Add(target);
             _bouncer.MoveTo(ProgressAtTrack(PlayerColor.Red, 2));
 
-            Use(_bouncer, Bouncer.VelvetRope, target);
+            Use(_bouncer, Bouncer.Apophis, target);
 
             Assert.That(_map.CellAt(target.Owner, target.Progress), Is.EqualTo(CellRef.Track(3)));
         }
@@ -331,11 +331,11 @@ namespace NonaRoyale.Core.Tests.Abilities
             // placement clamp rather than about targeting. A pull of three cells
             // backwards from progress 1 still goes negative, which is the case.
             //
-            // Bouncer stands at Velvet Rope's full range behind the target. He
+            // Bouncer stands at Apophis' full range behind the target. He
             // used to sit at a fixed track 10, which was exactly range 3 from
             // Blue's start + 1 on the 48-cell board and is 4 on the 52-cell one,
             // so the cast was refused as out of range and nothing was pulled.
-            int range = Bouncer.VelvetRope.Range;
+            int range = Bouncer.Apophis.Range;
             int targetCell = _map.StartTrackIndex(PlayerColor.Blue) + 1;
 
             var atStart = AtTrack(10, "AtStart", PlayerColor.Blue, 6, targetCell);
@@ -346,37 +346,37 @@ namespace NonaRoyale.Core.Tests.Abilities
             Assert.That(range, Is.AtLeast(3),
                 "precondition: landing beside Bouncer puts the target behind its own start");
 
-            var result = Use(_bouncer, Bouncer.VelvetRope, atStart);
+            var result = Use(_bouncer, Bouncer.Apophis, atStart);
 
             Assert.That(result.Approved, Is.True, "precondition: in range, so the pull happened");
             Assert.That(atStart.Progress, Is.EqualTo(0));
         }
 
         [Test]
-        public void VelvetRope_DamagesAnEnemy()
+        public void Apophis_DamagesAnEnemy()
         {
-            Use(_bouncer, Bouncer.VelvetRope, _enemy);
+            Use(_bouncer, Bouncer.Apophis, _enemy);
 
             Assert.That(_enemy.Health, Is.EqualTo(3));
         }
 
         [Test]
-        public void VelvetRope_IsAtomic_AndIgnoresEvasion()
+        public void Apophis_IsAtomic_AndIgnoresEvasion()
         {
             // Bouncer is the roster's direct counter to Evasive Protocol (§2.2).
             _statuses.ApplyPassive(_enemy, StatusKind.Evasion);
 
-            Use(_bouncer, Bouncer.VelvetRope, _enemy);
+            Use(_bouncer, Bouncer.Apophis, _enemy);
 
             Assert.That(_enemy.Health, Is.EqualTo(3), "Atomic cannot be evaded");
         }
 
         [Test]
-        public void VelvetRopeOnAlly_DealsNoDamage()
+        public void ApophisOnAlly_DealsNoDamage()
         {
             int before = _syla.Health;
 
-            var result = Use(_bouncer, Bouncer.VelvetRope, _syla);
+            var result = Use(_bouncer, Bouncer.Apophis, _syla);
 
             Assert.That(result.Approved, Is.True);
             Assert.That(_syla.Health, Is.EqualTo(before));
@@ -392,10 +392,10 @@ namespace NonaRoyale.Core.Tests.Abilities
             _syla.MoveTo(ProgressAtTrack(PlayerColor.Red, 11));   // the pull destination
             int sylaHealth = _syla.Health;
 
-            Use(_bouncer, Bouncer.VelvetRope, _enemy);
+            Use(_bouncer, Bouncer.Apophis, _enemy);
 
             Assert.That(_syla.Health, Is.EqualTo(sylaHealth));
-            Assert.That(_enemy.Health, Is.EqualTo(3), "only the rope's own damage");
+            Assert.That(_enemy.Health, Is.EqualTo(3), "only Apophis' own damage");
         }
 
         [Test]
@@ -403,7 +403,7 @@ namespace NonaRoyale.Core.Tests.Abilities
         {
             // 3 out and 1 back since the 2026-09-18 pass (4 energy, cooldown 1,
             // self-damage cut 2 → 1 after the bots gave away Bouncer's match
-            // paying it). Rope into Mauling was 3 Atomic plus 3 and killed
+            // paying it). Apophis into Mauling was 3 Atomic plus 3 and killed
             // either 6-health operator from full; at 3 plus 3 against 7 health
             // it leaves 1, so it is still a setup rather than an execution.
             // Ten casts of self-damage neutralize a full-health Bouncer.

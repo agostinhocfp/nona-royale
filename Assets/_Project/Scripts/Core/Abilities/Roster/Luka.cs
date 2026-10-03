@@ -183,7 +183,7 @@ namespace NonaRoyale.Core.Abilities
         /// damage, 3.6 against a heavy target; a crit lands on at least one
         /// blow about 27% of the time, and the ceiling is 6, or 9 against a
         /// heavy target. At 9 it lost to Miracle Pull at the same price. At 6
-        /// it sits with Velvet Rope, the other single-target Atomic cast:
+        /// it sits with Apophis, the other single-target Atomic cast:
         /// 3 certain damage and a pull against 3.3 expected and a swing.
         ///
         /// <b>A blow that finds its target already down is not thrown.</b> The

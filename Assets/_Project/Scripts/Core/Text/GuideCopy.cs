@@ -74,11 +74,11 @@ namespace NonaRoyale.Core.Text
             ["Bouncer"] = new GuideCopyEntry(Camp.House,
                 "The one you route around.",
                 "Stand in the lanes the enemy has to use and let your aura slow everyone who comes near. " +
-                "Velvet Rope is Atomic, so it reaches operators that evasion or a shield would otherwise save, " +
+                "Apophis is Atomic, so it reaches operators that evasion or a shield would otherwise save, " +
                 "and it drags them into your squad's reach; aimed at an ally, it pulls them out of trouble. " +
                 "All-In Mauling costs you blood too, so spend it when the hit or the heal is worth it.",
                 "Don't fight him where he wants to stand: go around him, or stay out of his reach. " +
-                "His slow only works close to him and Velvet Rope is his only way to reach you, " +
+                "His slow only works close to him and Apophis is his only way to reach you, " +
                 "so bait it out and move while it is cooling down."),
 
             ["Syla"] = new GuideCopyEntry(Camp.Contractor,

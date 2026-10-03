@@ -16,7 +16,7 @@ This is the single source of truth for how Nona Royale looks. The pipeline doc s
 - **Two registers (warm Deco world / cool tech FX) → deliberate contrast, governed. LOCKED 2026-07-10.** Environments are period Art Deco (warm, gilded, physical, decaying). Tech/ability FX are cleaner near-future (cool, clean, luminous, holographic). The governing rule in §2.1 keeps it looking designed, not inconsistent.
 - **Color palette was empty** except "accents not base colors." Filled in §3. **Tone is approved**; the **exact hex values are pending** a dedicated palette pass.
 - **"Decay"** = material and moral decay (tarnish, cracks, stains, smoke), and by extension light **tech decay** (flickering displays, corroded devices) — never arcane corruption.
-- **Bouncer's rope is dead. ADR-0011, 2026-09-19, amended the same day.** His device is a telescoping segmented mechanical **gauntlet** worn from elbow to fingertip over his own arm — strapped on, removable, not a prosthetic. The ability keeps the name *Velvet Rope*. A rope was the one device on the roster that predated the genre lock and never got revisited, and it argued against its own Atomic damage type.
+- **Bouncer's rope is dead. ADR-0011, 2026-09-19, amended the same day.** His device is a telescoping segmented mechanical **gauntlet** worn from elbow to fingertip over his own arm — strapped on, removable, not a prosthetic. The ability was renamed *Apophis* on 2026-10-03 (ADR-0011 decision 3); it was *Velvet Rope* while the device was a rope. A rope was the one device on the roster that predated the genre lock and never got revisited, and it argued against its own Atomic damage type.
 
 ---
 

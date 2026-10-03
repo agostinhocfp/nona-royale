@@ -58,8 +58,8 @@ namespace NonaRoyale.Unity.Tests.Audio
         {
             // Seeded from a stable hash, not string.GetHashCode, which .NET randomizes per process.
             CollectionAssert.AreEqual(
-                SignatureRecipes.Build("Bouncer_VelvetRope_Tell", 0),
-                SignatureRecipes.Build("Bouncer_VelvetRope_Tell", 0));
+                SignatureRecipes.Build("Bouncer_Apophis_Tell", 0),
+                SignatureRecipes.Build("Bouncer_Apophis_Tell", 0));
         }
 
         [Test]

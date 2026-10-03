@@ -113,9 +113,9 @@ Atomic does **not** bypass _targeting_ protection. Home columns and Stealth are 
 
 > The one-sentence version, for the table: **Atomic can't be blocked, but it can't reach what it can't touch.**
 
-**Sources of Atomic:** Velvet Rope, bleed ticks, Ace Shards' bleed, mark ticks, all of Miracle Pull, Vendetta. **Sources of Tech:** Cryo-Pulse, Zero-Day, Drone Strike, Inversion Matrix, Sonic Disrupter — one ability each from Mimi and Sanity, and all three of Kian's (the two emitters by designer call, 2026-09-17, §10.6). Everything else — including collision — is Normal.
+**Sources of Atomic:** Apophis, bleed ticks, Ace Shards' bleed, mark ticks, all of Miracle Pull, Vendetta. **Sources of Tech:** Cryo-Pulse, Zero-Day, Drone Strike, Inversion Matrix, Sonic Disrupter — one ability each from Mimi and Sanity, and all three of Kian's (the two emitters by designer call, 2026-09-17, §10.6). Everything else — including collision — is Normal.
 
-**Atomic is the roster's answer to Evasion, and it is deliberately concentrated.** Three operators carry unblockable single-target damage: Bouncer with Velvet Rope at 6 energy, Kurbyn with Miracle Pull at 9, and Luka with Vendetta at 6 (added 2026-09-15 — the concentration is looser than it was, which is worth knowing before the next Atomic source is written). Syla's route through Evasive Protocol is indirect — Ace Shards applies bleed, bleed ticks Atomic, and From the Hip pays a bonus against a bleeding target — which makes her anti-evasion play a two-ability sequence rather than a single cast. Mimi and Javi carry none at all.
+**Atomic is the roster's answer to Evasion, and it is deliberately concentrated.** Three operators carry unblockable single-target damage: Bouncer with Apophis at 6 energy, Kurbyn with Miracle Pull at 9, and Luka with Vendetta at 6 (added 2026-09-15 — the concentration is looser than it was, which is worth knowing before the next Atomic source is written). Syla's route through Evasive Protocol is indirect — Ace Shards applies bleed, bleed ticks Atomic, and From the Hip pays a bonus against a bleeding target — which makes her anti-evasion play a two-ability sequence rather than a single cast. Mimi and Javi carry none at all.
 
 That concentration was fine while every player fielded all three of the alpha roster. **It is a live question now that squads are drafted three from the pool:** a legal draw can produce a squad with no way through an evasive target at all. Nothing in the draft checks for it.
 
@@ -176,7 +176,7 @@ A `cooldownTurns: 0` on a 6-cost ability buys little against the drip alone, but
 ### 3.2 Spending
 
 - Energy is spent from the pool by **any operator the player owns**, in any order, during the action phase.
-- There is **no cap on abilities per turn.** Cooldowns and the 12-energy ceiling are the regulators. Banking to 12 and firing Velvet Rope into All-In Mauling in a single turn is a combo worth having.
+- There is **no cap on abilities per turn.** Cooldowns and the 12-energy ceiling are the regulators. Banking to 12 and firing Apophis into All-In Mauling in a single turn is a combo worth having.
 - A stunned operator cannot spend (§5.1). An operator in a home column cannot spend (§4.3).
 - Costs are free integers; passives are free. Per-ability costs in §10. **The 3 / 6 / 9 tier was abolished 2026-09-13** — three abilities had been priced off it on their own merits, and a rule overridden every time it binds makes its exceptions look like oversights. A cost is now argued against its peers in the operator file. The only remaining constraint is that a cost above the energy cap is unspendable and therefore invalid.
 
@@ -243,7 +243,7 @@ This makes ADR-0003's home-entry safe cell redundant in the best way, and remove
 - **No collision occurs on a safe cell.** A mover landing on a safe cell occupied by an enemy simply shares it. Both operators occupy; nothing resolves.
 - **Safe cells and abilities — amended three times.** The original rule: safe cells do **not** block abilities; safe means safe from _collision_, nothing more — otherwise S becomes a free parking space and the combat layer stalls. All three amendments below deliberately moved off that position. The original reasoning stays on the page because the free-parking risk it named is real — the second amendment exists to pay for the first, and the third makes it sharper.
 - **First amendment (2026-09-13): a safe cell refuses enemy single-targeting.** An operator standing on S cannot be picked out by an enemy single-target ability. The counterweight the original rule did not weigh: winning needs all three operators home, so an operator parked on a start cell is an operator not winning. Scoped to enemies exactly as stealth is (§5.4) — an ally can still be healed, plated, cleansed or repositioned while standing on one — and single-target only: areas, lines, beacons and zones all still reach the cell. A safe cell stops somebody picking you out; it does not stop a blast. _(For damage, superseded by the third amendment: the blast still arrives, and deals nothing.)_
-- **Second amendment (2026-09-14): the camping rule.** An operator standing on a safe cell may not **aim behind itself**. Refused with `AimedBehindFromSafeCell`: enemy single-targets, cell aims (Drone Strike, Killzone), and placements at allies — any ability containing a pull, swap, push or dash, today exactly Velvet Rope, Translocation and Collision, which closes the safe-cell taxi. Still legal: heals, plates and cleanses at allies behind, because support is not the aggression this rule exists to stop; and self-origin areas, which radiate backwards unconsulted, because presence is not an aim. **"Behind" is the direction of travel, never progress** — a forward track offset greater than half the circuit. Progress is per-colour and meaningless to compare across seats. On an even circuit the exact-opposite cell counts as _ahead_, so the rule never blocks more than what is strictly behind. This amendment is the first one's price: a shelter that is single-target-proof must not also be an artillery position.
+- **Second amendment (2026-09-14): the camping rule.** An operator standing on a safe cell may not **aim behind itself**. Refused with `AimedBehindFromSafeCell`: enemy single-targets, cell aims (Drone Strike, Killzone), and placements at allies — any ability containing a pull, swap, push or dash, today exactly Apophis, Translocation and Collision, which closes the safe-cell taxi. Still legal: heals, plates and cleanses at allies behind, because support is not the aggression this rule exists to stop; and self-origin areas, which radiate backwards unconsulted, because presence is not an aim. **"Behind" is the direction of travel, never progress** — a forward track offset greater than half the circuit. Progress is per-colour and meaningless to compare across seats. On an even circuit the exact-opposite cell counts as _ahead_, so the rule never blocks more than what is strictly behind. This amendment is the first one's price: a shelter that is single-target-proof must not also be an artillery position.
 - **Third amendment (2026-09-21, designer): sanctuary.** Two rules, enforced in the core by `SanctuaryRules`:
   - **Safe ground is damage-proof.** An operator on any safe cell takes no damage — from abilities, areas, zones, beacons, fields, follow-ups, watches, charges, bleed and marks alike, of any type, Atomic included. The pipeline voids the instance before anything else (§2.1 step −1) and emits `DamageSheltered`; the view shows **SAFE**, deliberately not BLOCK, because nothing of the target's was spent. Reaching the cell is unchanged: areas still sweep it and riders still land — only the damage is voided. An execute below its threshold does not kill on safe ground; it falls back to its ordinary hit, which is voided too.
   - **The spawn cell is control-proof as well.** An operator on its **own colour's start cell** cannot be slowed or stunned. `StatusRegistry.Apply` refuses the application and reports it refused, so no `StatusApplied` is emitted; an aura's slow (§5.2) is suppressed there too. Another seat's start cell is safe ground but not a spawn cell: a visitor there is damage-proof and still slowable. The spawn cell is damage-proof in its own right, not only because start cells are safe today — a board whose starts stopped being safe would keep a deploying operator's protection.
@@ -272,7 +272,7 @@ Statuses do not stack unless stated. Re-application refreshes duration and keeps
 
 - **Effect:** the operator cannot move and cannot spend energy on its next turn.
 - **Passives stay live.** A passive is who an operator is, not what it does.
-- **Forced movement still works.** Velvet Rope pulls a stunned target normally, and Translocation swaps with one — being moved is not the target's action.
+- **Forced movement still works.** Apophis pulls a stunned target normally, and Translocation swaps with one — being moved is not the target's action.
 - **Cooldowns still tick.** They are timers, not actions.
 - **Refused on the target's own spawn cell** (§4.4, third amendment). The application simply does not happen.
 - **A stunned operator is not a legal consumer of a die** (§6). If it is the only operator that could otherwise move, the roll is forfeit and the turn can be ended.
@@ -481,7 +481,7 @@ _(Added 2026-09-17: Revú's passive.)_
   - cost 3 or less (`EquilibriumCheapCostMax`): **double**;
   - cost 4–5: unchanged;
   - cost 6 or more (`EquilibriumDearCostMin`): **half, rounded down, but at least 1** (designer). A hit of 0 stays 0.
-- **Instant hits only** (designer). Direct damage, execute fallbacks, Collision's path damage and Sadist all carry the cast's cost. **Which abilities sit in which band is a live consequence of every reprice**: after 2026-09-20 the dear band holds Velvet Rope, Miracle Pull, Drone Strike, Killzone, Sadist (6 since 2026-09-24) and Collision, while Vendetta (5) and Eris' Exploit (4) have left it. Collisions, bleed and marks carry none, and neither does anything that lands later: beacons, zones, charges, follow-ups, fields and watches.
+- **Instant hits only** (designer). Direct damage, execute fallbacks, Collision's path damage and Sadist all carry the cast's cost. **Which abilities sit in which band is a live consequence of every reprice**: after 2026-09-20 the dear band holds Apophis, Miracle Pull, Drone Strike, Killzone, Sadist (6 since 2026-09-24) and Collision, while Vendetta (5) and Eris' Exploit (4) have left it. Collisions, bleed and marks carry none, and neither does anything that lands later: beacons, zones, charges, follow-ups, fields and watches.
 - **Every damage type, Atomic included, before every mitigation layer** (§2.1, step 0). It is a price on the caster's choice, not armour, so "Atomic ignores mitigation" does not reach it. A shield then meets the rescaled hit.
 - **A critical doubles first, then Equilibrium rescales.** A dear cast's crit of 2 lands as 1, and lifesteal reads the rescaled hit. **Vendetta was the example until 2026-09-20**, when its cost went 6 → 5 and it left the dear band: crits against Revú are now whole, which is a real buff to Luka in that matchup and was not the stated point of the reprice (§10.9).
 - **An execute still kills.** It is not an amount.
@@ -827,9 +827,9 @@ Twelve operators are in the draft pool, and **all twelve are complete**. Fortuna
 
 **Every ability carries a player-facing description** in the core, required by the constructor, and it contains no numbers. Cost, range, cooldown and damage all live on the same object; a figure repeated in prose is a second copy of a value that will be wrong the first time anyone tunes it.
 
-**An ability with a hostile and a friendly mode picks its mode once, from who was targeted.** All-In Mauling's self-damage belongs to the _hostile_ cast: used on an ally it heals and costs the Bouncer nothing. The same rule governs Velvet Rope and Nanite Infusion. Deciding per _recipient_ rather than per _cast_ gives a nonsense answer for any effect aimed at the caster's own side, since the caster is always friendly to himself.
+**An ability with a hostile and a friendly mode picks its mode once, from who was targeted.** All-In Mauling's self-damage belongs to the _hostile_ cast: used on an ally it heals and costs the Bouncer nothing. The same rule governs Apophis and Nanite Infusion. Deciding per _recipient_ rather than per _cast_ gives a nonsense answer for any effect aimed at the caster's own side, since the caster is always friendly to himself.
 
-**Self-targeting is per-ability opt-in, declared on the ability** (designer, 2026-09-17). A self-cast resolves as a friendly cast under the mode rule above — the caster is always friendly to himself — and blanket self-cast was rejected on exactly that ground: All-In Mauling's friendly mode is a heal, and Bouncer self-sustaining was never intended. So `AbilityDefinition` carries an `allowsSelfTarget` flag, the resolver excludes the caster from the target list unless the ability sets it and refuses a self-aimed cast without it (`TargetingVerdict.CannotTargetSelf`, costing nothing like every refusal), and the UI offers exactly what the list holds. Four defensive abilities opt in: Javi's Nanite Infusion, Trauma Plate and CPR (Neural Purge's slot until 2026-10-01), and Lethe's Nano Cell, whose self-bubble pays the stun as its price. Nothing else — not Translocation, not All-In Mauling, not Velvet Rope. No effect-shape heuristics: the declaration is the rule.
+**Self-targeting is per-ability opt-in, declared on the ability** (designer, 2026-09-17). A self-cast resolves as a friendly cast under the mode rule above — the caster is always friendly to himself — and blanket self-cast was rejected on exactly that ground: All-In Mauling's friendly mode is a heal, and Bouncer self-sustaining was never intended. So `AbilityDefinition` carries an `allowsSelfTarget` flag, the resolver excludes the caster from the target list unless the ability sets it and refuses a self-aimed cast without it (`TargetingVerdict.CannotTargetSelf`, costing nothing like every refusal), and the UI offers exactly what the list holds. Four defensive abilities opt in: Javi's Nanite Infusion, Trauma Plate and CPR (Neural Purge's slot until 2026-10-01), and Lethe's Nano Cell, whose self-bubble pays the stun as its price. Nothing else — not Translocation, not All-In Mauling, not Apophis. No effect-shape heuristics: the declaration is the rule.
 
 **An ability every one of whose effects is scoped away by the cast mode is refused**, and costs nothing. A cleanse aimed at an enemy was never a legal cast; without the check it would resolve, do nothing, and charge for it.
 
@@ -839,35 +839,37 @@ Twelve operators are in the draft pool, and **all twelve are complete**. Fortuna
 
 | #   | Ability                   | Type    | Cost | CD  | Range | Effect                                                                                               |
 | --- | ------------------------- | ------- | ---- | --- | ----- | ---------------------------------------------------------------------------------------------------- |
-| 1   | **Velvet Rope**           | Active  | 6    | 2   | 3     | Pull target to the cell adjacent to Bouncer (§7.4). Enemy: **3 Atomic**. Ally: pull only, no damage. |
+| 1   | **Apophis**           | Active  | 6    | 2   | 3     | Pull target to the cell adjacent to Bouncer (§7.4). Enemy: **3 Atomic**. Ally: pull only, no damage. |
 | 2   | **Intimidating Presence** | Passive | —    | —   | 3     | Enemies within range: speed multiplier **−0.5** (floor 0.5, §5.2).                                   |
 | 3   | **All-In Mauling**        | Active  | 4    | 1   | 2     | Enemy: **3 Normal** to target **and 1 direct to Bouncer** (§2.3). Ally: **heal 2**.                  |
 
 Intimidating Presence is an aura, not a status: it is evaluated when an affected operator's movement is calculated, so there is no duration to track and no application event.
 
+**Apophis was named Velvet Rope until 2026-10-03** (designer, ADR-0011 decision 3). Apophis is the serpent that lies across the sun's road through the underworld and tries to stop it passing: a doorman, and a segmented gauntlet uncoiling across the floor. Its id (101) never moved, so no replay, bot weight or sweep row changed.
+
 Bouncer's kit is priced on **positioning, not energy** — the roster's slowest operator, so the real cost is the turns it takes him to be standing near anyone. That makes him the most pool-efficient operator in the squad, which is a legitimate reason to run him.
 
-**He came down on all three axes at once after human play.** Health 12 → 9, Velvet Rope's range 4 → 3, All-In Mauling 3 → 2 damage with self-damage 1 → 2. Any one of those alone would have been measurable; together they are not separable, and if he now reads as weak the **reach is the first thing to restore** — it is the only one of the three that also governs what his aura can catch.
+**He came down on all three axes at once after human play.** Health 12 → 9, Apophis' range 4 → 3, All-In Mauling 3 → 2 damage with self-damage 1 → 2. Any one of those alone would have been measurable; together they are not separable, and if he now reads as weak the **reach is the first thing to restore** — it is the only one of the three that also governs what his aura can catch.
 
-**Reach and aura are one kit.** Intimidating Presence at 3 equals Velvet Rope's reach again: everything he can pull is already slowed, and everything he pulls stays slowed once it arrives. They were briefly out of step when Velvet Rope went to 4 and back. If one moves, move the other.
+**Reach and aura are one kit.** Intimidating Presence at 3 equals Apophis' reach again: everything he can pull is already slowed, and everything he pulls stays slowed once it arrives. They were briefly out of step when Apophis went to 4 and back. If one moves, move the other.
 
-**Velvet Rope is Atomic, which makes Bouncer the roster's direct counter to Evasion** (§2.2). This was a targeted answer to Kurbyn dominating early play, chosen over weakening Evasion itself: a counter preserves the rock-paper-scissors, a nerf flattens it. It is also the **only single-cast route through Evasive Protocol** — Syla's is a two-ability sequence — which is why shortening it is a larger change than the number suggests.
+**Apophis is Atomic, which makes Bouncer the roster's direct counter to Evasion** (§2.2). This was a targeted answer to Kurbyn dominating early play, chosen over weakening Evasion itself: a counter preserves the rock-paper-scissors, a nerf flattens it. It is also the **only single-cast route through Evasive Protocol** — Syla's is a two-ability sequence — which is why shortening it is a larger change than the number suggests.
 
 **All-In Mauling repriced 2026-09-18 (designer): 4 energy, cooldown 1, 3 out, 2 back, ally heal 2.** At 6 energy for 2 Normal it made no sense on three counts, all of them measurable against the rest of the sheet:
 
-- **Velvet Rope beat it outright** at the same cost: 3 Atomic against 2 Normal, range 3 against 2, a pull instead of 2 self-damage. There was no board on which it was the better way to hurt somebody.
+- **Apophis beat it outright** at the same cost: 3 Atomic against 2 Normal, range 3 against 2, a pull instead of 2 self-damage. There was no board on which it was the better way to hurt somebody.
 - **Three energy a point was the worst rate on the roster**, with blood on top. Nuetu's Bio-Link Rage is 3 energy for 3 at the same range and heals him 1.
 - **Its ally heal was the largest in the game**, above the dedicated healer's (§1.1).
 
-It is now the cheap brawl: shorter than Velvet Rope, Normal rather than Atomic so a plate or an evasion charge answers it, and it costs blood. **Cooldown 1 rather than 0** — at 4 energy the cap would otherwise buy three casts in a banked turn. Velvet Rope into Mauling still works; they share no cooldown.
+It is now the cheap brawl: shorter than Apophis, Normal rather than Atomic so a plate or an evasion charge answers it, and it costs blood. **Cooldown 1 rather than 0** — at 4 energy the cap would otherwise buy three casts in a banked turn. Apophis into Mauling still works; they share no cooldown.
 
 **Measured, 800 matches per row.** Bots cast it 1.40 → 2.33 times a match, so the reprice did what it was meant to. It also made the game bloodier — standard sweep neutralizes 3.4 → 4.8 and turns 21.2 → 22.1; four-bot knockouts 13.9 → 14.9 — and **Bouncer's own win share fell 28% → 24%**, because a bot that casts it twice as often pays twice the blood.
 
 **Self-damage 2 → 1 (2026-09-18, designer), the answer to that.** It was 1 against 12 health — twelve casts, flavour text — and rose to 2 when health fell to 9; at ten health and twice the casting rate, 2 a cast was giving his match away. At 1 it is ten casts, and it still bites the wounded Bouncer who was going to cast anyway.
 
-**It recovers about a point, not four.** Bots: Bouncer 24% → 25%, casts 2.33 → 2.40, knockouts 14.9 → 14.7, turns per seat 28.3 → 28.1; standard sweep back to 21.6 turns and 4.3 neutralizes (from 22.1 and 4.8, against 21.2 and 3.4 before the reprice). So most of his drop was not the blood — a cheaper Normal hit cast twice as often is simply worth less to a bot than Velvet Rope. Judge the rest in human games rather than chasing it in the sweep.
+**It recovers about a point, not four.** Bots: Bouncer 24% → 25%, casts 2.33 → 2.40, knockouts 14.9 → 14.7, turns per seat 28.3 → 28.1; standard sweep back to 21.6 turns and 4.3 neutralizes (from 22.1 and 4.8, against 21.2 and 3.4 before the reprice). So most of his drop was not the blood — a cheaper Normal hit cast twice as often is simply worth less to a bot than Apophis. Judge the rest in human games rather than chasing it in the sweep.
 
-**The Velvet-Rope-into-Mauling one-turn kill stays gone by design.** It was 3 Atomic plus 3, and six damage killed either 6-health operator from full for the price of a banked pool. At 3 plus 3 against 7 health it leaves them at 1: a setup rather than an execution, and something the victim's owner gets a turn to answer. The zero cooldown still buys back-to-back casts at the cap, now for 4 self-damage against 9 health, which is most of what he can pay.
+**The Apophis-into-Mauling one-turn kill stays gone by design.** It was 3 Atomic plus 3, and six damage killed either 6-health operator from full for the price of a banked pool. At 3 plus 3 against 7 health it leaves them at 1: a setup rather than an execution, and something the victim's owner gets a turn to answer. The zero cooldown still buys back-to-back casts at the cap, now for 4 self-damage against 9 health, which is most of what he can pay.
 
 ### 10.2 Syla, The Blood Hound — Assassin
 
@@ -937,7 +939,7 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 
 **Evasion 30% → 12%, Predator's Read removed, the speed passive traded for haste (2026-09-17, designer).** The per-turn speed cap (§6.3) compressed the bottom of the table and left him untouched at 33%; a cap of 1 left him at 32%. Reading the roster table, the kit had quietly become three actives plus a fourth ability's worth of defence — and the evasion was meant to be a single ability. The roll came down to 12% (about 0.26 instances prevented per round against a single attacker), and the +0.5 speed became permanent flat haste capped at 2 cells a turn, so his traversal edge survives at half strength and his defence finally has a price tag. Bots sweep, 800 matches against the speed-cap baseline: **Kurbyn 33% → 28%**, Bouncer 24% → 28%, Syla 30% → 24% (her Ace Shards patch landed in the same tree — confounded), Revú 20% → 23%, the rest within a point; **Javi 27% → 31% is the new outlier**, up four without being touched. Turns per seat 27.8 → 27.5.
 
-**Evasion made Kurbyn dominant in the first human sessions**, which is what prompted Velvet Rope becoming Atomic rather than any change here. Note that the tuning pass then shortened that counter and lengthened his ultimate — every change moved power the same way. Whether that is one correction or an overcorrection is a measurement, not an argument.
+**Evasion made Kurbyn dominant in the first human sessions**, which is what prompted Apophis becoming Atomic rather than any change here. Note that the tuning pass then shortened that counter and lengthened his ultimate — every change moved power the same way. Whether that is one correction or an overcorrection is a measurement, not an argument.
 
 ### 10.4 Mimi — Controller
 
@@ -1034,7 +1036,7 @@ Evasive Protocol carries the speed bonus, which makes Kurbyn's mobility **condit
 - **Measured, and it is worth nothing to the bots** (4000 matches, paired seeds): **27.8% → 27.5%**, inside noise, with Nanite Infusion cast 3.06 → 3.45 times a match. He stays joint top of the roster, which he already was. The clause fires far more often and restores barely more health, because most of the squad it now reaches is unhurt — which is also how the reporting bug below was found. Judge it at the table; the harness says the change is neutral.
 - **A heal reports what it restores, not what it offered (2026-10-01).** `AbilityResolver` reported the full amount even when `OperatorState.Heal` clamped it at maximum, so an operator at full health was told it had gained a point. Harmless while one splash heal reached two cells around an enemy; with this clause firing on a whole squad every cast it would have filled the event log and the toasts (G7b-1) with healing that never happened. Lifesteal already reported correctly; this branch did not. **No test anywhere caught it, and the §13 matrix listed a test for this clause — `NaniteInfusionOnEnemy_DamagesItAndHealsAlliesAroundIt` — that does not exist in the suite.** The clause now has its own fixture, `JaviTests`.
 
-**Trauma Plate: a 2-point pool, cost walked 3 → 6 → 4.** The pool eats one small hit whole or takes the edge off a collision, never both. A 1-point pool was rejected: it cancels From the Hip outright and saves nobody from the collision that actually kills. The original cost 3 was too cheap beside a 6-energy Velvet Rope; 6 bought 2 points of absorb where the same 6 buys Atomic damage that ignores every defence. 4 is the compromise, **reasoned, not measured**.
+**Trauma Plate: a 2-point pool, cost walked 3 → 6 → 4.** The pool eats one small hit whole or takes the edge off a collision, never both. A 1-point pool was rejected: it cancels From the Hip outright and saves nobody from the collision that actually kills. The original cost 3 was too cheap beside a 6-energy Apophis; 6 bought 2 points of absorb where the same 6 buys Atomic damage that ignores every defence. 4 is the compromise, **reasoned, not measured**.
 
 **Cooldown 3 against duration 2, deliberately.** The sketched cooldown 1 gave permanent uptime — plates held on two operators forever, which is flat damage reduction on a squad, not a shield. At 3 the plate is up for two of every four of the holder's turns, so choosing _when_ is the skill.
 
@@ -1246,7 +1248,7 @@ Casts per match: Drone Strike 4.58 → 5.87, Sonic Disrupter 2.72 → 3.70, Inve
 
 **Hermes' Ring counters three abilities, one per operator** (§2.2, §5.12): Cryo-Pulse, Zero-Day and Drone Strike, at Ablative Plating's price. It fully shut out only Mimi until Cryo Field landed (2026-09-16) — a self-centred field is Normal, so it now bills a warded Luka through the ward. Three turns on a self-cast covers two full rounds of opponents' turns.
 
-**Vendetta costs 6** (dropped at 9, lowered by the designer 2026-09-15): expected 3.3 damage, 3.6 against a heavy target. At least one blow crits about 27% of the time; the ceiling is 6, or 9 against a heavy target. At 9 it lost to Miracle Pull at the same price; at 6 it sits beside Velvet Rope, the other single-target Atomic cast — 3 certain damage and a pull against 3.3 expected and a swing. A blow that finds its target already down is not thrown (§2.4), so a first-blow kill pays one bounty.
+**Vendetta costs 6** (dropped at 9, lowered by the designer 2026-09-15): expected 3.3 damage, 3.6 against a heavy target. At least one blow crits about 27% of the time; the ceiling is 6, or 9 against a heavy target. At 9 it lost to Miracle Pull at the same price; at 6 it sits beside Apophis, the other single-target Atomic cast — 3 certain damage and a pull against 3.3 expected and a swing. A blow that finds its target already down is not thrown (§2.4), so a first-blow kill pays one bounty.
 
 **Vendetta costs 5 with a 2-turn cooldown (designer, 2026-09-20 and 2026-09-21).** The first commit's message said cooldown and its code changed the cost; both halves were intended, and the cooldown followed on 2026-09-21. The side effect of the cost is the one §5.17 now names: at 5 the ultimate is out of Equilibrium's dear band, so Revú no longer halves it and a heavy crit against him is whole. **Measured (4000 matches, paired seeds): the cooldown cut is worth 2.04 → 2.18 casts a match and no movement in his win share (26%)** — energy is what limits the ultimate, not the timer, which is the same result Revú's cooldown cut produced in 2026-09-17.
 
@@ -1279,7 +1281,7 @@ Casts per match: Drone Strike 4.58 → 5.87, Sonic Disrupter 2.72 → 3.70, Inve
 **Nano Cell is a round of immunity, paid in energy** (designer, 2026-09-24). A shield whose pool a round of enemy turns cannot empty. **Until 2026-09-24 it also stunned the ally for 2 turns**, and the price was larger than the shelter: 88% of bubbles absorbed nothing, a heal-only Nano Cell beat the real one (25.4% against 23.1%), and removing the stun alone moved her to 26.6%. If she reads strong, cost 5 is the dial (measured 23.7% with the rest of the rework, so it is a big one). Its edges:
 
 - **Duration 2** covers exactly one round of enemy turns and the ally's own next turn.
-- **Atomic ignores it** (§2.2): bleed, marks, Velvet Rope, Miracle Pull and Vendetta all go through.
+- **Atomic ignores it** (§2.2): bleed, marks, Apophis, Miracle Pull and Vendetta all go through.
 - **It blocks the road.** A collision is Normal damage, so the bubble eats it, the target survives and the mover bounces (§7.2).
 - **A cleanse strips it** (§5.8): the wash is indiscriminate. Intended — though since 2026-10-01 only CPR’s save reaches it, so a squad can no longer take its own bubble off early.
 - **Status immunity was proposed and dropped** (2026-09-17), because it needed an immunity system with a carve-out on day one.
@@ -1522,13 +1524,13 @@ Casts per match: Deal Again 2.96, Boxcars 2.62, The Table 2.54. **Dice sold: 5.3
 | Speed band 1.0–1.5 as a roster-wide invariant                | **Amended** 2026-09-15: Sanity fields at 0.5, the first recorded exception (§10.8) — a designer override, bought with the slow-immunity side effect stated there. The band stands for everyone else. |
 | Standard board 48/6                                          | **Replaced** by 52/6 (ADR-0002 Amendment 5). 48 cannot be drawn as a continuous Ludo cross; journey 54 → 58.                                                                                         |
 | Bouncer at 12 health                                         | **Lowered** to 9 (§10.1). He absorbed four collisions and shrugged off the sequence that kills everyone else.                                                                                        |
-| Velvet Rope as 3 Normal at range 3                           | **Retuned** to 3 **Atomic** at range 4, then **back to range 3** (§10.1). Atomic stayed; the reach did not.                                                                                          |
+| Apophis as 3 Normal at range 3                           | **Retuned** to 3 **Atomic** at range 4, then **back to range 3** (§10.1). Atomic stayed; the reach did not.                                                                                          |
 | All-In Mauling at range 1 with 3 damage and 3 self           | **Retuned** to range 2, 2 damage, 2 self, then repriced 2026-09-18 to 4 energy, cooldown 1, 3 damage, 1 self, heal 2 (§10.1).                                                                                                                                                    |
 | Miracle Pull at range 1                                      | **Widened** to 2 (§10.3). At 1 the ult was often unspendable when it was worth spending.                                                                                                             |
 | Miracle Pull at cooldown 2                                 | **Raised** to 3 (§10.3), with the rebuild below.                                                                                                                                                    |
 | Predator's Read (Kurbyn's third active, id 303)            | **Removed** 2026-09-17 (§10.3): the kit read as three actives plus a passive's worth of defence, and the evasion was meant to be a single ability. The watch machinery (§5.15, §6.7, `EffectKind.Watch`) stays in the core, dormant. |
 | Evasive Protocol at 30% with a +0.5 speed rider            | **Rebuilt** 2026-09-17 (§10.3): the roll is 12%, and the speed rider became permanent flat haste capped at 2 cells a turn.                                                                            |
-| Intimidating Presence at radius 2                            | **Widened** to 3, matching Velvet Rope's reach (§10.1).                                                                                                                                              |
+| Intimidating Presence at radius 2                            | **Widened** to 3, matching Apophis' reach (§10.1).                                                                                                                                              |
 | From the Hip at 2 base damage                                | **Lowered** to 1 (§10.2). The bleed profile carries the ability; the base does not.                                                                                                                  |
 | Cryo-Pulse at 4 energy                                       | **Repriced** to 6 (§10.4). It did more than either 6-cost area ability for two-thirds the price.                                                                                                     |
 | The 3 / 6 / 9 cost tier                                      | **Abolished** 2026-09-13 (§3.2). Three abilities were priced off it deliberately; no price moved when it went.                                                                                       |
@@ -1600,7 +1602,7 @@ That makes 44/5 the only lever measured that buys pacing without giving up comba
 
 1. **`NeutralizeEnergyBounty = 3` is the best-value dial measured, and 6 is not.** The first three energy buy nearly twice the combat per turn that the second three do. **Keep 3.**
    The reason is in the burn column: **8.0 → 12.1 → 18.7.** The bounty itself never burns (§1.2), but the energy it adds raises the pool, so the _turn grant_ spills more often. At 6 the economy is simply overflowing, and the marginal reward is being destroyed by a rule it does not touch. **Burn is the tell for a bounty that has gone too far**, not the neutralize count.
-2. **Ability reach — historically the largest lever, and currently unmeasurable as one.** +1 to every range and radius bought +47% neutralizes for under 1.5 turns when last swept globally. Since then Velvet Rope took +1 and gave it back, Intimidating Presence took +1 and kept it, and Miracle Pull took +1. **The net has never been measured and the sweep no longer exists in the default run.**
+2. **Ability reach — historically the largest lever, and currently unmeasurable as one.** +1 to every range and radius bought +47% neutralizes for under 1.5 turns when last swept globally. Since then Apophis took +1 and gave it back, Intimidating Presence took +1 and kept it, and Miracle Pull took +1. **The net has never been measured and the sweep no longer exists in the default run.**
 3. **`CollisionDamage` — struck, restored, and now demoted.** It has changed status three times. At 2 → 6 it now costs **4.8 turns** for 2.4 neutralizes, which makes it the worst combat lever except board length. It was struck when collisions fired 2.4 times a match; they now fire 5.1.
    The general rule, which matters more than the dial: **a dial's potency is a function of how often its trigger fires.** Anything struck here must be re-measured after a structural change rather than trusted. Note also that at 6 it is the only configuration measured that fails to finish every match — 99% completion against 100% everywhere else.
 4. **Opening deployments.** Adopted at 2, and still the only lever that ever improved a problem at no cost elsewhere.
@@ -1864,9 +1866,9 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - `AbilityOnCooldown_IsRejected`
 - `CooldownOfTwo_MakesAbilityUnusableForTwoOwnerTurns`
 - `AnAbilityWithNoEffectForThisCastMode_IsRefusedAndCostsNothing`
-- `VelvetRopeOnAlly_DealsNoDamage`
-- `VelvetRope_PlacesTargetAdjacentOnTheSideItCameFrom`
-- `VelvetRope_IsAtomic_AndIgnoresEvasion`
+- `ApophisOnAlly_DealsNoDamage`
+- `Apophis_PlacesTargetAdjacentOnTheSideItCameFrom`
+- `Apophis_IsAtomic_AndIgnoresEvasion`
 - `APullThatWouldGoBehindTheTargetsStartCell_ClampsThere`
 - `AllInMaulingOnAlly_HealsAndCostsTheCasterNothing`
 - `AllInMauling_SitsOutOneTurn`
@@ -1929,7 +1931,7 @@ Per `CONVENTIONS.md`: every rule ships with EditMode tests, named by behaviour, 
 - `NeuralPurge_OnHimself_Cleanses`
 - `NanoCell_OnHerself_ShieldsAndStuns_TheStunIsThePrice`
 - `AllInMauling_OnHimself_IsRefused_AndCostsNothing`
-- `VelvetRope_OnHimself_IsRefused_AndStaysReady`
+- `Apophis_OnHimself_IsRefused_AndStaysReady`
 - `ASelfCast_NamesTheSelf_BeforeItNamesThePrice`
 - `LegalTargets_ExcludesTheCaster_ForUnflaggedAbilities`
 - `LegalTargets_IncludesTheCaster_ForTheFlaggedFour`
@@ -2109,5 +2111,10 @@ The watch machinery (§6.7) is dormant: `PredatorsReadTests` and `WatchBotTests`
   - **Fingerprint `58eed81a` → `a48228fb`.** `HomeBountyTests` 7 → 13. Core harness 1016 → 1022, all passing. Bots sweep not run.
 - 2026-10-03 (third pass) — **Velvet Rope's original concept archived to match today's character** (designer; ADR-0011 amended).
   - §10.1 no longer uses "rope" as the physical object. The five places ADR-0011's follow-up list pointed at now say "pull" or "Velvet Rope".
-  - Nothing mechanical changed: no number, no rule, no test. The ability keeps its name, and the fingerprint stays `a48228fb`, because rules text is not in it.
+  - Nothing mechanical changed: no number, no rule, no test. The fingerprint stays `a48228fb`, because rules text is not in it. The name changed in the fourth pass.
   - The device is the gunmetal-steel gauntlet (2026-09-29). The rope, the hip spool, the aged brass and the figure-era S-curve tell live in ADR-0011's Archive.
+- 2026-10-03 (fourth pass) — **Velvet Rope renamed Apophis** (designer; ADR-0011 decision 3 amended).
+  - The rope was gone from every image, so the name described an object that no longer existed. Apophis is the serpent that lies across the sun's road and tries to stop it passing, which suits a doorman with a gauntlet that uncoils like a snake. It joins Hermes' Ring and Eris' Exploit as the house technicians' habit of naming machines after gods.
+  - Code: `Bouncer.VelvetRope` → `Bouncer.Apophis`, the display name, the sound slug `Bouncer_VelvetRope` → `Bouncer_Apophis` (no recorded file used it), `SignatureRecipes.ApophisTell` and `ApophisImpact`, the guide's two lines and every comment that named it. Test names follow (§13's list above).
+  - Id 101 is unchanged, and names are not in the fingerprint, so it stays `a48228fb`. Core harness 1022 passing; the audio tests (46) pass in the cloud harness.
+  - This log keeps the old name in entries written before the rename.

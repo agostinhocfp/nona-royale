@@ -51,10 +51,10 @@ namespace NonaRoyale.Core.Abilities
 
         /// <summary>Enemies within this many steps of Bouncer are slowed.</summary>
         /// <remarks>
-        /// Equal to Velvet Rope's reach, which is the relationship worth keeping:
+        /// Equal to Apophis' reach, which is the relationship worth keeping:
         /// everything he can pull is already slowed, and everything he pulls
         /// stays slowed once it arrives. The two were briefly out of step when
-        /// Velvet Rope went to 4 and back. Reach and aura are one kit (§10.1) —
+        /// Apophis went to 4 and back. Reach and aura are one kit (§10.1) —
         /// if one moves, move the other.
         /// </remarks>
         public const int IntimidatingPresenceRadius = 3;
@@ -79,6 +79,13 @@ namespace NonaRoyale.Core.Abilities
         /// the first human sessions, chosen over weakening Evasion itself: a
         /// counter preserves the rock-paper-scissors, a nerf flattens it.
         ///
+        /// <b>Named Apophis since 2026-10-03</b> (designer, ADR-0011 decision 3):
+        /// the serpent that lies across the sun's road through the underworld
+        /// and tries to stop it passing, which is a doorman, and his segmented
+        /// gauntlet uncoiling across the floor. It was Velvet Rope while the
+        /// device was a rope. The id never moved, so replays, bot weights and
+        /// the rules fingerprint (which carries no names) are untouched.
+        ///
         /// <b>Back to range 3.</b> It went to 4 as compensation for his speed
         /// and proved to be too much of it — a slow operator with the longest
         /// reach in the game is not slow in any way that costs him. At 3 he
@@ -88,8 +95,8 @@ namespace NonaRoyale.Core.Abilities
         /// matters more than the number suggests: it is the only reliable route
         /// through Evasive Protocol that is not a two-ability sequence.
         /// </remarks>
-        public static AbilityDefinition VelvetRope { get; } = new AbilityDefinition(
-            id: 101, name: "Velvet Rope",
+        public static AbilityDefinition Apophis { get; } = new AbilityDefinition(
+            id: 101, name: "Apophis",
             description:
                 "Hooks an enemy in reach and drags them to the cell beside you, with a hit no shield can stop. They land inside your Intimidating Presence. On an ally, it pulls them to your side unharmed.",
             energyCost: 6, cooldownTurns: 2, range: 3,
@@ -111,7 +118,7 @@ namespace NonaRoyale.Core.Abilities
         /// ally heal 3, and at that price nothing about it made sense:
         ///
         /// <list type="bullet">
-        /// <item><b>Velvet Rope beat it outright.</b> Same 6 energy, 3 Atomic
+        /// <item><b>Apophis beat it outright.</b> Same 6 energy, 3 Atomic
         /// against 2 Normal, range 3 against 2, a pull instead of self-damage.
         /// There was no board on which this was the better way to hurt
         /// somebody.</item>
@@ -123,12 +130,12 @@ namespace NonaRoyale.Core.Abilities
         /// incidental, which the numbers denied).</item>
         /// </list>
         ///
-        /// <b>Now it is the cheap brawl.</b> Cheaper and shorter than Velvet Rope,
+        /// <b>Now it is the cheap brawl.</b> Cheaper and shorter than Apophis,
         /// Normal rather than Atomic, so a plate or an evasion charge answers
-        /// it, and it costs blood. Velvet Rope is the reach and the execute tool;
+        /// it, and it costs blood. Apophis is the reach and the execute tool;
         /// this is what he does standing next to somebody.
         ///
-        /// <b>The one-turn kill stays gone, deliberately.</b> Velvet Rope into Mauling
+        /// <b>The one-turn kill stays gone, deliberately.</b> Apophis into Mauling
         /// was 3 Atomic plus 3, and six damage killed either 6-health operator
         /// from full for the price of a banked pool. At 3 plus 3 against 7
         /// health it leaves 1 — a setup rather than an execution, and something
@@ -148,7 +155,7 @@ namespace NonaRoyale.Core.Abilities
         /// combo and bought almost nothing: at 6 energy the cap allowed two
         /// casts for 4 damage and 4 self-damage. At 4 energy it would allow
         /// three, which is the shape §3.1 keeps cooldowns for. One turn between
-        /// casts keeps the Velvet-Rope-into-Mauling combo (different abilities, no shared
+        /// casts keeps the Apophis-into-Mauling combo (different abilities, no shared
         /// cooldown) and drops the double maul.
         /// </remarks>
         public static AbilityDefinition AllInMauling { get; } = new AbilityDefinition(
@@ -164,7 +171,7 @@ namespace NonaRoyale.Core.Abilities
             });
 
         public static IReadOnlyList<AbilityDefinition> All { get; } =
-            new[] { VelvetRope, AllInMauling };
+            new[] { Apophis, AllInMauling };
 
         /// <summary>His uniform shape, for drafting. Stats, kit and aura in one object.</summary>
         public static OperatorDefinition Definition { get; } = new OperatorDefinition(

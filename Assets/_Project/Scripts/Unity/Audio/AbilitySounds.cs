@@ -25,7 +25,7 @@ namespace NonaRoyale.Unity.Audio
     /// files and the file names stay legible.
     /// </summary>
     /// <remarks>
-    /// <b>A file per moment.</b> <c>Bouncer_VelvetRope_Tell</c> in
+    /// <b>A file per moment.</b> <c>Bouncer_Apophis_Tell</c> in
     /// <c>Assets/_Project/Audio/Resources/Audio/SFX/Abilities/</c> (variants
     /// <c>_2</c> … <c>_8</c>) is that ability's tell. The moments are
     /// <see cref="SignatureMoment"/>. Every ability in the roster has a slug, so
@@ -52,7 +52,7 @@ namespace NonaRoyale.Unity.Audio
         private static readonly Dictionary<int, string> Slugs = new Dictionary<int, string>
         {
             // House
-            { 101, "Bouncer_VelvetRope" },
+            { 101, "Bouncer_Apophis" }, // Bouncer_VelvetRope until 2026-10-03; no file used it
             { 102, "Bouncer_AllInMauling" },
             { 301, "Kurbyn_DarginPulse" },
             { 302, "Kurbyn_MiraclePull" },
@@ -112,7 +112,7 @@ namespace NonaRoyale.Unity.Audio
         public static string EvasionOf(string operatorName) =>
             operatorName != null && Evasions.TryGetValue(operatorName, out var slug) ? slug : null;
 
-        /// <summary>The file and cache name of one moment: <c>Bouncer_VelvetRope_Tell</c>.</summary>
+        /// <summary>The file and cache name of one moment: <c>Bouncer_Apophis_Tell</c>.</summary>
         public static string Key(string slug, SignatureMoment moment) => slug + "_" + moment;
 
         /// <summary>

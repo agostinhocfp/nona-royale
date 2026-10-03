@@ -58,7 +58,7 @@ Stage 4 (art hookup) was skipped for now: no finished Meshy renders are in hand.
       - **Amended 2026-09-17: the Music default is now 36%.** Untouched saves move to it from either earlier default.
 
 6. **Ability signatures (AU3, settled 2026-09-21, all as recommended):**
-   - **Keyed by ability id, named by slug.** `AbilitySounds` maps each id to a readable slug (`101` → `Bouncer_VelvetRope`). A renamed ability keeps its files. Every ability in the roster has a row, so files can be dropped in for any operator now; a test fails if a new ability has none.
+   - **Keyed by ability id, named by slug.** `AbilitySounds` maps each id to a readable slug (`101` → `Bouncer_Apophis`). A renamed ability keeps its files. Every ability in the roster has a row, so files can be dropped in for any operator now; a test fails if a new ability has none.
    - **Moments:** `Tell` (the cast tell), `Impact` (the effect landing on an enemy) and `Assist` (the ally mode: a heal or a hand). Files: `Assets/_Project/Audio/Resources/Audio/SFX/Abilities/<Slug>_<Moment>` (variants `_2` … `_8`). A moment with no file uses its synthesized stand-in if it has one, else the generic cue.
    - **The signature replaces the generic cue,** and the damage type is layered under every hit: Tech adds a fizz, Atomic a sub drop and a pressure crack. Normal has no layer of its own; the body blow is the Normal family. Over-time damage (bleed, mark, follow-up, Zero-Day) gets no layer.
    - **Synthesized stand-ins for the alpha three** in the AU1d physical palette, until recordings or generated files replace them (`SFX_PROMPTS.md`).
@@ -372,3 +372,6 @@ Stage 4 (art hookup) was skipped for now: no finished Meshy renders are in hand.
   - `VoiceSlot.Home` sits between `Kill` and `Death`. It's a moment, so it never yields to chatter, and a winning arrival's `Victory` cuts it off. `VoiceBlips` has a `HomeShape`. The file name part is `Home` (`VOICE_LINES.md`).
   - **Side effect:** inserting the slot shifts the enum values of `Death`, `Victory` and `Quit`, and the blips seed on that value, so those three placeholder chirps come out slightly different. Recorded files are matched by name and are unaffected.
   - **Checked:** `SfxRecipesTests`, `VoiceBlipsTests` and `VoiceRulesTests` (31) pass in a cloud harness against the built view assembly. `VoiceRulesTests` gained the Home order and moment checks.
+- 2026-10-03 — **Velvet Rope renamed Apophis** (designer; ADR-0011).
+  - Slug `101` is now `Bouncer_Apophis`, and the signature recipes are `Bouncer_Apophis_Tell` and `Bouncer_Apophis_Impact`. Decision 1 lets a renamed ability keep its old slug, but no recorded file used it, so the slug follows the name for free. A file dropped in later must use the new name.
+  - The synthesized sound is unchanged. This log keeps the old name in entries written before the rename.

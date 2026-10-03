@@ -259,7 +259,7 @@ namespace NonaRoyale.Core.Tests.Targeting
         [Test]
         public void AnAlly_IsALegalTarget()
         {
-            // Velvet Rope and All-In Mauling both have friendly modes.
+            // Apophis and All-In Mauling both have friendly modes.
             var caster = RedAtTrack(1, 20);
             var ally = RedAtTrack(2, 22);
 

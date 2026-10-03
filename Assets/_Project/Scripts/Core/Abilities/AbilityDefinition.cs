@@ -166,7 +166,7 @@ namespace NonaRoyale.Core.Abilities
         /// standing on a safe cell — the safe-cell taxi. Expressed as a
         /// question about effect kinds rather than a list of ability ids
         /// because content must never branch into logic (<see cref="Roster"/>):
-        /// today this is exactly Velvet Rope, Translocation and Collision, and
+        /// today this is exactly Apophis, Translocation and Collision, and
         /// any future ally-mover inherits the rule without anyone remembering
         /// to add it.
         ///

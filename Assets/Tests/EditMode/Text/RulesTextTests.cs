@@ -136,10 +136,10 @@ namespace NonaRoyale.Core.Tests.Text
         [Test]
         public void AnAbilityThatDiffersBySide_IsWrittenAsTwoModes()
         {
-            string rope = RulesText.For(Bouncer.VelvetRope).ToPlainText();
+            string apophis = RulesText.For(Bouncer.Apophis).ToPlainText();
 
-            Assert.That(rope, Does.StartWith("Enemy: "));
-            Assert.That(rope, Does.Contain("\nAlly: "));
+            Assert.That(apophis, Does.StartWith("Enemy: "));
+            Assert.That(apophis, Does.Contain("\nAlly: "));
         }
 
         [Test]

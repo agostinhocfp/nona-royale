@@ -117,8 +117,8 @@ namespace NonaRoyale.Core.Abilities
         /// <remarks>
         /// <b>No new mechanics.</b> A heal, and a shield with a pool nothing can
         /// empty. Normal and Tech are absorbed, a collision included (§5.6);
-        /// Atomic ignores every mitigation layer (§2.2), so bleed, marks, Velvet
-        /// Rope, Miracle Pull and Vendetta all go straight through.
+        /// Atomic ignores every mitigation layer (§2.2), so bleed, marks,
+        /// Apophis, Miracle Pull and Vendetta all go straight through.
         ///
         /// <b>No stun since 2026-09-24</b> (designer). The stun cost the ally one
         /// or two moves, and in a race that price was larger than the shelter:

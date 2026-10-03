@@ -125,7 +125,7 @@ namespace NonaRoyale.Core.Abilities
         /// <b>Damage 3, walked back from a sketched 6.</b> At 6 for 3 energy it
         /// killed Mimi, Syla, Javi, Kurbyn and Kian outright from full health for
         /// one turn's income — five of seven operators dead to one button, at
-        /// four times Velvet Rope's damage per energy. It also described a
+        /// four times Apophis' damage per energy. It also described a
         /// different operator: "deconstruct and heal" is sustain, and a one-shot
         /// with a heal stapled on is an execute wearing that sentence.
         ///

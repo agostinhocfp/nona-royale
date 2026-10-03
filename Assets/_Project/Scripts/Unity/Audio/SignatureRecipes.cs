@@ -7,7 +7,7 @@ namespace NonaRoyale.Unity.Audio
     /// <summary>
     /// Synthesized stand-ins for the alpha three's signature sounds (AUDIO.md
     /// AU3, decision 3), keyed like the files that replace them:
-    /// <c>Bouncer_VelvetRope_Tell</c> (<see cref="AbilitySounds.Key"/>).
+    /// <c>Bouncer_Apophis_Tell</c> (<see cref="AbilitySounds.Key"/>).
     /// </summary>
     /// <remarks>
     /// <b>Same palette as <see cref="SfxRecipes"/></b> (AU1d): physical things
@@ -51,8 +51,8 @@ namespace NonaRoyale.Unity.Audio
         private static readonly Dictionary<string, Recipe> Recipes = new Dictionary<string, Recipe>
         {
             // Bouncer — Intimidating Presence is an aura with no event, so it has no sound.
-            { "Bouncer_VelvetRope_Tell", new Recipe(1, (r, v) => VelvetRopeTell(r)) },
-            { "Bouncer_VelvetRope_Impact", new Recipe(1, (r, v) => VelvetRopeImpact(r)) },
+            { "Bouncer_Apophis_Tell", new Recipe(1, (r, v) => ApophisTell(r)) },
+            { "Bouncer_Apophis_Impact", new Recipe(1, (r, v) => ApophisImpact(r)) },
             { "Bouncer_AllInMauling_Impact", new Recipe(3, (r, v) => MaulingImpact(r)) },
             { "Bouncer_AllInMauling_Assist", new Recipe(1, (r, v) => MaulingAssist(r)) },
 
@@ -116,7 +116,7 @@ namespace NonaRoyale.Unity.Audio
             SfxRecipes.Thud(b, at, gain * 0.35f, 190f, r);
         }
 
-        private static float[] VelvetRopeTell(SynthRandom r)
+        private static float[] ApophisTell(SynthRandom r)
         {
             // The gauntlet's plates unlocking down its length, faster as they go,
             // over a hydraulic hiss that swells and bleeds off at the end.
@@ -140,7 +140,7 @@ namespace NonaRoyale.Unity.Audio
             return b;
         }
 
-        private static float[] VelvetRopeImpact(SynthRandom r)
+        private static float[] ApophisImpact(SynthRandom r)
         {
             // The clamp latching, then the target hauled across the felt.
             var b = Synth.Buffer(0.8f);

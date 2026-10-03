@@ -53,7 +53,7 @@ namespace NonaRoyale.Unity.Tests.Audio
         [Test]
         public void AKey_IsTheSlugAndTheMoment()
         {
-            Assert.That(AbilitySounds.Key("Bouncer_VelvetRope", SignatureMoment.Tell), Is.EqualTo("Bouncer_VelvetRope_Tell"));
+            Assert.That(AbilitySounds.Key("Bouncer_Apophis", SignatureMoment.Tell), Is.EqualTo("Bouncer_Apophis_Tell"));
         }
 
         [Test]

@@ -100,7 +100,7 @@ Read at the table: _the one who is never where you left her._
 
 **All three blockers are cleared:**
 
-- ~~**A swap effect.**~~ **Done.** It needed a sixth effect kind, and it forced the §7.4 amendment that had been overdue since Velvet Rope's clamp went undocumented. The arithmetic also exposed a case nobody had noticed — a placement running _forwards_ into a home column — and produced the rule that placement moving one operator clamps while placement moving two refuses.
+- ~~**A swap effect.**~~ **Done.** It needed a sixth effect kind, and it forced the §7.4 amendment that had been overdue since Apophis' clamp went undocumented. The arithmetic also exposed a case nobody had noticed — a placement running _forwards_ into a home column — and produced the rule that placement moving one operator clamps while placement moving two refuses.
 - ~~**The Tech damage type.**~~ **Done (2026-09-15)**, with Luka. Her damage is now Tech, which Luka's Hermes' Ring blocks and nothing else does. Her identity as the answer to barriers is still unexpressed: Tech is Normal plus that one counter until something amplifies it (`COMBAT_SYSTEMS.md` §2.2).
 - ~~**A field that damages on a duration.**~~ **Done (2026-09-16).** It arrived as the field shape of the operator-anchored deferred registry (`COMBAT_SYSTEMS.md` §6.6): a self-anchored `CryoField` status (§5.14) that bills enemies near her at each of her upkeeps, follows her when she moves, and ends when she does. The tick is 1 Normal — the design table left the amount blank, and it is flagged for tuning.
 

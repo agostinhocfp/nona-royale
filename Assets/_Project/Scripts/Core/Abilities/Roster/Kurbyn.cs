@@ -11,7 +11,7 @@ namespace NonaRoyale.Core.Abilities
     /// <remarks>
     /// <b>Evasion made him dominant in every session, human and simulated, and
     /// every tuning pass that left it in place failed to move him.</b> It was
-    /// cut 50% → 30% (2026-09-15), countered with Atomic (Velvet Rope), and
+    /// cut 50% → 30% (2026-09-15), countered with Atomic (Apophis), and
     /// outlasted the per-turn speed cap (§6.3) — then the designer read the
     /// roster table and saw what the kit had become: three actives plus a
     /// permanent fourth ability's worth of defence. Evasive Protocol was meant

@@ -164,7 +164,7 @@ In setup, any seat can be HUMAN or CPU. CPU seats draft and play on their own, a
 - **The view runs every batch at once.** `MatchBootstrap.Send` → `Handle` → `PlayFeedback`, `WalkMoves`, `Reposition`, and so on. Walks run side by side. `OperatorPiece.IsWalking` exists. There is no presentation queue yet (Stage 3).
 - **Rules the bots must respect:**
   - `IsCommandable(op)` gates human input by seat.
-  - Self-targeting is filtered in the view, and should be filtered in the bot too (see the Velvet Rope note in `EnergyPolicy.cs`).
+  - Self-targeting is filtered in the view, and should be filtered in the bot too (see the Apophis note in `EnergyPolicy.cs`).
 
 ### Decisions to settle first
 

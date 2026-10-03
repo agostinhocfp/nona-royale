@@ -279,7 +279,7 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 - [ ] Hot seat with two humans: the second player does not start on the first player's operator.
 - [ ] Upright (phone): the same, in the stacked tray.
 - [ ] CG4: select a damage ability and double-click an amber-ringed enemy: it casts at once. Single-click it: it is only aimed, and CAST or Enter casts. With the enemy already targeted, double-click it again: it still casts.
-- [ ] CG4: an ally-targeted ability (a heal, Velvet Rope's pull): a double click on the ally casts.
+- [ ] CG4: an ally-targeted ability (a heal, Apophis' pull): a double click on the ally casts.
 - [ ] CG4: click the target, click empty board, click the target within half a second: no cast. A double click on a piece that is not a legal target does nothing new.
 - [ ] CG4 on a phone or the Device Simulator: a double tap on a target casts; a single tap aims.
 - [ ] CG5: with dice in hand, Tab steps through the operators with landings or castable abilities, in rail order, and wraps; Shift+Tab goes back. A yard piece and a home piece are skipped. During a CPU turn, Tab does nothing.
@@ -322,7 +322,7 @@ The tray never hid; it went blank, because it only ever drew the selected operat
 
 ## Open
 
-- [ ] **Parked (designer, 2026-10-02): tables catch forced movement.** The idea is that an enemy pulled, pushed or dragged across Fortuna's table by her side pays the table's 2 each time. Bouncer's Velvet Rope pulling a runner back across it is the combo. Settled so far:
+- [ ] **Parked (designer, 2026-10-02): tables catch forced movement.** The idea is that an enemy pulled, pushed or dragged across Fortuna's table by her side pays the table's 2 each time. Bouncer's Apophis pulling a runner back across it is the combo. Settled so far:
   - Only movement forced by an enemy counts; moving yourself by placement (dashes) stays free.
   - A forced crossing charges and keeps going; it doesn't stop on the table.
   - Dice crossings still stop each enemy only once, but every forced crossing pays.

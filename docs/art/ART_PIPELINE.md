@@ -99,7 +99,7 @@ Assets/_Project/Art/
   Resources/Art/Board/       board_marble · board_felt · board_carpet      (optional, loaded by name, G4)
   Board/       cell_normal_01 · cell_safe_start · cell_home_red · corner_ne · arm_tip · yard_blue
   Operators/   (retired: operator art lives under Resources, above)
-  UI/          frame_deco_corner · icon_ability_velvetrope · hud_energy_pip
+  UI/          frame_deco_corner · icon_ability_apophis · hud_energy_pip
   FX/          fx_powered_glow · fx_stun_ring · fx_bleed_tick
   Materials/
 ```

@@ -73,7 +73,7 @@ namespace NonaRoyale.Sim
         /// <b>The caster is excluded from the ally list.</b> §10's mode rule makes
         /// self-targeting legal and <c>MatchBootstrap</c> filters it out anyway —
         /// undecided in both directions. But a bot that did not filter finds the
-        /// hole immediately: Velvet Rope aimed at yourself resolves to a placement
+        /// hole immediately: Apophis aimed at yourself resolves to a placement
         /// one cell <i>forward</i> of your own, which is a 6-energy free move. It
         /// would cast nothing else. That is a real rules question and not one the
         /// harness should answer by exploiting it.

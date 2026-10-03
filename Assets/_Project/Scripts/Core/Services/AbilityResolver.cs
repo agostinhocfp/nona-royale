@@ -21,7 +21,7 @@ namespace NonaRoyale.Core.Services
     ///
     /// <b>Order within the effect list is a rule, not a detail.</b> Miracle
     /// Pull's execute check sits first so the threshold reads health at cast
-    /// time; Velvet Rope pulls before it damages so the damage lands after
+    /// time; Apophis pulls before it damages so the damage lands after
     /// repositioning; and Sonic Disrupter pushes <i>last</i>, because its
     /// recipients are recomputed per effect and a shockwave that moved everyone
     /// out of its own radius first would then fail to slow them.
@@ -1378,7 +1378,7 @@ namespace NonaRoyale.Core.Services
         /// </summary>
         /// <remarks>
         /// What it closes is the safe-cell taxi — Translocation handing the
-        /// shelter to a teammate, Velvet Rope cycling allies through the camp.
+        /// shelter to a teammate, Apophis cycling allies through the camp.
         /// Heals, plates and cleanses still pass backwards: a camper
         /// supporting the squad behind it is not the aggression the rule
         /// exists to stop. Enemy aims need no ability knowledge and are

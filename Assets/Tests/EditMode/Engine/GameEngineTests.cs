@@ -724,7 +724,7 @@ namespace NonaRoyale.Core.Tests.Engine
             bouncer.MoveTo(11);
 
             var events = match.Engine.Execute(
-                new UseAbilityCommand(bouncer.Id, Bouncer.VelvetRope.Id, enemy.Id));
+                new UseAbilityCommand(bouncer.Id, Bouncer.Apophis.Id, enemy.Id));
 
             Assert.That(events.OfType<OperatorMoved>().Any(m => ReferenceEquals(m.Operator, enemy)),
                 Is.True, "the pulled operator moved, so the view has to be told");
@@ -1072,12 +1072,12 @@ namespace NonaRoyale.Core.Tests.Engine
             bouncer.MoveTo(20);                     // track 20, two cells on; pulled beside him, still off safe ground
 
             var events = match.Engine.Execute(
-                new UseAbilityCommand(bouncer.Id, Bouncer.VelvetRope.Id, enemy.Id));
+                new UseAbilityCommand(bouncer.Id, Bouncer.Apophis.Id, enemy.Id));
 
             var hit = events.OfType<DamageDealt>().FirstOrDefault(d => ReferenceEquals(d.Target, enemy));
 
             Assert.That(hit, Is.Not.Null, string.Join(" | ", events.Select(e => e.ToString())));
-            Assert.That(hit.Type, Is.EqualTo(DamageType.Atomic), "Velvet Rope's hit is Atomic");
+            Assert.That(hit.Type, Is.EqualTo(DamageType.Atomic), "Apophis' hit is Atomic");
         }
 
         [Test]

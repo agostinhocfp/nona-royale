@@ -6,7 +6,7 @@
 ## How a file gets into the game
 
 1. Generate several takes of a prompt below, pick the best, and keep the raw takes in `Claude outputs/sfx/<Slug>/`.
-2. Name the pick `<Slug>_<Moment>` (for example `Bouncer_VelvetRope_Tell.wav`, then `_2`, `_3` for variants) and drop it in `Assets/_Project/Audio/Resources/Audio/SFX/Abilities/`. That is the whole hookup: the file replaces the stand-in for that moment only.
+2. Name the pick `<Slug>_<Moment>` (for example `Bouncer_Apophis_Tell.wav`, then `_2`, `_3` for variants) and drop it in `Assets/_Project/Audio/Resources/Audio/SFX/Abilities/`. That is the whole hookup: the file replaces the stand-in for that moment only.
 3. Add a row to `PROVENANCE.md` **before** it ships.
 4. Claude trims, darkens and levels it, the same way the Kenney files were done: the sound starts within 2 ms of the file, ends in silence, and matches the generic cue it replaces by A-weighted loudness (about −18 dBA over the loudest 50 ms).
 
@@ -15,7 +15,7 @@
 ## The tools (checked 2026-09-21)
 
 - **ElevenLabs Sound Effects:** text to sound, up to 30 s, a loop toggle, 48 kHz WAV out. Not on the free plan. A third-party guide says output from paid plans is cleared for commercial use in games; confirm it in ElevenLabs' own terms before release. Set the duration yourself (the lengths below): left on auto, it pads.
-- **Adobe Firefly, Generate Sound Effects:** describe the sound, or **perform it with your voice** and it follows your timing. Use that for anything with a rhythm (Velvet Rope's plates, Tagged From Above's two clicks). Outside enterprise plans, get the scope of "universally licensed" in writing.
+- **Adobe Firefly, Generate Sound Effects:** describe the sound, or **perform it with your voice** and it follows your timing. Use that for anything with a rhythm (Apophis' plates, Tagged From Above's two clicks). Outside enterprise plans, get the scope of "universally licensed" in writing.
 - **Not:** Meta AudioGen / AudioCraft (weights licensed for non-commercial use), and the 8-bit generators (jsfxr, ChipTone): the toy sound AU1d removed.
 
 ## House style for every prompt
@@ -37,7 +37,7 @@ Camp materials, so a player can name the camp with their eyes closed:
 
 ## The alpha three
 
-### 1. Bouncer — Velvet Rope (`Bouncer_VelvetRope`)
+### 1. Bouncer — Apophis (`Bouncer_Apophis`)
 
 **Tell** (0.6 s):
 > Six heavy dark gunmetal-steel plates unlocking one after another down a mechanical gauntlet, each clack faster than the last, over a hydraulic hiss that swells and bleeds off, ending in one solid thunk.

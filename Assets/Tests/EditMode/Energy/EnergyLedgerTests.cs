@@ -191,7 +191,7 @@ namespace NonaRoyale.Core.Tests.Energy
         [Test]
         public void TwoAbilitiesInOneTurn_AreAllowedIfThePoolCovers()
         {
-            // No cap on abilities per turn. Banking to 12 and firing Velvet Rope
+            // No cap on abilities per turn. Banking to 12 and firing Apophis
             // into All-In Mauling is a combo worth having (§3.2).
             for (int i = 0; i < 2; i++)
             {

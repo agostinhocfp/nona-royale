@@ -431,12 +431,12 @@ namespace NonaRoyale.Core.Tests.Abilities
         [Test]
         public void Equilibrium_HalvesAtomicToo()
         {
-            // Velvet Rope is 6: 3 Atomic becomes 1.
+            // Apophis is 6: 3 Atomic becomes 1.
             BringEnemyRevuTo(12);
             var bouncer = AtTrack(20, "Bouncer", PlayerColor.Red, Bouncer.MaxHealth, 11);
             _board.Add(bouncer);
 
-            _abilities.Use(bouncer, Bouncer.VelvetRope, _enemyRevu, _red, _board);
+            _abilities.Use(bouncer, Bouncer.Apophis, _enemyRevu, _red, _board);
 
             Assert.That(_enemyRevu.Health, Is.EqualTo(Revu.MaxHealth - 1));
         }

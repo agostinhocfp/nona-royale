@@ -152,7 +152,7 @@ namespace NonaRoyale.Core.Abilities
         /// everything that does not matter and nothing that does.
         ///
         /// <b>Cost walked 3 → 6 → 4.</b> The original sketch was 3, which was
-        /// too cheap next to a 6-energy Velvet Rope. 6 was settled on 2026-09-12
+        /// too cheap next to a 6-energy Apophis. 6 was settled on 2026-09-12
         /// and then reconsidered: the same 6 buys Atomic damage that ignores
         /// every defence in the game, and 2 points of absorb is a poor rate
         /// against that. 4 is the compromise and is <b>reasoned, not

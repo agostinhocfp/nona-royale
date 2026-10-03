@@ -5,7 +5,7 @@ namespace NonaRoyale.Core.Abilities
     /// Which side an effect applies to when the ability can be aimed at either.
     /// </summary>
     /// <remarks>
-    /// Velvet Rope pulls anyone but only damages enemies; All-In Mauling damages
+    /// Apophis pulls anyone but only damages enemies; All-In Mauling damages
     /// an enemy or heals an ally. Rather than branching in the resolver, both
     /// abilities list every effect they could have and each effect declares who
     /// it is for.

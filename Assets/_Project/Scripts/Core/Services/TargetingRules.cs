@@ -99,7 +99,7 @@ namespace NonaRoyale.Core.Services
 
         /// <summary>
         /// Full legality for picking one operator as an ability's target.
-        /// Works for allies as well as enemies — Velvet Rope and All-In Mauling
+        /// Works for allies as well as enemies — Apophis and All-In Mauling
         /// both have friendly modes, and stealth is scoped so it never blocks a
         /// teammate.
         /// </summary>

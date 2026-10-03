@@ -174,15 +174,15 @@ namespace NonaRoyale.Core.Tests.Abilities
         }
 
         [Test]
-        public void VelvetRope_OnHimself_IsRefused_AndStaysReady()
+        public void Apophis_OnHimself_IsRefused_AndStaysReady()
         {
-            var result = Use(_bouncer, Bouncer.VelvetRope, _bouncer);
+            var result = Use(_bouncer, Bouncer.Apophis, _bouncer);
 
             Assert.That(result.Approved, Is.False);
             Assert.That(result.Refusal, Is.EqualTo(AbilityRefusal.IllegalTarget));
             Assert.That(result.TargetingVerdict, Is.EqualTo(TargetingVerdict.CannotTargetSelf));
             Assert.That(_red.Energy, Is.EqualTo(12));
-            Assert.That(_abilities.IsReady(_bouncer, Bouncer.VelvetRope), Is.True,
+            Assert.That(_abilities.IsReady(_bouncer, Bouncer.Apophis), Is.True,
                 "a refusal never starts the cooldown");
         }
 
@@ -205,7 +205,7 @@ namespace NonaRoyale.Core.Tests.Abilities
         [Test]
         public void LegalTargets_ExcludesTheCaster_ForUnflaggedAbilities()
         {
-            Assert.That(Legal(_bouncer, Bouncer.VelvetRope), Has.No.Member(_bouncer));
+            Assert.That(Legal(_bouncer, Bouncer.Apophis), Has.No.Member(_bouncer));
             Assert.That(Legal(_bouncer, Bouncer.AllInMauling), Has.No.Member(_bouncer));
         }
 
